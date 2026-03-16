@@ -208,22 +208,12 @@ export default function TranscriptPage() {
                     {editingIdx === i ? (
                       <div>
                         <textarea
-                          ref={(el) => {
-                            if (el) {
-                              el.style.height = "auto";
-                              el.style.height = Math.max(200, el.scrollHeight + 4) + "px";
-                            }
-                          }}
                           value={editText}
-                          onChange={(e) => {
-                            setEditText(e.target.value);
-                            e.target.style.height = "auto";
-                            e.target.style.height = Math.max(200, e.target.scrollHeight + 4) + "px";
-                          }}
+                          onChange={(e) => setEditText(e.target.value)}
                           style={{
                             width: "100%",
                             boxSizing: "border-box",
-                            minHeight: 200,
+                            height: 800,
                             fontSize: 14,
                             lineHeight: 1.8,
                             color: "#191816",
@@ -232,9 +222,8 @@ export default function TranscriptPage() {
                             borderRadius: "var(--radius-sm)",
                             padding: "12px 14px",
                             outline: "none",
-                            resize: "vertical",
+                            resize: "none",
                             fontFamily: "inherit",
-                            overflow: "hidden",
                           }}
                         />
                         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

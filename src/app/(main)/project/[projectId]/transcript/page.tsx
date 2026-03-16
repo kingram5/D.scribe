@@ -12,7 +12,7 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
 
-/** Merge consecutive same-speaker segments into paragraphs */
+/** Merge consecutive same-speaker segments into paragraphs, using ">>" as line breaks */
 function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: string }[] {
   if (!segments?.length) return [];
   const merged: { speaker: string; text: string }[] = [];
@@ -20,14 +20,24 @@ function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: 
 
   for (let i = 1; i < segments.length; i++) {
     if (segments[i].speaker === current.speaker) {
-      current.text += " " + segments[i].text;
+      const seg = segments[i].text;
+      if (seg.startsWith(">>") || current.text.endsWith(">>")) {
+        current.text += "\n" + seg.replace(/^>>\s*/, "");
+      } else {
+        current.text += " " + seg;
+      }
     } else {
       merged.push({ ...current });
       current = { speaker: segments[i].speaker, text: segments[i].text };
     }
   }
   merged.push(current);
-  return merged;
+
+  // Also handle >> within already-joined text
+  return merged.map((m) => ({
+    ...m,
+    text: m.text.replace(/\s*>>\s*/g, "\n"),
+  }));
 }
 
 export default function TranscriptPage() {
@@ -256,6 +266,7 @@ export default function TranscriptPage() {
                           padding: "4px 0",
                           borderRadius: "var(--radius-sm)",
                           transition: "background 0.15s",
+                          whiteSpace: "pre-wrap",
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.4)")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}

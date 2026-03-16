@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 
 // POST /api/outline — generate chapter outline from key points
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    const chapters = JSON.parse(raw);
+    const chapters = JSON.parse(cleanJson(raw));
 
     // Delete existing chapters for this project
     await supabase.from("chapters").delete().eq("project_id", project_id);

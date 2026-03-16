@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import {
@@ -57,9 +57,9 @@ export async function POST(req: NextRequest) {
       previousTitles
     );
 
-    const raw = await askClaude(KEY_POINTS_SYSTEM, prompt);
+    const raw = await askClaude(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(cleanJson(raw));
       allKeyPoints.push(...parsed);
     } catch {
       console.error("Failed to parse key points chunk:", chunk.index);
@@ -94,10 +94,11 @@ export async function POST(req: NextRequest) {
 
     const raw = await askClaude(
       VOICE_PROFILE_SYSTEM,
-      voiceProfilePrompt(samples, project?.voice_profile)
+      voiceProfilePrompt(samples, project?.voice_profile),
+      { model: "fast", maxTokens: 2048 }
     );
     try {
-      const profile = JSON.parse(raw);
+      const profile = JSON.parse(cleanJson(raw));
       await supabase
         .from("projects")
         .update({ voice_profile: profile })
@@ -120,10 +121,11 @@ export async function POST(req: NextRequest) {
           summary: kp.summary,
           tags: kp.tags,
         }))
-      )
+      ),
+      { model: "fast", maxTokens: 4096 }
     );
     try {
-      const { nodes, edges } = JSON.parse(raw);
+      const { nodes, edges } = JSON.parse(cleanJson(raw));
 
       // Save nodes
       if (nodes?.length) {

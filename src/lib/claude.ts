@@ -9,14 +9,32 @@ function getClient(): Anthropic {
   return client;
 }
 
+export type ModelTier = "fast" | "quality";
+
+const MODELS: Record<ModelTier, string> = {
+  fast: "claude-haiku-4-5-20251001",
+  quality: "claude-sonnet-4-20250514",
+};
+
+/** Strip markdown fences and trailing junk from JSON responses */
+function cleanJson(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith("```")) {
+    s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+  }
+  return s.trim();
+}
+
+export { cleanJson };
+
 export async function askClaude(
   system: string,
   userMessage: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: { temperature?: number; maxTokens?: number; model?: ModelTier }
 ): Promise<string> {
   const anthropic = getClient();
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250514",
+    model: MODELS[options?.model ?? "quality"],
     max_tokens: options?.maxTokens ?? 8192,
     temperature: options?.temperature ?? 0.6,
     system,
@@ -35,7 +53,7 @@ export async function streamClaude(
 ) {
   const anthropic = getClient();
   return anthropic.messages.stream({
-    model: "claude-sonnet-4-5-20250514",
+    model: "claude-sonnet-4-20250514",
     max_tokens: options?.maxTokens ?? 8192,
     temperature: options?.temperature ?? 0.6,
     system,

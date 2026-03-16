@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 
 // POST /api/enrich — find enrichment quotes for a chapter
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    const items = JSON.parse(raw);
+    const items = JSON.parse(cleanJson(raw));
 
     // Delete existing enrichments for this chapter
     await supabase.from("enrichments").delete().eq("chapter_id", chapter_id);

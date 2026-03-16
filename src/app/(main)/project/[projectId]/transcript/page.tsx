@@ -213,7 +213,7 @@ export default function TranscriptPage() {
                           style={{
                             width: "100%",
                             boxSizing: "border-box",
-                            height: 800,
+                            height: 750,
                             fontSize: 14,
                             lineHeight: 1.8,
                             color: "#191816",

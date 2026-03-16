@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Transcript, TranscriptSegment } from "@/types";
 import GlassCard from "@/components/ui/GlassCard";
@@ -51,11 +51,13 @@ export default function TranscriptPage() {
       .catch(() => setLoading(false));
   }, [projectId]);
 
+  const active = transcripts[activeIdx] ?? null;
+  const merged = active?.segments ? mergeSegments(active.segments) : [];
+
   async function runAnalysis() {
     if (transcripts.length === 0) return;
     setAnalyzing(true);
 
-    // Analyze each transcript
     for (const transcript of transcripts) {
       await fetch("/api/analyze", {
         method: "POST",
@@ -69,6 +71,35 @@ export default function TranscriptPage() {
 
     setAnalyzing(false);
     router.push(`/project/${projectId}/analysis`);
+  }
+
+  async function saveEdit(paragraphIdx: number, newText: string) {
+    if (!active) return;
+    setSaving(true);
+
+    const updatedMerged = merged.map((m, i) =>
+      i === paragraphIdx ? { ...m, text: newText } : m
+    );
+    const newFullText = updatedMerged.map((m) => m.text).join(" ");
+    const newWordCount = newFullText.split(/\s+/).filter(Boolean).length;
+
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript_id: active.id,
+        full_text: newFullText,
+        word_count: newWordCount,
+      }),
+    });
+
+    setTranscripts((prev) =>
+      prev.map((t, i) =>
+        i === activeIdx ? { ...t, full_text: newFullText, word_count: newWordCount } : t
+      )
+    );
+    setEditingIdx(null);
+    setSaving(false);
   }
 
   if (loading) {
@@ -90,41 +121,6 @@ export default function TranscriptPage() {
       </PageShell>
     );
   }
-
-  const active = transcripts[activeIdx];
-  const merged = active?.segments ? mergeSegments(active.segments) : [];
-
-  const saveEdit = useCallback(async (paragraphIdx: number, newText: string) => {
-    if (!active) return;
-    setSaving(true);
-
-    // Rebuild full_text from merged paragraphs with the edit applied
-    const updatedMerged = merged.map((m, i) =>
-      i === paragraphIdx ? { ...m, text: newText } : m
-    );
-    const newFullText = updatedMerged.map((m) => m.text).join(" ");
-    const newWordCount = newFullText.split(/\s+/).filter(Boolean).length;
-
-    // Save to DB
-    await fetch(`/api/project/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transcript_id: active.id,
-        full_text: newFullText,
-        word_count: newWordCount,
-      }),
-    });
-
-    // Update local state
-    setTranscripts((prev) =>
-      prev.map((t, i) =>
-        i === activeIdx ? { ...t, full_text: newFullText, word_count: newWordCount } : t
-      )
-    );
-    setEditingIdx(null);
-    setSaving(false);
-  }, [active, activeIdx, merged, projectId]);
 
   return (
     <PageShell projectId={projectId} currentStep="transcript">

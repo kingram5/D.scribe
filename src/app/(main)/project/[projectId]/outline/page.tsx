@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Chapter } from "@/types";
+import { Chapter, KeyPoint } from "@/types";
 import GlassCard from "@/components/ui/GlassCard";
 import DataPill from "@/components/ui/DataPill";
 import PanelTitle from "@/components/ui/PanelTitle";
@@ -19,6 +19,8 @@ export default function OutlinePage() {
   const [generating, setGenerating] = useState(false);
   const [numChapters, setNumChapters] = useState(5);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [keyPoints, setKeyPoints] = useState<KeyPoint[]>([]);
+  const [showKeyPoints, setShowKeyPoints] = useState(false);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -26,6 +28,7 @@ export default function OutlinePage() {
       .then((data) => {
         const chs: Chapter[] = data.chapters || [];
         setChapters(chs);
+        setKeyPoints(data.key_points || []);
         // Auto-select first chapter only on initial load (selectedChapterId intentionally excluded from deps)
         setSelectedChapterId((prev) => (chs.length > 0 && !prev ? chs[0].id : prev));
         setLoading(false);
@@ -137,18 +140,42 @@ export default function OutlinePage() {
               <p style={{ fontSize: 14, color: "#7a7369", lineHeight: 1.7, marginBottom: 24 }}>
                 {selectedChapter.summary}
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 32 }}>
-                <DataPill
-                  label="Key Points"
-                  metric={String(selectedChapter.key_point_ids?.length || 0)}
-                  accentColor="#191816"
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                <div
+                  onClick={() => setShowKeyPoints(!showKeyPoints)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <DataPill
+                    label={`Key Points ${showKeyPoints ? "▾" : "▸"}`}
+                    metric={String(selectedChapter.key_point_ids?.length || 0)}
+                    accentColor="#191816"
+                  />
+                </div>
                 <DataPill
                   label="Target Words"
                   metric={selectedChapter.target_word_count.toLocaleString()}
                   accentColor="#d4b895"
                 />
               </div>
+              {showKeyPoints && (selectedChapter.key_point_ids?.length || 0) > 0 && (
+                <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {selectedChapter.key_point_ids?.map((kpId) => {
+                    const kp = keyPoints.find((k) => k.id === kpId);
+                    if (!kp) return null;
+                    return (
+                      <div key={kpId} style={{
+                        padding: "10px 14px",
+                        background: "rgba(255,255,255,0.5)",
+                        border: "1px solid rgba(255,255,255,0.8)",
+                        borderRadius: "var(--radius-sm)",
+                      }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>{kp.title}</div>
+                        <div style={{ fontSize: 12, color: "#7a7369", marginTop: 4, lineHeight: 1.5 }}>{kp.summary}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {chapters.length > 0 && (
                 <button
                   onClick={() => router.push(`/project/${projectId}/generate`)}

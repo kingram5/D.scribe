@@ -35,10 +35,12 @@ export default function EditorPage() {
         chs.map(async (ch) => {
           const contentRes = await fetch(`/api/chapter-content/${ch.id}`);
           const contentData = await contentRes.json();
+          // API returns the ChapterContent object directly (with content, word_count, version fields)
+          const hasContent = contentData.content && contentData.word_count > 0;
           return {
             ...ch,
-            latest_content: contentData.content
-              ? (contentData.content as ChapterContent)
+            latest_content: hasContent
+              ? (contentData as ChapterContent)
               : undefined,
           };
         })

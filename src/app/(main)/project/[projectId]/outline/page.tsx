@@ -151,11 +151,50 @@ export default function OutlinePage() {
                     accentColor="#191816"
                   />
                 </div>
-                <DataPill
-                  label="Target Words"
-                  metric={selectedChapter.target_word_count.toLocaleString()}
-                  accentColor="#d4b895"
-                />
+                <div>
+                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 6 }}>
+                    Target Words
+                  </label>
+                  <input
+                    type="number"
+                    min={500}
+                    max={10000}
+                    step={500}
+                    value={selectedChapter.target_word_count}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 3000;
+                      setChapters((prev) =>
+                        prev.map((c) =>
+                          c.id === selectedChapter.id ? { ...c, target_word_count: val } : c
+                        )
+                      );
+                    }}
+                    onBlur={async () => {
+                      await fetch(`/api/project/${projectId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          chapter_id: selectedChapter.id,
+                          target_word_count: selectedChapter.target_word_count,
+                        }),
+                      });
+                    }}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "rgba(255,255,255,0.6)",
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "10px 14px",
+                      fontSize: 18,
+                      fontFamily: "var(--font-geist-mono), monospace",
+                      fontWeight: 700,
+                      color: "#191816",
+                      textAlign: "center",
+                      outline: "none",
+                    }}
+                  />
+                </div>
               </div>
               {showKeyPoints && (selectedChapter.key_point_ids?.length || 0) > 0 && (
                 <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>

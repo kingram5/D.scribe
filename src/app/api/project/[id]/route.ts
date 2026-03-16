@@ -38,7 +38,7 @@ export async function GET(
   });
 }
 
-// PATCH /api/project/[id] — update project
+// PATCH /api/project/[id] — update project or chapter
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,6 +46,20 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
   const supabase = createServerClient();
+
+  // If chapter_id is provided, update the chapter instead
+  if (body.chapter_id) {
+    const { chapter_id, ...updates } = body;
+    const { data, error } = await supabase
+      .from("chapters")
+      .update(updates)
+      .eq("id", chapter_id)
+      .eq("project_id", id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
 
   const { data, error } = await supabase
     .from("projects")

@@ -47,13 +47,27 @@ export async function PATCH(
   const body = await req.json();
   const supabase = createServerClient();
 
-  // If chapter_id is provided, update the chapter instead
+  // If chapter_id is provided, update the chapter
   if (body.chapter_id) {
     const { chapter_id, ...updates } = body;
     const { data, error } = await supabase
       .from("chapters")
       .update(updates)
       .eq("id", chapter_id)
+      .eq("project_id", id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
+  // If transcript_id is provided, update the transcript
+  if (body.transcript_id) {
+    const { transcript_id, ...updates } = body;
+    const { data, error } = await supabase
+      .from("transcripts")
+      .update(updates)
+      .eq("id", transcript_id)
       .eq("project_id", id)
       .select()
       .single();

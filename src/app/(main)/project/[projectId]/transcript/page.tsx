@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Transcript } from "@/types";
+import { Transcript, TranscriptSegment } from "@/types";
 import GlassCard from "@/components/ui/GlassCard";
 import DataPill from "@/components/ui/DataPill";
 import MenuSection from "@/components/ui/MenuSection";
@@ -12,6 +12,24 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
 
+/** Merge consecutive same-speaker segments into paragraphs */
+function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: string }[] {
+  if (!segments?.length) return [];
+  const merged: { speaker: string; text: string }[] = [];
+  let current = { speaker: segments[0].speaker, text: segments[0].text };
+
+  for (let i = 1; i < segments.length; i++) {
+    if (segments[i].speaker === current.speaker) {
+      current.text += " " + segments[i].text;
+    } else {
+      merged.push({ ...current });
+      current = { speaker: segments[i].speaker, text: segments[i].text };
+    }
+  }
+  merged.push(current);
+  return merged;
+}
+
 export default function TranscriptPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
@@ -19,6 +37,9 @@ export default function TranscriptPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -71,6 +92,39 @@ export default function TranscriptPage() {
   }
 
   const active = transcripts[activeIdx];
+  const merged = active?.segments ? mergeSegments(active.segments) : [];
+
+  const saveEdit = useCallback(async (paragraphIdx: number, newText: string) => {
+    if (!active) return;
+    setSaving(true);
+
+    // Rebuild full_text from merged paragraphs with the edit applied
+    const updatedMerged = merged.map((m, i) =>
+      i === paragraphIdx ? { ...m, text: newText } : m
+    );
+    const newFullText = updatedMerged.map((m) => m.text).join(" ");
+    const newWordCount = newFullText.split(/\s+/).filter(Boolean).length;
+
+    // Save to DB
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript_id: active.id,
+        full_text: newFullText,
+        word_count: newWordCount,
+      }),
+    });
+
+    // Update local state
+    setTranscripts((prev) =>
+      prev.map((t, i) =>
+        i === activeIdx ? { ...t, full_text: newFullText, word_count: newWordCount } : t
+      )
+    );
+    setEditingIdx(null);
+    setSaving(false);
+  }, [active, activeIdx, merged, projectId]);
 
   return (
     <PageShell projectId={projectId} currentStep="transcript">
@@ -143,19 +197,76 @@ export default function TranscriptPage() {
 
           {/* Scrollable body */}
           <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }}>
-            {active.segments && active.segments.length > 0
-              ? active.segments.map((seg, i) => (
-                  <div key={i} style={{ marginBottom: 16 }}>
-                    <span style={{
-                      marginRight: 10,
+            {merged.length > 0
+              ? merged.map((para, i) => (
+                  <div key={i} style={{ marginBottom: 20 }}>
+                    <div style={{
                       fontSize: 11,
                       fontWeight: 600,
                       fontFamily: "var(--font-geist-mono), monospace",
                       color: SPEAKER_COLORS[i % SPEAKER_COLORS.length],
+                      marginBottom: 6,
                     }}>
-                      {seg.speaker}
-                    </span>
-                    <span style={{ fontSize: 14, lineHeight: 1.7, color: "#191816" }}>{seg.text}</span>
+                      {para.speaker}
+                    </div>
+                    {editingIdx === i ? (
+                      <div>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            minHeight: 120,
+                            fontSize: 14,
+                            lineHeight: 1.8,
+                            color: "#191816",
+                            background: "rgba(255,255,255,0.7)",
+                            border: "1px solid rgba(0,0,0,0.15)",
+                            borderRadius: "var(--radius-sm)",
+                            padding: "12px 14px",
+                            outline: "none",
+                            resize: "vertical",
+                            fontFamily: "inherit",
+                          }}
+                        />
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button
+                            onClick={() => saveEdit(i, editText)}
+                            disabled={saving}
+                            className="nodum-btn"
+                            style={{ padding: "6px 16px", fontSize: 12 }}
+                          >
+                            {saving ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditingIdx(null)}
+                            className="nodum-btn-ghost"
+                            style={{ padding: "6px 16px", fontSize: 12 }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p
+                        onClick={() => { setEditingIdx(i); setEditText(para.text); }}
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 1.8,
+                          color: "#191816",
+                          margin: 0,
+                          cursor: "text",
+                          padding: "4px 0",
+                          borderRadius: "var(--radius-sm)",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.4)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        {para.text}
+                      </p>
+                    )}
                   </div>
                 ))
               : (

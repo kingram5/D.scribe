@@ -9,6 +9,8 @@ import MenuSection from "@/components/ui/MenuSection";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import JobProgress from "@/components/ui/JobProgress";
+import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
 
 export default function GeneratePage() {
@@ -19,12 +21,11 @@ export default function GeneratePage() {
   const [creativeFreedom, setCreativeFreedom] = useState(50);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
-  const [generating, setGenerating] = useState<string | null>(null);
+  const generateJob = useJob();
+  const forewordJob = useJob();
+  const coherenceJob = useJob<{ details: string[] }>();
   const [enriching, setEnriching] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
-  const [generatingForeword, setGeneratingForeword] = useState(false);
-  const [runningCoherence, setRunningCoherence] = useState(false);
-  const [coherenceResult, setCoherenceResult] = useState<string[] | null>(null);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -71,55 +72,52 @@ export default function GeneratePage() {
   }
 
   async function generateChapter(chapterId: string) {
-    setGenerating(chapterId);
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chapter_id: chapterId, creative_freedom: creativeFreedom }),
+    await generateJob.start({
+      type: "generate",
+      project_id: projectId,
+      chapter_id: chapterId,
+      creative_freedom: creativeFreedom,
     });
+  }
 
-    if (res.ok) {
+  // Update chapter status when generate job completes
+  useEffect(() => {
+    if (generateJob.status === "completed") {
       setChapters((prev) =>
         prev.map((ch) =>
-          ch.id === chapterId ? { ...ch, status: "generated" as const } : ch
+          ch.id === activeChapter ? { ...ch, status: "generated" as const } : ch
         )
       );
+      generateJob.reset();
     }
-    setGenerating(null);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateJob.status]);
 
   async function generateForeword() {
-    setGeneratingForeword(true);
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project_id: projectId,
-        type: "foreword",
-        creative_freedom: creativeFreedom,
-        chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
-      }),
+    await forewordJob.start({
+      type: "generate",
+      project_id: projectId,
+      generate_type: "foreword",
+      creative_freedom: creativeFreedom,
+      chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
     });
-
-    if (res.ok) {
-      setIncludeForeword(true);
-    }
-    setGeneratingForeword(false);
   }
 
-  async function runCoherencePass() {
-    setRunningCoherence(true);
-    setCoherenceResult(null);
-    const res = await fetch("/api/coherence", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCoherenceResult(data.details || []);
+  // Update foreword state when foreword job completes
+  useEffect(() => {
+    if (forewordJob.status === "completed") {
+      setIncludeForeword(true);
+      forewordJob.reset();
     }
-    setRunningCoherence(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forewordJob.status]);
+
+  async function runCoherencePass() {
+    coherenceJob.reset();
+    await coherenceJob.start({
+      type: "coherence",
+      project_id: projectId,
+    });
   }
 
   const freedomLabel =
@@ -201,10 +199,10 @@ export default function GeneratePage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {includeForeword && !generatingForeword && (
+                  {includeForeword && !forewordJob.isRunning && (
                     <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>Generated</span>
                   )}
-                  {generatingForeword && (
+                  {forewordJob.isRunning && (
                     <span style={{ fontSize: 11, color: "#a0978a", fontWeight: 600 }}>Writing...</span>
                   )}
                   <button
@@ -215,13 +213,13 @@ export default function GeneratePage() {
                         setIncludeForeword(false);
                       }
                     }}
-                    disabled={generatingForeword}
+                    disabled={forewordJob.isRunning}
                     style={{
                       width: 44,
                       height: 24,
                       borderRadius: 12,
                       border: "none",
-                      cursor: generatingForeword ? "wait" : "pointer",
+                      cursor: forewordJob.isRunning ? "wait" : "pointer",
                       background: includeForeword ? "#191816" : "rgba(0,0,0,0.15)",
                       position: "relative",
                       transition: "background 0.2s",
@@ -243,41 +241,61 @@ export default function GeneratePage() {
 
               {/* Coherence pass */}
               {chapters.some((ch) => ch.status === "generated") && (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "14px 18px",
-                  background: coherenceResult ? "rgba(5,150,105,0.04)" : "rgba(255,255,255,0.5)",
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  borderRadius: "var(--radius-sm)",
-                  marginBottom: 24,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
-                      Coherence Pass
-                    </div>
-                    <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
-                      Smooth transitions between all chapters
-                    </div>
-                    {coherenceResult && coherenceResult.length > 0 && (
-                      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                        {coherenceResult.map((note, i) => (
-                          <div key={i} style={{ fontSize: 11, color: "#059669", lineHeight: 1.4 }}>
-                            {note}
-                          </div>
-                        ))}
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 18px",
+                    background: coherenceJob.status === "completed" ? "rgba(5,150,105,0.04)" : "rgba(255,255,255,0.5)",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: "var(--radius-sm)",
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
+                        Coherence Pass
                       </div>
-                    )}
+                      <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                        Smooth transitions between all chapters
+                      </div>
+                      {coherenceJob.status === "completed" && coherenceJob.result && (
+                        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                          {((coherenceJob.result as { details: string[] }).details || []).map((note: string, i: number) => (
+                            <div key={i} style={{ fontSize: 11, color: "#059669", lineHeight: 1.4 }}>
+                              {note}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={runCoherencePass}
+                      disabled={coherenceJob.isRunning}
+                      className="nodum-btn-ghost"
+                      style={{ whiteSpace: "nowrap" }}
+                    >
+                      {coherenceJob.isRunning ? "Polishing..." : coherenceJob.status === "completed" ? "Re-run" : "Run"}
+                    </button>
                   </div>
-                  <button
-                    onClick={runCoherencePass}
-                    disabled={runningCoherence}
-                    className="nodum-btn-ghost"
-                    style={{ whiteSpace: "nowrap" }}
-                  >
-                    {runningCoherence ? "Polishing..." : coherenceResult ? "Re-run" : "Run"}
-                  </button>
+                  {coherenceJob.isRunning && (
+                    <div style={{ marginTop: 8 }}>
+                      <JobProgress
+                        progress={coherenceJob.progress}
+                        error={coherenceJob.error}
+                        status={coherenceJob.status}
+                      />
+                    </div>
+                  )}
+                  {coherenceJob.status === "failed" && (
+                    <div style={{ marginTop: 8 }}>
+                      <JobProgress
+                        progress={null}
+                        error={coherenceJob.error}
+                        status="failed"
+                        onRetry={runCoherencePass}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -362,6 +380,27 @@ export default function GeneratePage() {
                 </div>
               )}
 
+              {/* Job progress */}
+              {generateJob.isRunning && (
+                <div style={{ marginBottom: 16 }}>
+                  <JobProgress
+                    progress={generateJob.progress}
+                    error={generateJob.error}
+                    status={generateJob.status}
+                  />
+                </div>
+              )}
+              {generateJob.status === "failed" && (
+                <div style={{ marginBottom: 16 }}>
+                  <JobProgress
+                    progress={null}
+                    error={generateJob.error}
+                    status="failed"
+                    onRetry={() => generateChapter(active.id)}
+                  />
+                </div>
+              )}
+
               {/* Footer buttons */}
               <div style={{ display: "flex", gap: 12 }}>
                 <button
@@ -377,10 +416,10 @@ export default function GeneratePage() {
                 </button>
                 <button
                   onClick={() => generateChapter(active.id)}
-                  disabled={generating === active.id}
+                  disabled={generateJob.isRunning}
                   className="nodum-btn"
                 >
-                  {generating === active.id
+                  {generateJob.isRunning
                     ? "Generating..."
                     : active.status === "generated"
                       ? "Regenerate"

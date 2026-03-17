@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude";
+import { HUMANIZER_RULES } from "@/lib/prompts/generate";
 
 // POST /api/coherence — run a coherence pass across all chapters
 // Reads first+last paragraphs of each chapter, generates revised transitions
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     : "";
 
   const raw = await askClaude(
-    `You are a book editor specializing in narrative coherence and chapter transitions. ${voiceNote} Maintain the author's authentic voice while improving flow.`,
+    `You are a book editor specializing in narrative coherence and chapter transitions. ${voiceNote} Maintain the author's authentic voice while improving flow.\n${HUMANIZER_RULES}`,
     `Review the transitions between chapters in this book. For each chapter boundary, provide revised closing and opening paragraphs that create smooth, natural transitions.
 
 Look for:

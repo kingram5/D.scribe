@@ -334,21 +334,85 @@ Return JSON array: [{transition_index, revised_closing (or null), revised_openin
   console.log("✓ Coherence pass complete");
 }
 
+// ── FOREWORD ─────────────────────────────────────────────
+async function runForeword(projectId) {
+  console.log("\n── FOREWORD ──");
+
+  const { data: project } = await sb.from("projects").select("*").eq("id", projectId).single();
+  const { data: chapters } = await sb.from("chapters").select("title, summary, chapter_number")
+    .eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
+
+  if (!chapters?.length) { console.log("No chapters. Run outline first."); return; }
+
+  const chaptersInfo = chapters.map(ch => `Chapter ${ch.chapter_number}: ${ch.title}\n${ch.summary}`).join("\n\n");
+
+  const voiceNote = project.voice_profile
+    ? `Match voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
+    : "";
+
+  console.log(`  Writing foreword for ${chapters.length} chapters (Sonnet)...`);
+
+  const content = await ask(SONNET,
+    `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}`,
+    `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
+
+The book contains these chapters:
+${chaptersInfo}
+
+The foreword should:
+- Welcome the reader and set the tone
+- Preview the journey ahead without spoiling key moments
+- Establish why these topics matter
+- Create anticipation for what's to come
+- Be warm, inviting, and authentic to the speaker's voice
+
+Target: ~1500 words. Write the full foreword now.`,
+    8192, 0.6
+  );
+
+  // Delete existing foreword
+  const { data: existing } = await sb.from("chapters").select("id")
+    .eq("project_id", projectId).eq("chapter_number", 0);
+  if (existing?.length) {
+    for (const ch of existing) await sb.from("chapter_contents").delete().eq("chapter_id", ch.id);
+    await sb.from("chapters").delete().eq("project_id", projectId).eq("chapter_number", 0);
+  }
+
+  const { data: fwChapter } = await sb.from("chapters").insert({
+    project_id: projectId, chapter_number: 0, title: "Foreword",
+    summary: "An introduction to the themes and journey ahead.",
+    key_point_ids: [], target_word_count: 1500, sort_order: -1, status: "generated",
+  }).select().single();
+
+  if (fwChapter) {
+    await sb.from("chapter_contents").insert({
+      chapter_id: fwChapter.id, content, word_count: content.split(/\s+/).length,
+      generation_params: { creative_freedom: 50, type: "foreword" }, version: 1,
+    });
+  }
+
+  console.log(`  ✓ Foreword: ${content.split(/\s+/).length} words`);
+  console.log("✓ Foreword complete");
+}
+
 // ── MAIN ─────────────────────────────────────────────────
 const projectId = process.argv[2];
 const stage = process.argv[3] || "all";
+const flags = process.argv.slice(4);
+const withForeword = flags.includes("--foreword") || stage === "foreword" || stage === "all";
 
 if (!projectId) {
-  console.log("Usage: node scripts/run-pipeline.mjs <project_id> [analyze|outline|generate|coherence|all]");
+  console.log("Usage: node scripts/run-pipeline.mjs <project_id> [analyze|outline|generate|foreword|coherence|all] [--foreword]");
   process.exit(1);
 }
 
-console.log(`Pipeline: ${stage} | Project: ${projectId}`);
+console.log(`Pipeline: ${stage}${withForeword && stage !== "all" && stage !== "foreword" ? " +foreword" : ""} | Project: ${projectId}`);
 
 try {
   if (stage === "analyze" || stage === "all") await runAnalyze(projectId);
   if (stage === "outline" || stage === "all") await runOutline(projectId);
   if (stage === "generate" || stage === "all") await runGenerate(projectId);
+  if (withForeword) await runForeword(projectId);
   if (stage === "coherence" || stage === "all") await runCoherence(projectId);
   console.log("\n🏁 Pipeline complete!");
 } catch (e) {

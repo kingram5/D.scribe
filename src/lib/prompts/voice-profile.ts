@@ -23,7 +23,9 @@ Produce a voice profile with these dimensions:
 - pacing: How ideas build within a section
 - illustration_style: How examples, stories, and metaphors are used
 - avg_sentence_length: Estimated average in words
-- formality_score: 1-5 scale (1 = very casual, 5 = very formal)`;
+- formality_score: 1-5 scale (1 = very casual, 5 = very formal)
+
+IMPORTANT: Focus on what makes this speaker sound distinctive and authentic. Capture their natural rhythms, characteristic phrasing, and personal style. The goal is to reproduce their real voice at a professional quality level, not a generic AI approximation. Note their use of contractions, signature transitions, and rhetorical habits.`;
 
   if (existingProfile) {
     prompt += `\n\nCurrent profile:\n${JSON.stringify(existingProfile, null, 2)}\nUpdate this profile based on the new transcript(s). Note what changed.`;

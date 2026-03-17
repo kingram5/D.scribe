@@ -5,7 +5,7 @@ import {
   creativeFreedomToTemp,
   creativeFreedomToInstruction,
 } from "@/lib/claude";
-import { generateSystem, generatePrompt } from "@/lib/prompts/generate";
+import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 
 // POST /api/generate — generate a chapter or foreword
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       : "";
 
     const content = await askClaude(
-      `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}`,
+      `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}\n${HUMANIZER_RULES}`,
       `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
 
 The book contains these chapters:

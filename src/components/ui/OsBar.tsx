@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import UserMenu from "./UserMenu";
 
 interface OsBarProps {
   rightSlot?: React.ReactNode;
@@ -46,6 +47,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
           New Project
         </Link>
         {rightSlot}
+        <UserMenu />
       </div>
     </div>
   );

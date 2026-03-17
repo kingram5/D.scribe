@@ -10,6 +10,8 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import JobProgress from "@/components/ui/JobProgress";
+import { useJob } from "@/hooks/useJob";
 import { SPEAKER_COLORS } from "@/lib/constants";
 
 /** Merge consecutive same-speaker segments into paragraphs, using ">>" as line breaks */
@@ -46,7 +48,7 @@ export default function TranscriptPage() {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
+  const analyzeJob = useJob();
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -66,22 +68,23 @@ export default function TranscriptPage() {
 
   async function runAnalysis() {
     if (transcripts.length === 0) return;
-    setAnalyzing(true);
 
+    // Kick off analyze jobs for each transcript
     for (const transcript of transcripts) {
-      await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          transcript_id: transcript.id,
-        }),
+      await analyzeJob.start({
+        type: "analyze",
+        project_id: projectId,
+        transcript_id: transcript.id,
       });
     }
-
-    setAnalyzing(false);
-    router.push(`/project/${projectId}/analysis`);
   }
+
+  // Navigate to analysis page when job completes
+  useEffect(() => {
+    if (analyzeJob.status === "completed") {
+      router.push(`/project/${projectId}/analysis`);
+    }
+  }, [analyzeJob.status, projectId, router]);
 
   async function saveEdit(paragraphIdx: number, newText: string) {
     if (!active) return;
@@ -166,14 +169,29 @@ export default function TranscriptPage() {
               accentColor="#d4b895"
             />
           </div>
-          <div style={{ marginTop: "auto", paddingTop: 16 }}>
+          <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            {analyzeJob.isRunning && (
+              <JobProgress
+                progress={analyzeJob.progress}
+                error={analyzeJob.error}
+                status={analyzeJob.status}
+              />
+            )}
+            {analyzeJob.status === "failed" && (
+              <JobProgress
+                progress={null}
+                error={analyzeJob.error}
+                status="failed"
+                onRetry={runAnalysis}
+              />
+            )}
             <button
               onClick={runAnalysis}
-              disabled={analyzing}
+              disabled={analyzeJob.isRunning}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzing ? "Analyzing..." : "Analyze All"}
+              {analyzeJob.isRunning ? "Analyzing..." : "Analyze All"}
             </button>
           </div>
         </GlassCard>

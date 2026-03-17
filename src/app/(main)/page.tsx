@@ -9,12 +9,15 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import MenuSection from "@/components/ui/MenuSection";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
+import { useAuth } from "@/hooks/useAuth";
 import { STATUS_COLORS } from "@/lib/constants";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "draft" | "in_progress" | "complete">("all");
+  const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "";
 
   useEffect(() => {
     fetch("/api/project")
@@ -46,7 +49,7 @@ export default function Dashboard() {
           color: "#a0978a",
           marginBottom: 12,
         }}>
-          v1.0 · Workspace
+          {firstName ? `${firstName}'s Workspace` : "Workspace"}
         </div>
         <h1 style={{
           fontSize: 64,
@@ -56,10 +59,10 @@ export default function Dashboard() {
           color: "#191816",
           marginBottom: 16,
         }}>
-          Book<br />Builder
+          Manuscript
         </h1>
         <p style={{ fontSize: 16, color: "#7a7369", lineHeight: 1.6, fontWeight: 400, maxWidth: 440 }}>
-          Turn spoken sermons and teachings into polished, publishable books — upload audio, extract insights, generate chapters.
+          Turn your talks into a book — upload a sermon, keynote, or podcast episode, and let AI ghostwrite your manuscript in your voice.
         </p>
       </div>
 
@@ -95,22 +98,58 @@ export default function Dashboard() {
             <Spinner />
           ) : filtered.length === 0 ? (
             <GlassCard style={{ padding: 48 }}>
-              <div style={{
-                border: "1.5px dashed rgba(0,0,0,0.12)",
-                borderRadius: "var(--radius-md)",
-                padding: 48,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 16,
-              }}>
-                <p style={{ fontSize: 16, color: "#7a7369" }}>
-                  {filter === "all" ? "No projects yet" : `No ${filter.replace("_", " ")} projects`}
-                </p>
-                <Link href="/project/new" className="nodum-btn">
-                  Create Your First Project
-                </Link>
-              </div>
+              {filter === "all" && projects.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#191816", marginBottom: 8 }}>
+                      Your book starts here.
+                    </h2>
+                    <p style={{ fontSize: 14, color: "#7a7369", lineHeight: 1.6 }}>
+                      Three steps to turn your spoken words into a manuscript:
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {[
+                      { num: "1", title: "Upload or paste a link", desc: "Drop in an audio file or a YouTube link. We'll transcribe it automatically." },
+                      { num: "2", title: "Review the analysis", desc: "AI extracts key points, maps your ideas, and captures your speaking voice." },
+                      { num: "3", title: "Generate your book", desc: "Chapter by chapter — ghostwritten in your voice, ready to edit and export." },
+                    ].map((step) => (
+                      <div key={step.num} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: "50%",
+                          background: "#191816", color: "white",
+                          fontSize: 13, fontWeight: 700,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          flexShrink: 0,
+                        }}>
+                          {step.num}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#191816" }}>{step.title}</div>
+                          <div style={{ fontSize: 13, color: "#7a7369", marginTop: 2 }}>{step.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Link href="/project/new" className="nodum-btn" style={{ alignSelf: "flex-start" }}>
+                    Create Your First Project
+                  </Link>
+                </div>
+              ) : (
+                <div style={{
+                  border: "1.5px dashed rgba(0,0,0,0.12)",
+                  borderRadius: "var(--radius-md)",
+                  padding: 48,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 16,
+                }}>
+                  <p style={{ fontSize: 16, color: "#7a7369" }}>
+                    No {filter.replace("_", " ")} projects
+                  </p>
+                </div>
+              )}
             </GlassCard>
           ) : (
             <div style={{

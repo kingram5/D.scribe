@@ -9,6 +9,8 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import MenuSection from "@/components/ui/MenuSection";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
+import JobProgress from "@/components/ui/JobProgress";
+import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
 
 export default function OutlinePage() {
@@ -16,7 +18,7 @@ export default function OutlinePage() {
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const outlineJob = useJob<{ chapters: Chapter[] }>();
   const [numChapters, setNumChapters] = useState(5);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [keyPoints, setKeyPoints] = useState<KeyPoint[]>([]);
@@ -38,20 +40,23 @@ export default function OutlinePage() {
   }, [projectId]);
 
   async function generateOutline() {
-    setGenerating(true);
-    const res = await fetch("/api/outline", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, num_chapters: numChapters }),
+    await outlineJob.start({
+      type: "outline",
+      project_id: projectId,
+      num_chapters: numChapters,
     });
-
-    if (res.ok) {
-      const data = await res.json();
-      setChapters(data);
-      if (data.length > 0) setSelectedChapterId(data[0].id);
-    }
-    setGenerating(false);
   }
+
+  // Update chapters when outline job completes
+  useEffect(() => {
+    if (outlineJob.status === "completed" && outlineJob.result) {
+      const chs = (outlineJob.result as { chapters: Chapter[] }).chapters || [];
+      setChapters(chs);
+      if (chs.length > 0) setSelectedChapterId(chs[0].id);
+      outlineJob.reset();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outlineJob.status]);
 
   if (loading) {
     return (
@@ -100,13 +105,28 @@ export default function OutlinePage() {
                 marginBottom: 10,
               }}
             />
+            {outlineJob.isRunning && (
+              <JobProgress
+                progress={outlineJob.progress}
+                error={outlineJob.error}
+                status={outlineJob.status}
+              />
+            )}
+            {outlineJob.status === "failed" && (
+              <JobProgress
+                progress={null}
+                error={outlineJob.error}
+                status="failed"
+                onRetry={generateOutline}
+              />
+            )}
             <button
               onClick={generateOutline}
-              disabled={generating}
+              disabled={outlineJob.isRunning}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {generating
+              {outlineJob.isRunning
                 ? "Generating..."
                 : chapters.length > 0
                   ? "Regenerate"

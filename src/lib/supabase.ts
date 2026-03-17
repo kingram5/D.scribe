@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Browser client (uses anon key, respects RLS)
+// Browser client (used in "use client" components)
 export function createBrowserClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +8,7 @@ export function createBrowserClient() {
   );
 }
 
-// Server client (uses service role key, bypasses RLS)
+// Service role client (bypasses RLS — use ONLY for background workers and admin ops)
 export function createServerClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

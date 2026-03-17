@@ -93,8 +93,8 @@ Target: ~1500 words. Write the full foreword now.`,
     return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
   }
 
-  // Get project, transcripts, key points, enrichments, previous chapters
-  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes] =
+  // Get project, transcripts, key points, enrichments, previous chapters, previous chapter content
+  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes] =
     await Promise.all([
       supabase.from("projects").select("*").eq("id", chapter.project_id).single(),
       supabase
@@ -115,6 +115,24 @@ Target: ~1500 words. Write the full foreword now.`,
         .eq("project_id", chapter.project_id)
         .lt("chapter_number", chapter.chapter_number)
         .order("chapter_number"),
+      // Get the immediately previous chapter's generated content for tail context
+      (async () => {
+        if (chapter.chapter_number <= 1) return { data: null };
+        const { data: prevCh } = await supabase
+          .from("chapters")
+          .select("id")
+          .eq("project_id", chapter.project_id)
+          .eq("chapter_number", chapter.chapter_number - 1)
+          .single();
+        if (!prevCh) return { data: null };
+        return supabase
+          .from("chapter_contents")
+          .select("content")
+          .eq("chapter_id", prevCh.id)
+          .order("version", { ascending: false })
+          .limit(1)
+          .single();
+      })(),
     ]);
 
   const project = projectRes.data;
@@ -126,6 +144,13 @@ Target: ~1500 words. Write the full foreword now.`,
   const keyPoints = keyPointsRes.data || [];
   const enrichments = enrichRes.data || [];
   const previousChapters = prevChaptersRes.data || [];
+
+  // Get tail of previous chapter for smooth transitions (~500 words)
+  let previousChapterTail = "";
+  if (prevChapterContentRes?.data?.content) {
+    const words = prevChapterContentRes.data.content.split(/\s+/);
+    previousChapterTail = words.slice(-500).join(" ");
+  }
 
   // Extract relevant transcript excerpts
   const fullText = transcripts.map((t) => t.full_text).join("\n\n");
@@ -163,6 +188,7 @@ Target: ~1500 words. Write the full foreword now.`,
       previousChapters,
       coveredPoints,
       narrativeThread,
+      previousChapterTail: previousChapterTail || undefined,
       targetWords: chapter.target_word_count,
       audience: project.audience,
       freedomInstruction,

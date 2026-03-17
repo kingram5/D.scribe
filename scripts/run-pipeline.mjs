@@ -193,6 +193,8 @@ async function runGenerate(projectId) {
 
   if (!chapters?.length) { console.log("No chapters. Run outline first."); return; }
 
+  let previousTail = "";
+
   for (const ch of chapters) {
     console.log(`  Chapter ${ch.chapter_number}: "${ch.title}" (Sonnet)...`);
 
@@ -200,14 +202,23 @@ async function runGenerate(projectId) {
     const kpContext = (keyPoints || []).map(kp => `- ${kp.title}: ${kp.summary}`).join("\n");
 
     const voiceNote = project.voice_profile
-      ? `\nMatch this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_level || 3}/5.`
+      ? `\nMatch this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
       : "";
+
+    let tailContext = "";
+    if (previousTail) {
+      tailContext = `\n\nEnd of Previous Chapter (continue the flow naturally from here — match the energy and create a smooth transition):\n---\n...${previousTail}\n---`;
+    }
 
     const content = await ask(SONNET,
       `You are a skilled book ghostwriter. Write in the speaker's authentic voice.${voiceNote} Write engaging, readable prose suitable for a ${project.audience || "General"} audience.`,
-      `Write Chapter ${ch.chapter_number}: "${ch.title}"\n\nSummary: ${ch.summary}\n\nKey points to cover:\n${kpContext}\n\nSource transcript excerpt:\n${fullText.slice(0, 4000)}\n\nTarget: ~${ch.target_word_count || 3000} words. Write the full chapter now.`,
+      `Write Chapter ${ch.chapter_number}: "${ch.title}"\n\nSummary: ${ch.summary}\n\nKey points to cover:\n${kpContext}\n\nSource transcript excerpt:\n${fullText.slice(0, 4000)}\n\nTarget: ~${ch.target_word_count || 3000} words.${tailContext}\n\nWrite the full chapter now.`,
       16384, 0.6
     );
+
+    // Store tail for next chapter
+    const words = content.split(/\s+/);
+    previousTail = words.slice(-500).join(" ");
 
     const wordCount = content.split(/\s+/).length;
 
@@ -230,12 +241,105 @@ async function runGenerate(projectId) {
   console.log("✓ All chapters generated");
 }
 
+// ── COHERENCE ────────────────────────────────────────────
+async function runCoherence(projectId) {
+  console.log("\n── COHERENCE PASS ──");
+
+  const { data: chapters } = await sb.from("chapters").select("*").eq("project_id", projectId).order("sort_order");
+  if (!chapters?.length || chapters.length < 2) { console.log("Need 2+ chapters."); return; }
+
+  const { data: project } = await sb.from("projects").select("voice_profile").eq("id", projectId).single();
+
+  // Collect boundaries
+  const boundaries = [];
+  for (const ch of chapters) {
+    const { data: content } = await sb.from("chapter_contents")
+      .select("content").eq("chapter_id", ch.id).order("version", { ascending: false }).limit(1).single();
+    if (!content?.content) continue;
+    const paras = content.content.split(/\n\n+/).filter(p => p.trim().length > 50);
+    boundaries.push({
+      id: ch.id, number: ch.chapter_number, title: ch.title,
+      first: paras[0] || "", last: paras[paras.length - 1] || "",
+    });
+  }
+
+  if (boundaries.length < 2) { console.log("Not enough content for coherence pass."); return; }
+
+  const context = boundaries.map((ch, i) => {
+    let s = `--- Ch ${ch.number}: "${ch.title}" ---\nCLOSING:\n${ch.last}\n`;
+    if (i < boundaries.length - 1) {
+      const next = boundaries[i + 1];
+      s += `\n--- Ch ${next.number}: "${next.title}" ---\nOPENING:\n${next.first}`;
+    }
+    return s;
+  }).join("\n\n===== TRANSITION =====\n\n");
+
+  const voiceNote = project?.voice_profile
+    ? `Match voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
+    : "";
+
+  console.log(`  Reviewing ${boundaries.length - 1} transitions (Sonnet)...`);
+
+  const raw = await ask(SONNET,
+    `You are a book editor specializing in narrative coherence. ${voiceNote} Maintain the author's voice.`,
+    `Review transitions between chapters. For each boundary, provide revised closing/opening paragraphs for smooth flow.
+
+Look for: thematic callbacks, tone mismatches, redundancy, opportunities for forward momentum.
+
+${context}
+
+Return JSON array: [{transition_index, revised_closing (or null), revised_opening (or null), note}]. Only include transitions needing changes. Return ONLY valid JSON.`,
+    8192, 0.5
+  );
+
+  let transitions = [];
+  try { transitions = JSON.parse(cleanJson(raw)); } catch { console.log("  ⚠ Parse error"); return; }
+
+  console.log(`  ${transitions.length} transitions to improve`);
+
+  for (const t of transitions) {
+    const closing = boundaries[t.transition_index];
+    const opening = boundaries[t.transition_index + 1];
+    if (!closing || !opening) continue;
+
+    if (t.revised_closing) {
+      const { data: c } = await sb.from("chapter_contents")
+        .select("content, version").eq("chapter_id", closing.id).order("version", { ascending: false }).limit(1).single();
+      if (c) {
+        const paras = c.content.split(/\n\n+/);
+        paras[paras.length - 1] = t.revised_closing;
+        const nc = paras.join("\n\n");
+        await sb.from("chapter_contents").insert({
+          chapter_id: closing.id, content: nc, word_count: nc.split(/\s+/).length,
+          generation_params: { coherence_pass: true }, version: c.version + 1,
+        });
+      }
+    }
+    if (t.revised_opening) {
+      const { data: c } = await sb.from("chapter_contents")
+        .select("content, version").eq("chapter_id", opening.id).order("version", { ascending: false }).limit(1).single();
+      if (c) {
+        const paras = c.content.split(/\n\n+/);
+        paras[0] = t.revised_opening;
+        const nc = paras.join("\n\n");
+        await sb.from("chapter_contents").insert({
+          chapter_id: opening.id, content: nc, word_count: nc.split(/\s+/).length,
+          generation_params: { coherence_pass: true }, version: c.version + 1,
+        });
+      }
+    }
+    console.log(`  ✓ ${t.note}`);
+  }
+
+  console.log("✓ Coherence pass complete");
+}
+
 // ── MAIN ─────────────────────────────────────────────────
 const projectId = process.argv[2];
 const stage = process.argv[3] || "all";
 
 if (!projectId) {
-  console.log("Usage: node scripts/run-pipeline.mjs <project_id> [analyze|outline|generate|all]");
+  console.log("Usage: node scripts/run-pipeline.mjs <project_id> [analyze|outline|generate|coherence|all]");
   process.exit(1);
 }
 
@@ -245,6 +349,7 @@ try {
   if (stage === "analyze" || stage === "all") await runAnalyze(projectId);
   if (stage === "outline" || stage === "all") await runOutline(projectId);
   if (stage === "generate" || stage === "all") await runGenerate(projectId);
+  if (stage === "coherence" || stage === "all") await runCoherence(projectId);
   console.log("\n🏁 Pipeline complete!");
 } catch (e) {
   console.error("FATAL:", e.message);

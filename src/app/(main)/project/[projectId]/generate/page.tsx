@@ -23,6 +23,8 @@ export default function GeneratePage() {
   const [enriching, setEnriching] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
   const [generatingForeword, setGeneratingForeword] = useState(false);
+  const [runningCoherence, setRunningCoherence] = useState(false);
+  const [coherenceResult, setCoherenceResult] = useState<string[] | null>(null);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -103,6 +105,21 @@ export default function GeneratePage() {
       setIncludeForeword(true);
     }
     setGeneratingForeword(false);
+  }
+
+  async function runCoherencePass() {
+    setRunningCoherence(true);
+    setCoherenceResult(null);
+    const res = await fetch("/api/coherence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCoherenceResult(data.details || []);
+    }
+    setRunningCoherence(false);
   }
 
   const freedomLabel =
@@ -223,6 +240,46 @@ export default function GeneratePage() {
                   </button>
                 </div>
               </div>
+
+              {/* Coherence pass */}
+              {chapters.some((ch) => ch.status === "generated") && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 18px",
+                  background: coherenceResult ? "rgba(5,150,105,0.04)" : "rgba(255,255,255,0.5)",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  borderRadius: "var(--radius-sm)",
+                  marginBottom: 24,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
+                      Coherence Pass
+                    </div>
+                    <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                      Smooth transitions between all chapters
+                    </div>
+                    {coherenceResult && coherenceResult.length > 0 && (
+                      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                        {coherenceResult.map((note, i) => (
+                          <div key={i} style={{ fontSize: 11, color: "#059669", lineHeight: 1.4 }}>
+                            {note}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={runCoherencePass}
+                    disabled={runningCoherence}
+                    className="nodum-btn-ghost"
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {runningCoherence ? "Polishing..." : coherenceResult ? "Re-run" : "Run"}
+                  </button>
+                </div>
+              )}
 
               {/* Slider */}
               <div style={{ marginBottom: 24 }}>

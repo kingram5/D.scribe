@@ -20,6 +20,7 @@ export function generatePrompt(opts: {
   previousChapters?: { title: string; summary: string }[];
   coveredPoints?: string[];
   narrativeThread?: string;
+  previousChapterTail?: string;
   targetWords: number;
   audience: Audience;
   freedomInstruction: string;
@@ -53,6 +54,10 @@ ${opts.keyPoints.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n
 
   if (opts.narrativeThread) {
     prompt += `\n\nNarrative thread: ${opts.narrativeThread}`;
+  }
+
+  if (opts.previousChapterTail) {
+    prompt += `\n\nEnd of Previous Chapter (continue the flow naturally from here — match the energy and create a smooth transition):\n---\n...${opts.previousChapterTail}\n---`;
   }
 
   prompt += `

@@ -21,6 +21,8 @@ export default function GeneratePage() {
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [enriching, setEnriching] = useState<string | null>(null);
+  const [includeForeword, setIncludeForeword] = useState(false);
+  const [generatingForeword, setGeneratingForeword] = useState(false);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -84,6 +86,25 @@ export default function GeneratePage() {
     setGenerating(null);
   }
 
+  async function generateForeword() {
+    setGeneratingForeword(true);
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: projectId,
+        type: "foreword",
+        creative_freedom: creativeFreedom,
+        chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
+      }),
+    });
+
+    if (res.ok) {
+      setIncludeForeword(true);
+    }
+    setGeneratingForeword(false);
+  }
+
   const freedomLabel =
     creativeFreedom <= 30
       ? "Faithful"
@@ -142,6 +163,67 @@ export default function GeneratePage() {
         {active && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <GlassCard style={{ padding: 32 }}>
+              {/* Foreword toggle */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 18px",
+                background: includeForeword ? "rgba(25,24,22,0.04)" : "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: "var(--radius-sm)",
+                marginBottom: 24,
+                transition: "all 0.15s",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
+                    Include Foreword
+                  </div>
+                  <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                    AI-generated intro chapter previewing the topics ahead
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {includeForeword && !generatingForeword && (
+                    <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>Generated</span>
+                  )}
+                  {generatingForeword && (
+                    <span style={{ fontSize: 11, color: "#a0978a", fontWeight: 600 }}>Writing...</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!includeForeword) {
+                        generateForeword();
+                      } else {
+                        setIncludeForeword(false);
+                      }
+                    }}
+                    disabled={generatingForeword}
+                    style={{
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      border: "none",
+                      cursor: generatingForeword ? "wait" : "pointer",
+                      background: includeForeword ? "#191816" : "rgba(0,0,0,0.15)",
+                      position: "relative",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    <div style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "white",
+                      position: "absolute",
+                      top: 3,
+                      left: includeForeword ? 23 : 3,
+                      transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
+              </div>
+
               {/* Slider */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>

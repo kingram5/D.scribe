@@ -8,9 +8,74 @@ import {
 import { generateSystem, generatePrompt } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 
-// POST /api/generate — generate a single chapter's content
+// POST /api/generate — generate a chapter or foreword
 export async function POST(req: NextRequest) {
-  const { chapter_id, creative_freedom = 50 } = await req.json();
+  const body = await req.json();
+  const { creative_freedom = 50 } = body;
+
+  // Foreword generation
+  if (body.type === "foreword" && body.project_id) {
+    const supabase = createServerClient();
+    const { data: project } = await supabase
+      .from("projects").select("*").eq("id", body.project_id).single();
+    if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+
+    const chaptersInfo = (body.chapters || [])
+      .map((ch: { title: string; summary: string }, i: number) => `Chapter ${i + 1}: ${ch.title}\n${ch.summary}`)
+      .join("\n\n");
+
+    const temperature = creativeFreedomToTemp(creative_freedom);
+    const voiceNote = project.voice_profile
+      ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
+      : "";
+
+    const content = await askClaude(
+      `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}`,
+      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
+
+The book contains these chapters:
+${chaptersInfo}
+
+The foreword should:
+- Welcome the reader and set the tone
+- Preview the journey ahead without spoiling key moments
+- Establish why these topics matter
+- Create anticipation for what's to come
+- Be warm, inviting, and authentic to the speaker's voice
+
+Target: ~1500 words. Write the full foreword now.`,
+      { temperature, maxTokens: 8192 }
+    );
+
+    // Save as chapter 0
+    await supabase.from("chapters").delete()
+      .eq("project_id", body.project_id).eq("chapter_number", 0);
+
+    const { data: forewordChapter } = await supabase.from("chapters").insert({
+      project_id: body.project_id,
+      chapter_number: 0,
+      title: "Foreword",
+      summary: "An introduction to the themes and journey ahead.",
+      key_point_ids: [],
+      target_word_count: 1500,
+      sort_order: -1,
+      status: "generated",
+    }).select().single();
+
+    if (forewordChapter) {
+      await supabase.from("chapter_contents").insert({
+        chapter_id: forewordChapter.id,
+        content,
+        word_count: content.split(/\s+/).length,
+        generation_params: { creative_freedom, type: "foreword" },
+        version: 1,
+      });
+    }
+
+    return NextResponse.json({ foreword: true, word_count: content.split(/\s+/).length }, { status: 201 });
+  }
+
+  const { chapter_id } = body;
   if (!chapter_id) {
     return NextResponse.json({ error: "chapter_id required" }, { status: 400 });
   }

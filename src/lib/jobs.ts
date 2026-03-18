@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase";
 
-export type JobType = "analyze" | "outline" | "generate" | "coherence";
+export type JobType = "analyze" | "outline" | "generate" | "generate-all" | "coherence";
 
 export interface Job {
   id: string;

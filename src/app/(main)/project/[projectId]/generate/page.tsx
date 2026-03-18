@@ -21,11 +21,15 @@ export default function GeneratePage() {
   const [creativeFreedom, setCreativeFreedom] = useState(50);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
-  const generateJob = useJob();
+  const generateAllJob = useJob<{ chapters_generated: number; coherence_applied: boolean }>();
+  const regenerateJob = useJob();
   const forewordJob = useJob();
-  const coherenceJob = useJob<{ details: string[] }>();
   const [enriching, setEnriching] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
+
+  // Are all chapters generated?
+  const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
+  const anyGenerated = chapters.some((ch) => ch.status === "generated");
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -59,7 +63,6 @@ export default function GeneratePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, included }),
     });
-    // Update local state
     setEnrichments((prev) => {
       const updated = { ...prev };
       for (const key of Object.keys(updated)) {
@@ -71,8 +74,16 @@ export default function GeneratePage() {
     });
   }
 
-  async function generateChapter(chapterId: string) {
-    await generateJob.start({
+  async function generateAll() {
+    await generateAllJob.start({
+      type: "generate-all",
+      project_id: projectId,
+      creative_freedom: creativeFreedom,
+    });
+  }
+
+  async function regenerateChapter(chapterId: string) {
+    await regenerateJob.start({
       type: "generate",
       project_id: projectId,
       chapter_id: chapterId,
@@ -80,18 +91,32 @@ export default function GeneratePage() {
     });
   }
 
-  // Update chapter status when generate job completes
+  // Update chapter statuses when generate-all completes
   useEffect(() => {
-    if (generateJob.status === "completed") {
+    if (generateAllJob.status === "completed") {
+      // Refresh chapters from server
+      fetch(`/api/project/${projectId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const chs = data.chapters || [];
+          setChapters(chs);
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateAllJob.status]);
+
+  // Update chapter status when regenerate job completes
+  useEffect(() => {
+    if (regenerateJob.status === "completed") {
       setChapters((prev) =>
         prev.map((ch) =>
           ch.id === activeChapter ? { ...ch, status: "generated" as const } : ch
         )
       );
-      generateJob.reset();
+      regenerateJob.reset();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generateJob.status]);
+  }, [regenerateJob.status]);
 
   async function generateForeword() {
     await forewordJob.start({
@@ -103,7 +128,6 @@ export default function GeneratePage() {
     });
   }
 
-  // Update foreword state when foreword job completes
   useEffect(() => {
     if (forewordJob.status === "completed") {
       setIncludeForeword(true);
@@ -111,14 +135,6 @@ export default function GeneratePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forewordJob.status]);
-
-  async function runCoherencePass() {
-    coherenceJob.reset();
-    await coherenceJob.start({
-      type: "coherence",
-      project_id: projectId,
-    });
-  }
 
   const freedomLabel =
     creativeFreedom <= 30
@@ -149,6 +165,7 @@ export default function GeneratePage() {
 
   const active = chapters.find((ch) => ch.id === activeChapter);
   const chapterEnrichments = activeChapter ? enrichments[activeChapter] || [] : [];
+  const isGenerating = generateAllJob.isRunning || regenerateJob.isRunning;
 
   return (
     <PageShell projectId={projectId} currentStep="generate">
@@ -174,7 +191,7 @@ export default function GeneratePage() {
           </div>
         </GlassCard>
 
-        {/* Right: chapter detail + enrichments */}
+        {/* Right: chapter detail */}
         {active && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <GlassCard style={{ padding: 32 }}>
@@ -238,66 +255,6 @@ export default function GeneratePage() {
                   </button>
                 </div>
               </div>
-
-              {/* Coherence pass */}
-              {chapters.some((ch) => ch.status === "generated") && (
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "14px 18px",
-                    background: coherenceJob.status === "completed" ? "rgba(5,150,105,0.04)" : "rgba(255,255,255,0.5)",
-                    border: "1px solid rgba(0,0,0,0.08)",
-                    borderRadius: "var(--radius-sm)",
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
-                        Coherence Pass
-                      </div>
-                      <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
-                        Smooth transitions between all chapters
-                      </div>
-                      {coherenceJob.status === "completed" && coherenceJob.result && (
-                        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                          {((coherenceJob.result as { details: string[] }).details || []).map((note: string, i: number) => (
-                            <div key={i} style={{ fontSize: 11, color: "#059669", lineHeight: 1.4 }}>
-                              {note}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={runCoherencePass}
-                      disabled={coherenceJob.isRunning}
-                      className="nodum-btn-ghost"
-                      style={{ whiteSpace: "nowrap" }}
-                    >
-                      {coherenceJob.isRunning ? "Polishing..." : coherenceJob.status === "completed" ? "Re-run" : "Run"}
-                    </button>
-                  </div>
-                  {coherenceJob.isRunning && (
-                    <div style={{ marginTop: 8 }}>
-                      <JobProgress
-                        progress={coherenceJob.progress}
-                        error={coherenceJob.error}
-                        status={coherenceJob.status}
-                      />
-                    </div>
-                  )}
-                  {coherenceJob.status === "failed" && (
-                    <div style={{ marginTop: 8 }}>
-                      <JobProgress
-                        progress={null}
-                        error={coherenceJob.error}
-                        status="failed"
-                        onRetry={runCoherencePass}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Slider */}
               <div style={{ marginBottom: 24 }}>
@@ -380,23 +337,73 @@ export default function GeneratePage() {
                 </div>
               )}
 
-              {/* Job progress */}
-              {generateJob.isRunning && (
+              {/* Generate All progress */}
+              {generateAllJob.isRunning && (
                 <div style={{ marginBottom: 16 }}>
-                  <JobProgress
-                    progress={generateJob.progress}
-                    error={generateJob.error}
-                    status={generateJob.status}
-                  />
+                  <div style={{
+                    padding: "14px 18px",
+                    background: "rgba(25,24,22,0.04)",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: 8,
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#191816", marginBottom: 4 }}>
+                      {(generateAllJob.progress as { message?: string })?.message || "Generating..."}
+                    </div>
+                    {generateAllJob.progress && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{
+                          height: 4,
+                          background: "rgba(0,0,0,0.08)",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}>
+                          <div style={{
+                            height: "100%",
+                            background: "#191816",
+                            borderRadius: 2,
+                            width: `${((generateAllJob.progress as { current?: number; total?: number }).current || 0) / ((generateAllJob.progress as { current?: number; total?: number }).total || 1) * 100}%`,
+                            transition: "width 0.5s ease",
+                          }} />
+                        </div>
+                        <div style={{ fontSize: 11, color: "#a0978a", marginTop: 4 }}>
+                          Chapter {(generateAllJob.progress as { current?: number }).current} of {(generateAllJob.progress as { total?: number }).total}
+                          {(generateAllJob.progress as { step?: string }).step === "coherence" && " — polishing transitions"}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-              {generateJob.status === "failed" && (
+
+              {generateAllJob.status === "failed" && (
                 <div style={{ marginBottom: 16 }}>
                   <JobProgress
                     progress={null}
-                    error={generateJob.error}
+                    error={generateAllJob.error}
                     status="failed"
-                    onRetry={() => generateChapter(active.id)}
+                    onRetry={generateAll}
+                  />
+                </div>
+              )}
+
+              {/* Regenerate progress */}
+              {regenerateJob.isRunning && (
+                <div style={{ marginBottom: 16 }}>
+                  <JobProgress
+                    progress={regenerateJob.progress}
+                    error={regenerateJob.error}
+                    status={regenerateJob.status}
+                  />
+                </div>
+              )}
+              {regenerateJob.status === "failed" && (
+                <div style={{ marginBottom: 16 }}>
+                  <JobProgress
+                    progress={null}
+                    error={regenerateJob.error}
+                    status="failed"
+                    onRetry={() => regenerateChapter(active.id)}
                   />
                 </div>
               )}
@@ -405,7 +412,7 @@ export default function GeneratePage() {
               <div style={{ display: "flex", gap: 12 }}>
                 <button
                   onClick={() => fetchEnrichments(active.id)}
-                  disabled={enriching === active.id}
+                  disabled={enriching === active.id || isGenerating}
                   className="nodum-btn-ghost"
                 >
                   {enriching === active.id
@@ -414,18 +421,48 @@ export default function GeneratePage() {
                       ? "Refresh Quotes"
                       : "Find Enrichment Quotes"}
                 </button>
-                <button
-                  onClick={() => generateChapter(active.id)}
-                  disabled={generateJob.isRunning}
-                  className="nodum-btn"
-                >
-                  {generateJob.isRunning
-                    ? "Generating..."
-                    : active.status === "generated"
-                      ? "Regenerate"
-                      : "Generate Chapter"}
-                </button>
+
+                {!anyGenerated ? (
+                  /* No chapters generated yet — show Generate All */
+                  <button
+                    onClick={generateAll}
+                    disabled={isGenerating}
+                    className="nodum-btn"
+                  >
+                    {generateAllJob.isRunning
+                      ? "Generating..."
+                      : `Generate All ${chapters.length} Chapters`}
+                  </button>
+                ) : (
+                  /* Some/all chapters generated — show Regenerate for this chapter */
+                  <button
+                    onClick={() => regenerateChapter(active.id)}
+                    disabled={isGenerating}
+                    className="nodum-btn"
+                  >
+                    {regenerateJob.isRunning
+                      ? "Regenerating..."
+                      : active.status === "generated"
+                        ? "Regenerate Chapter"
+                        : "Generate Chapter"}
+                  </button>
+                )}
               </div>
+
+              {/* Generate All completed summary */}
+              {generateAllJob.status === "completed" && (
+                <div style={{
+                  marginTop: 16,
+                  padding: "12px 16px",
+                  background: "rgba(5,150,105,0.06)",
+                  border: "1px solid rgba(5,150,105,0.15)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: 13,
+                  color: "#059669",
+                }}>
+                  All {(generateAllJob.result as { chapters_generated?: number })?.chapters_generated} chapters generated with coherence pass applied.
+                </div>
+              )}
             </GlassCard>
           </div>
         )}

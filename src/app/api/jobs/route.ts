@@ -7,8 +7,9 @@ import { runAnalyzeJob } from "@/lib/workers/analyze";
 import { runOutlineJob } from "@/lib/workers/outline";
 import { runGenerateJob } from "@/lib/workers/generate";
 import { runCoherenceJob } from "@/lib/workers/coherence";
+import { runGenerateAllJob } from "@/lib/workers/generate-all";
 
-const VALID_TYPES: JobType[] = ["analyze", "outline", "generate", "coherence"];
+const VALID_TYPES: JobType[] = ["analyze", "outline", "generate", "generate-all", "coherence"];
 
 // POST /api/jobs — kick off a background job
 export async function POST(req: NextRequest) {
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
         break;
       case "coherence":
         await runCoherenceJob(job.id, { project_id });
+        break;
+      case "generate-all":
+        await runGenerateAllJob(job.id, { project_id, ...rest });
         break;
     }
   });

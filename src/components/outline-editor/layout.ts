@@ -30,7 +30,7 @@ export interface EdgeDef {
   id: string;
   sourceId: string;
   targetId: string;
-  type: "chapter-chapter" | "chapter-keypoint";
+  type: "chapter-chapter";
 }
 
 export function buildLayout(
@@ -73,13 +73,6 @@ export function buildLayout(
         height: KP_HEIGHT,
         chapterId: ch.id,
         color,
-      });
-
-      edges.push({
-        id: `e-${ch.id}-${kpId}`,
-        sourceId: ch.id,
-        targetId: kpId,
-        type: "chapter-keypoint",
       });
 
       kpY += KP_HEIGHT + KP_GAP;

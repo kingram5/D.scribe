@@ -74,10 +74,21 @@ function OutlineEditorInner({
     type: "keyPoint" | "chapter";
   } | null>(null);
 
-  // Initialize state
+  // Initialize state — deduplicate KPs so each appears in only one chapter
   useEffect(() => {
     if (initialChapters.length > 0 || initialKeyPoints.length > 0) {
-      dispatch({ type: "INIT", chapters: initialChapters, keyPoints: initialKeyPoints });
+      const seen = new Set<string>();
+      const deduped = initialChapters.map((ch) => {
+        const uniqueIds = (ch.key_point_ids || []).filter((id) => {
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        return uniqueIds.length !== (ch.key_point_ids || []).length
+          ? { ...ch, key_point_ids: uniqueIds }
+          : ch;
+      });
+      dispatch({ type: "INIT", chapters: deduped, keyPoints: initialKeyPoints });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -379,9 +390,8 @@ function OutlineEditorInner({
     // Quadratic bezier with curve offset
     const mx = (sx + tx) / 2;
     const my = (sy + ty) / 2;
-    const curveOffset = edge.type === "chapter-chapter" ? 40 : 20;
-    const cx = mx + curveOffset;
-    const cy = my - curveOffset;
+    const cx = mx;
+    const cy = my - 40;
 
     return `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
   }
@@ -449,13 +459,6 @@ function OutlineEditorInner({
           zIndex: 1,
         }}
       >
-        <defs>
-          <style>{`
-            @keyframes dashFlow {
-              to { stroke-dashoffset: -24; }
-            }
-          `}</style>
-        </defs>
         <g
           filter="url(#marker-wobble)"
           transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
@@ -463,19 +466,15 @@ function OutlineEditorInner({
           {edges.map((edge) => {
             const path = getEdgePath(edge);
             if (!path) return null;
-            const isChapterEdge = edge.type === "chapter-chapter";
             return (
               <path
                 key={edge.id}
                 d={path}
                 fill="none"
-                stroke={isChapterEdge ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.2)"}
-                strokeWidth={isChapterEdge ? 5 : 2}
-                opacity={isChapterEdge ? 0.3 : 0.7}
-                strokeDasharray={isChapterEdge ? "none" : "8,4"}
-                style={isChapterEdge ? undefined : {
-                  animation: "dashFlow 1s linear infinite",
-                }}
+                stroke="rgba(0,0,0,0.12)"
+                strokeWidth={4}
+                opacity={0.3}
+                strokeLinecap="round"
               />
             );
           })}

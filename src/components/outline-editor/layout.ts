@@ -1,118 +1,128 @@
 import dagre from "@dagrejs/dagre";
 import { Chapter, KeyPoint } from "@/types";
-import type { Node, Edge } from "@xyflow/react";
+import type { Edge } from "@xyflow/react";
 
-const CHAPTER_WIDTH = 240;
-const CHAPTER_HEIGHT = 80;
-const KP_WIDTH = 200;
-const KP_HEIGHT = 56;
+export const CHAPTER_WIDTH = 320;
+export const CHAPTER_HEIGHT = 280;
+export const KP_WIDTH = 160;
+export const KP_HEIGHT = 120;
 
-export interface OutlineNode extends Node {
-  data: {
-    chapter?: Chapter;
-    keyPoint?: KeyPoint;
-    chapterId?: string;
-    label: string;
-    summary?: string;
-    onEdit?: (field: "title" | "summary", value: string) => void;
-    onDelete?: () => void;
-    isDropTarget?: boolean;
-    expanded?: boolean;
-    onToggleExpand?: () => void;
-  };
+export const NOTE_COLORS = ["#fdf5c9", "#fbe0e0", "#e0f2fe", "#e6f4ea"] as const;
+export type NoteColor = (typeof NOTE_COLORS)[number];
+
+export interface NotePosition {
+  id: string;
+  type: "chapter" | "keyPoint";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  chapterId?: string;
+  color: NoteColor;
 }
 
-export function buildNodesAndEdges(
+export interface EdgeDef {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: "chapter-chapter" | "chapter-keypoint";
+}
+
+export function buildLayout(
   chapters: Chapter[],
   keyPoints: KeyPoint[]
-): { nodes: OutlineNode[]; edges: Edge[] } {
-  const nodes: OutlineNode[] = [];
-  const edges: Edge[] = [];
+): { positions: NotePosition[]; edges: EdgeDef[] } {
+  const positions: NotePosition[] = [];
+  const edges: EdgeDef[] = [];
   const kpMap = new Map(keyPoints.map((kp) => [kp.id, kp]));
 
-  // Chapter nodes
-  chapters.forEach((ch) => {
-    nodes.push({
-      id: `ch-${ch.id}`,
-      type: "chapter",
-      position: { x: 0, y: 0 },
-      data: {
-        chapter: ch,
-        label: `Ch. ${ch.chapter_number}: ${ch.title}`,
-        summary: ch.summary,
-      },
-    });
-
-    // Key point nodes for this chapter
-    (ch.key_point_ids || []).forEach((kpId) => {
-      const kp = kpMap.get(kpId);
-      if (!kp) return;
-
-      nodes.push({
-        id: `kp-${kpId}`,
-        type: "keyPoint",
-        position: { x: 0, y: 0 },
-        data: {
-          keyPoint: kp,
-          chapterId: ch.id,
-          label: kp.title,
-          summary: kp.summary,
-        },
-      });
-
-      // Chapter → key point edge
-      edges.push({
-        id: `e-${ch.id}-${kpId}`,
-        source: `ch-${ch.id}`,
-        target: `kp-${kpId}`,
-        type: "default",
-        style: { stroke: "#b45309", strokeWidth: 1.5, opacity: 0.4 },
-      });
-    });
-  });
-
-  // Chapter → chapter edges (sequential flow)
-  for (let i = 0; i < chapters.length - 1; i++) {
-    edges.push({
-      id: `e-ch-${chapters[i].id}-${chapters[i + 1].id}`,
-      source: `ch-${chapters[i].id}`,
-      target: `ch-${chapters[i + 1].id}`,
-      type: "default",
-      style: { stroke: "#a0978a", strokeWidth: 1.5, strokeDasharray: "6 4", opacity: 0.5 },
-    });
-  }
-
-  return { nodes, edges };
-}
-
-export function applyDagreLayout(nodes: OutlineNode[], edges: Edge[]): OutlineNode[] {
+  // Build dagre graph for auto-layout
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", ranksep: 180, nodesep: 60, marginx: 40, marginy: 40 });
+  g.setGraph({ rankdir: "TB", ranksep: 120, nodesep: 80, marginx: 60, marginy: 60 });
   g.setDefaultEdgeLabel(() => ({}));
 
-  nodes.forEach((node) => {
-    const isChapter = node.type === "chapter";
-    g.setNode(node.id, {
-      width: isChapter ? CHAPTER_WIDTH : KP_WIDTH,
-      height: isChapter ? CHAPTER_HEIGHT : KP_HEIGHT,
+  // Add chapter nodes
+  chapters.forEach((ch) => {
+    g.setNode(`ch-${ch.id}`, { width: CHAPTER_WIDTH, height: CHAPTER_HEIGHT });
+  });
+
+  // Add key point nodes
+  chapters.forEach((ch) => {
+    (ch.key_point_ids || []).forEach((kpId) => {
+      if (!kpMap.has(kpId)) return;
+      g.setNode(`kp-${kpId}`, { width: KP_WIDTH, height: KP_HEIGHT });
+      g.setEdge(`ch-${ch.id}`, `kp-${kpId}`);
     });
   });
 
-  edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
+  // Chapter-to-chapter edges
+  for (let i = 0; i < chapters.length - 1; i++) {
+    g.setEdge(`ch-${chapters[i].id}`, `ch-${chapters[i + 1].id}`);
+  }
+
+  // Dagre edges for layout reference
+  const dagreEdges: Edge[] = [];
+  chapters.forEach((ch, i) => {
+    (ch.key_point_ids || []).forEach((kpId) => {
+      if (!kpMap.has(kpId)) return;
+      dagreEdges.push({ id: `e-${ch.id}-${kpId}`, source: `ch-${ch.id}`, target: `kp-${kpId}` });
+    });
+    if (i < chapters.length - 1) {
+      dagreEdges.push({
+        id: `e-ch-${chapters[i].id}-${chapters[i + 1].id}`,
+        source: `ch-${chapters[i].id}`,
+        target: `ch-${chapters[i + 1].id}`,
+      });
+    }
   });
 
   dagre.layout(g);
 
-  return nodes.map((node) => {
-    const pos = g.node(node.id);
-    const isChapter = node.type === "chapter";
-    return {
-      ...node,
-      position: {
-        x: pos.x - (isChapter ? CHAPTER_WIDTH : KP_WIDTH) / 2,
-        y: pos.y - (isChapter ? CHAPTER_HEIGHT : KP_HEIGHT) / 2,
-      },
-    };
+  // Extract positions
+  chapters.forEach((ch, i) => {
+    const pos = g.node(`ch-${ch.id}`);
+    positions.push({
+      id: ch.id,
+      type: "chapter",
+      x: pos.x - CHAPTER_WIDTH / 2,
+      y: pos.y - CHAPTER_HEIGHT / 2,
+      width: CHAPTER_WIDTH,
+      height: CHAPTER_HEIGHT,
+      color: NOTE_COLORS[i % NOTE_COLORS.length],
+    });
+
+    (ch.key_point_ids || []).forEach((kpId) => {
+      if (!kpMap.has(kpId)) return;
+      const kpPos = g.node(`kp-${kpId}`);
+      positions.push({
+        id: kpId,
+        type: "keyPoint",
+        x: kpPos.x - KP_WIDTH / 2,
+        y: kpPos.y - KP_HEIGHT / 2,
+        width: KP_WIDTH,
+        height: KP_HEIGHT,
+        chapterId: ch.id,
+        color: NOTE_COLORS[i % NOTE_COLORS.length],
+      });
+
+      edges.push({
+        id: `e-${ch.id}-${kpId}`,
+        sourceId: ch.id,
+        targetId: kpId,
+        type: "chapter-keypoint",
+      });
+    });
   });
+
+  // Chapter-to-chapter edges
+  for (let i = 0; i < chapters.length - 1; i++) {
+    edges.push({
+      id: `e-ch-${chapters[i].id}-${chapters[i + 1].id}`,
+      sourceId: chapters[i].id,
+      targetId: chapters[i + 1].id,
+      type: "chapter-chapter",
+    });
+  }
+
+  return { positions, edges };
 }

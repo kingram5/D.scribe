@@ -1,56 +1,82 @@
 "use client";
 
-import { memo, useState, useRef } from "react";
-import { Handle, Position } from "@xyflow/react";
-import type { NodeProps } from "@xyflow/react";
+import { memo, useState, useRef, useCallback } from "react";
 import type { Chapter } from "@/types";
+import type { NoteColor } from "./layout";
 
-interface ChapterNodeData {
+interface ChapterNoteProps {
   chapter: Chapter;
-  label: string;
-  summary?: string;
-  onEdit?: (field: "title" | "summary", value: string) => void;
-  onDelete?: () => void;
-  isDropTarget?: boolean;
-  [key: string]: unknown;
+  color: NoteColor;
+  rotation: number;
+  isDragging: boolean;
+  onEdit: (field: "title" | "summary", value: string) => void;
+  onDelete: () => void;
+  onAddKeyPoint: () => void;
 }
 
-function ChapterNodeComponent({ data }: NodeProps) {
-  const { chapter, onEdit, onDelete, isDropTarget } = data as unknown as ChapterNodeData;
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editingSummary, setEditingSummary] = useState(false);
+function ChapterNoteComponent({
+  chapter,
+  color,
+  rotation,
+  isDragging,
+  onEdit,
+  onDelete,
+  onAddKeyPoint,
+}: ChapterNoteProps) {
   const [hovered, setHovered] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
-  const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const [expanded, setExpanded] = useState(true);
+  const titleRef = useRef<HTMLDivElement>(null);
+
+  const handleTitleBlur = useCallback(() => {
+    if (titleRef.current) {
+      const val = titleRef.current.textContent || "";
+      if (val !== chapter.title) onEdit("title", val);
+    }
+  }, [chapter.title, onEdit]);
+
+  const borderColor = color === "#fdf5c9" ? "#e6d96c"
+    : color === "#fbe0e0" ? "#e8a0a0"
+    : color === "#e0f2fe" ? "#7ec8f0"
+    : "#8cc89e";
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: 240,
-        minHeight: 80,
-        padding: "12px 16px",
-        background: isDropTarget ? "#2d2b28" : "#191816",
-        borderRadius: 16,
-        border: isDropTarget ? "2px solid #b45309" : "2px solid rgba(255,255,255,0.08)",
-        color: "white",
-        cursor: "grab",
-        transition: "all 0.15s",
+        width: 320,
+        minHeight: expanded ? 280 : 80,
+        background: color,
+        border: `3px solid ${borderColor}`,
+        borderRadius: 4,
+        padding: "20px 18px 14px",
+        cursor: isDragging ? "grabbing" : "grab",
+        filter: "url(#rough-edge)",
+        boxShadow: isDragging
+          ? "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)"
+          : "0 4px 6px rgba(0,0,0,0.05), 2px 2px 0 rgba(0,0,0,0.02)",
+        fontFamily: "'Kalam', cursive",
         position: "relative",
-        boxShadow: isDropTarget
-          ? "0 0 20px rgba(180,83,9,0.3)"
-          : "0 4px 16px rgba(0,0,0,0.2)",
+        transition: isDragging ? "none" : "box-shadow 0.2s, min-height 0.3s",
+        userSelect: "none",
       }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: "#a0978a", width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Right} style={{ background: "#a0978a", width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Bottom} id="kp" style={{ background: "#b45309", width: 8, height: 8 }} />
+      {/* Emoji badge */}
+      <div style={{
+        position: "absolute",
+        top: -16,
+        left: 14,
+        fontSize: 28,
+        filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.1))",
+      }}>
+        📖
+      </div>
 
       {/* Delete button */}
-      {hovered && onDelete && (
+      {hovered && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onMouseDown={(e) => e.stopPropagation()}
           style={{
             position: "absolute",
             top: -8,
@@ -59,7 +85,7 @@ function ChapterNodeComponent({ data }: NodeProps) {
             height: 22,
             borderRadius: "50%",
             background: "#dc2626",
-            border: "2px solid #191816",
+            border: "2px solid white",
             color: "white",
             fontSize: 12,
             fontWeight: 700,
@@ -68,112 +94,123 @@ function ChapterNodeComponent({ data }: NodeProps) {
             alignItems: "center",
             justifyContent: "center",
             lineHeight: 1,
+            zIndex: 10,
           }}
         >
           x
         </button>
       )}
 
-      {/* Chapter number badge */}
+      {/* Chapter number */}
       <div style={{
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 700,
-        letterSpacing: "0.1em",
+        letterSpacing: "0.08em",
         textTransform: "uppercase",
-        color: "#b45309",
+        color: "rgba(0,0,0,0.4)",
         marginBottom: 4,
+        marginTop: 8,
       }}>
-        Chapter {chapter?.chapter_number}
+        Chapter {chapter.chapter_number}
       </div>
 
-      {/* Title */}
-      {editingTitle ? (
-        <input
-          ref={titleRef}
-          defaultValue={chapter?.title || ""}
-          autoFocus
-          onBlur={(e) => {
-            setEditingTitle(false);
-            if (onEdit && e.target.value !== chapter?.title) {
-              onEdit("title", e.target.value);
-            }
-          }}
-          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 6,
-            padding: "2px 6px",
-            color: "white",
-            fontSize: 13,
-            fontWeight: 700,
-            outline: "none",
-          }}
-        />
-      ) : (
-        <div
-          onDoubleClick={() => setEditingTitle(true)}
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "white",
-            lineHeight: 1.3,
-            cursor: "text",
-          }}
-        >
-          {chapter?.title || "Untitled"}
-        </div>
-      )}
+      {/* Editable title */}
+      <div
+        ref={titleRef}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={handleTitleBlur}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } }}
+        style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: "rgba(0,0,0,0.8)",
+          lineHeight: 1.3,
+          outline: "none",
+          cursor: "text",
+          minHeight: 24,
+        }}
+      >
+        {chapter.title || "Untitled"}
+      </div>
 
-      {/* Summary */}
-      {editingSummary ? (
-        <textarea
-          ref={summaryRef}
-          defaultValue={chapter?.summary || ""}
-          autoFocus
-          onBlur={(e) => {
-            setEditingSummary(false);
-            if (onEdit && e.target.value !== chapter?.summary) {
-              onEdit("summary", e.target.value);
-            }
-          }}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 6,
-            padding: "2px 6px",
-            color: "rgba(255,255,255,0.6)",
-            fontSize: 10,
-            outline: "none",
-            resize: "vertical",
-            minHeight: 30,
-            marginTop: 4,
-          }}
-        />
-      ) : (
-        chapter?.summary && (
+      {/* Expand/collapse */}
+      {expanded ? (
+        <>
+          {/* Key points container */}
+          <div style={{
+            marginTop: 16,
+            padding: "12px",
+            border: "2px dashed rgba(0,0,0,0.15)",
+            borderRadius: 4,
+            minHeight: 80,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+          }}>
+            <div style={{
+              fontSize: 12,
+              color: "rgba(0,0,0,0.3)",
+              fontStyle: "italic",
+            }}>
+              Drag key points here
+            </div>
+            {hovered && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  border: "1px dashed rgba(0,0,0,0.3)",
+                  borderRadius: 4,
+                  background: "rgba(255,255,255,0.5)",
+                  color: "rgba(0,0,0,0.5)",
+                  cursor: "pointer",
+                  fontFamily: "'Kalam', cursive",
+                }}
+              >
+                + Key Point
+              </button>
+            )}
+          </div>
+
+          {/* Fold hint */}
           <div
-            onDoubleClick={() => setEditingSummary(true)}
+            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+            onMouseDown={(e) => e.stopPropagation()}
             style={{
+              marginTop: 8,
               fontSize: 10,
-              color: "rgba(255,255,255,0.5)",
-              marginTop: 4,
-              lineHeight: 1.4,
-              cursor: "text",
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
+              color: "rgba(0,0,0,0.3)",
+              textAlign: "center",
+              cursor: "pointer",
             }}
           >
-            {chapter.summary}
+            click to fold
           </div>
-        )
+        </>
+      ) : (
+        <div
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 8,
+            fontSize: 10,
+            color: "rgba(0,0,0,0.3)",
+            textAlign: "center",
+            cursor: "pointer",
+          }}
+        >
+          click to expand
+        </div>
       )}
     </div>
   );
 }
 
-export const ChapterNode = memo(ChapterNodeComponent);
+export const ChapterNote = memo(ChapterNoteComponent);

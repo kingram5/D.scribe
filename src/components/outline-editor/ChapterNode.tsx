@@ -9,9 +9,19 @@ interface ChapterNoteProps {
   color: NoteColor;
   rotation: number;
   isDragging: boolean;
+  keyPointCount: number;
   onEdit: (field: "title" | "summary", value: string) => void;
   onDelete: () => void;
   onAddKeyPoint: () => void;
+}
+
+function getBorderColor(color: NoteColor) {
+  switch (color) {
+    case "#fdf5c9": return "#e6d96c";
+    case "#fbe0e0": return "#e8a0a0";
+    case "#e0f2fe": return "#7ec8f0";
+    case "#e6f4ea": return "#8cc89e";
+  }
 }
 
 function ChapterNoteComponent({
@@ -19,12 +29,12 @@ function ChapterNoteComponent({
   color,
   rotation,
   isDragging,
+  keyPointCount,
   onEdit,
   onDelete,
   onAddKeyPoint,
 }: ChapterNoteProps) {
   const [hovered, setHovered] = useState(false);
-  const [expanded, setExpanded] = useState(true);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
@@ -34,10 +44,7 @@ function ChapterNoteComponent({
     }
   }, [chapter.title, onEdit]);
 
-  const borderColor = color === "#fdf5c9" ? "#e6d96c"
-    : color === "#fbe0e0" ? "#e8a0a0"
-    : color === "#e0f2fe" ? "#7ec8f0"
-    : "#8cc89e";
+  const borderColor = getBorderColor(color);
 
   return (
     <div
@@ -45,7 +52,6 @@ function ChapterNoteComponent({
       onMouseLeave={() => setHovered(false)}
       style={{
         width: 320,
-        minHeight: expanded ? 280 : 80,
         background: color,
         border: `3px solid ${borderColor}`,
         borderRadius: 4,
@@ -57,7 +63,7 @@ function ChapterNoteComponent({
           : "0 4px 6px rgba(0,0,0,0.05), 2px 2px 0 rgba(0,0,0,0.02)",
         fontFamily: "'Kalam', cursive",
         position: "relative",
-        transition: isDragging ? "none" : "box-shadow 0.2s, min-height 0.3s",
+        transition: isDragging ? "none" : "box-shadow 0.2s",
         userSelect: "none",
       }}
     >
@@ -135,80 +141,40 @@ function ChapterNoteComponent({
         {chapter.title || "Untitled"}
       </div>
 
-      {/* Expand/collapse */}
-      {expanded ? (
-        <>
-          {/* Key points container */}
-          <div style={{
-            marginTop: 16,
-            padding: "12px",
-            border: "2px dashed rgba(0,0,0,0.15)",
-            borderRadius: 4,
-            minHeight: 80,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-          }}>
-            <div style={{
-              fontSize: 12,
-              color: "rgba(0,0,0,0.3)",
-              fontStyle: "italic",
-            }}>
-              Drag key points here
-            </div>
-            {hovered && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{
-                  padding: "4px 12px",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  border: "1px dashed rgba(0,0,0,0.3)",
-                  borderRadius: 4,
-                  background: "rgba(255,255,255,0.5)",
-                  color: "rgba(0,0,0,0.5)",
-                  cursor: "pointer",
-                  fontFamily: "'Kalam', cursive",
-                }}
-              >
-                + Key Point
-              </button>
-            )}
-          </div>
-
-          {/* Fold hint */}
-          <div
-            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+      {/* Footer: key point count + add button */}
+      <div style={{
+        marginTop: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <span style={{
+          fontSize: 11,
+          color: "rgba(0,0,0,0.35)",
+          fontStyle: "italic",
+        }}>
+          {keyPointCount} key point{keyPointCount !== 1 ? "s" : ""} ▾
+        </span>
+        {hovered && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              marginTop: 8,
-              fontSize: 10,
-              color: "rgba(0,0,0,0.3)",
-              textAlign: "center",
+              padding: "2px 10px",
+              fontSize: 11,
+              fontWeight: 700,
+              border: "1px dashed rgba(0,0,0,0.25)",
+              borderRadius: 4,
+              background: "rgba(255,255,255,0.5)",
+              color: "rgba(0,0,0,0.5)",
               cursor: "pointer",
+              fontFamily: "'Kalam', cursive",
             }}
           >
-            click to fold
-          </div>
-        </>
-      ) : (
-        <div
-          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{
-            marginTop: 8,
-            fontSize: 10,
-            color: "rgba(0,0,0,0.3)",
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-        >
-          click to expand
-        </div>
-      )}
+            + key point
+          </button>
+        )}
+      </div>
     </div>
   );
 }

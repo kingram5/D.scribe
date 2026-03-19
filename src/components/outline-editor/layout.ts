@@ -1,11 +1,16 @@
-import dagre from "@dagrejs/dagre";
 import { Chapter, KeyPoint } from "@/types";
-import type { Edge } from "@xyflow/react";
 
 export const CHAPTER_WIDTH = 320;
-export const CHAPTER_HEIGHT = 280;
-export const KP_WIDTH = 160;
-export const KP_HEIGHT = 120;
+export const CHAPTER_HEIGHT = 120;
+export const KP_WIDTH = 280;
+export const KP_HEIGHT = 80;
+
+// Spacing
+const COLUMN_GAP = 60;        // horizontal gap between chapter columns
+const KP_GAP = 8;             // vertical gap between key points
+const KP_TOP_OFFSET = 16;     // gap between chapter card bottom and first key point
+const KP_INDENT = 20;         // indent key points from chapter left edge
+const CANVAS_PADDING = 60;    // padding from top-left origin
 
 export const NOTE_COLORS = ["#fdf5c9", "#fbe0e0", "#e0f2fe", "#e6f4ea"] as const;
 export type NoteColor = (typeof NOTE_COLORS)[number];
@@ -36,73 +41,38 @@ export function buildLayout(
   const edges: EdgeDef[] = [];
   const kpMap = new Map(keyPoints.map((kp) => [kp.id, kp]));
 
-  // Build dagre graph for auto-layout
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "TB", ranksep: 120, nodesep: 80, marginx: 60, marginy: 60 });
-  g.setDefaultEdgeLabel(() => ({}));
+  let cursorX = CANVAS_PADDING;
 
-  // Add chapter nodes
-  chapters.forEach((ch) => {
-    g.setNode(`ch-${ch.id}`, { width: CHAPTER_WIDTH, height: CHAPTER_HEIGHT });
-  });
-
-  // Add key point nodes
-  chapters.forEach((ch) => {
-    (ch.key_point_ids || []).forEach((kpId) => {
-      if (!kpMap.has(kpId)) return;
-      g.setNode(`kp-${kpId}`, { width: KP_WIDTH, height: KP_HEIGHT });
-      g.setEdge(`ch-${ch.id}`, `kp-${kpId}`);
-    });
-  });
-
-  // Chapter-to-chapter edges
-  for (let i = 0; i < chapters.length - 1; i++) {
-    g.setEdge(`ch-${chapters[i].id}`, `ch-${chapters[i + 1].id}`);
-  }
-
-  // Dagre edges for layout reference
-  const dagreEdges: Edge[] = [];
   chapters.forEach((ch, i) => {
-    (ch.key_point_ids || []).forEach((kpId) => {
-      if (!kpMap.has(kpId)) return;
-      dagreEdges.push({ id: `e-${ch.id}-${kpId}`, source: `ch-${ch.id}`, target: `kp-${kpId}` });
-    });
-    if (i < chapters.length - 1) {
-      dagreEdges.push({
-        id: `e-ch-${chapters[i].id}-${chapters[i + 1].id}`,
-        source: `ch-${chapters[i].id}`,
-        target: `ch-${chapters[i + 1].id}`,
-      });
-    }
-  });
+    const color = NOTE_COLORS[i % NOTE_COLORS.length];
+    const chX = cursorX;
+    const chY = CANVAS_PADDING;
 
-  dagre.layout(g);
-
-  // Extract positions
-  chapters.forEach((ch, i) => {
-    const pos = g.node(`ch-${ch.id}`);
+    // Chapter card
     positions.push({
       id: ch.id,
       type: "chapter",
-      x: pos.x - CHAPTER_WIDTH / 2,
-      y: pos.y - CHAPTER_HEIGHT / 2,
+      x: chX,
+      y: chY,
       width: CHAPTER_WIDTH,
       height: CHAPTER_HEIGHT,
-      color: NOTE_COLORS[i % NOTE_COLORS.length],
+      color,
     });
 
-    (ch.key_point_ids || []).forEach((kpId) => {
-      if (!kpMap.has(kpId)) return;
-      const kpPos = g.node(`kp-${kpId}`);
+    // Key points stacked vertically below chapter, indented slightly
+    let kpY = chY + CHAPTER_HEIGHT + KP_TOP_OFFSET;
+    const validKpIds = (ch.key_point_ids || []).filter((id) => kpMap.has(id));
+
+    validKpIds.forEach((kpId) => {
       positions.push({
         id: kpId,
         type: "keyPoint",
-        x: kpPos.x - KP_WIDTH / 2,
-        y: kpPos.y - KP_HEIGHT / 2,
+        x: chX + KP_INDENT,
+        y: kpY,
         width: KP_WIDTH,
         height: KP_HEIGHT,
         chapterId: ch.id,
-        color: NOTE_COLORS[i % NOTE_COLORS.length],
+        color,
       });
 
       edges.push({
@@ -111,10 +81,16 @@ export function buildLayout(
         targetId: kpId,
         type: "chapter-keypoint",
       });
+
+      kpY += KP_HEIGHT + KP_GAP;
     });
+
+    // Column width is max of chapter width and key-point block width
+    const columnWidth = Math.max(CHAPTER_WIDTH, KP_INDENT + KP_WIDTH);
+    cursorX += columnWidth + COLUMN_GAP;
   });
 
-  // Chapter-to-chapter edges
+  // Chapter-to-chapter edges (sequential)
   for (let i = 0; i < chapters.length - 1; i++) {
     edges.push({
       id: `e-ch-${chapters[i].id}-${chapters[i + 1].id}`,

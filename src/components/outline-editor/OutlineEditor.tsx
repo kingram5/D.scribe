@@ -96,7 +96,7 @@ function OutlineEditorInner({
       if (existing) {
         newNotes.set(p.id, existing);
       } else {
-        const range = p.type === "chapter" ? 3 : 10;
+        const range = p.type === "chapter" ? 2 : 1;
         const baseRot = randomRotation(range);
         newNotes.set(p.id, {
           id: p.id,
@@ -527,6 +527,7 @@ function OutlineEditorInner({
                   color={pos.color}
                   rotation={note.rotation}
                   isDragging={note.isDragging}
+                  keyPointCount={(chapter.key_point_ids || []).length}
                   onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
                   onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
                   onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}

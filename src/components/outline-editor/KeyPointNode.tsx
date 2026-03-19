@@ -47,8 +47,8 @@ function KeyPointNoteComponent({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        width: 160,
-        height: 120,
+        width: 280,
+        minHeight: 56,
         background: color,
         border: `2px solid ${borderColor}`,
         borderRadius: 3,

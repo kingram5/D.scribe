@@ -61,7 +61,8 @@ export function generatePrompt(opts: {
   chapterTitle: string;
   chapterSummary: string;
   transcriptExcerpts: string;
-  keyPoints: { title: string; summary: string }[];
+  keyPoints: { id?: string; title: string; summary: string }[];
+  blendedKeyPointIds?: string[];
   enrichments?: Enrichment[];
   previousChapters?: { title: string; summary: string }[];
   coveredPoints?: string[];
@@ -71,6 +72,10 @@ export function generatePrompt(opts: {
   audience: Audience;
   freedomInstruction: string;
 }): string {
+  const blendedSet = new Set(opts.blendedKeyPointIds || []);
+  const featured = opts.keyPoints.filter((kp) => !kp.id || !blendedSet.has(kp.id));
+  const blended = opts.keyPoints.filter((kp) => kp.id && blendedSet.has(kp.id));
+
   let prompt = `Write Chapter ${opts.chapterNumber}: "${opts.chapterTitle}"
 
 Chapter Summary: ${opts.chapterSummary}
@@ -80,8 +85,13 @@ Source Material (transcript excerpts for this chapter):
 ${opts.transcriptExcerpts}
 ---
 
-Key Points to Cover:
-${opts.keyPoints.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
+Key Points — Featured (give each its own section with dedicated coverage):
+${featured.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
+
+  if (blended.length > 0) {
+    prompt += `\n\nKey Points — Blended (weave these themes into the featured sections naturally, don't give them standalone coverage):
+${blended.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
+  }
 
   if (opts.enrichments && opts.enrichments.length > 0) {
     const included = opts.enrichments.filter((e) => e.included);

@@ -7,6 +7,7 @@ export interface Chapter {
   title: string;
   summary: string;
   key_point_ids: string[];
+  blended_key_point_ids?: string[];
   target_word_count: number;
   status: "outlined" | "generating" | "generated" | "edited";
   sort_order: number;

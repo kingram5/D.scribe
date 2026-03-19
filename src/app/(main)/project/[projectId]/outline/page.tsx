@@ -39,6 +39,31 @@ export default function OutlinePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  async function toggleKeyPointTreatment(chapterId: string, keyPointId: string) {
+    const chapter = chapters.find((c) => c.id === chapterId);
+    if (!chapter) return;
+
+    const blended = chapter.blended_key_point_ids || [];
+    const isBlended = blended.includes(keyPointId);
+    const newBlended = isBlended
+      ? blended.filter((id) => id !== keyPointId)
+      : [...blended, keyPointId];
+
+    // Optimistic update
+    setChapters((prev) =>
+      prev.map((c) =>
+        c.id === chapterId ? { ...c, blended_key_point_ids: newBlended } : c
+      )
+    );
+
+    // Persist
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chapter_id: chapterId, blended_key_point_ids: newBlended }),
+    });
+  }
+
   async function generateOutline() {
     await outlineJob.start({
       type: "outline",
@@ -167,7 +192,7 @@ export default function OutlinePage() {
                 >
                   <DataPill
                     label={`Key Points ${showKeyPoints ? "▾" : "▸"}`}
-                    metric={String(selectedChapter.key_point_ids?.length || 0)}
+                    metric={`${(selectedChapter.key_point_ids?.length || 0) - (selectedChapter.blended_key_point_ids?.length || 0)} featured / ${selectedChapter.key_point_ids?.length || 0}`}
                     accentColor="#191816"
                   />
                 </div>
@@ -221,15 +246,48 @@ export default function OutlinePage() {
                   {selectedChapter.key_point_ids?.map((kpId) => {
                     const kp = keyPoints.find((k) => k.id === kpId);
                     if (!kp) return null;
+                    const isBlended = (selectedChapter.blended_key_point_ids || []).includes(kpId);
                     return (
-                      <div key={kpId} style={{
-                        padding: "10px 14px",
-                        background: "rgba(255,255,255,0.5)",
-                        border: "1px solid rgba(255,255,255,0.8)",
-                        borderRadius: "var(--radius-sm)",
-                      }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>{kp.title}</div>
-                        <div style={{ fontSize: 12, color: "#7a7369", marginTop: 4, lineHeight: 1.5 }}>{kp.summary}</div>
+                      <div
+                        key={kpId}
+                        onClick={() => toggleKeyPointTreatment(selectedChapter.id, kpId)}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                          padding: "10px 14px",
+                          background: isBlended ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.5)",
+                          border: isBlended ? "1px dashed rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.8)",
+                          borderLeft: isBlended ? "3px dashed rgba(0,0,0,0.15)" : "3px solid #191816",
+                          borderRadius: "var(--radius-sm)",
+                          cursor: "pointer",
+                          opacity: isBlended ? 0.6 : 1,
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          border: isBlended ? "2px solid rgba(0,0,0,0.2)" : "2px solid #191816",
+                          background: isBlended ? "transparent" : "#191816",
+                          flexShrink: 0,
+                          marginTop: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}>
+                          {!isBlended && (
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "white" }} />
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>{kp.title}</div>
+                          <div style={{ fontSize: 12, color: "#7a7369", marginTop: 4, lineHeight: 1.5 }}>{kp.summary}</div>
+                          <div style={{ fontSize: 10, color: "#a0978a", marginTop: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                            {isBlended ? "Blended — woven into other sections" : "Featured — own section"}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}

@@ -59,9 +59,11 @@ function OutlineEditorInner({
   // Force re-render counter for physics updates
   const [, setRenderTick] = useState(0);
 
-  // Pan state
+  // Pan + zoom state (mutable refs for perf, state for render)
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
@@ -218,8 +220,9 @@ function OutlineEditorInner({
       if (!noteId) return;
       const note = notesRef.current.get(noteId);
       if (!note) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
+      const z = zoomRef.current;
+      const dx = (e.clientX - startX) / z;
+      const dy = (e.clientY - startY) / z;
       note.x = offsetX + dx;
       note.y = offsetY + dy;
       note.vx = dx;
@@ -317,18 +320,47 @@ function OutlineEditorInner({
     setConfirmCombine(null);
   }
 
-  // Canvas pan on background drag
+  // Canvas pan on background drag — triggers if no note is being dragged
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    // Only pan if clicking on the background directly
-    if (e.target === canvasRef.current || e.target === svgRef.current) {
-      isPanningRef.current = true;
-      panStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        panX: panRef.current.x,
-        panY: panRef.current.y,
-      };
+    // Don't pan if we started dragging a note
+    if (dragRef.current.noteId) return;
+    isPanningRef.current = true;
+    panStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+    };
+  }, []);
+
+  // Wheel-to-zoom, anchored to cursor position
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    function handleWheel(e: WheelEvent) {
+      e.preventDefault();
+      const rect = el!.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      const oldZoom = zoomRef.current;
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      const newZoom = Math.min(3, Math.max(0.15, oldZoom + delta));
+      const scale = newZoom / oldZoom;
+
+      // Adjust pan so zoom anchors to cursor position
+      const newPanX = cursorX - scale * (cursorX - panRef.current.x);
+      const newPanY = cursorY - scale * (cursorY - panRef.current.y);
+
+      zoomRef.current = newZoom;
+      panRef.current = { x: newPanX, y: newPanY };
+      setZoom(newZoom);
+      setPan({ x: newPanX, y: newPanY });
     }
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
   }, []);
 
   // Compute edge path
@@ -372,9 +404,10 @@ function OutlineEditorInner({
           linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
           linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
         `,
-        backgroundSize: "40px 40px",
+        backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
+        backgroundPosition: `${pan.x}px ${pan.y}px`,
         borderRadius: "0 0 12px 12px",
-        cursor: isPanningRef.current ? "grabbing" : "default",
+        cursor: isPanningRef.current ? "grabbing" : "grab",
       }}
     >
       {/* SVG Filters */}
@@ -425,7 +458,7 @@ function OutlineEditorInner({
         </defs>
         <g
           filter="url(#marker-wobble)"
-          transform={`translate(${pan.x}, ${pan.y})`}
+          transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
         >
           {edges.map((edge) => {
             const path = getEdgePath(edge);
@@ -458,7 +491,8 @@ function OutlineEditorInner({
           width: "100%",
           height: "100%",
           zIndex: 2,
-          transform: `translate(${pan.x}px, ${pan.y}px)`,
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: "0 0",
         }}
       >
         {positions.map((pos) => {

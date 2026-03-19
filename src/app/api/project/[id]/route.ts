@@ -61,6 +61,61 @@ export async function PATCH(
     return NextResponse.json(data);
   }
 
+  // If key_point_id is provided, update the key point
+  if (body.key_point_id) {
+    const { key_point_id, ...updates } = body;
+    const { data, error } = await supabase
+      .from("key_points")
+      .update(updates)
+      .eq("id", key_point_id)
+      .eq("project_id", id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
+  // If delete_key_point_id is provided, delete the key point and clean up chapter references
+  if (body.delete_key_point_id) {
+    const kpId = body.delete_key_point_id;
+    // Remove from all chapters' key_point_ids
+    const { data: chapters } = await supabase
+      .from("chapters")
+      .select("id, key_point_ids, blended_key_point_ids")
+      .eq("project_id", id);
+    if (chapters) {
+      for (const ch of chapters) {
+        const kpIds = (ch.key_point_ids || []).filter((kid: string) => kid !== kpId);
+        const blended = (ch.blended_key_point_ids || []).filter((kid: string) => kid !== kpId);
+        if (kpIds.length !== (ch.key_point_ids || []).length) {
+          await supabase.from("chapters").update({ key_point_ids: kpIds, blended_key_point_ids: blended }).eq("id", ch.id);
+        }
+      }
+    }
+    const { error } = await supabase.from("key_points").delete().eq("id", kpId).eq("project_id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ deleted: true });
+  }
+
+  // If delete_chapter_id is provided, delete chapter and renumber
+  if (body.delete_chapter_id) {
+    const chId = body.delete_chapter_id;
+    const { error } = await supabase.from("chapters").delete().eq("id", chId).eq("project_id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Renumber remaining chapters
+    const { data: remaining } = await supabase
+      .from("chapters")
+      .select("id")
+      .eq("project_id", id)
+      .order("sort_order");
+    if (remaining) {
+      for (let i = 0; i < remaining.length; i++) {
+        await supabase.from("chapters").update({ chapter_number: i + 1, sort_order: i }).eq("id", remaining[i].id);
+      }
+    }
+    return NextResponse.json({ deleted: true });
+  }
+
   // If transcript_id is provided, update the transcript
   if (body.transcript_id) {
     const { transcript_id, ...updates } = body;

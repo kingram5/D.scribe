@@ -11,7 +11,6 @@ const STEPS = [
   { key: "upload", label: "Upload", path: "upload" },
   { key: "transcript", label: "Transcripts", path: "transcript" },
   { key: "analysis", label: "Analysis", path: "analysis" },
-  { key: "outline", label: "Outline", path: "outline" },
   { key: "generate", label: "Generate", path: "generate" },
   { key: "editor", label: "Editor", path: "editor" },
   { key: "export", label: "Export", path: "export" },

@@ -38,6 +38,19 @@ interface DragColumn {
   isDragging: boolean;
 }
 
+interface KpDragState {
+  kpId: string;
+  fromChapterId: string;
+  fromIndex: number;
+  x: number;
+  y: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  color: NoteColor;
+}
+
 function randomRotation(range: number) {
   return (Math.random() - 0.5) * 2 * range;
 }
@@ -51,12 +64,30 @@ function getBorderColor(color: NoteColor) {
   }
 }
 
+function getHighlightBorder(color: NoteColor) {
+  switch (color) {
+    case "#fdf5c9": return "rgba(230, 217, 108, 0.7)";
+    case "#fbe0e0": return "rgba(232, 160, 160, 0.7)";
+    case "#e0f2fe": return "rgba(126, 200, 240, 0.7)";
+    case "#e6f4ea": return "rgba(140, 200, 158, 0.7)";
+  }
+}
+
 function getColumnBg(color: NoteColor) {
   switch (color) {
     case "#fdf5c9": return "rgba(253, 245, 201, 0.15)";
     case "#fbe0e0": return "rgba(251, 224, 224, 0.15)";
     case "#e0f2fe": return "rgba(224, 242, 254, 0.15)";
     case "#e6f4ea": return "rgba(230, 244, 234, 0.15)";
+  }
+}
+
+function getHighlightBg(color: NoteColor) {
+  switch (color) {
+    case "#fdf5c9": return "rgba(253, 245, 201, 0.35)";
+    case "#fbe0e0": return "rgba(251, 224, 224, 0.35)";
+    case "#e0f2fe": return "rgba(224, 242, 254, 0.35)";
+    case "#e6f4ea": return "rgba(230, 244, 234, 0.35)";
   }
 }
 
@@ -82,6 +113,10 @@ function OutlineEditorInner({
   const rafRef = useRef<number>(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // KP drag state — separate from column drag
+  const kpDragRef = useRef<KpDragState | null>(null);
+  const [nearestColId, setNearestColId] = useState<string | null>(null);
 
   // Layout data
   const [columns, setColumns] = useState<ColumnLayout[]>([]);
@@ -223,7 +258,41 @@ function OutlineEditorInner({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state.dirty, state.chapters, state.keyPoints, projectId, dispatch]);
 
-  // Drag handlers — only columns (chapters) are draggable
+  // Find nearest column to a canvas X position, and compute insertion index from Y
+  const findNearestColumn = useCallback((canvasX: number, canvasY: number): { chapterId: string; insertIndex: number } | null => {
+    let bestDist = Infinity;
+    let bestColLayout: ColumnLayout | null = null;
+    let bestColState: DragColumn | null = null;
+
+    for (const col of columns) {
+      const colState = columnsRef.current.get(col.chapterId);
+      if (!colState) continue;
+      const colCenterX = colState.x + CHAPTER_WIDTH / 2;
+      const dist = Math.abs(canvasX - colCenterX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestColLayout = col;
+        bestColState = colState;
+      }
+    }
+
+    if (!bestColLayout || !bestColState) return null;
+
+    // Compute insertion index based on Y position within column
+    const kpStartY = bestColState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET;
+    const relY = canvasY - kpStartY;
+
+    if (relY < 0) {
+      return { chapterId: bestColLayout.chapterId, insertIndex: 0 };
+    }
+
+    const slotHeight = KP_HEIGHT + KP_GAP;
+    const idx = Math.round(relY / slotHeight);
+    const clamped = Math.min(idx, bestColLayout.kpIds.length);
+    return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
+  }, [columns]);
+
+  // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
@@ -237,6 +306,34 @@ function OutlineEditorInner({
       startY: e.clientY,
       offsetX: col.x,
       offsetY: col.y,
+    };
+    setRenderTick((t) => t + 1);
+  }, []);
+
+  // KP drag handler — starts independent KP drag
+  const handleKpMouseDown = useCallback((e: React.MouseEvent, kpId: string, chapterId: string, kpIndex: number, color: NoteColor) => {
+    if ((e.target as HTMLElement).contentEditable === "true") return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const colState = columnsRef.current.get(chapterId);
+    if (!colState) return;
+
+    // Compute KP's canvas position within the column
+    const kpX = colState.x + KP_INDENT;
+    const kpY = colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET + kpIndex * (KP_HEIGHT + KP_GAP);
+
+    kpDragRef.current = {
+      kpId,
+      fromChapterId: chapterId,
+      fromIndex: kpIndex,
+      x: kpX,
+      y: kpY,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: kpX,
+      originY: kpY,
+      color,
     };
     setRenderTick((t) => t + 1);
   }, []);
@@ -256,6 +353,25 @@ function OutlineEditorInner({
         return;
       }
 
+      // Handle KP drag
+      if (kpDragRef.current) {
+        const z = zoomRef.current;
+        const dx = (e.clientX - kpDragRef.current.startX) / z;
+        const dy = (e.clientY - kpDragRef.current.startY) / z;
+        kpDragRef.current.x = kpDragRef.current.originX + dx;
+        kpDragRef.current.y = kpDragRef.current.originY + dy;
+
+        // Update nearest column highlight
+        const kpCenterX = kpDragRef.current.x + KP_WIDTH / 2;
+        const kpCenterY = kpDragRef.current.y + KP_HEIGHT / 2;
+        const nearest = findNearestColumn(kpCenterX, kpCenterY);
+        setNearestColId(nearest?.chapterId ?? null);
+
+        setRenderTick((t) => t + 1);
+        return;
+      }
+
+      // Handle column drag
       const { noteId, startX, startY, offsetX, offsetY } = dragRef.current;
       if (!noteId) return;
       const col = columnsRef.current.get(noteId);
@@ -266,7 +382,6 @@ function OutlineEditorInner({
       col.x = offsetX + dx;
       col.y = offsetY + dy;
       col.vx = dx;
-      // Tilt based on horizontal movement
       col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
       setRenderTick((t) => t + 1);
     }
@@ -278,14 +393,52 @@ function OutlineEditorInner({
         return;
       }
 
+      // End KP drag — snap to nearest column
+      if (kpDragRef.current) {
+        const kp = kpDragRef.current;
+        const kpCenterX = kp.x + KP_WIDTH / 2;
+        const kpCenterY = kp.y + KP_HEIGHT / 2;
+        const nearest = findNearestColumn(kpCenterX, kpCenterY);
+
+        if (nearest) {
+          if (nearest.chapterId === kp.fromChapterId) {
+            // Reorder within same chapter
+            // Adjust index: if dragging down past original position, account for the gap
+            let newIndex = nearest.insertIndex;
+            if (newIndex > kp.fromIndex) newIndex = Math.max(0, newIndex - 1);
+            if (newIndex !== kp.fromIndex) {
+              dispatch({
+                type: "REORDER_KEY_POINT",
+                chapterId: kp.fromChapterId,
+                keyPointId: kp.kpId,
+                newIndex,
+              });
+            }
+          } else {
+            // Move to different chapter
+            dispatch({
+              type: "MOVE_KEY_POINT",
+              keyPointId: kp.kpId,
+              fromChapterId: kp.fromChapterId,
+              toChapterId: nearest.chapterId,
+              toIndex: nearest.insertIndex,
+            });
+          }
+        }
+
+        kpDragRef.current = null;
+        setNearestColId(null);
+        setRenderTick((t) => t + 1);
+        return;
+      }
+
+      // End column drag
       const { noteId } = dragRef.current;
       if (!noteId) return;
       const col = columnsRef.current.get(noteId);
       if (col) {
         col.isDragging = false;
         col.targetRotation = col.baseRotation;
-
-        // Check for chapter-chapter combine
         checkDropInteraction(noteId, col);
       }
       dragRef.current.noteId = null;
@@ -299,7 +452,7 @@ function OutlineEditorInner({
       window.removeEventListener("mouseup", handleMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]);
+  }, [columns, findNearestColumn]);
 
   // Check if a dropped column overlaps another column (chapter-chapter combine)
   const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn) => {
@@ -329,6 +482,7 @@ function OutlineEditorInner({
   // Canvas pan on background drag
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (dragRef.current.noteId) return;
+    if (kpDragRef.current) return;
     isPanningRef.current = true;
     panStartRef.current = {
       x: e.clientX,
@@ -389,6 +543,9 @@ function OutlineEditorInner({
   const handleAddChapter = useCallback((color: NoteColor) => {
     dispatch({ type: "ADD_CHAPTER" });
   }, [dispatch]);
+
+  // Current KP drag state for rendering
+  const kpDrag = kpDragRef.current;
 
   return (
     <div
@@ -487,6 +644,7 @@ function OutlineEditorInner({
           if (!chapter) return null;
 
           const scale = dragCol.isDragging ? 1.03 : 1;
+          const isDropTarget = nearestColId === col.chapterId && kpDrag !== null;
 
           return (
             <div
@@ -509,12 +667,14 @@ function OutlineEditorInner({
                   left: -10,
                   right: -10,
                   bottom: -8,
-                  background: getColumnBg(col.color),
-                  border: `1.5px dashed ${getBorderColor(col.color)}`,
+                  background: isDropTarget ? getHighlightBg(col.color) : getColumnBg(col.color),
+                  border: isDropTarget
+                    ? `2.5px dashed ${getHighlightBorder(col.color)}`
+                    : `1.5px dashed ${getBorderColor(col.color)}`,
                   borderRadius: 10,
                   pointerEvents: "none",
-                  // Only show border when there are KPs to group
-                  opacity: col.kpIds.length > 0 ? 1 : 0,
+                  opacity: col.kpIds.length > 0 || isDropTarget ? 1 : 0,
+                  transition: "background 0.15s, border 0.15s, opacity 0.15s",
                 }}
               />
 
@@ -532,25 +692,65 @@ function OutlineEditorInner({
 
               {/* Key points stacked below */}
               <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP }}>
-                {col.kpIds.map((kpId) => {
+                {col.kpIds.map((kpId, kpIndex) => {
                   const kp = state.keyPoints.find((k) => k.id === kpId);
                   if (!kp) return null;
+
+                  // Hide KP from its slot while it's being dragged
+                  const isBeingDragged = kpDrag?.kpId === kpId;
+
                   return (
-                    <KeyPointNote
+                    <div
                       key={kpId}
-                      keyPoint={kp}
-                      color={col.color}
-                      rotation={0}
-                      isDragging={false}
-                      onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
-                      onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
-                    />
+                      onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                      style={{
+                        opacity: isBeingDragged ? 0.25 : 1,
+                        transition: "opacity 0.15s",
+                      }}
+                    >
+                      <KeyPointNote
+                        keyPoint={kp}
+                        color={col.color}
+                        rotation={0}
+                        isDragging={false}
+                        onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
+                        onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
+                      />
+                    </div>
                   );
                 })}
               </div>
             </div>
           );
         })}
+
+        {/* Ghost KP — floating card while dragging */}
+        {kpDrag && (() => {
+          const kp = state.keyPoints.find((k) => k.id === kpDrag.kpId);
+          if (!kp) return null;
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: kpDrag.x,
+                top: kpDrag.y,
+                zIndex: 100,
+                pointerEvents: "none",
+                transform: "rotate(-2deg) scale(1.05)",
+                opacity: 0.9,
+              }}
+            >
+              <KeyPointNote
+                keyPoint={kp}
+                color={kpDrag.color}
+                rotation={-2}
+                isDragging={true}
+                onEdit={() => {}}
+                onDelete={() => {}}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Combine confirmation */}

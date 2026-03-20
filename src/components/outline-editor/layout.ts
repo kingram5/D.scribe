@@ -15,15 +15,13 @@ const CANVAS_PADDING = 60;    // padding from top-left origin
 export const NOTE_COLORS = ["#fdf5c9", "#fbe0e0", "#e0f2fe", "#e6f4ea"] as const;
 export type NoteColor = (typeof NOTE_COLORS)[number];
 
-export interface NotePosition {
-  id: string;
-  type: "chapter" | "keyPoint";
+export interface ColumnLayout {
+  chapterId: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
-  chapterId?: string;
   color: NoteColor;
+  kpIds: string[];
+  columnHeight: number;
 }
 
 export interface EdgeDef {
@@ -36,8 +34,8 @@ export interface EdgeDef {
 export function buildLayout(
   chapters: Chapter[],
   keyPoints: KeyPoint[]
-): { positions: NotePosition[]; edges: EdgeDef[] } {
-  const positions: NotePosition[] = [];
+): { columns: ColumnLayout[]; edges: EdgeDef[] } {
+  const columns: ColumnLayout[] = [];
   const edges: EdgeDef[] = [];
   const kpMap = new Map(keyPoints.map((kp) => [kp.id, kp]));
 
@@ -45,40 +43,23 @@ export function buildLayout(
 
   chapters.forEach((ch, i) => {
     const color = NOTE_COLORS[i % NOTE_COLORS.length];
-    const chX = cursorX;
-    const chY = CANVAS_PADDING;
-
-    // Chapter card
-    positions.push({
-      id: ch.id,
-      type: "chapter",
-      x: chX,
-      y: chY,
-      width: CHAPTER_WIDTH,
-      height: CHAPTER_HEIGHT,
-      color,
-    });
-
-    // Key points stacked vertically below chapter, indented slightly
-    let kpY = chY + CHAPTER_HEIGHT + KP_TOP_OFFSET;
     const validKpIds = (ch.key_point_ids || []).filter((id) => kpMap.has(id));
 
-    validKpIds.forEach((kpId) => {
-      positions.push({
-        id: kpId,
-        type: "keyPoint",
-        x: chX + KP_INDENT,
-        y: kpY,
-        width: KP_WIDTH,
-        height: KP_HEIGHT,
-        chapterId: ch.id,
-        color,
-      });
+    // Column height = chapter header + gap + stacked KPs
+    const kpStackHeight = validKpIds.length > 0
+      ? KP_TOP_OFFSET + validKpIds.length * KP_HEIGHT + (validKpIds.length - 1) * KP_GAP
+      : 0;
+    const columnHeight = CHAPTER_HEIGHT + kpStackHeight;
 
-      kpY += KP_HEIGHT + KP_GAP;
+    columns.push({
+      chapterId: ch.id,
+      x: cursorX,
+      y: CANVAS_PADDING,
+      color,
+      kpIds: validKpIds,
+      columnHeight,
     });
 
-    // Column width is max of chapter width and key-point block width
     const columnWidth = Math.max(CHAPTER_WIDTH, KP_INDENT + KP_WIDTH);
     cursorX += columnWidth + COLUMN_GAP;
   });
@@ -93,5 +74,8 @@ export function buildLayout(
     });
   }
 
-  return { positions, edges };
+  return { columns, edges };
 }
+
+// Re-export constants needed by OutlineEditor for KP positioning within columns
+export { KP_GAP, KP_TOP_OFFSET, KP_INDENT };

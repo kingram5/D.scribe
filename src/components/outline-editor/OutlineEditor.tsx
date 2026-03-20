@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Chapter, KeyPoint } from "@/types";
 import { useOutlineState } from "./useOutlineState";
-import { buildLayout, NOTE_COLORS, type NotePosition, type EdgeDef, type NoteColor } from "./layout";
+import {
+  buildLayout,
+  CHAPTER_WIDTH,
+  CHAPTER_HEIGHT,
+  KP_WIDTH,
+  KP_HEIGHT,
+  KP_GAP,
+  KP_TOP_OFFSET,
+  KP_INDENT,
+  type ColumnLayout,
+  type EdgeDef,
+  type NoteColor,
+} from "./layout";
 import { ChapterNote } from "./ChapterNode";
 import { KeyPointNote } from "./KeyPointNode";
 import { EditorToolbar } from "./EditorToolbar";
@@ -15,7 +27,7 @@ interface OutlineEditorProps {
   onContinue: () => void;
 }
 
-interface DragNote {
+interface DragColumn {
   id: string;
   x: number;
   y: number;
@@ -30,6 +42,24 @@ function randomRotation(range: number) {
   return (Math.random() - 0.5) * 2 * range;
 }
 
+function getBorderColor(color: NoteColor) {
+  switch (color) {
+    case "#fdf5c9": return "rgba(230, 217, 108, 0.3)";
+    case "#fbe0e0": return "rgba(232, 160, 160, 0.3)";
+    case "#e0f2fe": return "rgba(126, 200, 240, 0.3)";
+    case "#e6f4ea": return "rgba(140, 200, 158, 0.3)";
+  }
+}
+
+function getColumnBg(color: NoteColor) {
+  switch (color) {
+    case "#fdf5c9": return "rgba(253, 245, 201, 0.15)";
+    case "#fbe0e0": return "rgba(251, 224, 224, 0.15)";
+    case "#e0f2fe": return "rgba(224, 242, 254, 0.15)";
+    case "#e6f4ea": return "rgba(230, 244, 234, 0.15)";
+  }
+}
+
 function OutlineEditorInner({
   projectId,
   initialChapters,
@@ -40,8 +70,8 @@ function OutlineEditorInner({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mutable note states for physics (avoid re-renders per frame)
-  const notesRef = useRef<Map<string, DragNote>>(new Map());
+  // Mutable column states for physics (avoid re-renders per frame)
+  const columnsRef = useRef<Map<string, DragColumn>>(new Map());
   const dragRef = useRef<{
     noteId: string | null;
     startX: number;
@@ -53,8 +83,8 @@ function OutlineEditorInner({
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Positions and edges from layout
-  const [positions, setPositions] = useState<NotePosition[]>([]);
+  // Layout data
+  const [columns, setColumns] = useState<ColumnLayout[]>([]);
   const [edges, setEdges] = useState<EdgeDef[]>([]);
   // Force re-render counter for physics updates
   const [, setRenderTick] = useState(0);
@@ -95,24 +125,23 @@ function OutlineEditorInner({
 
   // Rebuild layout when state changes
   useEffect(() => {
-    const { positions: newPos, edges: newEdges } = buildLayout(state.chapters, state.keyPoints);
-    setPositions(newPos);
+    const { columns: newCols, edges: newEdges } = buildLayout(state.chapters, state.keyPoints);
+    setColumns(newCols);
     setEdges(newEdges);
 
-    // Initialize note physics state for new notes, preserve existing positions for existing ones
-    const existingNotes = notesRef.current;
-    const newNotes = new Map<string, DragNote>();
-    newPos.forEach((p) => {
-      const existing = existingNotes.get(p.id);
-      if (existing) {
-        newNotes.set(p.id, existing);
+    // Initialize column physics state — only chapters get drag entries
+    const existing = columnsRef.current;
+    const newMap = new Map<string, DragColumn>();
+    newCols.forEach((col) => {
+      const prev = existing.get(col.chapterId);
+      if (prev) {
+        newMap.set(col.chapterId, prev);
       } else {
-        const range = p.type === "chapter" ? 2 : 1;
-        const baseRot = randomRotation(range);
-        newNotes.set(p.id, {
-          id: p.id,
-          x: p.x,
-          y: p.y,
+        const baseRot = randomRotation(2);
+        newMap.set(col.chapterId, {
+          id: col.chapterId,
+          x: col.x,
+          y: col.y,
           rotation: baseRot,
           baseRotation: baseRot,
           targetRotation: baseRot,
@@ -121,7 +150,7 @@ function OutlineEditorInner({
         });
       }
     });
-    notesRef.current = newNotes;
+    columnsRef.current = newMap;
     setRenderTick((t) => t + 1);
   }, [state.chapters, state.keyPoints]);
 
@@ -131,11 +160,11 @@ function OutlineEditorInner({
     function tick() {
       if (!running) return;
       let needsUpdate = false;
-      notesRef.current.forEach((note) => {
-        if (note.isDragging) return;
-        const diff = note.targetRotation - note.rotation;
+      columnsRef.current.forEach((col) => {
+        if (col.isDragging) return;
+        const diff = col.targetRotation - col.rotation;
         if (Math.abs(diff) > 0.1) {
-          note.rotation += diff * 0.2;
+          col.rotation += diff * 0.2;
           needsUpdate = true;
         }
       });
@@ -194,20 +223,20 @@ function OutlineEditorInner({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state.dirty, state.chapters, state.keyPoints, projectId, dispatch]);
 
-  // Drag handlers
-  const handleNoteMouseDown = useCallback((e: React.MouseEvent, noteId: string) => {
+  // Drag handlers — only columns (chapters) are draggable
+  const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();
-    const note = notesRef.current.get(noteId);
-    if (!note) return;
-    note.isDragging = true;
+    const col = columnsRef.current.get(chapterId);
+    if (!col) return;
+    col.isDragging = true;
     dragRef.current = {
-      noteId,
+      noteId: chapterId,
       startX: e.clientX,
       startY: e.clientY,
-      offsetX: note.x,
-      offsetY: note.y,
+      offsetX: col.x,
+      offsetY: col.y,
     };
     setRenderTick((t) => t + 1);
   }, []);
@@ -229,16 +258,16 @@ function OutlineEditorInner({
 
       const { noteId, startX, startY, offsetX, offsetY } = dragRef.current;
       if (!noteId) return;
-      const note = notesRef.current.get(noteId);
-      if (!note) return;
+      const col = columnsRef.current.get(noteId);
+      if (!col) return;
       const z = zoomRef.current;
       const dx = (e.clientX - startX) / z;
       const dy = (e.clientY - startY) / z;
-      note.x = offsetX + dx;
-      note.y = offsetY + dy;
-      note.vx = dx;
+      col.x = offsetX + dx;
+      col.y = offsetY + dy;
+      col.vx = dx;
       // Tilt based on horizontal movement
-      note.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
+      col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
       setRenderTick((t) => t + 1);
     }
 
@@ -251,13 +280,13 @@ function OutlineEditorInner({
 
       const { noteId } = dragRef.current;
       if (!noteId) return;
-      const note = notesRef.current.get(noteId);
-      if (note) {
-        note.isDragging = false;
-        note.targetRotation = note.baseRotation;
+      const col = columnsRef.current.get(noteId);
+      if (col) {
+        col.isDragging = false;
+        col.targetRotation = col.baseRotation;
 
-        // Check for combine/move interactions
-        checkDropInteraction(noteId, note);
+        // Check for chapter-chapter combine
+        checkDropInteraction(noteId, col);
       }
       dragRef.current.noteId = null;
       setRenderTick((t) => t + 1);
@@ -270,56 +299,22 @@ function OutlineEditorInner({
       window.removeEventListener("mouseup", handleMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.chapters]);
+  }, [columns]);
 
-  // Check if a dropped note overlaps another
-  const checkDropInteraction = useCallback((sourceId: string, sourceNote: DragNote) => {
-    const sourcePos = positions.find((p) => p.id === sourceId);
-    if (!sourcePos) return;
-
-    // Find overlapping notes
-    for (const [targetId, targetNote] of notesRef.current) {
+  // Check if a dropped column overlaps another column (chapter-chapter combine)
+  const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn) => {
+    for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
-      const targetPos = positions.find((p) => p.id === targetId);
-      if (!targetPos) continue;
 
-      const overlapX = Math.abs(sourceNote.x - targetNote.x) < (sourcePos.width + targetPos.width) / 3;
-      const overlapY = Math.abs(sourceNote.y - targetNote.y) < (sourcePos.height + targetPos.height) / 3;
+      const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
+      const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
 
       if (overlapX && overlapY) {
-        const sourceIsKp = sourcePos.type === "keyPoint";
-        const targetIsKp = targetPos.type === "keyPoint";
-        const sourceIsCh = sourcePos.type === "chapter";
-        const targetIsCh = targetPos.type === "chapter";
-
-        // Key point → Chapter (move)
-        if (sourceIsKp && targetIsCh) {
-          const sourceChapter = state.chapters.find((ch) => ch.key_point_ids.includes(sourceId));
-          if (sourceChapter && sourceChapter.id !== targetId) {
-            dispatch({
-              type: "MOVE_KEY_POINT",
-              keyPointId: sourceId,
-              fromChapterId: sourceChapter.id,
-              toChapterId: targetId,
-            });
-          }
-          return;
-        }
-
-        // KP + KP combine
-        if (sourceIsKp && targetIsKp) {
-          setConfirmCombine({ sourceId, targetId, type: "keyPoint" });
-          return;
-        }
-
-        // Ch + Ch combine
-        if (sourceIsCh && targetIsCh) {
-          setConfirmCombine({ sourceId, targetId, type: "chapter" });
-          return;
-        }
+        setConfirmCombine({ sourceId, targetId, type: "chapter" });
+        return;
       }
     }
-  }, [positions, state.chapters, dispatch]);
+  }, []);
 
   function handleConfirmCombine() {
     if (!confirmCombine) return;
@@ -331,9 +326,8 @@ function OutlineEditorInner({
     setConfirmCombine(null);
   }
 
-  // Canvas pan on background drag — triggers if no note is being dragged
+  // Canvas pan on background drag
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    // Don't pan if we started dragging a note
     if (dragRef.current.noteId) return;
     isPanningRef.current = true;
     panStartRef.current = {
@@ -360,7 +354,6 @@ function OutlineEditorInner({
       const newZoom = Math.min(3, Math.max(0.15, oldZoom + delta));
       const scale = newZoom / oldZoom;
 
-      // Adjust pan so zoom anchors to cursor position
       const newPanX = cursorX - scale * (cursorX - panRef.current.x);
       const newPanY = cursorY - scale * (cursorY - panRef.current.y);
 
@@ -374,20 +367,17 @@ function OutlineEditorInner({
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);
 
-  // Compute edge path
+  // Compute edge path between chapter columns
   function getEdgePath(edge: EdgeDef): string {
-    const sourceNote = notesRef.current.get(edge.sourceId);
-    const targetNote = notesRef.current.get(edge.targetId);
-    const sourcePos = positions.find((p) => p.id === edge.sourceId);
-    const targetPos = positions.find((p) => p.id === edge.targetId);
-    if (!sourceNote || !targetNote || !sourcePos || !targetPos) return "";
+    const sourceCol = columnsRef.current.get(edge.sourceId);
+    const targetCol = columnsRef.current.get(edge.targetId);
+    if (!sourceCol || !targetCol) return "";
 
-    const sx = sourceNote.x + sourcePos.width / 2;
-    const sy = sourceNote.y + sourcePos.height / 2;
-    const tx = targetNote.x + targetPos.width / 2;
-    const ty = targetNote.y + targetPos.height / 2;
+    const sx = sourceCol.x + CHAPTER_WIDTH / 2;
+    const sy = sourceCol.y + CHAPTER_HEIGHT / 2;
+    const tx = targetCol.x + CHAPTER_WIDTH / 2;
+    const ty = targetCol.y + CHAPTER_HEIGHT / 2;
 
-    // Quadratic bezier with curve offset
     const mx = (sx + tx) / 2;
     const my = (sy + ty) / 2;
     const cx = mx;
@@ -423,7 +413,6 @@ function OutlineEditorInner({
       {/* SVG Filters */}
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
-          {/* Paper texture filter */}
           <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
             <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1.5" result="light">
@@ -431,14 +420,10 @@ function OutlineEditorInner({
             </feDiffuseLighting>
             <feComposite in="SourceGraphic" in2="light" operator="arithmetic" k1="0" k2="1" k3="0.1" k4="0" />
           </filter>
-
-          {/* Marker wobble for edges */}
           <filter id="marker-wobble">
             <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="noise" seed="2" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
           </filter>
-
-          {/* Rough edge for notes */}
           <filter id="rough-edge" x="-2%" y="-2%" width="104%" height="104%">
             <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" result="noise" seed="1" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
@@ -481,7 +466,7 @@ function OutlineEditorInner({
         </g>
       </svg>
 
-      {/* Notes layer */}
+      {/* Column layer */}
       <div
         style={{
           position: "absolute",
@@ -494,54 +479,75 @@ function OutlineEditorInner({
           transformOrigin: "0 0",
         }}
       >
-        {positions.map((pos) => {
-          const note = notesRef.current.get(pos.id);
-          if (!note) return null;
+        {columns.map((col) => {
+          const dragCol = columnsRef.current.get(col.chapterId);
+          if (!dragCol) return null;
 
-          const chapter = pos.type === "chapter"
-            ? state.chapters.find((ch) => ch.id === pos.id)
-            : undefined;
-          const keyPoint = pos.type === "keyPoint"
-            ? state.keyPoints.find((kp) => kp.id === pos.id)
-            : undefined;
+          const chapter = state.chapters.find((ch) => ch.id === col.chapterId);
+          if (!chapter) return null;
 
-          const scale = note.isDragging ? 1.05 : 1;
+          const scale = dragCol.isDragging ? 1.03 : 1;
 
           return (
             <div
-              key={pos.id}
-              onMouseDown={(e) => handleNoteMouseDown(e, pos.id)}
+              key={col.chapterId}
+              onMouseDown={(e) => handleColumnMouseDown(e, col.chapterId)}
               style={{
                 position: "absolute",
-                left: note.x,
-                top: note.y,
-                transform: `rotate(${note.rotation}deg) scale(${scale})`,
-                zIndex: note.isDragging ? 50 : pos.type === "chapter" ? 10 : 5,
-                transition: note.isDragging ? "none" : "transform 0.3s ease-out",
+                left: dragCol.x,
+                top: dragCol.y,
+                transform: `rotate(${dragCol.rotation}deg) scale(${scale})`,
+                zIndex: dragCol.isDragging ? 50 : 10,
+                transition: dragCol.isDragging ? "none" : "transform 0.3s ease-out",
               }}
             >
-              {pos.type === "chapter" && chapter && (
-                <ChapterNote
-                  chapter={chapter}
-                  color={pos.color}
-                  rotation={note.rotation}
-                  isDragging={note.isDragging}
-                  keyPointCount={(chapter.key_point_ids || []).length}
-                  onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
-                  onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
-                  onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
-                />
-              )}
-              {pos.type === "keyPoint" && keyPoint && (
-                <KeyPointNote
-                  keyPoint={keyPoint}
-                  color={pos.color}
-                  rotation={note.rotation}
-                  isDragging={note.isDragging}
-                  onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: keyPoint.id, field, value })}
-                  onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: keyPoint.id })}
-                />
-              )}
+              {/* Column background — subtle grouping indicator */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: -8,
+                  left: -10,
+                  right: -10,
+                  bottom: -8,
+                  background: getColumnBg(col.color),
+                  border: `1.5px dashed ${getBorderColor(col.color)}`,
+                  borderRadius: 10,
+                  pointerEvents: "none",
+                  // Only show border when there are KPs to group
+                  opacity: col.kpIds.length > 0 ? 1 : 0,
+                }}
+              />
+
+              {/* Chapter header card */}
+              <ChapterNote
+                chapter={chapter}
+                color={col.color}
+                rotation={dragCol.rotation}
+                isDragging={dragCol.isDragging}
+                keyPointCount={col.kpIds.length}
+                onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
+                onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
+                onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
+              />
+
+              {/* Key points stacked below */}
+              <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP }}>
+                {col.kpIds.map((kpId) => {
+                  const kp = state.keyPoints.find((k) => k.id === kpId);
+                  if (!kp) return null;
+                  return (
+                    <KeyPointNote
+                      key={kpId}
+                      keyPoint={kp}
+                      color={col.color}
+                      rotation={0}
+                      isDragging={false}
+                      onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
+                      onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
+                    />
+                  );
+                })}
+              </div>
             </div>
           );
         })}

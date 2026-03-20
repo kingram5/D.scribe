@@ -823,6 +823,7 @@ function OutlineEditorInner({
         canRedo={canRedo}
         onAddChapter={handleAddChapter}
         saveStatus={saveStatus}
+        isDirty={state.dirty}
         onContinue={onContinue}
         hasChapters={state.chapters.length > 0}
       />

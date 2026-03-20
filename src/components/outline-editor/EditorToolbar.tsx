@@ -9,6 +9,7 @@ interface EditorToolbarProps {
   canRedo: boolean;
   onAddChapter: (color: NoteColor) => void;
   saveStatus: "idle" | "saving" | "saved" | "error";
+  isDirty: boolean;
   onContinue: () => void;
   hasChapters: boolean;
 }
@@ -27,9 +28,11 @@ export function EditorToolbar({
   canRedo,
   onAddChapter,
   saveStatus,
+  isDirty,
   onContinue,
   hasChapters,
 }: EditorToolbarProps) {
+  const isSaving = isDirty || saveStatus === "saving";
   return (
     <div style={{
       position: "fixed",
@@ -119,19 +122,21 @@ export function EditorToolbar({
       {hasChapters && (
         <button
           onClick={onContinue}
+          disabled={isSaving}
           style={{
             padding: "8px 18px",
             fontSize: 13,
             fontWeight: 700,
             border: "none",
             borderRadius: 999,
-            background: "#191816",
+            background: isSaving ? "#9a9890" : "#191816",
             color: "white",
-            cursor: "pointer",
+            cursor: isSaving ? "not-allowed" : "pointer",
             fontFamily: "'Kalam', cursive",
+            transition: "background 0.15s",
           }}
         >
-          Continue to Generate
+          {isSaving ? "Saving..." : "Continue to Generate"}
         </button>
       )}
     </div>

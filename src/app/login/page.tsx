@@ -6,7 +6,7 @@ import { createBrowserClient } from "@/lib/supabase";
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = searchParams.get("next") || "/dashboard";
   const authError = searchParams.get("error");
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +28,7 @@ function LoginContent() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: "linear-gradient(135deg, #f5f0e8 0%, #e8e0d0 100%)",
+      background: "linear-gradient(135deg, #FDFCF9 0%, #F4F1EB 100%)",
     }}>
       <div style={{
         width: "100%",
@@ -43,23 +43,23 @@ function LoginContent() {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-          <svg width="28" height="28" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" stroke="#191816" strokeWidth="1.5"/>
-            <path d="M10 4 A6 6 0 0 1 16 10" stroke="#191816" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em", color: "#191816" }}>
-            Manuscript
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A1816", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 18, fontWeight: 500, color: "#FDFCF9" }}>D.</span>
+          </div>
+          <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", color: "#1A1816" }}>
+            scribe
           </span>
         </div>
 
         <h1 style={{
+          fontFamily: "var(--font-manrope), sans-serif",
           fontSize: 28,
           fontWeight: 700,
           letterSpacing: "-0.03em",
-          color: "#191816",
+          color: "#1A1816",
           marginBottom: 8,
         }}>
-          Turn your talks<br />into a book.
+          Dictate the draft.<br /><span style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, color: "rgba(26,24,22,0.6)" }}>Let AI master the manuscript.</span>
         </h1>
         <p style={{
           fontSize: 15,

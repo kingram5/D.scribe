@@ -28,12 +28,11 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
       minWidth: 480,
     }}>
       {/* Left: Logo + Brand */}
-      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#191816", flexShrink: 0 }}>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="9" stroke="#191816" strokeWidth="1.5"/>
-          <path d="M10 4 A6 6 0 0 1 16 10" stroke="#191816" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.02em" }}>Book Builder</span>
+      <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#191816", flexShrink: 0 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 4, background: "#191816", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 14, fontWeight: 500, color: "#FDFCF9" }}>D.</span>
+        </div>
+        <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: "-0.02em" }}>scribe</span>
       </Link>
 
       {/* Center */}

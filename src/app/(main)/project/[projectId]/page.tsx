@@ -131,7 +131,7 @@ export default function ProjectPage() {
               onClick={async () => {
                 if (!confirm("Delete this project?")) return;
                 await fetch(`/api/project/${projectId}`, { method: "DELETE" });
-                router.push("/");
+                router.push("/dashboard");
               }}
               className="nodum-btn-ghost"
               style={{ width: "100%", justifyContent: "center", color: "#dc2626", borderColor: "rgba(220,38,38,0.3)" }}
@@ -165,12 +165,12 @@ export default function ProjectPage() {
             <DataPill
               label="Audio Files"
               metric={String(project.audio_uploads.length)}
-              accentColor="#191816"
+              accentColor="#E05D3A"
             />
             <DataPill
               label="Words Transcribed"
               metric={totalWordCount.toLocaleString()}
-              accentColor="#d4b895"
+              accentColor="#F07153"
             />
             <DataPill
               label="Key Points"

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
-  --accent: #b45309;
-  --accent-light: #fef3c7;
+  --background: #FDFCF9;
+  --foreground: #1A1816;
+  --accent: #E05D3A;
+  --accent-light: #FDE8E3;
   --muted: #78716c;
   --border: #e7e5e4;
   --card: #ffffff;
@@ -23,7 +23,7 @@
 }
 
 :root {
-  --env-bg: #f1e6cd;
+  --env-bg: #F4F1EB;
   --glass-bg: rgba(255, 255, 255, 0.45);
   --glass-border: rgba(255, 255, 255, 0.8);
   --glass-highlight: rgba(255, 255, 255, 0.9);
@@ -39,6 +39,20 @@
   --radius-pill: 100px;
   --shadow-glass: 0 20px 40px -10px rgba(0,0,0,0.06), inset 0 1px 1px 0 rgba(255,255,255,0.9);
   --shadow-btn: 0 8px 20px rgba(0,0,0,0.15);
+
+  /* D. scribe brand tokens */
+  --ds-paper: #FDFCF9;
+  --ds-ink: #1A1816;
+  --ds-accent-400: #F07153;
+  --ds-accent-500: #E05D3A;
+  --ds-accent-600: #C74B2A;
+  --ds-surface: #F4F1EB;
+  --ds-pane1: #FBF9F5;
+  --ds-pane2: #F8F5F0;
+  --ds-pane3: #F6F2EC;
+  --ds-pane4: #F3EFE8;
+  --ds-pane5: #F1ECE3;
+  --ds-pane6: #EFEAE0;
 }
 
 @keyframes float {
@@ -69,7 +83,7 @@
 body {
   background-color: var(--env-bg);
   color: var(--text-primary);
-  font-family: var(--font-inter), var(--font-geist-sans), sans-serif;
+  font-family: var(--font-manrope), var(--font-inter), var(--font-geist-sans), sans-serif;
 }
 
 .nodum-env {
@@ -78,7 +92,7 @@ body {
   left: -5%;
   width: 110vw;
   height: 110vh;
-  background: radial-gradient(circle at 50% 30%, #f6ecd6 0%, #d5c7ad 100%);
+  background: radial-gradient(circle at 50% 30%, #FAF7F2 0%, #EDE8DF 100%);
   z-index: 0;
   pointer-events: none;
 }
@@ -135,8 +149,9 @@ body {
 }
 
 .nodum-btn:hover {
+  background: #E05D3A;
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+  box-shadow: 0 12px 28px rgba(224, 93, 58, 0.25);
 }
 
 .nodum-btn:disabled {
@@ -226,7 +241,7 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 input[type=range] {
-  accent-color: #191816;
+  accent-color: #E05D3A;
 }
 
 /* Panel float animations */

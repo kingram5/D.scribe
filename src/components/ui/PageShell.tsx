@@ -26,6 +26,7 @@ export default function PageShell({ children, projectId, currentStep }: PageShel
           flexWrap: "wrap",
           gap: 6,
           padding: "0 40px 16px",
+          fontFamily: "var(--font-manrope), sans-serif",
         }}>
           <Link
             href={`/project/${projectId}`}
@@ -40,7 +41,7 @@ export default function PageShell({ children, projectId, currentStep }: PageShel
           </Link>
           {STEPS.map((step) => (
             <span key={step.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 10, color: "#d4b895" }}>/</span>
+              <span style={{ fontSize: 10, color: "#E05D3A" }}>/</span>
               <Link
                 href={`/project/${projectId}/${step.path}`}
                 aria-current={step.key === currentStep ? "page" : undefined}

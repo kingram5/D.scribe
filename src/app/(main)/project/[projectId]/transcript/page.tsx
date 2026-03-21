@@ -161,12 +161,12 @@ export default function TranscriptPage() {
             <DataPill
               label="Word Count"
               metric={active.word_count.toLocaleString()}
-              accentColor="#191816"
+              accentColor="#E05D3A"
             />
             <DataPill
               label="Speakers"
               metric={`${active.speaker_count} speaker${active.speaker_count !== 1 ? "s" : ""}`}
-              accentColor="#d4b895"
+              accentColor="#F07153"
             />
           </div>
           <div style={{ marginTop: "auto", paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>

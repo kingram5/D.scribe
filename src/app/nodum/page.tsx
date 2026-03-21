@@ -23,7 +23,7 @@ export default function NodumPage() {
         <div style={{ color: "#7a7369", fontSize: 13, fontWeight: 500 }}>Workspace 1</div>
         <div style={{ fontFamily: "monospace", color: "#a0978a", fontSize: 13 }}>0.9.4_beta</div>
         <Link
-          href="/"
+          href="/dashboard"
           style={{
             marginLeft: 8,
             fontSize: 12,
@@ -35,7 +35,7 @@ export default function NodumPage() {
             transition: "all 0.2s",
           }}
         >
-          ← Back to Manuscript
+          ← Back to D. scribe
         </Link>
       </nav>
 

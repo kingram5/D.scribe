@@ -113,9 +113,9 @@ export default function NewProject() {
                       fontWeight: 500,
                       cursor: "pointer",
                       transition: "all 0.15s",
-                      background: audience === a ? "#191816" : "transparent",
+                      background: audience === a ? "#E05D3A" : "transparent",
                       color: audience === a ? "white" : "#191816",
-                      borderColor: audience === a ? "#191816" : "rgba(25,24,22,0.2)",
+                      borderColor: audience === a ? "#E05D3A" : "rgba(25,24,22,0.2)",
                     }}
                   >
                     {a}

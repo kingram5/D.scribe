@@ -237,7 +237,7 @@ export default function GeneratePage() {
                       borderRadius: 12,
                       border: "none",
                       cursor: forewordJob.isRunning ? "wait" : "pointer",
-                      background: includeForeword ? "#191816" : "rgba(0,0,0,0.15)",
+                      background: includeForeword ? "#E05D3A" : "rgba(0,0,0,0.15)",
                       position: "relative",
                       transition: "background 0.2s",
                     }}
@@ -306,7 +306,7 @@ export default function GeneratePage() {
                           gap: 12,
                           padding: 12,
                           borderRadius: "var(--radius-sm)",
-                          borderLeft: e.included ? "3px solid #191816" : "3px solid rgba(0,0,0,0.1)",
+                          borderLeft: e.included ? "3px solid #E05D3A" : "3px solid rgba(0,0,0,0.1)",
                           background: e.included ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)",
                           opacity: e.included ? 1 : 0.5,
                           transition: "all 0.15s",
@@ -360,7 +360,7 @@ export default function GeneratePage() {
                         }}>
                           <div style={{
                             height: "100%",
-                            background: "#191816",
+                            background: "#E05D3A",
                             borderRadius: 2,
                             width: `${((generateAllJob.progress as { current?: number; total?: number }).current || 0) / ((generateAllJob.progress as { current?: number; total?: number }).total || 1) * 100}%`,
                             transition: "width 0.5s ease",

@@ -58,8 +58,9 @@ export default function Dashboard() {
           lineHeight: 1.0,
           color: "#191816",
           marginBottom: 16,
+          fontFamily: "var(--font-lora), serif",
         }}>
-          Manuscript
+          D. scribe
         </h1>
         <p style={{ fontSize: 16, color: "#7a7369", lineHeight: 1.6, fontWeight: 400, maxWidth: 440 }}>
           Turn your talks into a book — upload a sermon, keynote, or podcast episode, and let AI ghostwrite your manuscript in your voice.
@@ -117,7 +118,7 @@ export default function Dashboard() {
                       <div key={step.num} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                         <div style={{
                           width: 28, height: 28, borderRadius: "50%",
-                          background: "#191816", color: "white",
+                          background: "#E05D3A", color: "white",
                           fontSize: 13, fontWeight: 700,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           flexShrink: 0,
@@ -219,12 +220,12 @@ export default function Dashboard() {
             <DataPill
               label="In Progress"
               metric={String(inProgressCount)}
-              accentColor="#d4b895"
+              accentColor="#E05D3A"
             />
             <DataPill
               label="Completed"
               metric={String(completeCount)}
-              accentColor="#7a7369"
+              accentColor="#059669"
             />
             <DataPill
               label="Drafts"

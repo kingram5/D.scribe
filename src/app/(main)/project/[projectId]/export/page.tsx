@@ -25,7 +25,7 @@ export default function ExportPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `manuscript.${format}`;
+      a.download = `dscribe-export.${format}`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -58,7 +58,7 @@ export default function ExportPage() {
                   fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.15s",
-                  background: format === "pdf" ? "#191816" : "rgba(255,255,255,0.5)",
+                  background: format === "pdf" ? "#E05D3A" : "rgba(255,255,255,0.5)",
                   color: format === "pdf" ? "white" : "#191816",
                   boxShadow: format === "pdf" ? "var(--shadow-btn)" : "none",
                 }}
@@ -76,7 +76,7 @@ export default function ExportPage() {
                   fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.15s",
-                  background: format === "docx" ? "#191816" : "rgba(255,255,255,0.5)",
+                  background: format === "docx" ? "#E05D3A" : "rgba(255,255,255,0.5)",
                   color: format === "docx" ? "white" : "#191816",
                   boxShadow: format === "docx" ? "var(--shadow-btn)" : "none",
                 }}

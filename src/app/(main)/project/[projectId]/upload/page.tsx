@@ -138,7 +138,7 @@ export default function UploadPage() {
                 fontWeight: 600,
                 border: "none",
                 cursor: "pointer",
-                background: inputMode === "file" ? "rgba(25,24,22,0.9)" : "transparent",
+                background: inputMode === "file" ? "#E05D3A" : "transparent",
                 color: inputMode === "file" ? "#fff" : "#7a7369",
                 transition: "all 0.15s",
               }}
@@ -154,7 +154,7 @@ export default function UploadPage() {
                 fontWeight: 600,
                 border: "none",
                 cursor: "pointer",
-                background: inputMode === "youtube" ? "rgba(25,24,22,0.9)" : "transparent",
+                background: inputMode === "youtube" ? "#E05D3A" : "transparent",
                 color: inputMode === "youtube" ? "#fff" : "#7a7369",
                 transition: "all 0.15s",
               }}

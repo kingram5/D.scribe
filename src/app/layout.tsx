@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Inter, Kalam } from "next/font/google";
+import { Inter, Kalam, Manrope, Lora } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,9 +25,20 @@ const kalam = Kalam({
   weight: ["300", "400", "700"],
 });
 
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+});
+
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "Book Builder",
-  description: "Turn spoken content into polished books",
+  title: "D. scribe | Your Voice, Written",
+  description: "Dictate the draft. Let AI master the manuscript.",
 };
 
 export default function RootLayout({
@@ -37,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} ${manrope.variable} ${lora.variable} antialiased`}>
         {children}
       </body>
     </html>

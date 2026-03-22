@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth";
 
 // GET /api/project/[id] — get single project with all related data
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { id } = await params;
   const supabase = createServerClient();
 
@@ -13,6 +17,7 @@ export async function GET(
     .from("projects")
     .select("*")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
@@ -43,9 +48,24 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { id } = await params;
   const body = await req.json();
   const supabase = createServerClient();
+
+  // Verify project ownership before any mutation
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
 
   // If chapter_id is provided, update the chapter
   if (body.chapter_id) {
@@ -146,8 +166,23 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { id } = await params;
   const supabase = createServerClient();
+
+  // Verify ownership before deletion
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

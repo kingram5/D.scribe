@@ -146,7 +146,7 @@ export default function TranscriptPage() {
         padding: "0 32px 32px",
       }}>
         {/* Left sidebar */}
-        <GlassCard className="nodum-float-1" style={{ padding: 20, display: "flex", flexDirection: "column" }}>
+        <GlassCard style={{ padding: 20, display: "flex", flexDirection: "column" }}>
           <PanelTitle>Transcripts</PanelTitle>
           <div style={{ marginTop: 16 }}>
             <MenuSection

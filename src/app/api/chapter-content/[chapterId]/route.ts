@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth";
 
 // GET /api/chapter-content/[chapterId] — get latest content for a chapter
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ chapterId: string }> }
 ) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { chapterId } = await params;
   const supabase = createServerClient();
+
+  // Verify the chapter's project belongs to this user
+  const { data: chapter } = await supabase
+    .from("chapters")
+    .select("project_id")
+    .eq("id", chapterId)
+    .single();
+
+  if (!chapter) {
+    return NextResponse.json({ content: "", word_count: 0, version: 0 });
+  }
+
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", chapter.project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { data, error } = await supabase
     .from("chapter_contents")
@@ -29,9 +55,34 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ chapterId: string }> }
 ) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { chapterId } = await params;
   const { content } = await req.json();
   const supabase = createServerClient();
+
+  // Verify the chapter's project belongs to this user
+  const { data: chapter } = await supabase
+    .from("chapters")
+    .select("project_id")
+    .eq("id", chapterId)
+    .single();
+
+  if (!chapter) {
+    return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
+  }
+
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", chapter.project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   // Get current latest version
   const { data: existing } = await supabase

@@ -2,10 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude";
 import { HUMANIZER_RULES } from "@/lib/prompts/generate";
+import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/coherence — run a coherence pass across all chapters
 // Reads first+last paragraphs of each chapter, generates revised transitions
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const { allowed, retryAfterMs } = checkRateLimit(user.id, "coherence");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
   const { project_id } = await req.json();
   if (!project_id) {
     return NextResponse.json({ error: "project_id required" }, { status: 400 });
@@ -13,9 +29,9 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
-  // Get project + chapters
+  // Get project + verify ownership
   const { data: project } = await supabase
-    .from("projects").select("*").eq("id", project_id).single();
+    .from("projects").select("*").eq("id", project_id).eq("user_id", user.id).single();
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }

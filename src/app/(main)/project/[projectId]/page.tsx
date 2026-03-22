@@ -85,7 +85,7 @@ export default function ProjectPage() {
     upload: `/project/${projectId}/upload`,
     transcribe: `/project/${projectId}/transcript`,
     analyze: `/project/${projectId}/analysis`,
-    outline: `/project/${projectId}/outline`,
+    outline: `/project/${projectId}/analysis`,
     generate: `/project/${projectId}/generate`,
     export: `/project/${projectId}/export`,
   };
@@ -107,7 +107,7 @@ export default function ProjectPage() {
         padding: "0 40px 40px",
       }}>
         {/* Left panel */}
-        <GlassCard className="nodum-float-1" style={{ padding: 24, alignSelf: "start" }}>
+        <GlassCard style={{ padding: 24, alignSelf: "start" }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: "#191816", marginBottom: 16, lineHeight: 1.3 }}>
             {project.title}
           </h2>
@@ -159,7 +159,7 @@ export default function ProjectPage() {
         </div>
 
         {/* Right panel: stats */}
-        <GlassCard className="nodum-float-2" style={{ padding: 24, alignSelf: "start" }}>
+        <GlassCard style={{ padding: 24, alignSelf: "start" }}>
           <PanelTitle>Stats</PanelTitle>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             <DataPill

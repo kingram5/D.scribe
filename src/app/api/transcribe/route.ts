@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { transcribeAudio } from "@/lib/deepgram";
+import { requireAuth } from "@/lib/auth";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { audio_upload_id } = await req.json();
   if (!audio_upload_id) {
     return NextResponse.json({ error: "audio_upload_id required" }, { status: 400 });
@@ -20,6 +24,18 @@ export async function POST(req: NextRequest) {
 
   if (fetchError || !upload) {
     return NextResponse.json({ error: "Audio upload not found" }, { status: 404 });
+  }
+
+  // Verify the upload's project belongs to this user
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", upload.project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Mark as transcribing

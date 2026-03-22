@@ -4,7 +4,7 @@ interface DataPillProps {
   accentColor?: string;
 }
 
-export default function DataPill({ label, metric, accentColor = "#191816" }: DataPillProps) {
+export default function DataPill({ label, metric, accentColor = "#E05D3A" }: DataPillProps) {
   return (
     <div style={{
       borderLeft: `3px solid ${accentColor}`,
@@ -12,8 +12,8 @@ export default function DataPill({ label, metric, accentColor = "#191816" }: Dat
       borderRadius: "var(--radius-sm)",
       padding: "10px 14px",
     }}>
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#191816", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 11, fontWeight: 600, color: "#7a7369" }}>{metric}</div>
+      <div style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 20, fontWeight: 700, color: "#191816", lineHeight: 1 }}>{metric}</div>
+      <div style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 11, fontWeight: 500, color: "#7a7369", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
     </div>
   );
 }

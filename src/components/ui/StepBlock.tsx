@@ -32,7 +32,7 @@ export default function StepBlock({ num, title, desc, status, href, onClick }: S
 
   const inner = (
     <>
-      <div style={{ fontSize: 10, fontFamily: "var(--font-geist-mono), monospace", fontWeight: 600, color: "#a0978a", letterSpacing: "0.1em", marginBottom: 6 }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 700, color: "#a0978a", letterSpacing: "0.12em", marginBottom: 6 }}>
         {isComplete ? "✓ " : ""}{num}
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, color: "#191816", marginBottom: 4 }}>{title}</div>

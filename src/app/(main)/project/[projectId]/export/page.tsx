@@ -37,7 +37,7 @@ export default function ExportPage() {
     <PageShell projectId={projectId} currentStep="export">
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
         <GlassCard style={{ maxWidth: 440, width: "100%", padding: 48 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "#191816", marginBottom: 8 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 400, fontStyle: "italic", letterSpacing: "-0.01em", color: "#191816", marginBottom: 8, fontFamily: "var(--font-lora), serif" }}>
             Export
           </h1>
           <p style={{ fontSize: 14, color: "#7a7369", marginBottom: 32 }}>

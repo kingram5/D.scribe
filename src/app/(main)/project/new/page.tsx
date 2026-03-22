@@ -70,8 +70,9 @@ export default function NewProject() {
     <PageShell>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
         <GlassCard style={{ maxWidth: 560, width: "100%", padding: 48 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "#191816", marginBottom: 32 }}>
-            New Project
+          <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#a0978a", marginBottom: 12 }}>New Project</div>
+          <h1 style={{ fontSize: 36, fontWeight: 400, fontStyle: "italic", letterSpacing: "-0.01em", color: "#191816", marginBottom: 32, fontFamily: "var(--font-lora), serif" }}>
+            Name your book
           </h1>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>

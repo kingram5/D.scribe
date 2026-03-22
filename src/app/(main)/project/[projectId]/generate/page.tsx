@@ -157,7 +157,7 @@ export default function GeneratePage() {
         <EmptyState
           message="No chapters outlined yet."
           actionLabel="Create Outline"
-          onAction={() => router.push(`/project/${projectId}/outline`)}
+          onAction={() => router.push(`/project/${projectId}/analysis`)}
         />
       </PageShell>
     );
@@ -176,7 +176,7 @@ export default function GeneratePage() {
         padding: "0 40px 40px",
       }}>
         {/* Left sidebar: chapter list */}
-        <GlassCard className="nodum-float-1" style={{ padding: 24, alignSelf: "start" }}>
+        <GlassCard style={{ padding: 24, alignSelf: "start" }}>
           <PanelTitle>Chapters</PanelTitle>
           <div style={{ marginTop: 16 }}>
             <MenuSection
@@ -284,10 +284,10 @@ export default function GeneratePage() {
               <div style={{ height: 1, background: "rgba(0,0,0,0.06)", marginBottom: 24 }} />
 
               {/* Chapter info */}
-              <div style={{ fontSize: 10, fontFamily: "var(--font-geist-mono), monospace", fontWeight: 600, color: "#a0978a", letterSpacing: "0.1em", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 700, color: "#a0978a", letterSpacing: "0.12em", marginBottom: 8 }}>
                 CHAPTER {active.chapter_number}
               </div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#191816", marginBottom: 8 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 500, color: "#191816", marginBottom: 8, fontFamily: "var(--font-lora), serif" }}>
                 {active.title}
               </h2>
               <p style={{ fontSize: 14, color: "#7a7369", lineHeight: 1.6, marginBottom: 24 }}>{active.summary}</p>

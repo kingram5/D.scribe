@@ -34,7 +34,7 @@ export default function MenuSection({ title, items }: MenuSectionProps) {
             {item.icon && <span style={{ marginRight: 8 }}>{item.icon}</span>}
             <span style={{ flex: 1 }}>{item.label}</span>
             {item.meta && (
-              <span style={{ marginLeft: "auto", fontFamily: "var(--font-geist-mono), monospace", fontSize: 11, color: "#a0978a" }}>
+              <span style={{ marginLeft: "auto", fontFamily: "var(--font-manrope), sans-serif", fontSize: 11, fontWeight: 500, color: "#a0978a" }}>
                 {item.meta}
               </span>
             )}

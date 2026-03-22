@@ -41,26 +41,26 @@ export default function Dashboard() {
       {/* Page hero header */}
       <div style={{ padding: "32px 40px 40px", maxWidth: 640 }}>
         <div style={{
-          fontFamily: "var(--font-geist-mono), monospace",
+          fontFamily: "var(--font-manrope), sans-serif",
           fontSize: 11,
           fontWeight: 600,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.14em",
           textTransform: "uppercase",
           color: "#a0978a",
           marginBottom: 12,
         }}>
-          {firstName ? `${firstName}'s Workspace` : "Workspace"}
+          Your Workspace
         </div>
         <h1 style={{
-          fontSize: 64,
-          fontWeight: 500,
-          letterSpacing: "-0.04em",
-          lineHeight: 1.0,
+          fontSize: 48,
+          fontWeight: 400,
+          letterSpacing: "-0.03em",
+          lineHeight: 1.05,
           color: "#191816",
           marginBottom: 16,
           fontFamily: "var(--font-lora), serif",
         }}>
-          D. scribe
+          {firstName ? `${firstName}\u2019s Books` : "Your Books"}
         </h1>
         <p style={{ fontSize: 16, color: "#7a7369", lineHeight: 1.6, fontWeight: 400, maxWidth: 440 }}>
           Turn your talks into a book — upload a sermon, keynote, or podcast episode, and let AI ghostwrite your manuscript in your voice.
@@ -225,7 +225,7 @@ export default function Dashboard() {
             <DataPill
               label="Completed"
               metric={String(completeCount)}
-              accentColor="#059669"
+              accentColor="#7c6f5b"
             />
             <DataPill
               label="Drafts"

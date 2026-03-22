@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth";
 
 export const maxDuration = 300;
 
@@ -67,6 +68,9 @@ async function pollJob(
 
 // POST /api/audio/youtube — get transcript via Supadata, no audio download needed
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { youtube_url, project_id } = await req.json();
 
   if (!youtube_url || !project_id) {
@@ -84,6 +88,18 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServerClient();
+
+  // Verify the project belongs to this user
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
 
   // Create stub audio_upload record (no actual file — transcript comes from Supadata)
   const { data: upload, error: uploadError } = await supabase

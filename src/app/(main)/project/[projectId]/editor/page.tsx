@@ -135,7 +135,7 @@ export default function EditorPage() {
         padding: "0 40px 40px",
       }}>
         {/* Left sidebar */}
-        <GlassCard className="nodum-float-1" style={{ padding: 24, alignSelf: "start" }}>
+        <GlassCard style={{ padding: 24, alignSelf: "start" }}>
           <MenuSection
             items={chapters.map((ch, i) => ({
               label: `Ch ${ch.chapter_number}: ${ch.title}`,
@@ -156,7 +156,7 @@ export default function EditorPage() {
         </GlassCard>
 
         {/* Editor area */}
-        <GlassCard style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+        <div className="glass-content" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
           {/* Header bar */}
           <div style={{
             display: "flex",
@@ -166,7 +166,7 @@ export default function EditorPage() {
             borderBottom: "1px solid rgba(255,255,255,0.5)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#191816" }}>
+              <span style={{ fontSize: 16, fontWeight: 500, color: "#191816", fontFamily: "var(--font-lora), serif" }}>
                 Chapter {activeChapter?.chapter_number}: {activeChapter?.title}
               </span>
               {activeChapter?.latest_content && (
@@ -211,20 +211,23 @@ export default function EditorPage() {
             placeholder="Generated chapter content will appear here. Go to the Generate page to create content first."
             style={{
               background: "transparent",
-              padding: "24px 32px",
-              fontSize: 14,
-              lineHeight: 1.8,
-              fontFamily: "var(--font-geist-mono), monospace",
+              padding: "40px 48px",
+              fontSize: 16,
+              lineHeight: 1.9,
+              fontFamily: "var(--font-lora), Georgia, serif",
+              letterSpacing: "0.01em",
               border: "none",
               outline: "none",
               width: "100%",
+              maxWidth: 680,
+              margin: "0 auto",
               minHeight: 600,
               resize: "none",
-              color: "#191816",
+              color: "#1A1816",
               boxSizing: "border-box",
             }}
           />
-        </GlassCard>
+        </div>
       </div>
     </PageShell>
   );

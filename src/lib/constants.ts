@@ -1,16 +1,16 @@
 export const STATUS_COLORS: Record<string, string> = {
   draft: "#a0978a",
   in_progress: "#E05D3A",
-  complete: "#059669",
+  complete: "#7c6f5b",
   outlined: "#a0978a",
   generating: "#E05D3A",
-  generated: "#059669",
+  generated: "#7c6f5b",
   edited: "#7a7369",
   uploading: "#E05D3A",
   downloading: "#E05D3A",
   fetching: "#E05D3A",
   transcribing: "#7a7369",
-  done: "#059669",
+  done: "#7c6f5b",
   failed: "#dc2626",
 };
 

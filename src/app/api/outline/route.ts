@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
+import { requireAuth } from "@/lib/auth";
 
 // POST /api/outline — generate chapter outline from key points
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { project_id, num_chapters } = await req.json();
   if (!project_id) {
     return NextResponse.json({ error: "project_id required" }, { status: 400 });
@@ -12,9 +16,9 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
-  // Get project + key points
+  // Get project + key points — verify ownership
   const [projectRes, keyPointsRes] = await Promise.all([
-    supabase.from("projects").select("*").eq("id", project_id).single(),
+    supabase.from("projects").select("*").eq("id", project_id).eq("user_id", user.id).single(),
     supabase.from("key_points").select("*").eq("project_id", project_id).order("created_at"),
   ]);
 

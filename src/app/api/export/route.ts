@@ -2,9 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { generatePDF } from "@/lib/export/pdf";
 import { generateDOCX } from "@/lib/export/docx";
+import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/export — export manuscript as PDF or DOCX
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const { allowed, retryAfterMs } = checkRateLimit(user.id, "export");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
   const { project_id, format = "pdf" } = await req.json();
   if (!project_id) {
     return NextResponse.json({ error: "project_id required" }, { status: 400 });
@@ -12,11 +28,12 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
-  // Get project
+  // Get project — verify ownership
   const { data: project } = await supabase
     .from("projects")
     .select("*")
     .eq("id", project_id)
+    .eq("user_id", user.id)
     .single();
 
   if (!project) {

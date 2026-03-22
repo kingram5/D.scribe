@@ -1,14 +1,22 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const next = searchParams.get("next") || "/dashboard";
   const authError = searchParams.get("error");
   const [loading, setLoading] = useState(false);
+
+  // Skip auth in dev — go straight to dashboard
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      router.replace(next);
+    }
+  }, [next, router]);
 
   async function signInWithGoogle() {
     setLoading(true);

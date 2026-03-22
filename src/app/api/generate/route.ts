@@ -7,17 +7,39 @@ import {
 } from "@/lib/claude";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
+import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/generate — generate a chapter or foreword
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const { allowed, retryAfterMs } = checkRateLimit(user.id, "generate");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
   const body = await req.json();
   const { creative_freedom = 50 } = body;
 
+  const supabase = createServerClient();
+
   // Foreword generation
   if (body.type === "foreword" && body.project_id) {
-    const supabase = createServerClient();
+    // Verify project ownership
     const { data: project } = await supabase
-      .from("projects").select("*").eq("id", body.project_id).single();
+      .from("projects")
+      .select("*")
+      .eq("id", body.project_id)
+      .eq("user_id", user.id)
+      .single();
     if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
     const chaptersInfo = (body.chapters || [])
@@ -80,8 +102,6 @@ Target: ~1500 words. Write the full foreword now.`,
     return NextResponse.json({ error: "chapter_id required" }, { status: 400 });
   }
 
-  const supabase = createServerClient();
-
   // Get chapter
   const { data: chapter, error: chErr } = await supabase
     .from("chapters")
@@ -91,6 +111,18 @@ Target: ~1500 words. Write the full foreword now.`,
 
   if (chErr || !chapter) {
     return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
+  }
+
+  // Verify the chapter's project belongs to this user
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", chapter.project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
   // Get project, transcripts, key points, enrichments, previous chapters, previous chapter content

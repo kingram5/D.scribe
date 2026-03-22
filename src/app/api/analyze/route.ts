@@ -8,9 +8,25 @@ import {
   voiceProfilePrompt,
 } from "@/lib/prompts/voice-profile";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
+import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/analyze — extract key points, voice profile, and mind map
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const { allowed, retryAfterMs } = checkRateLimit(user.id, "analyze");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
   const { project_id, transcript_id } = await req.json();
   if (!project_id || !transcript_id) {
     return NextResponse.json(
@@ -21,11 +37,24 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
+  // Verify the project belongs to this user
+  const { data: projectOwner } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!projectOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
   // Get transcript
   const { data: transcript, error: txErr } = await supabase
     .from("transcripts")
     .select("*")
     .eq("id", transcript_id)
+    .eq("project_id", project_id)
     .single();
 
   if (txErr || !transcript) {

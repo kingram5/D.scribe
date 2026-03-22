@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
+import { requireAuth } from "@/lib/auth";
 
 // POST /api/enrich — find enrichment quotes for a chapter
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { chapter_id } = await req.json();
   if (!chapter_id) {
     return NextResponse.json({ error: "chapter_id required" }, { status: 400 });
@@ -21,6 +25,11 @@ export async function POST(req: NextRequest) {
 
   if (!chapter) {
     return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
+  }
+
+  // Verify the chapter's project belongs to this user
+  if (chapter.projects?.user_id !== user.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Get key points for this chapter
@@ -72,8 +81,30 @@ export async function POST(req: NextRequest) {
 
 // PATCH /api/enrich — toggle enrichment inclusion
 export async function PATCH(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const { id, included } = await req.json();
   const supabase = createServerClient();
+
+  // Verify the enrichment belongs to a chapter owned by this user
+  const { data: enrichment } = await supabase
+    .from("enrichments")
+    .select("chapter_id, chapters(project_id, projects(user_id))")
+    .eq("id", id)
+    .single();
+
+  if (!enrichment) {
+    return NextResponse.json({ error: "Enrichment not found" }, { status: 404 });
+  }
+
+  const projectUserId = (enrichment as unknown as {
+    chapters: { projects: { user_id: string } };
+  }).chapters?.projects?.user_id;
+
+  if (projectUserId !== user.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { data, error } = await supabase
     .from("enrichments")

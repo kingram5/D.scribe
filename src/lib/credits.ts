@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase";
 
 const DEFAULT_DAILY_LIMIT = 50;
 const DEFAULT_FREE_CREDITS = 10;
+const TEST_USER_BONUS_CREDITS = 40; // Total 50 for test users (10 default + 40 bonus)
 
 interface CreditCheck {
   allowed: boolean;
@@ -27,6 +28,17 @@ async function ensureCredits(userId: string) {
     .insert({ user_id: userId, balance: DEFAULT_FREE_CREDITS })
     .select()
     .single();
+
+  // Grant test user bonus credits (remove this block when going public)
+  if (TEST_USER_BONUS_CREDITS > 0) {
+    await supabase
+      .from("usage_overrides")
+      .upsert({
+        user_id: userId,
+        bonus_credits: TEST_USER_BONUS_CREDITS,
+        note: "Test user bonus",
+      });
+  }
 
   return created;
 }

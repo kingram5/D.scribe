@@ -245,7 +245,7 @@ export default function RightPanel({
               textTransform: "uppercase",
             }}
           >
-            And
+            Or
           </span>
           <div
             style={{
@@ -523,7 +523,7 @@ export default function RightPanel({
             ? "Processing..."
             : allDone
               ? "View Transcripts →"
-              : "Initialize Engine →"}
+              : "Transcribe →"}
         </button>
       </div>
     </div>

@@ -13,35 +13,87 @@ export function useUploadEngine(projectId: string) {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [youtubeError, setYoutubeError] = useState("");
 
-  // Recording state (UI-only)
+  // Recording state with real MediaRecorder
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
     };
   }, []);
 
-  const toggleRecording = useCallback(() => {
+  const toggleRecording = useCallback(async () => {
     if (isRecording) {
-      // Pause
+      // Pause — stop the MediaRecorder and timer
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       setIsRecording(false);
     } else {
-      // Start/resume
-      setIsRecording(true);
-      timerRef.current = setInterval(() => {
-        setSeconds((s) => s + 1);
-      }, 1000);
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        chunksRef.current = [];
+
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
+        const recorder = new MediaRecorder(stream, { mimeType });
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.onstop = () => {
+          // Convert chunks to a File and add to files list
+          if (chunksRef.current.length > 0) {
+            const blob = new Blob(chunksRef.current, { type: mimeType });
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            const ext = mimeType.includes("webm") ? "webm" : "ogg";
+            const file = new File([blob], `recording-${timestamp}.${ext}`, {
+              type: mimeType,
+            });
+            setFiles((prev) => [...prev, file]);
+          }
+          // Stop all tracks
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
+          }
+        };
+
+        mediaRecorderRef.current = recorder;
+        recorder.start(1000); // collect data every second
+        setIsRecording(true);
+        setSeconds(0);
+        timerRef.current = setInterval(() => {
+          setSeconds((s) => s + 1);
+        }, 1000);
+      } catch (err) {
+        console.error("Microphone access denied:", err);
+      }
     }
   }, [isRecording]);
 
   const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;

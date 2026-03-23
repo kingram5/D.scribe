@@ -137,7 +137,7 @@ export default function TranscriptPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="transcript">
-      <div style={{
+      <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr",
         gap: 24,

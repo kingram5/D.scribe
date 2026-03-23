@@ -66,7 +66,7 @@ export default function LeftPanel({
           alignItems: "center",
           justifyContent: "center",
           padding: "0 32px",
-          gap: 32,
+          gap: 28,
         }}
       >
         <div style={{ textAlign: "center" }}>
@@ -75,14 +75,14 @@ export default function LeftPanel({
               fontFamily: "var(--font-lora), serif",
               fontStyle: "italic",
               fontWeight: 400,
-              fontSize: "2.8rem",
+              fontSize: "2.4rem",
               lineHeight: 1.15,
               color: "var(--ds-ink)",
               letterSpacing: "-0.02em",
               marginBottom: 12,
             }}
           >
-            Dictate the draft.
+            Record live
           </h1>
           <p
             style={{
@@ -95,7 +95,7 @@ export default function LeftPanel({
               lineHeight: 1.5,
             }}
           >
-            Record, upload, or paste a link. We handle the rest.
+            Speak naturally — the AI adapts to your voice, pacing, and style.
           </p>
         </div>
 
@@ -105,6 +105,32 @@ export default function LeftPanel({
           onToggleRecording={onToggleRecording}
           onStopRecording={onStopRecording}
         />
+
+        {/* Recording tips */}
+        <div style={{
+          maxWidth: 280,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}>
+          {[
+            "Sermons, keynotes, and podcast episodes work best",
+            "15-60 minutes of audio is the sweet spot",
+            "Quiet environment = better transcription",
+          ].map((tip, i) => (
+            <div key={i} style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              fontSize: 11,
+              color: "var(--text-tertiary)",
+              lineHeight: 1.4,
+            }}>
+              <span style={{ color: "var(--ds-accent-500)", flexShrink: 0, marginTop: 1 }}>&#8226;</span>
+              {tip}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Version label */}

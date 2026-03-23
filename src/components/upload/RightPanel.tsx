@@ -191,7 +191,7 @@ export default function RightPanel({
               <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                 {dragging
                   ? "Drop to add files"
-                  : "MP3, WAV, M4A, MP4 — click or drag"}
+                  : "MP3, WAV, M4A, MP4 — up to 500 MB"}
               </p>
             </div>
             {files.length > 0 && (
@@ -523,7 +523,7 @@ export default function RightPanel({
             ? "Processing..."
             : allDone
               ? "View Transcripts →"
-              : "Transcribe →"}
+              : "Transcribe → (1 credit)"}
         </button>
       </div>
     </div>

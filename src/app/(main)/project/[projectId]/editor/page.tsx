@@ -128,7 +128,7 @@ export default function EditorPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="editor">
-      <div style={{
+      <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr",
         gap: 24,
@@ -144,6 +144,36 @@ export default function EditorPage() {
               onClick: () => switchChapter(i),
             }))}
           />
+
+          {/* Manuscript progress */}
+          {(() => {
+            const totalWords = chapters.reduce((sum, ch) => sum + (ch.latest_content?.word_count || 0), 0);
+            const chaptersWithContent = chapters.filter(ch => ch.latest_content && ch.latest_content.word_count > 0).length;
+            return (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <div style={{ fontSize: 11, color: "#a0978a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
+                  Manuscript
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "var(--font-manrope), sans-serif", color: "#191816", lineHeight: 1 }}>
+                  {totalWords.toLocaleString()}
+                </div>
+                <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                  words across {chaptersWithContent}/{chapters.length} chapters
+                </div>
+                {/* Progress bar */}
+                <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    borderRadius: 2,
+                    background: chaptersWithContent === chapters.length ? "#059669" : "#E05D3A",
+                    width: `${chapters.length > 0 ? (chaptersWithContent / chapters.length) * 100 : 0}%`,
+                    transition: "width 0.3s ease",
+                  }} />
+                </div>
+              </div>
+            );
+          })()}
+
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             <Link
               href={`/project/${projectId}/export`}
@@ -206,6 +236,7 @@ export default function EditorPage() {
 
           {/* Textarea */}
           <textarea
+            className="ds-editor-textarea"
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Generated chapter content will appear here. Go to the Generate page to create content first."

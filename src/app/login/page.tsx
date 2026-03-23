@@ -130,6 +130,16 @@ function LoginContent() {
         }}>
           10 free credits to start. No credit card required.
         </p>
+        <p style={{
+          fontSize: 11,
+          color: "#b5ad9e",
+          textAlign: "center",
+          marginTop: 8,
+          fontStyle: "italic",
+          fontFamily: "var(--font-lora), serif",
+        }}>
+          Used by professional speakers and thought leaders worldwide
+        </p>
       </div>
     </div>
   );

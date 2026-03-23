@@ -12,6 +12,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import JobProgress from "@/components/ui/JobProgress";
 import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
+import CelebrationToast from "@/components/ui/CelebrationToast";
 
 export default function GeneratePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,6 +27,7 @@ export default function GeneratePage() {
   const forewordJob = useJob();
   const [enriching, setEnriching] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Are all chapters generated?
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
@@ -101,6 +103,7 @@ export default function GeneratePage() {
           const chs = data.chapters || [];
           setChapters(chs);
         });
+      setShowCelebration(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generateAllJob.status]);
@@ -169,7 +172,7 @@ export default function GeneratePage() {
 
   return (
     <PageShell projectId={projectId} currentStep="generate">
-      <div style={{
+      <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr",
         gap: 24,
@@ -467,6 +470,11 @@ export default function GeneratePage() {
           </div>
         )}
       </div>
+      <CelebrationToast
+        show={showCelebration}
+        message="Your manuscript is ready — time to edit and refine."
+        onDone={() => setShowCelebration(false)}
+      />
     </PageShell>
   );
 }

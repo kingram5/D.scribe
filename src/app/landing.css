@@ -236,3 +236,102 @@
 .feature-card:hover {
   background: rgba(253, 252, 249, 0.1);
 }
+
+/* ========== Landing Mobile ========== */
+
+@media (max-width: 768px) {
+  .glass-nav > div {
+    padding: 0 16px !important;
+    height: 64px !important;
+  }
+
+  .glass-nav .hidden-mobile {
+    display: none !important;
+  }
+
+  /* Hero section */
+  .landing-root main > section:first-child {
+    padding-top: 72px !important;
+  }
+
+  .landing-root main > section:first-child > div:last-child {
+    padding: 0 16px !important;
+  }
+
+  #murmur-stage {
+    height: 180px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .murmur-svg {
+    max-height: 25vh !important;
+  }
+
+  /* Circular text rings section */
+  .circular-text {
+    width: 220px !important;
+    height: 220px !important;
+  }
+
+  .circular-text span {
+    font-size: 10px !important;
+    transform-origin: 0 110px !important;
+  }
+
+  /* Feature cards dark section */
+  .feature-card {
+    padding: 24px !important;
+  }
+
+  .feature-card > div:first-child {
+    font-size: 40px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* CTA buttons */
+  .cta-primary, .cta-secondary {
+    padding: 14px 24px !important;
+    font-size: 14px !important;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Sections padding */
+  .landing-root section {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .landing-root section > div {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Listening section — stack vertically */
+  .landing-root section:nth-of-type(3) > div {
+    flex-direction: column !important;
+    gap: 32px !important;
+  }
+
+  .landing-root section:nth-of-type(3) > div > div:last-child {
+    min-height: 320px !important;
+  }
+
+  /* Footer */
+  .landing-root footer > div {
+    flex-direction: column !important;
+    text-align: center;
+    gap: 12px !important;
+    padding: 0 16px !important;
+  }
+
+  /* Wave decoration — hide on mobile */
+  .wave-container {
+    display: none !important;
+  }
+
+  /* Pane backgrounds — fewer on mobile */
+  .pane:nth-child(n+4) {
+    display: none;
+  }
+}

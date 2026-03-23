@@ -100,7 +100,7 @@ export default function ProjectPage() {
 
   return (
     <PageShell>
-      <div style={{
+      <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr 320px",
         gap: 32,
@@ -183,6 +183,34 @@ export default function ProjectPage() {
               accentColor="#a0978a"
             />
           </div>
+
+          {/* Pipeline completion */}
+          {(() => {
+            const completedSteps = stepStatuses.filter(s => s === "complete").length;
+            const totalSteps = stepStatuses.length;
+            const pct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+            return (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: "#a0978a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                    Progress
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: pct === 100 ? "#059669" : "#191816" }}>
+                    {pct}%
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    borderRadius: 3,
+                    background: pct === 100 ? "#059669" : "#E05D3A",
+                    width: `${pct}%`,
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+              </div>
+            );
+          })()}
         </GlassCard>
       </div>
     </PageShell>

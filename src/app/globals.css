@@ -280,6 +280,81 @@ input[type=range] {
   .nodum-float-1, .nodum-float-2, .nodum-float-3 { animation: none; }
 }
 
+/* ========== Mobile Responsive ========== */
+
+@media (max-width: 768px) {
+  .nodum-float-1, .nodum-float-2, .nodum-float-3 { animation: none; }
+
+  .glass-panel, .glass-content {
+    border-radius: var(--radius-md);
+  }
+
+  .nodum-btn, .nodum-btn-ghost {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Utility: hide on mobile, show on desktop */
+.hidden-mobile { display: flex; }
+@media (max-width: 768px) {
+  .hidden-mobile { display: none !important; }
+}
+
+/* Utility: show only on mobile */
+.show-mobile { display: none; }
+@media (max-width: 768px) {
+  .show-mobile { display: flex !important; }
+}
+
+/* Dashboard: stack 3-col grid on mobile */
+@media (max-width: 768px) {
+  .ds-dashboard-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px 24px !important;
+    gap: 16px !important;
+  }
+
+  .ds-hero-header {
+    padding: 24px 16px 24px !important;
+  }
+
+  .ds-hero-header h1 {
+    font-size: 32px !important;
+  }
+
+  /* Pipeline pages: 2-col sidebar layouts → stacked */
+  .ds-pipeline-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px 24px !important;
+    gap: 16px !important;
+  }
+
+  /* Upload page: stack panels */
+  .ds-upload-split {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .ds-upload-left, .ds-upload-right {
+    width: 100% !important;
+    min-height: 300px !important;
+  }
+
+  /* Editor textarea: reduce padding on mobile */
+  .ds-editor-textarea {
+    padding: 24px 16px !important;
+    max-width: 100% !important;
+    min-height: 400px !important;
+  }
+
+  /* PageShell step bar: tighter padding on mobile */
+  nav[aria-label="Pipeline steps"] {
+    padding: 0 16px 16px !important;
+  }
+}
+
 /* Content panel — warmer, grounded (for primary content surfaces) */
 .glass-content {
   position: relative;

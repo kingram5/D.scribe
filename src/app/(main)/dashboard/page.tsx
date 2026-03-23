@@ -39,7 +39,7 @@ export default function Dashboard() {
     <PageShell>
 
       {/* Page hero header */}
-      <div style={{ padding: "32px 40px 40px", maxWidth: 640 }}>
+      <div style={{ padding: "32px 40px 40px", maxWidth: 640 }} className="ds-hero-header">
         <div style={{
           fontFamily: "var(--font-manrope), sans-serif",
           fontSize: 11,
@@ -67,7 +67,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div style={{
+      <div className="ds-dashboard-grid" style={{
         display: "grid",
         gridTemplateColumns: "280px 1fr 360px",
         gap: 32,
@@ -111,9 +111,11 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {[
-                      { num: "1", title: "Upload or paste a link", desc: "Drop in an audio file or a YouTube link. We'll transcribe it automatically." },
-                      { num: "2", title: "Review the analysis", desc: "AI extracts key points, maps your ideas, and captures your speaking voice." },
-                      { num: "3", title: "Generate your book", desc: "Chapter by chapter — ghostwritten in your voice, ready to edit and export." },
+                      { num: "1", title: "Speak", desc: "Record live, upload an audio file, or paste a YouTube link." },
+                      { num: "2", title: "Transcribe", desc: "AI converts your words to text with speaker detection." },
+                      { num: "3", title: "Analyze", desc: "Key points extracted, voice profile built, chapter outline created." },
+                      { num: "4", title: "Edit", desc: "Refine your manuscript chapter by chapter in the editor." },
+                      { num: "5", title: "Export", desc: "Download your finished book as PDF or DOCX." },
                     ].map((step) => (
                       <div key={step.num} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                         <div style={{
@@ -208,31 +210,73 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right panel */}
+        {/* Right panel — stats for 2+ projects, coach card for new users */}
         <GlassCard className="nodum-float-2" style={{ padding: 24, alignSelf: "start" }}>
-          <PanelTitle>Workspace</PanelTitle>
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-            <DataPill
-              label="Total Projects"
-              metric={String(projects.length)}
-              accentColor="#191816"
-            />
-            <DataPill
-              label="In Progress"
-              metric={String(inProgressCount)}
-              accentColor="#E05D3A"
-            />
-            <DataPill
-              label="Completed"
-              metric={String(completeCount)}
-              accentColor="#7c6f5b"
-            />
-            <DataPill
-              label="Drafts"
-              metric={String(draftCount)}
-              accentColor="#a0978a"
-            />
-          </div>
+          {projects.length >= 2 ? (
+            <>
+              <PanelTitle>Workspace</PanelTitle>
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <DataPill
+                  label="Total Projects"
+                  metric={String(projects.length)}
+                  accentColor="#191816"
+                />
+                <DataPill
+                  label="In Progress"
+                  metric={String(inProgressCount)}
+                  accentColor="#E05D3A"
+                />
+                <DataPill
+                  label="Completed"
+                  metric={String(completeCount)}
+                  accentColor="#7c6f5b"
+                />
+                <DataPill
+                  label="Drafts"
+                  metric={String(draftCount)}
+                  accentColor="#a0978a"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <PanelTitle>Next Step</PanelTitle>
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 16px",
+                  background: "rgba(224,93,58,0.06)",
+                  borderRadius: 12,
+                  border: "1px solid rgba(224,93,58,0.12)",
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: "#E05D3A", color: "white",
+                    fontSize: 14, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    1
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
+                      {projects.length === 0 ? "Create your first project" : "Upload audio to your project"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                      {projects.length === 0
+                        ? "Start with a sermon, keynote, or podcast episode"
+                        : "Record, upload a file, or paste a YouTube link"}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "#a0978a", lineHeight: 1.5 }}>
+                  Most users go from audio to first chapter in under 10 minutes.
+                </div>
+              </div>
+            </>
+          )}
         </GlassCard>
       </div>
     </PageShell>

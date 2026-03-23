@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { KeyPoint, MindMapNode, MindMapEdge, VoiceProfile, Chapter } from "@/types";
+import { KeyPoint, MindMapNode, MindMapEdge, VoiceProfile, Chapter, Audience } from "@/types";
 import {
   ReactFlow,
   Background,
@@ -50,7 +50,17 @@ export default function AnalysisPage() {
   const [tab, setTab] = useState<"outline" | "voice" | "map">("outline");
   const [numChapters, setNumChapters] = useState(5);
   const [targetWords, setTargetWords] = useState(3000);
+  const [audience, setAudience] = useState<Audience>("General");
   const analyzeJob = useJob();
+
+  const AUDIENCES: Audience[] = [
+    "General",
+    "Academic",
+    "Faith Community",
+    "Business/Leadership",
+    "Self-Help",
+    "Young Adult",
+  ];
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -63,12 +73,20 @@ export default function AnalysisPage() {
           mind_map_nodes: project.mind_map_nodes || [],
           mind_map_edges: project.mind_map_edges || [],
         });
+        if (project.audience) setAudience(project.audience);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [projectId]);
 
   async function runAnalysis() {
+    // Save audience to project before analyzing
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audience }),
+    }).catch(() => {});
+
     await analyzeJob.start({
       type: "analyze",
       project_id: projectId,
@@ -202,10 +220,40 @@ export default function AnalysisPage() {
               Analysis
             </h1>
             <p style={{ fontSize: 14, color: "#7a7369", marginBottom: 32, lineHeight: 1.6 }}>
-              AI will extract key points, build a voice profile, and create your chapter outline.
+              AI will extract key points, build a voice profile, and create your chapter outline. Takes 2-5 minutes depending on transcript length.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+            {/* Target Audience */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
+                Who is this book for?
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {AUDIENCES.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setAudience(a)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-pill, 20px)",
+                      border: "1px solid",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                      background: audience === a ? "#E05D3A" : "transparent",
+                      color: audience === a ? "white" : "#191816",
+                      borderColor: audience === a ? "#E05D3A" : "rgba(25,24,22,0.2)",
+                    }}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 8 }}>
               <div>
                 <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
                   Number of Chapters
@@ -261,6 +309,15 @@ export default function AnalysisPage() {
               </div>
             </div>
 
+            {/* Word count context */}
+            <p style={{ fontSize: 12, color: "#a0978a", marginBottom: 24, textAlign: "center" }}>
+              ~{(numChapters * targetWords).toLocaleString()} words total
+              {numChapters * targetWords < 20000 && " (pamphlet/short guide)"}
+              {numChapters * targetWords >= 20000 && numChapters * targetWords < 50000 && " (short book)"}
+              {numChapters * targetWords >= 50000 && numChapters * targetWords < 80000 && " (standard book)"}
+              {numChapters * targetWords >= 80000 && " (long book)"}
+            </p>
+
             {analyzeJob.isRunning && (
               <div style={{ marginBottom: 16 }}>
                 <JobProgress
@@ -287,8 +344,24 @@ export default function AnalysisPage() {
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzeJob.isRunning ? "Analyzing..." : "Analyze"}
+              {analyzeJob.isRunning ? "Analyzing..." : "Analyze (1 credit)"}
             </button>
+
+            {/* What happens next */}
+            <div style={{
+              marginTop: 20,
+              padding: "14px 16px",
+              background: "rgba(0,0,0,0.02)",
+              borderRadius: 10,
+              border: "1px solid rgba(0,0,0,0.04)",
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#7a7369", marginBottom: 6 }}>
+                What happens next?
+              </p>
+              <p style={{ fontSize: 12, color: "#a0978a", lineHeight: 1.5 }}>
+                AI reads your transcript, identifies key themes and arguments, captures your speaking voice, and generates a chapter-by-chapter outline. You&apos;ll be able to rearrange chapters and refine before generating.
+              </p>
+            </div>
           </GlassCard>
         </div>
       </PageShell>

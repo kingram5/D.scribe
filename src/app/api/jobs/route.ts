@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { createJob, updateJob, type JobType } from "@/lib/jobs";
+
+// Vercel Hobby plan: max 60s for function, but after() has a 10s limit.
+// Use maxDuration to extend the function timeout — on Hobby this caps at 60s.
+// The real fix is Vercel Pro or an external job queue.
+export const maxDuration = 60;
 import { checkCredits, deductCredit } from "@/lib/credits";
 import { createServerClient } from "@/lib/supabase";
 import { runAnalyzeJob } from "@/lib/workers/analyze";
@@ -106,7 +111,6 @@ export async function POST(req: NextRequest) {
       detached: true,
     });
     child.unref();
-    // Update job status when child exits
     child.on("close", async (code) => {
       await updateJob(job.id, {
         status: code === 0 ? "completed" : "failed",
@@ -114,6 +118,9 @@ export async function POST(req: NextRequest) {
       });
     });
   } else {
+    // Run in after() — maxDuration=60 extends the execution window.
+    // If this still times out on Hobby, the fallback is Vercel Pro or
+    // an external queue (Inngest, QStash, etc.)
     after(runWorker);
   }
 

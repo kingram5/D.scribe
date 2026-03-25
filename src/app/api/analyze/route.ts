@@ -11,6 +11,8 @@ import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+export const maxDuration = 60;
+
 // POST /api/analyze — extract key points, voice profile, and mind map
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();

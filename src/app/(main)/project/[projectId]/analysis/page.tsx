@@ -87,12 +87,55 @@ export default function AnalysisPage() {
       body: JSON.stringify({ audience }),
     }).catch(() => {});
 
-    await analyzeJob.start({
+    // Get transcript ID for direct analyze call
+    const projRes = await fetch(`/api/project/${projectId}`);
+    const projData = await projRes.json();
+    const transcriptId = projData.transcripts?.[0]?.id;
+
+    if (!transcriptId) {
+      analyzeJob.reset();
+      return;
+    }
+
+    // Call /api/analyze directly (bypasses job queue timeout issues)
+    analyzeJob.start({
       type: "analyze",
       project_id: projectId,
-      num_chapters: numChapters,
-      target_word_count: targetWords,
     });
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectId,
+          transcript_id: transcriptId,
+          num_chapters: numChapters,
+          target_word_count: targetWords,
+        }),
+      });
+
+      if (res.ok) {
+        // Trigger data refresh
+        const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+        setData({
+          key_points: project.key_points || [],
+          chapters: project.chapters || [],
+          voice_profile: project.voice_profile,
+          mind_map_nodes: project.mind_map_nodes || [],
+          mind_map_edges: project.mind_map_edges || [],
+        });
+        setTab("outline");
+        analyzeJob.reset();
+      } else {
+        const err = await res.json();
+        console.error("Analysis failed:", err);
+        analyzeJob.reset();
+      }
+    } catch (err) {
+      console.error("Analysis error:", err);
+      analyzeJob.reset();
+    }
   }
 
   // Refresh data after analysis completes

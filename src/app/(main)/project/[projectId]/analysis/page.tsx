@@ -52,6 +52,7 @@ export default function AnalysisPage() {
   const [targetWords, setTargetWords] = useState(3000);
   const [audience, setAudience] = useState<Audience>("General");
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeJob = useJob();
 
@@ -82,6 +83,7 @@ export default function AnalysisPage() {
   }, [projectId]);
 
   async function runAnalysis() {
+    setAnalyzing(true);
     setAnalyzeError(null);
 
     // Save audience to project before analyzing
@@ -102,17 +104,45 @@ export default function AnalysisPage() {
 
     if (!transcriptId) {
       setAnalyzeError("No transcript with content found. Please upload and transcribe audio first.");
+      setAnalyzing(false);
       return;
     }
 
-    // Use the job queue with after() — pass transcript_id so the worker can find it
-    await analyzeJob.start({
-      type: "analyze",
-      project_id: projectId,
-      transcript_id: transcriptId,
-      num_chapters: numChapters,
-      target_word_count: targetWords,
-    });
+    const body = { project_id: projectId, transcript_id: transcriptId };
+    const headers = { "Content-Type": "application/json" };
+
+    try {
+      // Step 1: Key points
+      setAnalyzeStep("Extracting key points...");
+      const kpRes = await fetch("/api/analyze/key-points", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!kpRes.ok) { const e = await kpRes.json(); throw new Error(e.error || "Key points failed"); }
+
+      // Step 2: Voice profile
+      setAnalyzeStep("Building voice profile...");
+      const vpRes = await fetch("/api/analyze/voice-profile", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!vpRes.ok) { const e = await vpRes.json(); throw new Error(e.error || "Voice profile failed"); }
+
+      // Step 3: Mind map
+      setAnalyzeStep("Creating mind map...");
+      const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
+      if (!mmRes.ok) { const e = await mmRes.json(); throw new Error(e.error || "Mind map failed"); }
+
+      // Refresh data
+      const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+      setData({
+        key_points: project.key_points || [],
+        chapters: project.chapters || [],
+        voice_profile: project.voice_profile,
+        mind_map_nodes: project.mind_map_nodes || [],
+        mind_map_edges: project.mind_map_edges || [],
+      });
+      setTab("outline");
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
+    }
+
+    setAnalyzing(false);
+    setAnalyzeStep(null);
   }
 
   // Refresh data after analysis completes
@@ -370,33 +400,36 @@ export default function AnalysisPage() {
               </div>
             )}
 
-            {analyzeJob.isRunning && (
-              <div style={{ marginBottom: 16 }}>
-                <JobProgress
-                  progress={analyzeJob.progress}
-                  error={analyzeJob.error}
-                  status={analyzeJob.status}
-                />
-              </div>
-            )}
-            {analyzeJob.status === "failed" && (
-              <div style={{ marginBottom: 16 }}>
-                <JobProgress
-                  progress={null}
-                  error={analyzeJob.error}
-                  status="failed"
-                  onRetry={runAnalysis}
-                />
+            {analyzing && analyzeStep && (
+              <div style={{
+                marginBottom: 16,
+                padding: "12px 16px",
+                background: "rgba(224,93,58,0.06)",
+                border: "1px solid rgba(224,93,58,0.12)",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#191816",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}>
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%",
+                  border: "2px solid #E05D3A",
+                  borderTopColor: "transparent",
+                  animation: "spin 0.8s linear infinite",
+                }} />
+                {analyzeStep}
               </div>
             )}
 
             <button
               onClick={runAnalysis}
-              disabled={analyzeJob.isRunning}
+              disabled={analyzing}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzeJob.isRunning ? "Analyzing..." : "Analyze (1 credit)"}
+              {analyzing ? "Analyzing..." : "Analyze (1 credit)"}
             </button>
 
             {/* What happens next */}

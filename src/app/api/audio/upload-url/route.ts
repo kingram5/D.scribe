@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Validate MIME type
-  if (!ALLOWED_MIME_TYPES.has(content_type)) {
+  // Validate MIME type (strip codec params like ";codecs=opus" before checking)
+  const baseMime = content_type.split(";")[0].trim();
+  if (!ALLOWED_MIME_TYPES.has(baseMime)) {
     return NextResponse.json(
       { error: `Unsupported file type: ${content_type}` },
       { status: 400 }

@@ -51,6 +51,8 @@ export default function AnalysisPage() {
   const [numChapters, setNumChapters] = useState(5);
   const [targetWords, setTargetWords] = useState(3000);
   const [audience, setAudience] = useState<Audience>("General");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeJob = useJob();
 
   const AUDIENCES: Audience[] = [
@@ -80,6 +82,9 @@ export default function AnalysisPage() {
   }, [projectId]);
 
   async function runAnalysis() {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+
     // Save audience to project before analyzing
     await fetch(`/api/project/${projectId}`, {
       method: "PATCH",
@@ -97,15 +102,10 @@ export default function AnalysisPage() {
     const transcriptId = validTranscript?.id;
 
     if (!transcriptId) {
-      analyzeJob.reset();
+      setAnalyzeError("No transcript with content found. Please upload and transcribe audio first.");
+      setAnalyzing(false);
       return;
     }
-
-    // Call /api/analyze directly (bypasses job queue timeout issues)
-    analyzeJob.start({
-      type: "analyze",
-      project_id: projectId,
-    });
 
     try {
       const res = await fetch("/api/analyze", {
@@ -120,7 +120,6 @@ export default function AnalysisPage() {
       });
 
       if (res.ok) {
-        // Trigger data refresh
         const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
         setData({
           key_points: project.key_points || [],
@@ -130,16 +129,15 @@ export default function AnalysisPage() {
           mind_map_edges: project.mind_map_edges || [],
         });
         setTab("outline");
-        analyzeJob.reset();
       } else {
         const err = await res.json();
-        console.error("Analysis failed:", err);
-        analyzeJob.reset();
+        setAnalyzeError(err.error || "Analysis failed");
       }
     } catch (err) {
-      console.error("Analysis error:", err);
-      analyzeJob.reset();
+      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
     }
+
+    setAnalyzing(false);
   }
 
   // Refresh data after analysis completes
@@ -365,33 +363,45 @@ export default function AnalysisPage() {
               {numChapters * targetWords >= 80000 && " (long book)"}
             </p>
 
-            {analyzeJob.isRunning && (
-              <div style={{ marginBottom: 16 }}>
-                <JobProgress
-                  progress={analyzeJob.progress}
-                  error={analyzeJob.error}
-                  status={analyzeJob.status}
-                />
-              </div>
-            )}
-            {analyzeJob.status === "failed" && (
-              <div style={{ marginBottom: 16 }}>
-                <JobProgress
-                  progress={null}
-                  error={analyzeJob.error}
-                  status="failed"
-                  onRetry={runAnalysis}
-                />
+            {analyzeError && (
+              <div style={{
+                marginBottom: 16,
+                padding: "12px 16px",
+                background: "rgba(220,38,38,0.06)",
+                border: "1px solid rgba(220,38,38,0.15)",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#dc2626",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}>
+                <span>{analyzeError}</span>
+                <button
+                  onClick={runAnalysis}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#dc2626",
+                    background: "none",
+                    border: "1px solid rgba(220,38,38,0.3)",
+                    borderRadius: 6,
+                    padding: "4px 12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Retry
+                </button>
               </div>
             )}
 
             <button
               onClick={runAnalysis}
-              disabled={analyzeJob.isRunning}
+              disabled={analyzing}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzeJob.isRunning ? "Analyzing..." : "Analyze (1 credit)"}
+              {analyzing ? "Analyzing... (this takes 30-60 seconds)" : "Analyze (1 credit)"}
             </button>
 
             {/* What happens next */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
 
@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
     .single();
   if (!projectOwner) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  // Get key points for this project
   const { data: keyPoints } = await supabase
     .from("key_points")
     .select("title, summary, tags")
@@ -36,14 +35,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ mind_map: null, reason: "No key points to map" });
   }
 
-  const raw = await askClaude(
+  const raw = await askClaudeLite(
     MIND_MAP_SYSTEM,
     mindMapPrompt(keyPoints),
     { model: "fast", maxTokens: 4096 }
   );
 
   try {
-    const { nodes, edges } = JSON.parse(cleanJson(raw));
+    const { nodes, edges } = JSON.parse(cleanJsonLite(raw));
 
     if (nodes?.length) {
       await supabase.from("mind_map_nodes").insert(

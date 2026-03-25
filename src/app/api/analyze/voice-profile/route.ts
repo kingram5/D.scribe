@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { cleanJson } from "@/lib/claude";
+import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
 import { VOICE_PROFILE_SYSTEM, voiceProfilePrompt } from "@/lib/prompts/voice-profile";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 60;
 
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest) {
     .single();
   if (!projectOwner) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  // Only select full_text to minimize memory
   const { data: transcript } = await supabase
     .from("transcripts")
     .select("id, full_text")
@@ -44,18 +42,14 @@ export async function POST(req: NextRequest) {
     words.slice(-sampleSize).join(" "),
   ];
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 2048,
-    temperature: 0.6,
-    system: VOICE_PROFILE_SYSTEM,
-    messages: [{ role: "user", content: voiceProfilePrompt(samples, projectOwner.voice_profile) }],
-  });
-  const raw = response.content[0].type === "text" ? response.content[0].text : "";
+  const raw = await askClaudeLite(
+    VOICE_PROFILE_SYSTEM,
+    voiceProfilePrompt(samples, projectOwner.voice_profile),
+    { model: "fast", maxTokens: 2048 }
+  );
 
   try {
-    const profile = JSON.parse(cleanJson(raw));
+    const profile = JSON.parse(cleanJsonLite(raw));
     await supabase.from("projects").update({ voice_profile: profile }).eq("id", project_id);
     return NextResponse.json({ voice_profile: profile });
   } catch {

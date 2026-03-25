@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { transcribeAudio } from "@/lib/deepgram";
 import { requireAuth } from "@/lib/auth";
+import { getDownloadUrl } from "@/lib/r2";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
@@ -45,16 +46,13 @@ export async function POST(req: NextRequest) {
     .eq("id", audio_upload_id);
 
   try {
-    // Download from storage
-    const { data: fileData, error: dlError } = await supabase.storage
-      .from("audio")
-      .download(upload.file_path);
-
-    if (dlError || !fileData) {
-      throw new Error("Failed to download audio file");
+    // Download from R2
+    const downloadUrl = await getDownloadUrl(upload.file_path);
+    const r2Res = await fetch(downloadUrl);
+    if (!r2Res.ok) {
+      throw new Error(`Failed to download audio file from R2: ${r2Res.status}`);
     }
-
-    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const buffer = Buffer.from(await r2Res.arrayBuffer());
     const mimeType = upload.file_name.endsWith(".mp3")
       ? "audio/mpeg"
       : upload.file_name.endsWith(".wav")

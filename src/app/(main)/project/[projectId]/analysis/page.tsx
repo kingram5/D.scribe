@@ -87,10 +87,14 @@ export default function AnalysisPage() {
       body: JSON.stringify({ audience }),
     }).catch(() => {});
 
-    // Get transcript ID for direct analyze call
+    // Get transcript ID — use the most recent transcript with actual content
     const projRes = await fetch(`/api/project/${projectId}`);
     const projData = await projRes.json();
-    const transcriptId = projData.transcripts?.[0]?.id;
+    const transcripts = projData.transcripts || [];
+    const validTranscript = [...transcripts]
+      .reverse()
+      .find((t: { full_text?: string; word_count?: number }) => t.full_text && t.word_count > 0);
+    const transcriptId = validTranscript?.id;
 
     if (!transcriptId) {
       analyzeJob.reset();

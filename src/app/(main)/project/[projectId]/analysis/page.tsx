@@ -82,7 +82,6 @@ export default function AnalysisPage() {
   }, [projectId]);
 
   async function runAnalysis() {
-    setAnalyzing(true);
     setAnalyzeError(null);
 
     // Save audience to project before analyzing
@@ -103,41 +102,17 @@ export default function AnalysisPage() {
 
     if (!transcriptId) {
       setAnalyzeError("No transcript with content found. Please upload and transcribe audio first.");
-      setAnalyzing(false);
       return;
     }
 
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          transcript_id: transcriptId,
-          num_chapters: numChapters,
-          target_word_count: targetWords,
-        }),
-      });
-
-      if (res.ok) {
-        const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
-        setData({
-          key_points: project.key_points || [],
-          chapters: project.chapters || [],
-          voice_profile: project.voice_profile,
-          mind_map_nodes: project.mind_map_nodes || [],
-          mind_map_edges: project.mind_map_edges || [],
-        });
-        setTab("outline");
-      } else {
-        const err = await res.json();
-        setAnalyzeError(err.error || "Analysis failed");
-      }
-    } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
-    }
-
-    setAnalyzing(false);
+    // Use the job queue with after() — pass transcript_id so the worker can find it
+    await analyzeJob.start({
+      type: "analyze",
+      project_id: projectId,
+      transcript_id: transcriptId,
+      num_chapters: numChapters,
+      target_word_count: targetWords,
+    });
   }
 
   // Refresh data after analysis completes
@@ -395,13 +370,33 @@ export default function AnalysisPage() {
               </div>
             )}
 
+            {analyzeJob.isRunning && (
+              <div style={{ marginBottom: 16 }}>
+                <JobProgress
+                  progress={analyzeJob.progress}
+                  error={analyzeJob.error}
+                  status={analyzeJob.status}
+                />
+              </div>
+            )}
+            {analyzeJob.status === "failed" && (
+              <div style={{ marginBottom: 16 }}>
+                <JobProgress
+                  progress={null}
+                  error={analyzeJob.error}
+                  status="failed"
+                  onRetry={runAnalysis}
+                />
+              </div>
+            )}
+
             <button
               onClick={runAnalysis}
-              disabled={analyzing}
+              disabled={analyzeJob.isRunning}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzing ? "Analyzing... (this takes 30-60 seconds)" : "Analyze (1 credit)"}
+              {analyzeJob.isRunning ? "Analyzing..." : "Analyze (1 credit)"}
             </button>
 
             {/* What happens next */}

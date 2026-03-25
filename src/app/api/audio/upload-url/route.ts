@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   try {
     const uploadUrl = await getUploadUrl(r2Key, content_type, file_size);
 
-    // Create DB record with "pending" status (updated to "uploaded" after client confirms)
+    // Create DB record — use "uploaded" status to satisfy check constraint
     const { data, error } = await supabase
       .from("audio_uploads")
       .insert({
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         file_path: r2Key,
         file_name,
         file_size_bytes: file_size,
-        status: "pending",
+        status: "uploaded",
       })
       .select()
       .single();

@@ -162,14 +162,7 @@ export function useUploadEngine(projectId: string) {
           continue;
         }
 
-        // Step 3: Confirm upload
-        await fetch("/api/audio/confirm-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ upload_id }),
-        });
-
-        // Step 4: Trigger transcription
+        // Step 3: Trigger transcription
         setProgress((p) => ({ ...p, [file.name]: "transcribing" }));
 
         const txRes = await fetch("/api/transcribe", {

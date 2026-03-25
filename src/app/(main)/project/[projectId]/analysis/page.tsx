@@ -93,7 +93,7 @@ export default function AnalysisPage() {
     const transcripts = projData.transcripts || [];
     const validTranscript = [...transcripts]
       .reverse()
-      .find((t: { full_text?: string; word_count?: number }) => t.full_text && t.word_count > 0);
+      .find((t: { full_text?: string; word_count?: number }) => t.full_text && (t.word_count ?? 0) > 0);
     const transcriptId = validTranscript?.id;
 
     if (!transcriptId) {

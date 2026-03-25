@@ -112,20 +112,45 @@ export default function AnalysisPage() {
     const headers = { "Content-Type": "application/json" };
 
     try {
-      // Step 1: Key points
-      setAnalyzeStep("Extracting key points...");
-      const kpRes = await fetch("/api/analyze/key-points", { method: "POST", headers, body: JSON.stringify(body) });
-      if (!kpRes.ok) { const e = await kpRes.json(); throw new Error(e.error || "Key points failed"); }
+      // Step 1: Key points — one chunk at a time
+      let chunkIndex = 0;
+      let totalChunks = 1;
+      let done = false;
+      const allTitles: string[] = [];
+
+      while (!done) {
+        setAnalyzeStep(`Extracting key points (${chunkIndex + 1}/${totalChunks})...`);
+        const kpRes = await fetch("/api/analyze/key-points", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            ...body,
+            chunk_index: chunkIndex,
+            previous_titles: allTitles,
+          }),
+        });
+        if (!kpRes.ok) {
+          const e = await kpRes.json().catch(() => ({ error: "Key points failed" }));
+          throw new Error(e.error || "Key points failed");
+        }
+        const kpData = await kpRes.json();
+        totalChunks = kpData.total_chunks;
+        done = kpData.done;
+        if (kpData.key_points) {
+          allTitles.push(...kpData.key_points.map((kp: { title: string }) => kp.title));
+        }
+        chunkIndex++;
+      }
 
       // Step 2: Voice profile
       setAnalyzeStep("Building voice profile...");
       const vpRes = await fetch("/api/analyze/voice-profile", { method: "POST", headers, body: JSON.stringify(body) });
-      if (!vpRes.ok) { const e = await vpRes.json(); throw new Error(e.error || "Voice profile failed"); }
+      if (!vpRes.ok) { const e = await vpRes.json().catch(() => ({ error: "Voice profile failed" })); throw new Error(e.error || "Voice profile failed"); }
 
       // Step 3: Mind map
       setAnalyzeStep("Creating mind map...");
       const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
-      if (!mmRes.ok) { const e = await mmRes.json(); throw new Error(e.error || "Mind map failed"); }
+      if (!mmRes.ok) { const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed"); }
 
       // Refresh data
       const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());

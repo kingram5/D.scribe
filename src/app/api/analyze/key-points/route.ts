@@ -7,14 +7,15 @@ import { requireAuth } from "@/lib/auth";
 
 export const maxDuration = 60;
 
-// POST /api/analyze/key-points — extract key points from transcript
+// POST /api/analyze/key-points — extract key points from ONE chunk
+// Client calls this once per chunk, passing chunk_index
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const { project_id, transcript_id } = await req.json();
-  if (!project_id || !transcript_id) {
-    return NextResponse.json({ error: "project_id and transcript_id required" }, { status: 400 });
+  const { project_id, transcript_id, chunk_index, previous_titles } = await req.json();
+  if (!project_id || !transcript_id || chunk_index === undefined) {
+    return NextResponse.json({ error: "project_id, transcript_id, and chunk_index required" }, { status: 400 });
   }
 
   const supabase = createServerClient();
@@ -36,31 +37,29 @@ export async function POST(req: NextRequest) {
   if (!transcript) return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
 
   const chunks = chunkTranscript(transcript.full_text);
+  const totalChunks = chunks.length;
 
-  const allKeyPoints: {
-    title: string;
-    summary: string;
-    supporting_quotes: string[];
-    tags: string[];
-  }[] = [];
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    const previousTitles = allKeyPoints.map((kp) => kp.title);
-    const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previousTitles);
-
-    const raw = await askClaudeLite(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
-    try {
-      const parsed = JSON.parse(cleanJsonLite(raw));
-      allKeyPoints.push(...parsed);
-    } catch {
-      console.error("Failed to parse key points chunk:", i);
-    }
+  // If chunk_index is out of range, return empty
+  if (chunk_index >= totalChunks) {
+    return NextResponse.json({ key_points: [], total_chunks: totalChunks, done: true });
   }
 
-  if (allKeyPoints.length > 0) {
+  const chunk = chunks[chunk_index];
+  const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previous_titles || []);
+
+  const raw = await askClaudeLite(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+
+  let keyPoints: { title: string; summary: string; supporting_quotes: string[]; tags: string[] }[] = [];
+  try {
+    keyPoints = JSON.parse(cleanJsonLite(raw));
+  } catch {
+    console.error("Failed to parse key points chunk:", chunk_index);
+  }
+
+  // Save this chunk's key points to DB
+  if (keyPoints.length > 0) {
     await supabase.from("key_points").insert(
-      allKeyPoints.map((kp) => ({
+      keyPoints.map((kp) => ({
         project_id,
         transcript_id,
         title: kp.title,
@@ -72,5 +71,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ key_points_count: allKeyPoints.length });
+  return NextResponse.json({
+    key_points: keyPoints,
+    total_chunks: totalChunks,
+    chunk_index,
+    done: chunk_index >= totalChunks - 1,
+  });
 }

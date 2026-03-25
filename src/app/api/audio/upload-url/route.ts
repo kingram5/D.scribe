@@ -14,6 +14,9 @@ const ALLOWED_MIME_TYPES = new Set([
   "audio/x-wav",
   "audio/x-m4a",
   "audio/mp3",
+  "video/webm",
+  "video/mp4",
+  "application/octet-stream",
 ]);
 
 // POST /api/audio/upload-url — get a presigned R2 URL for direct upload

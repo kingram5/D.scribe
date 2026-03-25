@@ -213,7 +213,7 @@ export default function RightPanel({
           <input
             id="file-input-new"
             type="file"
-            accept="audio/*"
+            accept="audio/*,video/webm,video/mp4,.mp3,.wav,.m4a,.mp4,.webm,.ogg"
             multiple
             onChange={handleFileInput}
             style={{ display: "none" }}

@@ -106,7 +106,7 @@ export function useUploadEngine(projectId: string) {
     e.preventDefault();
     setDragging(false);
     const dropped = Array.from(e.dataTransfer.files).filter((f) =>
-      f.type.startsWith("audio/")
+      f.type.startsWith("audio/") || f.type === "video/webm" || f.type === "video/mp4"
     );
     setFiles((prev) => [...prev, ...dropped]);
   }, []);

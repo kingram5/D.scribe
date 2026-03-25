@@ -124,32 +124,66 @@ export function useUploadEngine(projectId: string) {
     setUploading(true);
 
     for (const file of files) {
-      setProgress((p) => ({ ...p, [file.name]: "uploading" }));
+      try {
+        // Step 1: Get presigned R2 URL
+        setProgress((p) => ({ ...p, [file.name]: "preparing" }));
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("project_id", projectId);
+        const urlRes = await fetch("/api/audio/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: projectId,
+            file_name: file.name,
+            file_size: file.size,
+            content_type: file.type,
+          }),
+        });
 
-      const res = await fetch("/api/audio/upload", {
-        method: "POST",
-        body: formData,
-      });
+        if (!urlRes.ok) {
+          const err = await urlRes.json();
+          console.error("Upload URL error:", err);
+          setProgress((p) => ({ ...p, [file.name]: "failed" }));
+          continue;
+        }
 
-      if (res.ok) {
-        const upload = await res.json();
+        const { upload_url, upload_id } = await urlRes.json();
+
+        // Step 2: Upload directly to R2
+        setProgress((p) => ({ ...p, [file.name]: "uploading" }));
+
+        const r2Res = await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!r2Res.ok) {
+          setProgress((p) => ({ ...p, [file.name]: "failed" }));
+          continue;
+        }
+
+        // Step 3: Confirm upload
+        await fetch("/api/audio/confirm-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upload_id }),
+        });
+
+        // Step 4: Trigger transcription
         setProgress((p) => ({ ...p, [file.name]: "transcribing" }));
 
         const txRes = await fetch("/api/transcribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio_upload_id: upload.id }),
+          body: JSON.stringify({ audio_upload_id: upload_id }),
         });
 
         setProgress((p) => ({
           ...p,
           [file.name]: txRes.ok ? "done" : "failed",
         }));
-      } else {
+      } catch (err) {
+        console.error("Upload error:", err);
         setProgress((p) => ({ ...p, [file.name]: "failed" }));
       }
     }

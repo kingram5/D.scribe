@@ -19,18 +19,13 @@ export async function GET() {
 
     // Step 2: Load transcript
     const supabase = createServerClient();
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    if (!projects?.length) return NextResponse.json({ ok: false, error: "No projects" });
+    // Use the sermon project specifically
+    const sermonProjectId = "97553508-9df7-48ff-b55d-4e4a32984083";
 
     const { data: transcript } = await supabase
       .from("transcripts")
       .select("id, full_text")
-      .eq("project_id", projects[0].id)
+      .eq("project_id", sermonProjectId)
       .limit(1)
       .single();
 

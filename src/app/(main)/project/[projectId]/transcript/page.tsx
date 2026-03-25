@@ -224,15 +224,17 @@ export default function TranscriptPage() {
             {merged.length > 0
               ? merged.map((para, i) => (
                   <div key={i} style={{ marginBottom: 20 }}>
-                    <div style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      fontFamily: "var(--font-geist-mono), monospace",
-                      color: SPEAKER_COLORS[i % SPEAKER_COLORS.length],
-                      marginBottom: 6,
-                    }}>
-                      {para.speaker}
-                    </div>
+                    {active.speaker_count > 1 && (
+                      <div style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: "var(--font-geist-mono), monospace",
+                        color: SPEAKER_COLORS[i % SPEAKER_COLORS.length],
+                        marginBottom: 6,
+                      }}>
+                        {para.speaker}
+                      </div>
+                    )}
                     {editingIdx === i ? (
                       <div>
                         <textarea

@@ -4,7 +4,7 @@ import {
   askClaude,
   creativeFreedomToTemp,
   creativeFreedomToInstruction,
-} from "@/lib/claude";
+} from "@/lib/claude-lite";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 import { requireAuth } from "@/lib/auth";

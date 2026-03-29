@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import {

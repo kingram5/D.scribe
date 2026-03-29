@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
 

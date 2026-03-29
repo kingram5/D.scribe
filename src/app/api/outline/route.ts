@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
 

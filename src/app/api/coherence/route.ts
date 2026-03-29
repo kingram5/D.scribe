@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";

@@ -71,3 +71,23 @@ export function cleanJsonLite(raw: string): string {
   }
   return s;
 }
+
+// Aliases for drop-in compatibility with claude.ts imports
+export { askClaudeLite as askClaude };
+export { cleanJsonLite as cleanJson };
+
+// Map creative freedom slider (0-100) to temperature (0.3-0.9)
+export function creativeFreedomToTemp(freedom: number): number {
+  return 0.3 + (freedom / 100) * 0.6;
+}
+
+// Map creative freedom to prompt instruction
+export function creativeFreedomToInstruction(freedom: number): string {
+  if (freedom <= 30) {
+    return "Stay very close to the transcript language and structure. Preserve the speaker's exact phrasing where possible.";
+  } else if (freedom <= 70) {
+    return "Expand and restructure while keeping the core message. Smooth transitions, develop ideas further, but maintain the speaker's voice.";
+  } else {
+    return "Freely interpret, add transitions, expand illustrations, develop new analogies. The transcript is a starting point, not a constraint.";
+  }
+}

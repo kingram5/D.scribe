@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase";
 import { updateJob } from "@/lib/jobs";
-import { askClaude, cleanJson } from "@/lib/claude";
+import { askClaude, cleanJson } from "@/lib/claude-lite";
 
 const BATCH_SIZE = 5;
 

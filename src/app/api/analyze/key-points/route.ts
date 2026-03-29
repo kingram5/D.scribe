@@ -47,7 +47,14 @@ export async function POST(req: NextRequest) {
   const chunk = chunks[chunk_index];
   const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previous_titles || []);
 
-  const raw = await askClaudeLite(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+  let raw: string;
+  try {
+    raw = await askClaudeLite(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+  } catch (apiErr) {
+    const msg = apiErr instanceof Error ? apiErr.message : String(apiErr);
+    console.error("Claude API error for key points:", msg);
+    return NextResponse.json({ error: "Key points extraction failed: " + msg }, { status: 500 });
+  }
 
   let keyPoints: { title: string; summary: string; supporting_quotes: string[]; tags: string[] }[] = [];
   try {

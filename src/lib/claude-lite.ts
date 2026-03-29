@@ -44,11 +44,30 @@ export async function askClaudeLite(
   return block?.type === "text" ? block.text : "";
 }
 
-/** Strip markdown fences from JSON responses */
+/** Strip markdown fences from JSON responses and extract only the JSON portion */
 export function cleanJsonLite(raw: string): string {
   let s = raw.trim();
   if (s.startsWith("```")) {
-    s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```[\s\S]*$/, "");
   }
-  return s.trim();
+  s = s.trim();
+  // Extract just the JSON object/array, ignoring trailing commentary
+  const start = s[0];
+  if (start === "[" || start === "{") {
+    const close = start === "[" ? "]" : "}";
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === "[" || c === "{") depth++;
+      else if (c === "]" || c === "}") depth--;
+      if (depth === 0) return s.slice(0, i + 1);
+    }
+  }
+  return s;
 }

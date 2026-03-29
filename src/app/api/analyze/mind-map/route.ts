@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const { nodes, edges } = JSON.parse(cleanJsonLite(raw));
 
     if (nodes?.length) {
-      await supabase.from("mind_map_nodes").insert(
+      const { error: nodesErr } = await supabase.from("mind_map_nodes").insert(
         nodes.map((n: Record<string, unknown>) => ({
           id: n.id,
           project_id,
@@ -58,10 +58,11 @@ export async function POST(req: NextRequest) {
           key_point_id: null,
         }))
       );
+      if (nodesErr) console.error("mind_map_nodes insert failed:", nodesErr.message, nodesErr.details);
     }
 
     if (edges?.length) {
-      await supabase.from("mind_map_edges").insert(
+      const { error: edgesErr } = await supabase.from("mind_map_edges").insert(
         edges.map((e: Record<string, unknown>) => ({
           project_id,
           source_id: e.source_id,
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
           edge_type: e.edge_type || "related",
         }))
       );
+      if (edgesErr) console.error("mind_map_edges insert failed:", edgesErr.message, edgesErr.details);
     }
 
     await supabase.from("projects").update({ status: "in_progress" }).eq("id", project_id);

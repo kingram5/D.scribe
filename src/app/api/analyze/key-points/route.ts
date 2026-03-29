@@ -51,24 +51,31 @@ export async function POST(req: NextRequest) {
 
   let keyPoints: { title: string; summary: string; supporting_quotes: string[]; tags: string[] }[] = [];
   try {
-    keyPoints = JSON.parse(cleanJsonLite(raw));
-  } catch {
+    const cleaned = cleanJsonLite(raw);
+    keyPoints = JSON.parse(cleaned);
+  } catch (parseErr) {
     console.error("Failed to parse key points chunk:", chunk_index);
+    console.error("Raw response (first 500 chars):", raw.slice(0, 500));
+    console.error("Parse error:", parseErr instanceof Error ? parseErr.message : parseErr);
   }
 
   // Save this chunk's key points to DB
   if (keyPoints.length > 0) {
-    await supabase.from("key_points").insert(
+    const { error: insertError } = await supabase.from("key_points").insert(
       keyPoints.map((kp) => ({
         project_id,
         transcript_id,
         title: kp.title,
         summary: kp.summary,
-        supporting_quotes: kp.supporting_quotes,
-        tags: kp.tags,
+        supporting_quotes: kp.supporting_quotes || [],
+        tags: kp.tags || [],
         relevance_score: 0.8,
       }))
     );
+    if (insertError) {
+      console.error("key_points insert failed:", insertError.message, insertError.details);
+      return NextResponse.json({ error: "Failed to save key points: " + insertError.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({

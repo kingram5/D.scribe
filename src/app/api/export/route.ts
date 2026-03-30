@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     ext = "docx";
   } else {
-    buffer = generatePDF(exportOpts);
+    buffer = await generatePDF(exportOpts);
     contentType = "application/pdf";
     ext = "pdf";
   }

@@ -50,7 +50,9 @@ export function chunkTranscript(
       totalChunks: 0, // filled in below
     });
 
-    start = start + chunkWords.length - overlap;
+    const advance = chunkWords.length - overlap;
+    if (advance <= 0) break; // prevent infinite loop on small trailing chunks
+    start = start + advance;
     if (start >= words.length) break;
   }
 

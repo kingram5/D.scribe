@@ -1,12 +1,3 @@
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  AlignmentType,
-  PageBreak,
-} from "docx";
 import { Chapter, ChapterContent } from "@/types";
 
 interface ExportOptions {
@@ -16,9 +7,18 @@ interface ExportOptions {
 }
 
 export async function generateDOCX(options: ExportOptions): Promise<Buffer> {
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    HeadingLevel,
+    AlignmentType,
+    PageBreak,
+  } = await import("docx");
   const { title, author, chapters } = options;
 
-  const children: Paragraph[] = [];
+  const children: InstanceType<typeof Paragraph>[] = [];
 
   // Title page
   children.push(

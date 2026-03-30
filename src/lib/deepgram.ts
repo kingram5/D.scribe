@@ -1,10 +1,10 @@
-import { DeepgramClient } from "@deepgram/sdk";
 import { TranscriptSegment } from "@/types";
 
-let dgClient: DeepgramClient | null = null;
+let dgClient: any = null;
 
-function getClient(): DeepgramClient {
+async function getClient() {
   if (!dgClient) {
+    const { DeepgramClient } = await import("@deepgram/sdk");
     dgClient = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY! });
   }
   return dgClient;
@@ -22,7 +22,7 @@ export async function transcribeAudio(
   audioBuffer: Buffer,
   mimeType: string
 ): Promise<TranscriptionResult> {
-  const dg = getClient();
+  const dg = await getClient();
 
   const response = await dg.listen.v1.media.transcribeFile(
     { data: new Uint8Array(audioBuffer), contentType: mimeType },

@@ -1,4 +1,3 @@
-import jsPDF from "jspdf";
 import { Chapter, ChapterContent } from "@/types";
 
 interface ExportOptions {
@@ -9,7 +8,8 @@ interface ExportOptions {
   lineHeight?: number;
 }
 
-export function generatePDF(options: ExportOptions): Buffer {
+export async function generatePDF(options: ExportOptions): Promise<Buffer> {
+  const { default: jsPDF } = await import("jspdf");
   const {
     title,
     author,

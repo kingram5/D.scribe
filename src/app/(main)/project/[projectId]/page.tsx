@@ -87,7 +87,7 @@ export default function ProjectPage() {
     analyze: `/project/${projectId}/analysis`,
     outline: `/project/${projectId}/analysis`,
     generate: `/project/${projectId}/generate`,
-    export: `/project/${projectId}/export`,
+    export: `/project/${projectId}/editor`,
   };
 
   const stepStatuses: Array<"active" | "complete" | "locked"> = steps.map((_, i) => {
@@ -156,6 +156,30 @@ export default function ProjectPage() {
               href={stepStatuses[i] !== "locked" ? stepLinks[step.key] : undefined}
             />
           ))}
+
+          {/* Review & Edit button — shown after Generate completes */}
+          {activeStep >= 5 && (
+            <div style={{ marginTop: 24 }}>
+              <button
+                onClick={() => router.push(`/project/${projectId}/editor`)}
+                style={{
+                  width: "100%",
+                  padding: "16px 24px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#191816",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Review &amp; Edit Manuscript →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right panel: stats */}

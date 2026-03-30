@@ -466,6 +466,19 @@ export default function GeneratePage() {
                   All {(generateAllJob.result as { chapters_generated?: number })?.chapters_generated} chapters generated with coherence pass applied.
                 </div>
               )}
+
+              {/* Review & Edit link — shown when any chapter is generated */}
+              {anyGenerated && !isGenerating && (
+                <div style={{ marginTop: 16 }}>
+                  <button
+                    onClick={() => router.push(`/project/${projectId}/editor`)}
+                    className="nodum-btn"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    Review &amp; Edit Manuscript →
+                  </button>
+                </div>
+              )}
             </GlassCard>
           </div>
         )}

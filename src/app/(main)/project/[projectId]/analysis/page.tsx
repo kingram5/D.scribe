@@ -14,17 +14,17 @@ import {
 import "@xyflow/react/dist/style.css";
 import dynamic from "next/dynamic";
 import GlassCard from "@/components/ui/GlassCard";
+
+const OutlineEditor = dynamic(
+  () => import("@/components/outline-editor/OutlineEditor"),
+  { ssr: false }
+);
 import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import JobProgress from "@/components/ui/JobProgress";
 import { useJob } from "@/hooks/useJob";
-
-const OutlineEditor = dynamic(
-  () => import("@/components/outline-editor/OutlineEditor"),
-  { ssr: false }
-);
 
 interface AnalysisData {
   key_points: KeyPoint[];
@@ -35,11 +35,11 @@ interface AnalysisData {
 }
 
 const NODE_COLORS: Record<string, string> = {
-  topic: "#191816",
-  subtopic: "#7a7369",
+  topic: "#FFFFFF",
+  subtopic: "var(--text-secondary)",
   quote: "#d4b895",
   scripture: "#8b8276",
-  illustration: "#a0978a",
+  illustration: "var(--text-tertiary)",
 };
 
 export default function AnalysisPage() {
@@ -205,7 +205,7 @@ export default function AnalysisPage() {
         position: { x: node.position_x || i * TOPIC_SPACING_X, y: node.position_y || 0 },
         data: { label: node.label },
         style: {
-          background: NODE_COLORS[node.node_type] || "#7a7369",
+          background: NODE_COLORS[node.node_type] || "var(--text-secondary)",
           color: "#fff",
           borderRadius: "12px",
           padding: "12px 20px",
@@ -239,7 +239,7 @@ export default function AnalysisPage() {
           },
           data: { label: node.label },
           style: {
-            background: NODE_COLORS[node.node_type] || "#a0978a",
+            background: NODE_COLORS[node.node_type] || "var(--text-tertiary)",
             color: "#fff",
             borderRadius: "8px",
             padding: "8px 14px",
@@ -264,14 +264,14 @@ export default function AnalysisPage() {
       label: e.label || undefined,
       animated: e.edge_type === "leads_to",
       style: {
-        stroke: e.edge_type === "supports" ? "#059669" : e.edge_type === "contradicts" ? "#dc2626" : "#a0978a",
+        stroke: e.edge_type === "supports" ? "#059669" : e.edge_type === "contradicts" ? "#D98B58" : "var(--text-tertiary)",
         strokeWidth: 1.5,
       },
     }));
   }, [data?.mind_map_edges]);
 
   const miniMapNodeColor = useCallback((node: Node) => {
-    return (node.style as Record<string, string>)?.background || "#7a7369";
+    return (node.style as Record<string, string>)?.background || "var(--text-secondary)";
   }, []);
 
   if (loading) {
@@ -291,16 +291,16 @@ export default function AnalysisPage() {
       <PageShell projectId={projectId} currentStep="analysis">
         <div style={{ padding: "0 40px 40px", maxWidth: 600, margin: "0 auto" }}>
           <GlassCard style={{ padding: 32 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#191816", marginBottom: 8 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Analysis
             </h1>
-            <p style={{ fontSize: 14, color: "#7a7369", marginBottom: 32, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 32, lineHeight: 1.6 }}>
               AI will extract key points, build a voice profile, and create your chapter outline. Takes 2-5 minutes depending on transcript length.
             </p>
 
             {/* Target Audience */}
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
+              <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
                 Who is this book for?
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
@@ -317,9 +317,9 @@ export default function AnalysisPage() {
                       fontWeight: 500,
                       cursor: "pointer",
                       transition: "all 0.15s",
-                      background: audience === a ? "#E05D3A" : "transparent",
-                      color: audience === a ? "white" : "#191816",
-                      borderColor: audience === a ? "#E05D3A" : "rgba(25,24,22,0.2)",
+                      background: audience === a ? "#C17A47" : "transparent",
+                      color: audience === a ? "white" : "#FFFFFF",
+                      borderColor: audience === a ? "#C17A47" : "var(--ds-input-border)",
                     }}
                   >
                     {a}
@@ -330,7 +330,7 @@ export default function AnalysisPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 8 }}>
               <div>
-                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
                   Number of Chapters
                 </label>
                 <input
@@ -342,21 +342,21 @@ export default function AnalysisPage() {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(0,0,0,0.1)",
+                    background: "var(--ds-input-bg)",
+                    border: "1px solid var(--ds-input-border)",
                     borderRadius: "var(--radius-sm)",
                     padding: "10px 14px",
                     fontSize: 18,
                     fontFamily: "var(--font-geist-mono), monospace",
                     fontWeight: 700,
-                    color: "#191816",
+                    color: "var(--text-primary)",
                     textAlign: "center",
                     outline: "none",
                   }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
                   Words per Chapter
                 </label>
                 <input
@@ -369,14 +369,14 @@ export default function AnalysisPage() {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(0,0,0,0.1)",
+                    background: "var(--ds-input-bg)",
+                    border: "1px solid var(--ds-input-border)",
                     borderRadius: "var(--radius-sm)",
                     padding: "10px 14px",
                     fontSize: 18,
                     fontFamily: "var(--font-geist-mono), monospace",
                     fontWeight: 700,
-                    color: "#191816",
+                    color: "var(--text-primary)",
                     textAlign: "center",
                     outline: "none",
                   }}
@@ -385,7 +385,7 @@ export default function AnalysisPage() {
             </div>
 
             {/* Word count context */}
-            <p style={{ fontSize: 12, color: "#a0978a", marginBottom: 24, textAlign: "center" }}>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 24, textAlign: "center" }}>
               ~{(numChapters * targetWords).toLocaleString()} words total
               {numChapters * targetWords < 20000 && " (pamphlet/short guide)"}
               {numChapters * targetWords >= 20000 && numChapters * targetWords < 50000 && " (short book)"}
@@ -397,24 +397,24 @@ export default function AnalysisPage() {
               <div style={{
                 marginBottom: 16,
                 padding: "12px 16px",
-                background: "rgba(220,38,38,0.06)",
-                border: "1px solid rgba(220,38,38,0.15)",
+                background: "rgba(193,122,71,0.1)",
+                border: "1px solid rgba(193,122,71,0.2)",
                 borderRadius: 8,
                 fontSize: 13,
-                color: "#dc2626",
+                color: "#D98B58",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
               }}>
-                <span>{analyzeError}</span>
+                <span>Still working on it — give it another try</span>
                 <button
                   onClick={runAnalysis}
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    color: "#dc2626",
+                    color: "#D98B58",
                     background: "none",
-                    border: "1px solid rgba(220,38,38,0.3)",
+                    border: "1px solid rgba(193,122,71,0.3)",
                     borderRadius: 6,
                     padding: "4px 12px",
                     cursor: "pointer",
@@ -429,18 +429,18 @@ export default function AnalysisPage() {
               <div style={{
                 marginBottom: 16,
                 padding: "12px 16px",
-                background: "rgba(224,93,58,0.06)",
-                border: "1px solid rgba(224,93,58,0.12)",
+                background: "rgba(193,122,71,0.1)",
+                border: "1px solid rgba(193,122,71,0.12)",
                 borderRadius: 8,
                 fontSize: 13,
-                color: "#191816",
+                color: "var(--text-primary)",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
               }}>
                 <div style={{
                   width: 16, height: 16, borderRadius: "50%",
-                  border: "2px solid #E05D3A",
+                  border: "2px solid #C17A47",
                   borderTopColor: "transparent",
                   animation: "spin 0.8s linear infinite",
                 }} />
@@ -448,30 +448,30 @@ export default function AnalysisPage() {
               </div>
             )}
 
+            {/* What happens next */}
+            <div style={{
+              marginBottom: 20,
+              padding: "14px 16px",
+              background: "var(--ds-card-bg)",
+              borderRadius: 10,
+              border: "1px solid var(--ds-input-bg)",
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
+                What happens next?
+              </p>
+              <p style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
+                AI reads your transcript, identifies key themes and arguments, captures your speaking voice, and generates a chapter-by-chapter outline. You&apos;ll be able to rearrange chapters and refine before generating.
+              </p>
+            </div>
+
             <button
               onClick={runAnalysis}
               disabled={analyzing}
               className="nodum-btn"
               style={{ width: "100%", justifyContent: "center" }}
             >
-              {analyzing ? "Analyzing..." : "Analyze (1 credit)"}
+              {analyzing ? "Analyzing..." : "Find my key ideas (1 credit)"}
             </button>
-
-            {/* What happens next */}
-            <div style={{
-              marginTop: 20,
-              padding: "14px 16px",
-              background: "rgba(0,0,0,0.02)",
-              borderRadius: 10,
-              border: "1px solid rgba(0,0,0,0.04)",
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#7a7369", marginBottom: 6 }}>
-                What happens next?
-              </p>
-              <p style={{ fontSize: 12, color: "#a0978a", lineHeight: 1.5 }}>
-                AI reads your transcript, identifies key themes and arguments, captures your speaking voice, and generates a chapter-by-chapter outline. You&apos;ll be able to rearrange chapters and refine before generating.
-              </p>
-            </div>
           </GlassCard>
         </div>
       </PageShell>
@@ -481,7 +481,7 @@ export default function AnalysisPage() {
   // Post-analysis view: tabs for outline editor, voice profile, concept map
   return (
     <PageShell projectId={projectId} currentStep="analysis">
-      <div style={{ padding: "0 40px 40px" }}>
+      <div style={{ padding: "0 40px 40px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {/* Tab bar */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {[
@@ -498,8 +498,8 @@ export default function AnalysisPage() {
                 fontWeight: 600,
                 border: "none",
                 borderRadius: 20,
-                background: tab === t.key ? "#191816" : "rgba(255,255,255,0.6)",
-                color: tab === t.key ? "white" : "#7a7369",
+                background: tab === t.key ? "var(--text-primary)" : "var(--ds-input-bg)",
+                color: tab === t.key ? "var(--ds-paper)" : "var(--text-secondary)",
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
@@ -509,14 +509,16 @@ export default function AnalysisPage() {
           ))}
         </div>
 
-        {/* Outline tab — interactive mind map editor */}
+        {/* Outline tab — interactive post-it board editor */}
         {tab === "outline" && hasChapters && data && (
-          <OutlineEditor
-            projectId={projectId}
-            initialChapters={data.chapters}
-            initialKeyPoints={data.key_points}
-            onContinue={() => router.push(`/project/${projectId}/generate`)}
-          />
+          <div style={{ minHeight: 600 }}>
+            <OutlineEditor
+              projectId={projectId}
+              initialChapters={data.chapters}
+              initialKeyPoints={data.key_points}
+              onContinue={() => router.push(`/project/${projectId}/generate`)}
+            />
+          </div>
         )}
 
         {tab === "outline" && !hasChapters && (
@@ -534,32 +536,32 @@ export default function AnalysisPage() {
             {data?.voice_profile ? (
               <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
-                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
+                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
                     Tone
                   </label>
-                  <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
+                  <p style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 4 }}>
                     {data.voice_profile.tone}
                   </p>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
+                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
                     Vocabulary Level
                   </label>
-                  <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
+                  <p style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 4 }}>
                     {data.voice_profile.vocabulary_level}
                   </p>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
+                  <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
                     Formality
                   </label>
-                  <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
+                  <p style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 4 }}>
                     {data.voice_profile.formality_score}/5
                   </p>
                 </div>
                 {data.voice_profile.signature_phrases && (
                   <div>
-                    <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
+                    <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
                       Signature Phrases
                     </label>
                     <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -567,9 +569,9 @@ export default function AnalysisPage() {
                         <span key={i} style={{
                           fontSize: 12,
                           padding: "2px 8px",
-                          background: "rgba(180,83,9,0.08)",
+                          background: "rgba(193,122,71,0.1)",
                           borderRadius: 12,
-                          color: "#7a7369",
+                          color: "var(--text-secondary)",
                         }}>
                           {p}
                         </span>
@@ -579,16 +581,16 @@ export default function AnalysisPage() {
                 )}
               </div>
             ) : (
-              <p style={{ color: "#a0978a", marginTop: 16 }}>No voice profile yet.</p>
+              <p style={{ color: "var(--text-tertiary)", marginTop: 16 }}>No voice profile yet.</p>
             )}
           </GlassCard>
         )}
 
         {/* Concept Map tab (AI-generated, read-only) */}
         {tab === "map" && (
-          <GlassCard style={{ padding: 0, overflow: "hidden" }}>
+          <GlassCard style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {flowNodes.length > 0 ? (
-              <div style={{ height: 500 }}>
+              <div style={{ height: 600 }}>
                 <ReactFlow
                   nodes={flowNodes}
                   edges={flowEdges}
@@ -597,16 +599,16 @@ export default function AnalysisPage() {
                   proOptions={{ hideAttribution: true }}
                   style={{ background: "transparent" }}
                 >
-                  <Background color="rgba(0,0,0,0.03)" gap={20} />
+                  <Background color="var(--ds-input-bg)" gap={20} />
                   <Controls showInteractive={false} />
                   <MiniMap
                     nodeColor={miniMapNodeColor}
-                    style={{ background: "#191816", borderRadius: 8 }}
+                    style={{ background: "var(--ds-input-bg)", borderRadius: 8 }}
                   />
                 </ReactFlow>
               </div>
             ) : (
-              <div style={{ padding: 60, textAlign: "center", color: "#a0978a" }}>
+              <div style={{ padding: 60, textAlign: "center", color: "var(--text-tertiary)" }}>
                 No concept map generated yet.
               </div>
             )}

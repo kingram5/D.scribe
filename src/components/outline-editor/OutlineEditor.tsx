@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Chapter, KeyPoint } from "@/types";
 import { useOutlineState } from "./useOutlineState";
 import {
@@ -117,6 +117,8 @@ function OutlineEditorInner({
   // KP drag state — separate from column drag
   const kpDragRef = useRef<KpDragState | null>(null);
   const [nearestColId, setNearestColId] = useState<string | null>(null);
+  const [nearestInsertIndex, setNearestInsertIndex] = useState<number | null>(null);
+  const [nearestGapIndex, setNearestGapIndex] = useState<number | null>(null);
 
   // Layout data
   const [columns, setColumns] = useState<ColumnLayout[]>([]);
@@ -292,6 +294,28 @@ function OutlineEditorInner({
     return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
   }, [columns]);
 
+  // Find nearest gap between chapters for reordering
+  const findNearestGap = useCallback((canvasX: number, draggingChapterId: string): number | null => {
+    const otherCols = columns
+      .filter(c => c.chapterId !== draggingChapterId)
+      .sort((a, b) => {
+        const aState = columnsRef.current.get(a.chapterId);
+        const bState = columnsRef.current.get(b.chapterId);
+        return (aState?.x ?? 0) - (bState?.x ?? 0);
+      });
+
+    if (otherCols.length === 0) return 0;
+
+    for (let i = 0; i < otherCols.length; i++) {
+      const col = otherCols[i];
+      const colState = columnsRef.current.get(col.chapterId);
+      if (!colState) continue;
+      const colCenterX = colState.x + CHAPTER_WIDTH / 2;
+      if (canvasX < colCenterX) return i;
+    }
+    return otherCols.length;
+  }, [columns]);
+
   // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
     if ((e.target as HTMLElement).contentEditable === "true") return;
@@ -366,6 +390,7 @@ function OutlineEditorInner({
         const kpCenterY = kpDragRef.current.y + KP_HEIGHT / 2;
         const nearest = findNearestColumn(kpCenterX, kpCenterY);
         setNearestColId(nearest?.chapterId ?? null);
+        setNearestInsertIndex(nearest?.insertIndex ?? null);
 
         setRenderTick((t) => t + 1);
         return;
@@ -383,6 +408,12 @@ function OutlineEditorInner({
       col.y = offsetY + dy;
       col.vx = dx;
       col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
+
+      // Update nearest gap for chapter reorder
+      const colCenterX = col.x + CHAPTER_WIDTH / 2;
+      const gapIdx = findNearestGap(colCenterX, noteId);
+      setNearestGapIndex(gapIdx);
+
       setRenderTick((t) => t + 1);
     }
 
@@ -428,6 +459,7 @@ function OutlineEditorInner({
 
         kpDragRef.current = null;
         setNearestColId(null);
+        setNearestInsertIndex(null);
         setRenderTick((t) => t + 1);
         return;
       }
@@ -439,9 +471,21 @@ function OutlineEditorInner({
       if (col) {
         col.isDragging = false;
         col.targetRotation = col.baseRotation;
-        checkDropInteraction(noteId, col);
+        
+        // Check for combine first
+        const combined = checkDropInteraction(noteId, col);
+        
+        if (!combined && nearestGapIndex !== null) {
+          // Reorder chapter
+          dispatch({
+            type: "REORDER_CHAPTER",
+            chapterId: noteId,
+            newIndex: nearestGapIndex,
+          });
+        }
       }
       dragRef.current.noteId = null;
+      setNearestGapIndex(null);
       setRenderTick((t) => t + 1);
     }
 
@@ -455,7 +499,7 @@ function OutlineEditorInner({
   }, [columns, findNearestColumn]);
 
   // Check if a dropped column overlaps another column (chapter-chapter combine)
-  const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn) => {
+  const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
     for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
 
@@ -464,9 +508,10 @@ function OutlineEditorInner({
 
       if (overlapX && overlapY) {
         setConfirmCombine({ sourceId, targetId, type: "chapter" });
-        return;
+        return true;
       }
     }
+    return false;
   }, []);
 
   function handleConfirmCombine() {
@@ -549,24 +594,130 @@ function OutlineEditorInner({
 
   return (
     <div
-      ref={canvasRef}
-      onMouseDown={handleCanvasMouseDown}
       style={{
-        position: "relative",
         width: "100%",
-        height: "calc(100vh - 160px)",
-        overflow: "hidden",
-        background: "#f4f1ea",
+        padding: "40px 0",
+        display: "flex",
+        justifyContent: "center",
+        background: "#3d1c1c", // Deep mahogany base
         backgroundImage: `
-          linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+          linear-gradient(rgba(0,0,0,0.3) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,0.3) 1px, transparent 1px),
+          url("https://www.transparenttextures.com/patterns/wood-pattern.png"),
+          radial-gradient(circle at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 70%)
         `,
-        backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
-        borderRadius: "0 0 12px 12px",
-        cursor: isPanningRef.current ? "grabbing" : "grab",
+        backgroundSize: "100% 4px, 4px 100%, 400px 400px, 100% 100%",
+        boxShadow: "inset 0 0 200px rgba(0,0,0,0.5)",
       }}
     >
+      <div
+        ref={canvasRef}
+        onMouseDown={handleCanvasMouseDown}
+        style={{
+          position: "relative",
+          width: "92%",
+          height: "calc(100vh - 350px)",
+          minHeight: 650,
+          overflow: "hidden",
+          background: "#fefcf5", // Aged paper color
+          backgroundImage: `
+            radial-gradient(circle, rgba(0,0,0,0.02) 1px, transparent 1px),
+            linear-gradient(rgba(0,0,0,0.01) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.01) 1px, transparent 1px)
+          `,
+          backgroundSize: `${40 * zoom}px ${40 * zoom}px, ${20 * zoom}px ${20 * zoom}px, ${20 * zoom}px ${20 * zoom}px`,
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
+          borderRadius: 2,
+          cursor: isPanningRef.current ? "grabbing" : "grab",
+          
+          // Desk Blotter / Paper Frame
+          border: "24px solid #1a1a1a", // Dark leather/wood frame
+          borderImage: "linear-gradient(to bottom, #2c1810, #1a0f0a) 1",
+          boxShadow: `
+            0 20px 50px rgba(0,0,0,0.4),
+            0 10px 20px rgba(0,0,0,0.3),
+            inset 0 0 100px rgba(0,0,0,0.02)
+          `,
+        }}
+      >
+        {/* Frame Detail (Stitching/Gold Inlay) */}
+        <div style={{
+          position: "absolute",
+          inset: -20,
+          border: "1px solid rgba(184, 134, 11, 0.3)", // Subtle gold inlay
+          pointerEvents: "none",
+          zIndex: 102,
+        }} />
+
+        {/* Paper Texture */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.1,
+          pointerEvents: "none",
+          backgroundImage: `url("https://www.transparenttextures.com/patterns/natural-paper.png")`,
+          zIndex: 0,
+        }} />
+
+        {/* Desk Lighting */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.05) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+
+        {/* Brass Tacks */}
+        {[
+          { top: -14, left: -14 },
+          { top: -14, right: -14 },
+          { bottom: -14, left: -14 },
+          { bottom: -14, right: -14 }
+        ].map((pos, i) => (
+          <div key={i} style={{
+            position: "absolute",
+            width: 12,
+            height: 12,
+            background: "radial-gradient(circle at 30% 30%, #ffd700, #b8860b)", // Brass look
+            borderRadius: "50%",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.5)",
+            zIndex: 103,
+            ...pos
+          }} />
+        ))}
+
+        {/* Pen Rest (Subtle) */}
+        <div style={{
+          position: "absolute",
+          bottom: -20,
+          left: "10%",
+          right: "10%",
+          height: 10,
+          background: "#1a0f0a",
+          borderRadius: "0 0 10px 10px",
+          boxShadow: "0 4px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1)",
+          zIndex: 101,
+        }} />
+
+      {/* Desk Blotter Title (Handwritten Label) */}
+      <div style={{
+        position: "absolute",
+        top: 20,
+        left: 40,
+        fontFamily: "'Kalam', cursive",
+        fontSize: 20,
+        color: "rgba(26, 15, 10, 0.4)",
+        transform: "rotate(-1deg)",
+        pointerEvents: "none",
+        zIndex: 2,
+        userSelect: "none",
+        borderBottom: "1px solid rgba(26, 15, 10, 0.1)",
+        paddingBottom: 4,
+      }}>
+        Draft: {projectId}
+      </div>
+
       {/* SVG Filters */}
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
@@ -691,34 +842,81 @@ function OutlineEditorInner({
               />
 
               {/* Key points stacked below */}
-              <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP }}>
+              <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP, position: "relative" }}>
                 {col.kpIds.map((kpId, kpIndex) => {
                   const kp = state.keyPoints.find((k) => k.id === kpId);
                   if (!kp) return null;
 
                   // Hide KP from its slot while it's being dragged
                   const isBeingDragged = kpDrag?.kpId === kpId;
+                  const showDropIndicator = isDropTarget && nearestInsertIndex === kpIndex;
 
                   return (
-                    <div
-                      key={kpId}
-                      onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
-                      style={{
-                        opacity: isBeingDragged ? 0.25 : 1,
-                        transition: "opacity 0.15s",
-                      }}
-                    >
-                      <KeyPointNote
-                        keyPoint={kp}
-                        color={col.color}
-                        rotation={0}
-                        isDragging={false}
-                        onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
-                        onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
-                      />
-                    </div>
+                    <React.Fragment key={kpId}>
+                      {showDropIndicator && (
+                        <div style={{
+                          height: 4,
+                          background: getHighlightBorder(col.color),
+                          borderRadius: 2,
+                          margin: "-2px 0",
+                          position: "relative",
+                          zIndex: 20,
+                          boxShadow: `0 0 8px ${getHighlightBorder(col.color)}`,
+                        }}>
+                          <div style={{
+                            position: "absolute",
+                            left: -6,
+                            top: -4,
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            background: getHighlightBorder(col.color),
+                            boxShadow: `0 0 8px ${getHighlightBorder(col.color)}`,
+                          }} />
+                        </div>
+                      )}
+                      <div
+                        onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                        style={{
+                          opacity: isBeingDragged ? 0.25 : 1,
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        <KeyPointNote
+                          keyPoint={kp}
+                          color={col.color}
+                          rotation={0}
+                          isDragging={false}
+                          onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
+                          onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
+                        />
+                      </div>
+                    </React.Fragment>
                   );
                 })}
+                {/* Drop indicator at the very end */}
+                {isDropTarget && nearestInsertIndex === col.kpIds.length && (
+                  <div style={{
+                    height: 4,
+                    background: getHighlightBorder(col.color),
+                    borderRadius: 2,
+                    margin: "-2px 0",
+                    position: "relative",
+                    zIndex: 20,
+                    boxShadow: `0 0 8px ${getHighlightBorder(col.color)}`,
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      left: -6,
+                      top: -4,
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      background: getHighlightBorder(col.color),
+                      boxShadow: `0 0 8px ${getHighlightBorder(col.color)}`,
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -736,18 +934,71 @@ function OutlineEditorInner({
                 top: kpDrag.y,
                 zIndex: 100,
                 pointerEvents: "none",
-                transform: "rotate(-2deg) scale(1.05)",
-                opacity: 0.9,
+                transform: "rotate(-3deg) scale(1.08)",
+                opacity: 0.95,
+                filter: "drop-shadow(0 25px 30px rgba(0,0,0,0.2))",
               }}
             >
               <KeyPointNote
                 keyPoint={kp}
                 color={kpDrag.color}
-                rotation={-2}
+                rotation={-3}
                 isDragging={true}
                 onEdit={() => {}}
                 onDelete={() => {}}
               />
+            </div>
+          );
+        })()}
+
+        {/* Chapter Gap Indicator */}
+        {nearestGapIndex !== null && dragRef.current.noteId && (() => {
+          // Find the X position for the gap
+          const sortedCols = columns
+            .filter(c => c.chapterId !== dragRef.current.noteId)
+            .sort((a, b) => {
+              const aState = columnsRef.current.get(a.chapterId);
+              const bState = columnsRef.current.get(b.chapterId);
+              return (aState?.x ?? 0) - (bState?.x ?? 0);
+            });
+          
+          let gapX = 0;
+          if (sortedCols.length === 0) {
+            gapX = 100;
+          } else if (nearestGapIndex === 0) {
+            const firstCol = columnsRef.current.get(sortedCols[0].chapterId);
+            gapX = (firstCol?.x ?? 0) - 60;
+          } else if (nearestGapIndex === sortedCols.length) {
+            const lastCol = columnsRef.current.get(sortedCols[sortedCols.length - 1].chapterId);
+            gapX = (lastCol?.x ?? 0) + CHAPTER_WIDTH + 60;
+          } else {
+            const leftCol = columnsRef.current.get(sortedCols[nearestGapIndex - 1].chapterId);
+            const rightCol = columnsRef.current.get(sortedCols[nearestGapIndex].chapterId);
+            gapX = ((leftCol?.x ?? 0) + CHAPTER_WIDTH + (rightCol?.x ?? 0)) / 2;
+          }
+
+          return (
+            <div style={{
+              position: "absolute",
+              left: gapX - 2,
+              top: 0,
+              width: 4,
+              height: 1000,
+              background: "rgba(25, 24, 22, 0.15)",
+              borderRadius: 2,
+              zIndex: 5,
+              pointerEvents: "none",
+              transition: "left 0.2s ease-out",
+            }}>
+              <div style={{
+                position: "absolute",
+                top: 40,
+                left: -4,
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: "rgba(25, 24, 22, 0.3)",
+              }} />
             </div>
           );
         })()}
@@ -827,6 +1078,7 @@ function OutlineEditorInner({
         onContinue={onContinue}
         hasChapters={state.chapters.length > 0}
       />
+    </div>
     </div>
   );
 }

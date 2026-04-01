@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useCallback } from "react";
+import React, { memo, useState, useRef, useCallback } from "react";
 import type { KeyPoint } from "@/types";
 import type { NoteColor } from "./layout";
 
@@ -56,15 +56,26 @@ function KeyPointNoteComponent({
         cursor: isDragging ? "grabbing" : "grab",
         filter: "url(#rough-edge)",
         boxShadow: isDragging
-          ? "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)"
-          : "0 4px 6px rgba(0,0,0,0.05), 1px 1px 0 rgba(0,0,0,0.02)",
+          ? "0 30px 60px -12px rgba(0,0,0,0.25), 0 18px 36px -18px rgba(0,0,0,0.3)"
+          : "0 4px 10px rgba(0,0,0,0.1), 1px 1px 0 rgba(0,0,0,0.02)",
         fontFamily: "'Kalam', cursive",
         position: "relative",
         overflow: "hidden",
-        transition: isDragging ? "none" : "box-shadow 0.2s",
+        transition: isDragging ? "none" : "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         userSelect: "none",
+        transform: isDragging ? "scale(1.05) rotate(2deg)" : `rotate(${rotation}deg)`,
       }}
     >
+      {/* Subtle curl shadow */}
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        right: 0,
+        width: "30%",
+        height: "10%",
+        background: "linear-gradient(to top left, rgba(0,0,0,0.05), transparent)",
+        pointerEvents: "none",
+      }} />
       {/* Corner fold */}
       <div style={{
         position: "absolute",

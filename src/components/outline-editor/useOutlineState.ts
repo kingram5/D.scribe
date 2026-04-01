@@ -13,6 +13,7 @@ export type EditorAction =
   | { type: "INIT"; chapters: Chapter[]; keyPoints: KeyPoint[] }
   | { type: "MOVE_KEY_POINT"; keyPointId: string; fromChapterId: string; toChapterId: string; toIndex?: number }
   | { type: "REORDER_KEY_POINT"; chapterId: string; keyPointId: string; newIndex: number }
+  | { type: "REORDER_CHAPTER"; chapterId: string; newIndex: number }
   | { type: "COMBINE_KEY_POINTS"; targetId: string; sourceId: string }
   | { type: "COMBINE_CHAPTERS"; targetId: string; sourceId: string }
   | { type: "EDIT_CHAPTER"; chapterId: string; field: "title" | "summary"; value: string }
@@ -52,6 +53,18 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         return { ...ch, key_point_ids: ids };
       });
       return { ...state, chapters, dirty: true };
+    }
+
+    case "REORDER_CHAPTER": {
+      const chapters = state.chapters.filter((ch) => ch.id !== action.chapterId);
+      const chapter = state.chapters.find((ch) => ch.id === action.chapterId);
+      if (!chapter) return state;
+      chapters.splice(action.newIndex, 0, chapter);
+      return {
+        ...state,
+        chapters: chapters.map((ch, i) => ({ ...ch, chapter_number: i + 1, sort_order: i })),
+        dirty: true,
+      };
     }
 
     case "COMBINE_KEY_POINTS": {

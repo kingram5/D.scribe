@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useState, useRef, useCallback } from "react";
+import { memo, useState, useRef, useCallback } from "react";
 import type { Chapter } from "@/types";
 import type { NoteColor } from "./layout";
 

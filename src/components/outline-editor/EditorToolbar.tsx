@@ -2,8 +2,6 @@
 
 import type { NoteColor } from "./layout";
 
-import React from "react";
-
 interface EditorToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
@@ -37,93 +35,79 @@ export function EditorToolbar({
   const isSaving = isDirty || saveStatus === "saving";
   return (
     <div style={{
-      position: "absolute",
-      bottom: 20,
+      position: "fixed",
+      bottom: 24,
       left: "50%",
       transform: "translateX(-50%)",
       display: "flex",
       alignItems: "center",
-      gap: 12,
-      padding: "12px 24px",
-      background: "rgba(26, 15, 10, 0.95)", // Dark leather/wood background
-      backdropFilter: "blur(4px)",
-      WebkitBackdropFilter: "blur(4px)",
-      borderRadius: 8,
-      border: "1px solid rgba(184, 134, 11, 0.4)", // Gold border
-      boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+      gap: 8,
+      padding: "10px 20px",
+      background: "rgba(255,255,255,0.7)",
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      borderRadius: 999,
+      border: "1px solid rgba(0,0,0,0.08)",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
       zIndex: 100,
+      filter: "url(#rough-edge)",
       fontFamily: "'Kalam', cursive",
-      color: "#fefcf5",
     }}>
-      {/* Add Chapter (Post-it Style) */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        {COLOR_OPTIONS.map((opt) => (
-          <button
-            key={opt.color}
-            onClick={() => onAddChapter(opt.color)}
-            title={`Add ${opt.label} chapter`}
-            style={{
-              width: 32,
-              height: 32,
-              background: opt.color,
-              border: `1px solid ${opt.border}`,
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              fontWeight: 700,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-              transition: "transform 0.1s, box-shadow 0.1s",
-              color: "#1a0f0a",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.1)";
-              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
-            }}
-          >
-            +
-          </button>
-        ))}
-        <span style={{ fontSize: 12, marginLeft: 4, opacity: 0.8 }}>Add Chapter</span>
-      </div>
-
-      <div style={{ width: 1, height: 24, background: "rgba(184, 134, 11, 0.2)", margin: "0 8px" }} />
-
       {/* Undo/Redo */}
-      <div style={{ display: "flex", gap: 4 }}>
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-          style={btnStyle(!canUndo)}
-        >
-          ↩
-        </button>
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
-          style={btnStyle(!canRedo)}
-        >
-          ↪
-        </button>
-      </div>
+      <button
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        style={btnStyle(!canUndo)}
+      >
+        ↩
+      </button>
+      <button
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Shift+Z)"
+        style={btnStyle(!canRedo)}
+      >
+        ↪
+      </button>
 
-      <div style={{ width: 1, height: 24, background: "rgba(184, 134, 11, 0.2)", margin: "0 8px" }} />
+      <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
+
+      {/* Color add buttons */}
+      {COLOR_OPTIONS.map((opt) => (
+        <button
+          key={opt.color}
+          onClick={() => onAddChapter(opt.color)}
+          title={`Add ${opt.label} chapter`}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: opt.color,
+            border: `2px solid ${opt.border}`,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 14,
+            transition: "transform 0.1s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.15)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        >
+          +
+        </button>
+      ))}
+
+      <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
 
       {/* Save status */}
       <span style={{
         fontSize: 11,
         fontWeight: 600,
         color: saveStatus === "saving" ? "#a0978a"
-          : saveStatus === "saved" ? "#10b981"
-          : saveStatus === "error" ? "#ef4444"
+          : saveStatus === "saved" ? "#059669"
+          : saveStatus === "error" ? "#dc2626"
           : "transparent",
         minWidth: 50,
         textAlign: "center",
@@ -140,29 +124,16 @@ export function EditorToolbar({
           onClick={onContinue}
           disabled={isSaving}
           style={{
-            padding: "10px 24px",
-            fontSize: 14,
+            padding: "8px 18px",
+            fontSize: 13,
             fontWeight: 700,
-            border: "1px solid rgba(184, 134, 11, 0.5)",
-            borderRadius: 4,
-            background: isSaving ? "#4a3b35" : "#b8860b", // Gold/Brass button
+            border: "none",
+            borderRadius: 999,
+            background: isSaving ? "#9a9890" : "#191816",
             color: "white",
             cursor: isSaving ? "not-allowed" : "pointer",
             fontFamily: "'Kalam', cursive",
-            transition: "all 0.2s",
-            boxShadow: isSaving ? "none" : "0 4px 12px rgba(0, 0, 0, 0.3)",
-          }}
-          onMouseEnter={(e) => {
-            if (!isSaving) {
-              e.currentTarget.style.background = "#daa520";
-              e.currentTarget.style.transform = "translateY(-1px)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isSaving) {
-              e.currentTarget.style.background = "#b8860b";
-              e.currentTarget.style.transform = "translateY(0)";
-            }
+            transition: "background 0.15s",
           }}
         >
           {isSaving ? "Saving..." : "Continue to Generate"}
@@ -176,10 +147,10 @@ function btnStyle(disabled: boolean): React.CSSProperties {
   return {
     width: 32,
     height: 32,
-    borderRadius: 4,
-    background: disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(184, 134, 11, 0.3)",
-    color: disabled ? "rgba(184, 134, 11, 0.2)" : "#b8860b",
+    borderRadius: "50%",
+    background: disabled ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.8)",
+    border: "1px solid rgba(0,0,0,0.1)",
+    color: disabled ? "#c0b9ae" : "#191816",
     cursor: disabled ? "default" : "pointer",
     fontSize: 16,
     fontWeight: 700,

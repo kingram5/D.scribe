@@ -81,7 +81,13 @@ export default function StructurePage() {
 
   return (
     <PageShell projectId={projectId} currentStep="structure">
-      <div style={{
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-structure-wrap { overflow-y: auto !important; padding: 16px !important; align-items: flex-start !important; }
+          .ds-structure-card { padding: 24px 16px !important; border-radius: 20px !important; }
+        }
+      `}</style>
+      <div className="ds-structure-wrap" style={{
         flex: 1,
         display: "flex",
         alignItems: "center",
@@ -89,7 +95,7 @@ export default function StructurePage() {
         overflow: "hidden",
       }}>
         {/* Centered card */}
-        <div style={{
+        <div className="ds-structure-card" style={{
           width: "100%",
           maxWidth: 640,
           padding: 48,

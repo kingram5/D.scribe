@@ -364,12 +364,14 @@ input[type=range] {
   .show-mobile { display: flex !important; }
 }
 
-/* Dashboard: stack 3-col grid on mobile */
+/* ========== Global Mobile Responsive ========== */
 @media (max-width: 768px) {
+  /* Dashboard grid stacks */
   .ds-dashboard-grid {
     grid-template-columns: 1fr !important;
     padding: 0 16px 24px !important;
     gap: 16px !important;
+    overflow-y: auto !important;
   }
 
   .ds-hero-header {
@@ -380,18 +382,25 @@ input[type=range] {
     font-size: 32px !important;
   }
 
-  /* Pipeline pages: 2-col sidebar layouts → stacked */
+  /* Pipeline grid stacks */
   .ds-pipeline-grid {
     grid-template-columns: 1fr !important;
     padding: 0 16px 24px !important;
     gap: 16px !important;
   }
 
-  /* Upload page: stack panels */
+  /* Upload split stacks */
   .ds-upload-split {
     flex-direction: column !important;
     height: auto !important;
     min-height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  .ds-upload-split > * {
+    width: 100% !important;
+    min-width: 100% !important;
+    min-height: 300px !important;
   }
 
   .ds-upload-left, .ds-upload-right {
@@ -406,9 +415,34 @@ input[type=range] {
     min-height: 400px !important;
   }
 
-  /* PageShell step bar: tighter padding on mobile */
+  /* Lined paper cards full width on mobile */
+  .lined-paper {
+    transform: none !important;
+    min-height: auto !important;
+    padding: 2rem 1rem 1.5rem 2.5rem !important;
+  }
+
+  /* Paper theme adjustments */
+  .paper-theme {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh !important;
+  }
+
+  /* PageShell footer nav mobile */
+  nav[aria-label="Step navigation"] {
+    padding: 0 16px !important;
+    height: 64px !important;
+  }
+
+  nav[aria-label="Step navigation"] a {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Hide step dots on mobile — just show prev/next */
   nav[aria-label="Pipeline steps"] {
-    padding: 0 16px 16px !important;
+    padding: 0 16px 12px !important;
   }
 }
 

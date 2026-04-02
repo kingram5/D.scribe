@@ -142,6 +142,14 @@ export default function Dashboard() {
         </p>
       </div>
 
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-dashboard-grid { grid-template-columns: 1fr !important; padding: 0 16px 24px !important; gap: 20px !important; overflow-y: auto !important; }
+          .ds-hero-header { padding: 24px 16px 12px !important; }
+          .ds-hero-header h1 { font-size: 32px !important; }
+          .ds-dashboard-grid .lined-paper { transform: none !important; }
+        }
+      `}</style>
       <div className="ds-dashboard-grid" style={{
         display: "grid",
         gridTemplateColumns: "280px 1fr 360px",

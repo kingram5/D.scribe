@@ -142,7 +142,16 @@ export default function EditorPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="editor">
-      <div style={{
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100vh - 56px) !important; }
+          .ds-editor-layout > div:first-child { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 250px !important; overflow-y: auto !important; }
+          .ds-editor-layout > div:last-child { min-height: 500px !important; }
+          .ds-editor-float-toolbar { display: none !important; }
+          .ds-editor-stats-bar { display: none !important; }
+        }
+      `}</style>
+      <div className="ds-editor-layout" style={{
         display: "flex",
         height: "calc(100vh - 56px)",
         overflow: "hidden",
@@ -499,7 +508,7 @@ export default function EditorPage() {
         }}>
 
           {/* Floating Stats Bar — top center */}
-          <div style={{
+          <div className="ds-editor-stats-bar" style={{
             position: "absolute",
             top: 16,
             left: "50%",
@@ -566,7 +575,7 @@ export default function EditorPage() {
           </div>
 
           {/* Floating Toolbar — left edge, vertically centered */}
-          <div style={{
+          <div className="ds-editor-float-toolbar" style={{
             position: "absolute",
             left: 20,
             top: "50%",

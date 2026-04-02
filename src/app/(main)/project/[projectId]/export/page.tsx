@@ -239,7 +239,13 @@ export default function ExportPage() {
         </div>
 
         {/* Cards Grid */}
+        <style>{`
+          @media (max-width: 768px) {
+            .ds-export-grid { grid-template-columns: 1fr !important; max-width: 400px !important; }
+          }
+        `}</style>
         <div
+          className="ds-export-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",

@@ -297,7 +297,14 @@ export default function TranscriptPage() {
   /* ── render ─────────────────────────────────────────────────── */
   return (
     <PageShell projectId={projectId} currentStep="transcript">
-      <div style={{
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-transcript-layout { flex-direction: column !important; }
+          .ds-transcript-layout > aside { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 300px !important; overflow-y: auto !important; }
+          .ds-transcript-layout > div:last-child { flex: 1 !important; }
+        }
+      `}</style>
+      <div className="ds-transcript-layout" style={{
         display: "flex",
         flex: 1,
         background: P.bg,

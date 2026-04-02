@@ -463,7 +463,14 @@ export default function ProjectPage() {
 
   return (
     <PageShell>
-      <div className="paper-theme" style={{
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-project-split { flex-direction: column !important; overflow-y: auto !important; }
+          .ds-project-split > div:first-child { width: 100% !important; padding: 24px 16px !important; }
+          .ds-project-split > div:last-child { padding: 16px !important; }
+        }
+      `}</style>
+      <div className="paper-theme ds-project-split" style={{
         display: "flex",
         flex: 1,
         overflow: "hidden",

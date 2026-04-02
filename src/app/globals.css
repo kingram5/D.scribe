@@ -118,9 +118,11 @@ body {
   font-family: var(--font-manrope), var(--font-inter), var(--font-geist-sans), sans-serif;
 }
 
-/* Prevent page scroll on internal pages — landing page is exempt since it doesn't use PageShell */
-body:has(.paper-theme) {
-  overflow: hidden;
+/* Prevent page scroll on internal pages — desktop only */
+@media (min-width: 769px) {
+  body:has(.paper-theme) {
+    overflow: hidden;
+  }
 }
 
 /* Warm paper theme for internal/pipeline pages */

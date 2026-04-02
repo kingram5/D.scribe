@@ -1,6 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isAllowedEmail } from "@/lib/allowlist";
+
+/** Inline allowlist check for Edge Runtime compatibility */
+function isAllowedEmail(email: string | undefined | null): boolean {
+  const raw = process.env.ALLOWED_EMAILS ?? "";
+  const allowed = new Set(raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
+  if (allowed.size === 0) return false;
+  if (!email) return false;
+  return allowed.has(email.toLowerCase());
+}
 
 const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/unauthorized", "/cinematic", "/landing-classic"];
 

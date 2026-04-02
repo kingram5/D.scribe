@@ -26,7 +26,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const showFooter = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
 
   return (
-    <div className={currentStep ? "paper-theme" : ""} style={{ position: "relative", zIndex: 10, height: "100vh", maxHeight: "100vh", paddingTop: 88, paddingBottom: showFooter ? 80 : 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div className={`ds-page-shell ${currentStep ? "paper-theme" : ""}`} style={{ position: "relative", zIndex: 10, height: "100vh", maxHeight: "100vh", paddingTop: 88, paddingBottom: showFooter ? 80 : 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {projectId && currentStep && (
         <nav
           aria-label="Pipeline steps"

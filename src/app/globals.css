@@ -366,6 +366,30 @@ input[type=range] {
 
 /* ========== Global Mobile Responsive ========== */
 @media (max-width: 768px) {
+  /* Unlock scroll on ALL page shells for mobile */
+  .ds-page-shell {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 100vh !important;
+    padding-bottom: 100px !important;
+  }
+
+  .ds-page-shell > div {
+    overflow: visible !important;
+    flex: none !important;
+    height: auto !important;
+  }
+
+  /* Main layout unlock */
+  .ds-main-layout {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
   /* Dashboard grid stacks */
   .ds-dashboard-grid {
     grid-template-columns: 1fr !important;

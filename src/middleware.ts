@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAllowedEmail } from "@/lib/allowlist";
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/cinematic", "/landing-classic"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/unauthorized", "/cinematic", "/landing-classic"];
 
 export async function middleware(request: NextRequest) {
   // Dev auth bypass — remove before deploying
@@ -71,6 +72,13 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Beta allowlist — bounce users not on the approved list
+  if (!isAllowedEmail(user.email)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/unauthorized";
     return NextResponse.redirect(url);
   }
 

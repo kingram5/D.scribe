@@ -219,14 +219,13 @@ export default function CinematicLandingPage() {
                   className="italic text-4xl md:text-6xl text-[#F9F7F2] mb-6"
                   style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
                 >
-                  The architecture of thought.
+                  From sermon to manuscript in three steps.
                 </h2>
                 <p
                   className="text-[#A89F94] text-lg md:text-xl font-light"
                   style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                 >
-                  We built D. scribe to remove the friction between having an idea and seeing it
-                  beautifully articulated on the page.
+                  Most speakers have a book inside them — trapped in hundreds of hours of recordings. D. scribe pulls it out.
                 </p>
               </div>
 
@@ -246,13 +245,13 @@ export default function CinematicLandingPage() {
                     className="text-2xl font-semibold mb-4 text-[#F9F7F2] group-hover:text-[#2C2419] transition-colors"
                     style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                   >
-                    Unyielding Capture
+                    Transcribe Everything
                   </h3>
                   <p
                     className="font-light text-[#A89F94] group-hover:text-[#2C2419]/70 leading-relaxed transition-colors"
                     style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                   >
-                    Speak freely. Our proprietary models understand context, pacing, and
+                    Speak freely. D. scribe understands context, pacing, and
                     specialized vocabulary, stripping away hesitations while preserving your
                     authentic voice.
                   </p>
@@ -279,13 +278,13 @@ export default function CinematicLandingPage() {
                     className="text-2xl font-semibold mb-4 text-[#F9F7F2] group-hover:text-[#2C2419] transition-colors"
                     style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                   >
-                    Structural Alchemy
+                    Organize Into Chapters
                   </h3>
                   <p
                     className="font-light text-[#A89F94] group-hover:text-[#2C2419]/70 leading-relaxed transition-colors"
                     style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                   >
-                    Watch ramblings transform into logical hierarchies. The AI identifies core
+                    Watch recordings transform into logical hierarchies. The AI identifies core
                     themes, generates chapter headings, and structures paragraphs for optimal
                     flow.
                   </p>
@@ -343,15 +342,14 @@ export default function CinematicLandingPage() {
                   className="text-4xl md:text-6xl text-[#F9F7F2] mb-6"
                   style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
                 >
-                  Always listening.<br />Always learning.
+                  It learns how you speak.
                 </h2>
                 <p
                   className="text-[#A89F94] text-lg md:text-xl font-light max-w-lg mx-auto lg:mx-0 leading-relaxed"
                   style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                 >
-                  Our intelligent dictation core adapts to your unique cadence, terminology, and
-                  stylistic preferences over time, becoming an invisible extension of your
-                  creative process.
+                  Upload more recordings and D. scribe maps your vocabulary, sentence rhythms, and
+                  rhetorical patterns — so every chapter sounds like you wrote it, not a machine.
                 </p>
               </div>
 
@@ -403,7 +401,7 @@ export default function CinematicLandingPage() {
               className="text-xs text-[rgba(168,159,148,0.7)] uppercase tracking-widest font-medium"
               style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
             >
-              &copy; 2024 D. scribe. Cinematic Edition.
+              &copy; 2026 D. scribe. Cinematic Edition.
             </div>
             <div className="flex gap-8">
               <Link

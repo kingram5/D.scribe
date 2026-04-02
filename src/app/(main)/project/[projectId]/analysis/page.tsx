@@ -285,193 +285,25 @@ export default function AnalysisPage() {
   const hasAnalysis = (data?.key_points?.length || 0) > 0;
   const hasChapters = (data?.chapters?.length || 0) > 0;
 
-  // Pre-analysis view: inputs + analyze button
+  // Pre-analysis: redirect to Structure page
   if (!hasAnalysis) {
     return (
       <PageShell projectId={projectId} currentStep="analysis">
-        <div style={{ padding: "0 40px 40px", maxWidth: 600, margin: "0 auto" }}>
-          <GlassCard style={{ padding: 32 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#191816", marginBottom: 8 }}>
+        <div style={{ padding: "0 40px 40px", maxWidth: 500, margin: "0 auto" }}>
+          <GlassCard style={{ padding: 32, textAlign: "center" }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Analysis
             </h1>
-            <p style={{ fontSize: 14, color: "#7a7369", marginBottom: 32, lineHeight: 1.6 }}>
-              AI will extract key points, build a voice profile, and create your chapter outline. Takes 2-5 minutes depending on transcript length.
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.6 }}>
+              Set up your manuscript structure first, then run analysis to extract key themes, voice profile, and chapter outline.
             </p>
-
-            {/* Target Audience */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
-                Who is this book for?
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {AUDIENCES.map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => setAudience(a)}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "var(--radius-pill, 20px)",
-                      border: "1px solid",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      background: audience === a ? "#E05D3A" : "transparent",
-                      color: audience === a ? "white" : "#191816",
-                      borderColor: audience === a ? "#E05D3A" : "rgba(25,24,22,0.2)",
-                    }}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 8 }}>
-              <div>
-                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
-                  Number of Chapters
-                </label>
-                <input
-                  type="number"
-                  min={2}
-                  max={20}
-                  value={numChapters}
-                  onChange={(e) => setNumChapters(parseInt(e.target.value) || 5)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "10px 14px",
-                    fontSize: 18,
-                    fontFamily: "var(--font-geist-mono), monospace",
-                    fontWeight: 700,
-                    color: "#191816",
-                    textAlign: "center",
-                    outline: "none",
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>
-                  Words per Chapter
-                </label>
-                <input
-                  type="number"
-                  min={500}
-                  max={10000}
-                  step={500}
-                  value={targetWords}
-                  onChange={(e) => setTargetWords(parseInt(e.target.value) || 3000)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "10px 14px",
-                    fontSize: 18,
-                    fontFamily: "var(--font-geist-mono), monospace",
-                    fontWeight: 700,
-                    color: "#191816",
-                    textAlign: "center",
-                    outline: "none",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Word count context */}
-            <p style={{ fontSize: 12, color: "#a0978a", marginBottom: 24, textAlign: "center" }}>
-              ~{(numChapters * targetWords).toLocaleString()} words total
-              {numChapters * targetWords < 20000 && " (pamphlet/short guide)"}
-              {numChapters * targetWords >= 20000 && numChapters * targetWords < 50000 && " (short book)"}
-              {numChapters * targetWords >= 50000 && numChapters * targetWords < 80000 && " (standard book)"}
-              {numChapters * targetWords >= 80000 && " (long book)"}
-            </p>
-
-            {analyzeError && (
-              <div style={{
-                marginBottom: 16,
-                padding: "12px 16px",
-                background: "rgba(220,38,38,0.06)",
-                border: "1px solid rgba(220,38,38,0.15)",
-                borderRadius: 8,
-                fontSize: 13,
-                color: "#dc2626",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}>
-                <span>{analyzeError}</span>
-                <button
-                  onClick={runAnalysis}
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#dc2626",
-                    background: "none",
-                    border: "1px solid rgba(220,38,38,0.3)",
-                    borderRadius: 6,
-                    padding: "4px 12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {analyzing && analyzeStep && (
-              <div style={{
-                marginBottom: 16,
-                padding: "12px 16px",
-                background: "rgba(224,93,58,0.06)",
-                border: "1px solid rgba(224,93,58,0.12)",
-                borderRadius: 8,
-                fontSize: 13,
-                color: "#191816",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}>
-                <div style={{
-                  width: 16, height: 16, borderRadius: "50%",
-                  border: "2px solid #E05D3A",
-                  borderTopColor: "transparent",
-                  animation: "spin 0.8s linear infinite",
-                }} />
-                {analyzeStep}
-              </div>
-            )}
-
             <button
-              onClick={runAnalysis}
-              disabled={analyzing}
+              onClick={() => router.push(`/project/${projectId}/structure`)}
               className="nodum-btn"
-              style={{ width: "100%", justifyContent: "center" }}
+              style={{ justifyContent: "center" }}
             >
-              {analyzing ? "Analyzing..." : "Analyze (1 credit)"}
+              Go to Structure
             </button>
-
-            {/* What happens next */}
-            <div style={{
-              marginTop: 20,
-              padding: "14px 16px",
-              background: "rgba(0,0,0,0.02)",
-              borderRadius: 10,
-              border: "1px solid rgba(0,0,0,0.04)",
-            }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#7a7369", marginBottom: 6 }}>
-                What happens next?
-              </p>
-              <p style={{ fontSize: 12, color: "#a0978a", lineHeight: 1.5 }}>
-                AI reads your transcript, identifies key themes and arguments, captures your speaking voice, and generates a chapter-by-chapter outline. You&apos;ll be able to rearrange chapters and refine before generating.
-              </p>
-            </div>
           </GlassCard>
         </div>
       </PageShell>

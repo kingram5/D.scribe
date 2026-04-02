@@ -82,7 +82,7 @@ export default function LeftPanel({
               marginBottom: 12,
             }}
           >
-            Record live
+            Live Recording Studio
           </h1>
           <p
             style={{
@@ -95,7 +95,7 @@ export default function LeftPanel({
               lineHeight: 1.5,
             }}
           >
-            Speak naturally — the AI adapts to your voice, pacing, and style.
+            Your voice becomes your manuscript. Hit record and speak naturally — the AI handles the rest.
           </p>
         </div>
 
@@ -106,31 +106,94 @@ export default function LeftPanel({
           onStopRecording={onStopRecording}
         />
 
-        {/* Recording tips */}
+        {/* UX hint / status message */}
+        <div style={{ marginTop: 20, textAlign: "center" }}>
+          {!isRecording && seconds === 0 ? (
+            <div
+              style={{
+                fontSize: 39,
+                fontWeight: 600,
+                color: "var(--ds-ink)",
+                fontFamily: "var(--font-lora), serif",
+                fontStyle: "italic",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                animation: "hintPulse 2s ease-in-out infinite",
+              }}
+            >
+              <svg width="32" height="32" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="var(--ds-ink)" strokeWidth="1.5" fill="none" />
+                <circle cx="8" cy="8" r="3" fill="var(--ds-ink)" />
+              </svg>
+              Press to record your audio live
+            </div>
+          ) : isRecording ? (
+            <div
+              style={{
+                fontSize: 39,
+                fontWeight: 600,
+                color: "var(--ds-ink)",
+                fontFamily: "var(--font-lora), serif",
+                fontStyle: "italic",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  animation: "hintPulse 1s ease-in-out infinite",
+                  boxShadow: "0 0 8px rgba(239,68,68,0.6)",
+                  flexShrink: 0,
+                }}
+              />
+              Recording in progress — speak naturally
+            </div>
+          ) : null}
+        </div>
+
+        <style>{`
+          @keyframes hintPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
+
+        {/* Tips */}
         <div style={{
-          maxWidth: 280,
+          maxWidth: 500,
           display: "flex",
           flexDirection: "column",
-          gap: 6,
+          gap: 10,
+          marginTop: 8,
         }}>
           {[
-            "Sermons, keynotes, and podcast episodes work best",
             "15-60 minutes of audio is the sweet spot",
             "Quiet environment = better transcription",
           ].map((tip, i) => (
             <div key={i} style={{
               display: "flex",
               alignItems: "flex-start",
-              gap: 8,
-              fontSize: 11,
-              color: "var(--text-tertiary)",
-              lineHeight: 1.4,
+              gap: 10,
+              fontSize: 33,
+              color: "var(--ds-ink)",
+              fontFamily: "var(--font-lora), serif",
+              fontStyle: "italic",
+              lineHeight: 1.3,
             }}>
-              <span style={{ color: "var(--ds-accent-500)", flexShrink: 0, marginTop: 1 }}>&#8226;</span>
+              <span style={{ color: "var(--ds-ink)", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
               {tip}
             </div>
           ))}
         </div>
+
       </div>
 
       {/* Version label */}

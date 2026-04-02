@@ -36,25 +36,25 @@ function LoginContent() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: "linear-gradient(135deg, #FDFCF9 0%, #F4F1EB 100%)",
+      background: "linear-gradient(135deg, #F4F1E8 0%, #EDE8DC 100%)",
     }}>
       <div style={{
         width: "100%",
         maxWidth: 420,
         padding: 48,
-        background: "rgba(255,255,255,0.7)",
+        background: "#FFFFFF",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        border: "1px solid rgba(255,255,255,0.9)",
+        border: "1px solid rgba(44,36,25,0.08)",
         borderRadius: 20,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.08)",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.06)",
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A1816", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 18, fontWeight: 500, color: "#FDFCF9" }}>D.</span>
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: "#2C2419", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 18, fontWeight: 500, color: "#F4F1E8" }}>D.</span>
           </div>
-          <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", color: "#1A1816" }}>
+          <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", color: "#2C2419" }}>
             scribe
           </span>
         </div>
@@ -64,14 +64,14 @@ function LoginContent() {
           fontSize: 28,
           fontWeight: 700,
           letterSpacing: "-0.03em",
-          color: "#1A1816",
+          color: "#2C2419",
           marginBottom: 8,
         }}>
-          Dictate the draft.<br /><span style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, color: "rgba(26,24,22,0.6)" }}>Let AI master the manuscript.</span>
+          Dictate the draft.<br /><span style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, color: "#7A7358" }}>Let AI master the manuscript.</span>
         </h1>
         <p style={{
           fontSize: 15,
-          color: "#7a7369",
+          color: "#7A7358",
           lineHeight: 1.6,
           marginBottom: 32,
         }}>
@@ -81,11 +81,11 @@ function LoginContent() {
         {authError && (
           <div style={{
             padding: "10px 14px",
-            background: "rgba(220,38,38,0.06)",
-            border: "1px solid rgba(220,38,38,0.15)",
+            background: "rgba(193,122,71,0.1)",
+            border: "1px solid rgba(193,122,71,0.2)",
             borderRadius: 8,
             fontSize: 13,
-            color: "#dc2626",
+            color: "#D98B58",
             marginBottom: 16,
           }}>
             Sign in failed. Please try again.
@@ -104,10 +104,10 @@ function LoginContent() {
             padding: "14px 20px",
             fontSize: 15,
             fontWeight: 600,
-            border: "1px solid rgba(0,0,0,0.12)",
+            border: "1px solid rgba(44,36,25,0.12)",
             borderRadius: 12,
-            background: "white",
-            color: "#191816",
+            background: "rgba(44,36,25,0.04)",
+            color: "#2C2419",
             cursor: loading ? "wait" : "pointer",
             transition: "all 0.15s",
           }}
@@ -123,7 +123,7 @@ function LoginContent() {
 
         <p style={{
           fontSize: 12,
-          color: "#a0978a",
+          color: "#A39B7D",
           textAlign: "center",
           marginTop: 24,
           lineHeight: 1.5,
@@ -132,7 +132,7 @@ function LoginContent() {
         </p>
         <p style={{
           fontSize: 11,
-          color: "#b5ad9e",
+          color: "#A39B7D",
           textAlign: "center",
           marginTop: 8,
           fontStyle: "italic",

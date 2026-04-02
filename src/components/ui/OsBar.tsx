@@ -21,10 +21,10 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
         transform: "translateX(-50%)",
         zIndex: 100,
         borderRadius: 100,
-        background: "rgba(255,255,255,0.6)",
+        background: "var(--ds-card-bg)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.9)",
+        border: "1px solid var(--ds-card-border)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
         display: "flex",
         alignItems: "center",
@@ -34,9 +34,9 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
         maxWidth: 720,
       }}>
         {/* Left: Logo + Brand */}
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#191816", flexShrink: 0 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 4, background: "#191816", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 14, fontWeight: 500, color: "#FDFCF9" }}>D.</span>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--text-primary)", flexShrink: 0 }}>
+          <div style={{ width: 24, height: 24, borderRadius: 4, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: "var(--font-lora), serif", fontSize: 14, fontWeight: 500, color: "var(--ds-paper)" }}>D.</span>
           </div>
           <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: "-0.02em" }}>scribe</span>
         </Link>
@@ -57,7 +57,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
         </div>
 
         {/* Right — mobile hamburger */}
-        <div className="show-mobile" style={{ marginLeft: "auto", alignItems: "center", gap: 8 }}>
+        <div className="show-mobile" style={{ marginLeft: "auto", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
           <UserMenu />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -67,7 +67,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
             }}
             aria-label="Menu"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#191816" strokeWidth="2" strokeLinecap="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {mobileOpen ? (
                 <>
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -93,10 +93,10 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
           left: 16,
           right: 16,
           zIndex: 99,
-          background: "rgba(255,255,255,0.95)",
+          background: "var(--ds-card-bg)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid rgba(255,255,255,0.9)",
+          border: "1px solid var(--ds-card-border)",
           borderRadius: 20,
           boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
           padding: 16,
@@ -105,7 +105,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
           gap: 8,
         }}>
           {centerSlot && (
-            <div style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,0.06)", marginBottom: 4 }}>
+            <div style={{ padding: "8px 0", borderBottom: "1px solid var(--ds-card-border)", marginBottom: 4 }}>
               {centerSlot}
             </div>
           )}

@@ -120,10 +120,12 @@ export default function Dashboard() {
       </div>
 
       {/* Page hero header */}
-      <div style={{ padding: "32px 40px 40px", maxWidth: 640, position: "relative", zIndex: 1 }} className="ds-hero-header">
-        <div style={{ marginBottom: 20 }}>
-          <MiniWaveform />
-        </div>
+      {/* Mini waveform — positioned at top-left, parallel with nav bar */}
+      <div style={{ position: "absolute", top: 18, left: "10vw", zIndex: 5 }}>
+        <MiniWaveform />
+      </div>
+
+      <div style={{ padding: "48px 40px 20px", maxWidth: 640, position: "relative", zIndex: 1 }} className="ds-hero-header">
         <h1 style={{
           fontSize: 48,
           fontWeight: 400,

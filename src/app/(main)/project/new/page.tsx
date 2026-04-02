@@ -8,12 +8,12 @@ import PageShell from "@/components/ui/PageShell";
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  background: "rgba(255,255,255,0.6)",
-  border: "1px solid rgba(0,0,0,0.1)",
+  background: "var(--ds-input-bg)",
+  border: "1px solid var(--ds-input-border)",
   borderRadius: "var(--radius-sm)",
   padding: "12px 16px",
   fontSize: 15,
-  color: "#191816",
+  color: "var(--text-primary)",
   outline: "none",
 };
 
@@ -46,13 +46,13 @@ export default function NewProject() {
 
   return (
     <PageShell>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
+      <div className="paper-theme" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
         <GlassCard style={{ maxWidth: 480, width: "100%", padding: 48 }}>
-          <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#a0978a", marginBottom: 12 }}>New Project</div>
-          <h1 style={{ fontSize: 36, fontWeight: 400, fontStyle: "italic", letterSpacing: "-0.01em", color: "#191816", marginBottom: 8, fontFamily: "var(--font-lora), serif" }}>
+          <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 12 }}>New Project</div>
+          <h1 style={{ fontSize: 36, fontWeight: 400, fontStyle: "italic", letterSpacing: "-0.01em", color: "var(--text-primary)", marginBottom: 8, fontFamily: "var(--font-lora), serif" }}>
             Start a new project
           </h1>
-          <p style={{ fontSize: 14, color: "#7a7369", lineHeight: 1.6, marginBottom: 32 }}>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>
             Give it a name, or leave blank — you can always change it later.
           </p>
 
@@ -66,7 +66,7 @@ export default function NewProject() {
                 style={inputStyle}
                 autoFocus
               />
-              <p style={{ fontSize: 11, color: "#a0978a", marginTop: 6 }}>
+              <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6 }}>
                 Audience and details can be configured before analysis
               </p>
             </div>

@@ -25,7 +25,7 @@ export default function UploadPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="upload">
-      <div className="flex ds-upload-split" style={{ height: "calc(100vh - 108px)" }}>
+      <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden" }}>
         <LeftPanel
           isRecording={engine.isRecording}
           seconds={engine.seconds}

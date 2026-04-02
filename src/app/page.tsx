@@ -173,7 +173,7 @@ export default function CinematicLandingPage() {
                     fontFamily: "var(--font-playfair), var(--font-lora), serif",
                     fontSize: "clamp(20px, 2.5vw, 28px)",
                     fontStyle: "italic",
-                    color: "#A89F94",
+                    color: "#F9F7F2",
                   }}>
                     Your Story Starts
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>

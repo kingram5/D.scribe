@@ -364,6 +364,19 @@ input[type=range] {
   .show-mobile { display: flex !important; }
 }
 
+/* PageShell — desktop: locked to viewport */
+.ds-page-shell {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* Main layout — desktop: locked to viewport */
+.ds-main-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
 /* ========== Global Mobile Responsive ========== */
 @media (max-width: 768px) {
   /* Unlock scroll on ALL page shells for mobile */
@@ -374,6 +387,7 @@ input[type=range] {
     overflow-x: hidden !important;
     min-height: 100vh !important;
     padding-bottom: 100px !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .ds-page-shell > div {
@@ -388,6 +402,7 @@ input[type=range] {
     min-height: 100vh !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   /* Dashboard grid stacks */

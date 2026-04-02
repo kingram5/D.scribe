@@ -22,7 +22,12 @@ export default function CassetteTape({
   const status = isRecording ? "Recording" : seconds > 0 ? "Paused" : "Standby";
 
   return (
-    <div style={{ width: "100%", maxWidth: 700 }}>
+    <div className="ds-cassette-wrap" style={{ width: "100%", maxWidth: 700 }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-cassette-wrap { max-width: 100% !important; transform: scale(0.65); transform-origin: top center; margin-bottom: -40px; }
+        }
+      `}</style>
       {/* Status bar */}
       <div
         style={{

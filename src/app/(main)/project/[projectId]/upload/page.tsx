@@ -25,6 +25,29 @@ export default function UploadPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="upload">
+      <style>{`
+        @media (max-width: 768px) {
+          .ds-upload-split {
+            flex-direction: column !important;
+            overflow-y: auto !important;
+            height: auto !important;
+          }
+          .ds-upload-split .upload-slide-left {
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            box-shadow: none !important;
+            padding-bottom: 24px !important;
+          }
+          .ds-upload-split .upload-slide-right {
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+          }
+        }
+      `}</style>
       <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden" }}>
         <LeftPanel
           isRecording={engine.isRecording}

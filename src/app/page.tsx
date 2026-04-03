@@ -349,9 +349,8 @@ export default function CinematicLandingPage() {
                   className="text-[#A89F94] text-lg md:text-xl font-light max-w-lg mx-auto lg:mx-0 leading-relaxed"
                   style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
                 >
-                  Our intelligent dictation core adapts to your unique cadence, terminology, and
-                  stylistic preferences over time, becoming an invisible extension of your
-                  creative process.
+                  Upload more recordings and D. scribe maps your vocabulary, sentence rhythms, and
+                  rhetorical patterns — so every chapter sounds like you wrote it, not a machine.
                 </p>
               </div>
 

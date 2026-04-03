@@ -47,6 +47,18 @@ const AI_PHRASES: [RegExp, string][] = [
   [/\bpivotal\b/gi, "key"],
   [/\bnuanced\b/gi, "subtle"],
   [/\bmultifaceted\b/gi, "complex"],
+  [/\bunlock(s|ing)?\b/gi, "open$1"],
+  [/\brevolutionize(s|d)?\b/gi, "change$1"],
+  [/\bempower(s|ing|ed)?\b/gi, "help$1"],
+  [/\belevate(s|d)?\b/gi, "raise$1"],
+  [/\bharness(es|ing)?\b/gi, "use$1"],
+  [/\bdelve(s|d)?\b/gi, "look$1"],
+  [/\bembark(s|ed|ing)? on\b/gi, "start$1"],
+  [/\ba myriad of\b/gi, "many"],
+  [/\ba plethora of\b/gi, "many"],
+  [/\bin essence,?\s*/gi, ""],
+  [/\bneedless to say,?\s*/gi, ""],
+  [/\bit goes without saying that\s*/gi, ""],
 ];
 
 function replaceAIPhrases(text: string): string {

@@ -24,6 +24,10 @@ Banned phrases and clichés (never use these or close variants):
 - "a testament to" / "serves as a reminder" / "speaks volumes"
 - "the reality is" / "the truth is" / "the fact of the matter"
 - "resonate" / "pivotal" / "nuanced" / "multifaceted"
+- "unlock" / "revolutionize" / "empower" / "elevate" / "harness"
+- "delve" / "embark" / "myriad" / "plethora" / "meld"
+- "it goes without saying" / "needless to say" / "suffice it to say"
+- "in essence" / "in summary" / "to put it simply" / "in other words"
 
 Sentence patterns to avoid:
 - Don't start 3+ sentences in a row with the same word.

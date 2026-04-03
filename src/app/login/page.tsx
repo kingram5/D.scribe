@@ -7,16 +7,11 @@ import { createBrowserClient } from "@/lib/supabase";
 function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const next = searchParams.get("next") || "/dashboard";
+  const rawNext = searchParams.get("next") || "/dashboard";
+  // Validate redirect: must be a relative path, not a protocol-relative URL
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
   const authError = searchParams.get("error");
   const [loading, setLoading] = useState(false);
-
-  // Skip auth in dev — go straight to dashboard
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      router.replace(next);
-    }
-  }, [next, router]);
 
   async function signInWithGoogle() {
     setLoading(true);

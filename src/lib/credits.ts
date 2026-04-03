@@ -77,6 +77,7 @@ export async function checkCredits(userId: string): Promise<CreditCheck> {
   const { count } = await supabase
     .from("jobs")
     .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
     .gte("created_at", today.toISOString());
 
   if ((count || 0) >= dailyLimit) {

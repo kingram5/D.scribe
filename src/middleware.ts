@@ -13,9 +13,6 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/unauthorized", "/cinematic", "/landing-classic"];
 
 export async function middleware(request: NextRequest) {
-  // Dev auth bypass — remove before deploying
-  if (process.env.NODE_ENV === "development") return NextResponse.next();
-
   const { pathname } = request.nextUrl;
 
   // Allow public paths and API routes

@@ -150,9 +150,16 @@ export async function PATCH(
     return NextResponse.json(data);
   }
 
+  // Allowlist: only permit safe fields for project updates
+  const ALLOWED_FIELDS = ["title", "description", "audience", "num_chapters", "target_words_per_chapter", "status"];
+  const filteredBody: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) filteredBody[key] = body[key];
+  }
+
   const { data, error } = await supabase
     .from("projects")
-    .update(body)
+    .update(filteredBody)
     .eq("id", id)
     .select()
     .single();

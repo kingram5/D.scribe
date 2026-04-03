@@ -2,19 +2,8 @@ import { createAuthClient } from "@/lib/supabase-auth";
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
-const DEV_USER: User = {
-  id: "00000000-0000-0000-0000-000000000000",
-  aud: "authenticated",
-  role: "authenticated",
-  email: "dev@localhost",
-  app_metadata: { provider: "google" },
-  user_metadata: { full_name: "Kyle (dev)" },
-  created_at: new Date().toISOString(),
-} as User;
-
 /** Get the authenticated user from the request cookie. Returns null if not logged in. */
 export async function getUser() {
-  if (process.env.NODE_ENV === "development") return DEV_USER;
   const supabase = await createAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user;

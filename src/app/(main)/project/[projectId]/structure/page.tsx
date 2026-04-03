@@ -37,7 +37,6 @@ export default function StructurePage() {
   const [projectTitle, setProjectTitle] = useState("");
   const [numChapters, setNumChapters] = useState(8);
   const [wordsPerChapter, setWordsPerChapter] = useState(2500);
-  const [audience, setAudience] = useState("General");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -45,7 +44,6 @@ export default function StructurePage() {
       .then((r) => r.json())
       .then((p) => {
         setProjectTitle(p.title || "Untitled");
-        if (p.audience) setAudience(p.audience);
         if (p.num_chapters) setNumChapters(p.num_chapters);
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         setLoading(false);
@@ -59,7 +57,6 @@ export default function StructurePage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        audience,
         num_chapters: numChapters,
         target_words_per_chapter: wordsPerChapter,
       }),

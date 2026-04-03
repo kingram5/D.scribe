@@ -46,6 +46,8 @@ export default function StructurePage() {
       .then((p) => {
         setProjectTitle(p.title || "Untitled");
         if (p.audience) setAudience(p.audience);
+        if (p.num_chapters) setNumChapters(p.num_chapters);
+        if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         setLoading(false);
       })
       .catch(() => setLoading(false));

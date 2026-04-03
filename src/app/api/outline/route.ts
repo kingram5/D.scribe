@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const chapterCount = num_chapters || Math.max(3, Math.ceil(keyPoints.length / 3));
+  const chapterCount = num_chapters || project.num_chapters || Math.max(3, Math.ceil(keyPoints.length / 3));
+  const targetWordsPerChapter = project.target_words_per_chapter || 2500;
 
   const raw = await askClaude(
     OUTLINE_SYSTEM,
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
             key_point_ids: ch.key_point_ids.map(
               (idx: number) => keyPoints[idx - 1]?.id
             ).filter(Boolean),
-            target_word_count: 3000,
+            target_word_count: targetWordsPerChapter,
             sort_order: i,
           })
         )

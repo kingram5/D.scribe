@@ -152,6 +152,11 @@ export default function AnalysisPage() {
       const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
       if (!mmRes.ok) { const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed"); }
 
+      // Step 4: Generate outline (chapters) using structure settings
+      setAnalyzeStep("Generating chapter outline...");
+      const olRes = await fetch("/api/outline", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
+      if (!olRes.ok) { const e = await olRes.json().catch(() => ({ error: "Outline failed" })); throw new Error(e.error || "Outline generation failed"); }
+
       // Refresh data
       const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
       setData({

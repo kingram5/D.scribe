@@ -285,7 +285,7 @@ export default function AnalysisPage() {
   const hasAnalysis = (data?.key_points?.length || 0) > 0;
   const hasChapters = (data?.chapters?.length || 0) > 0;
 
-  // Pre-analysis: redirect to Structure page
+  // Pre-analysis: show run-analysis UI (structure is already done)
   if (!hasAnalysis) {
     return (
       <PageShell projectId={projectId} currentStep="analysis">
@@ -295,14 +295,21 @@ export default function AnalysisPage() {
               Analysis
             </h1>
             <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.6 }}>
-              Set up your manuscript structure first, then run analysis to extract key themes, voice profile, and chapter outline.
+              Run analysis to extract key themes, build a voice profile, and generate your chapter outline.
             </p>
+            {analyzeError && (
+              <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 16 }}>{analyzeError}</p>
+            )}
+            {analyzing && analyzeStep && (
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>{analyzeStep}</p>
+            )}
             <button
-              onClick={() => router.push(`/project/${projectId}/structure`)}
+              onClick={runAnalysis}
+              disabled={analyzing}
               className="nodum-btn"
-              style={{ justifyContent: "center" }}
+              style={{ justifyContent: "center", opacity: analyzing ? 0.6 : 1 }}
             >
-              Go to Structure
+              {analyzing ? "Analyzing..." : "Run Analysis"}
             </button>
           </GlassCard>
         </div>

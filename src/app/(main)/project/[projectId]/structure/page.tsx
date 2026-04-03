@@ -37,7 +37,10 @@ export default function StructurePage() {
   const [projectTitle, setProjectTitle] = useState("");
   const [numChapters, setNumChapters] = useState(8);
   const [wordsPerChapter, setWordsPerChapter] = useState(2500);
+  const [audience, setAudience] = useState("General");
   const [saving, setSaving] = useState(false);
+
+  const AUDIENCES = ["General", "Academic", "Faith Community", "Business/Leadership", "Self-Help", "Young Adult"];
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -46,6 +49,7 @@ export default function StructurePage() {
         setProjectTitle(p.title || "Untitled");
         if (p.num_chapters) setNumChapters(p.num_chapters);
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
+        if (p.audience) setAudience(p.audience);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -59,6 +63,7 @@ export default function StructurePage() {
       body: JSON.stringify({
         num_chapters: numChapters,
         target_words_per_chapter: wordsPerChapter,
+        audience,
       }),
     }).catch(() => {});
     router.push(`/project/${projectId}/analysis`);
@@ -291,6 +296,60 @@ export default function StructurePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 ><ChevronDown /></button>
               </div>
+            </div>
+          </div>
+
+          {/* Audience selector */}
+          <div style={{
+            borderBottom: "1px solid var(--ds-card-border)",
+            paddingBottom: 24,
+            marginBottom: 32,
+          }}>
+            <div style={{
+              fontSize: 10,
+              fontFamily: "var(--font-manrope), sans-serif",
+              fontWeight: 700,
+              textTransform: "uppercase" as const,
+              letterSpacing: "0.15em",
+              color: "#C17A47",
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}>
+              <span>03</span>
+              <span style={{ width: 16, height: 1, background: "#C17A47" }} />
+              <span>Audience</span>
+            </div>
+            <h2 style={{
+              fontFamily: "var(--font-playfair), serif",
+              fontSize: 24,
+              fontWeight: 400,
+              color: "var(--text-primary)",
+              margin: 0,
+              marginBottom: 16,
+            }}>Target Reader</h2>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {AUDIENCES.map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setAudience(a)}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: 13,
+                    fontFamily: "var(--font-manrope), sans-serif",
+                    fontWeight: audience === a ? 600 : 400,
+                    background: audience === a ? "#C17A47" : "transparent",
+                    color: audience === a ? "#fff" : "var(--text-secondary)",
+                    border: audience === a ? "1px solid #C17A47" : "1px solid var(--ds-card-border)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {a}
+                </button>
+              ))}
             </div>
           </div>
 

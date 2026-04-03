@@ -300,34 +300,8 @@ export default function AnalysisPage() {
               Analysis
             </h1>
             <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.6 }}>
-              Select your target audience, then run analysis to extract key themes, build a voice profile, and generate your chapter outline.
+              Run analysis to extract key themes, build a voice profile, and generate your chapter outline.
             </p>
-
-            {/* Audience selector */}
-            <div style={{ marginBottom: 24, textAlign: "left" }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
-                Target Audience
-              </label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {AUDIENCES.map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => setAudience(a)}
-                    className="nodum-btn"
-                    style={{
-                      padding: "6px 14px",
-                      fontSize: 13,
-                      background: audience === a ? "var(--accent)" : "transparent",
-                      color: audience === a ? "#fff" : "var(--text-secondary)",
-                      border: audience === a ? "none" : "1px solid var(--border)",
-                      borderRadius: 8,
-                    }}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {analyzeError && (
               <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 16 }}>{analyzeError}</p>

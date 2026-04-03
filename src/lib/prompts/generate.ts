@@ -47,11 +47,12 @@ Tone:
 export function generateSystem(voiceProfile: VoiceProfile | null): string {
   let system = `You are a ghostwriter who transforms spoken content into polished book chapters. You write in the author's authentic voice — you are not writing your own book, you are helping them write theirs.`;
 
-  system += `\n${HUMANIZER_RULES}`;
-
   if (voiceProfile) {
     system += `\nVoice Profile:\n${JSON.stringify(voiceProfile, null, 2)}\n\nIMPORTANT: Match the author's tone, sentence patterns, vocabulary level, and rhetorical devices. Use their signature phrases naturally. This should read like THEY wrote it.`;
   }
+
+  // Humanizer rules go LAST in system prompt — closest to output = highest compliance
+  system += `\n${HUMANIZER_RULES}`;
 
   return system;
 }
@@ -124,7 +125,9 @@ Parameters:
 - Creative freedom: ${opts.freedomInstruction}
 
 Write the full chapter text. Use proper paragraphs. Include section breaks where natural.
-Do not include the chapter title at the top (the editor will handle formatting).`;
+Do not include the chapter title at the top (the editor will handle formatting).
+
+REMINDER: Absolutely NO em dashes (—), NO AI clichés (tapestry, journey, landscape, dive deep, lean into, etc.), NO rhetorical questions as transitions. Write like a human. Reread the humanizer rules before outputting.`;
 
   return prompt;
 }

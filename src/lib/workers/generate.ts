@@ -7,6 +7,7 @@ import {
 } from "@/lib/claude-lite";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
+import { sanitizeGenerated } from "@/lib/sanitize-output";
 
 export async function runGenerateJob(
   jobId: string,
@@ -41,7 +42,7 @@ export async function runGenerateJob(
         ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
         : "";
 
-      const content = await askClaude(
+      const rawContent = await askClaude(
         `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}\n${HUMANIZER_RULES}`,
         `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
 
@@ -55,9 +56,12 @@ The foreword should:
 - Create anticipation for what's to come
 - Be warm, inviting, and authentic to the speaker's voice
 
-Target: ~1500 words. Write the full foreword now.`,
+Target: ~1500 words. Write the full foreword now.
+
+REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write like a human.`,
         { temperature, maxTokens: 8192 }
       );
+      const content = sanitizeGenerated(rawContent);
 
       // Save as chapter 0
       await supabase.from("chapters").delete()
@@ -174,7 +178,8 @@ Target: ~1500 words. Write the full foreword now.`,
       freedomInstruction,
     });
 
-    const content = await askClaude(system, prompt, { temperature, maxTokens: 16384 });
+    const rawContent = await askClaude(system, prompt, { temperature, maxTokens: 16384 });
+    const content = sanitizeGenerated(rawContent);
     const wordCount = content.split(/\s+/).length;
 
     // Get next version number

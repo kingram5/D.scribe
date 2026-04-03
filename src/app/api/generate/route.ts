@@ -8,6 +8,7 @@ import {
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 import { requireAuth } from "@/lib/auth";
+import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/generate — generate a chapter or foreword
@@ -226,10 +227,13 @@ Target: ~1500 words. Write the full foreword now.`,
       freedomInstruction,
     });
 
-    const content = await askClaude(system, prompt, {
+    const rawContent = await askClaude(system, prompt, {
       temperature,
       maxTokens: 16384,
     });
+
+    // Post-generation sanitizer: catch em dashes and AI clichés that slip through
+    const content = sanitizeGenerated(rawContent);
 
     const wordCount = content.split(/\s+/).length;
 

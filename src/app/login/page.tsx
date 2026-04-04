@@ -1,28 +1,50 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const rawNext = searchParams.get("next") || "/dashboard";
-  // Validate redirect: must be a relative path, not a protocol-relative URL
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
   const authError = searchParams.get("error");
+  const errorMessage = searchParams.get("message");
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailSuccess, setEmailSuccess] = useState("");
 
   async function signInWithGoogle() {
     setLoading(true);
     const supabase = createBrowserClient();
-
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
+  }
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailError("");
+    setEmailSuccess("");
+    setLoading(true);
+
+    const supabase = createBrowserClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+      },
+    });
+    setLoading(false);
+    if (error) {
+      setEmailError(error.message);
+    } else {
+      setEmailSuccess("Check your email for a sign-in link.");
+    }
   }
 
   return (
@@ -73,7 +95,7 @@ function LoginContent() {
           Upload sermons, keynotes, or podcast episodes — and let AI ghostwrite your manuscript in your voice.
         </p>
 
-        {authError && (
+        {(authError || emailError) && (
           <div style={{
             padding: "10px 14px",
             background: "rgba(193,122,71,0.1)",
@@ -83,9 +105,71 @@ function LoginContent() {
             color: "#D98B58",
             marginBottom: 16,
           }}>
-            Sign in failed. Please try again.
+            {emailError || errorMessage || "Sign in failed. Please try again."}
           </div>
         )}
+
+        {emailSuccess && (
+          <div style={{
+            padding: "10px 14px",
+            background: "rgba(52,168,83,0.1)",
+            border: "1px solid rgba(52,168,83,0.2)",
+            borderRadius: 8,
+            fontSize: 13,
+            color: "#2D7D46",
+            marginBottom: 16,
+          }}>
+            {emailSuccess}
+          </div>
+        )}
+
+        {/* Magic Link Form */}
+        <form onSubmit={handleMagicLink} style={{ marginBottom: 20 }}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              fontSize: 15,
+              border: "1px solid rgba(44,36,25,0.12)",
+              borderRadius: 10,
+              background: "rgba(44,36,25,0.02)",
+              color: "#2C2419",
+              marginBottom: 14,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px 20px",
+              fontSize: 15,
+              fontWeight: 600,
+              border: "none",
+              borderRadius: 12,
+              background: "#2C2419",
+              color: "#F4F1E8",
+              cursor: loading ? "wait" : "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            {loading ? "Sending..." : "Sign in with Email"}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(44,36,25,0.1)" }} />
+          <span style={{ fontSize: 12, color: "#A39B7D" }}>or</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(44,36,25,0.1)" }} />
+        </div>
 
         <button
           onClick={signInWithGoogle}

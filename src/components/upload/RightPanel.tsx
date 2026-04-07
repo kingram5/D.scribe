@@ -19,6 +19,7 @@ interface RightPanelProps {
   canInitialize: boolean;
   allDone: boolean;
   onInitialize: () => void;
+  onBrainstorm?: () => void;
 }
 
 export default function RightPanel({
@@ -37,6 +38,7 @@ export default function RightPanel({
   canInitialize,
   allDone,
   onInitialize,
+  onBrainstorm,
 }: RightPanelProps) {
   return (
     <div
@@ -371,6 +373,67 @@ export default function RightPanel({
                 {youtubeError}
               </p>
             )}
+          </div>
+        </InputCard>
+
+        {/* Brainstorm card */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "0 4px",
+          }}
+        >
+          <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--text-tertiary)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}>
+            Or
+          </span>
+          <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
+        </div>
+
+        <InputCard onClick={onBrainstorm}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "20px 24px",
+          }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1))",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7a7369" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 9a2 2 0 01-2 2H7l-3 3V5a2 2 0 012-2h9a2 2 0 012 2z" />
+                <circle cx="7" cy="8" r="0.5" fill="#7a7369" />
+                <circle cx="10" cy="8" r="0.5" fill="#7a7369" />
+              </svg>
+            </div>
+            <div>
+              <p style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--ds-ink)",
+                marginBottom: 2,
+              }}>
+                Brainstorm with AI
+              </p>
+              <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                Talk through your ideas — the AI draws them out of you
+              </p>
+            </div>
           </div>
         </InputCard>
 

@@ -635,31 +635,27 @@ export default function GeneratePage() {
 
               {/* Footer buttons */}
               <div style={{ display: "flex", gap: 12 }}>
-                {!anyGenerated ? (
-                  /* No chapters generated yet — show Generate All */
-                  <button
-                    onClick={generateAll}
-                    disabled={isGenerating}
-                    className="nodum-btn"
-                  >
-                    {generateAllJob.isRunning
-                      ? "Generating..."
-                      : `Generate All ${chapters.length} Chapters`}
-                  </button>
-                ) : (
-                  /* Some/all chapters generated — show Regenerate for this chapter */
-                  <button
-                    onClick={() => regenerateChapter(active.id)}
-                    disabled={isGenerating}
-                    className="nodum-btn"
-                  >
-                    {regenerateJob.isRunning
-                      ? "Regenerating..."
-                      : active.status === "generated"
-                        ? "Regenerate Chapter"
-                        : "Generate Chapter"}
-                  </button>
-                )}
+                <button
+                  onClick={generateAll}
+                  disabled={isGenerating}
+                  className="nodum-btn"
+                >
+                  {generateAllJob.isRunning
+                    ? "Generating..."
+                    : `Generate All ${chapters.length} Chapters`}
+                </button>
+                <button
+                  onClick={() => regenerateChapter(active.id)}
+                  disabled={isGenerating}
+                  className="nodum-btn"
+                  style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                >
+                  {regenerateJob.isRunning
+                    ? "Regenerating..."
+                    : active.status === "generated"
+                      ? "Regenerate Chapter"
+                      : "Generate Chapter"}
+                </button>
               </div>
 
               {/* Generate All completed summary */}

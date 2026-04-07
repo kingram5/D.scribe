@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { askClaude, creativeFreedomToTemp } from "@/lib/claude-lite";
+import { sanitizeGenerated } from "@/lib/sanitize-output";
+import { selectionEditSystem, selectionEditPrompt } from "@/lib/prompts/rewrite";
+
+// POST /api/rewrite/selection — rewrite a selected text range
+export async function POST(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const { allowed, retryAfterMs } = checkRateLimit(user.id, "rewrite");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
+  const {
+    chapter_id,
+    selected_text,
+    context_before,
+    context_after,
+    feedback,
+    creative_freedom = 50,
+  } = await req.json();
+
+  if (!chapter_id || !selected_text?.trim() || !feedback?.trim()) {
+    return NextResponse.json(
+      { error: "chapter_id, selected_text, and feedback are required" },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createServerClient();
+
+  // Verify ownership via chapter → project → user
+  const { data: chapter } = await supabase
+    .from("chapters")
+    .select("project_id")
+    .eq("id", chapter_id)
+    .single();
+
+  if (!chapter) {
+    return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, voice_profile")
+    .eq("id", chapter.project_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const system = selectionEditSystem(project.voice_profile);
+  const prompt = selectionEditPrompt({
+    selectedText: selected_text,
+    contextBefore: context_before || "",
+    contextAfter: context_after || "",
+    feedback,
+  });
+
+  const temperature = creativeFreedomToTemp(creative_freedom);
+
+  const raw = await askClaude(system, prompt, {
+    maxTokens: 4096,
+    temperature,
+  });
+
+  const rewritten = sanitizeGenerated(raw);
+
+  return NextResponse.json({ rewritten_text: rewritten });
+}

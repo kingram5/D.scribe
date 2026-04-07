@@ -27,10 +27,16 @@ export interface ChapterContent {
 }
 
 export interface GenerationParams {
-  creative_freedom: number; // 0-100, maps to temperature 0.3-0.9
-  audience: Audience;
-  target_words: number;
-  include_enrichments: boolean;
+  creative_freedom?: number; // 0-100, maps to temperature 0.3-0.9
+  audience?: Audience;
+  target_words?: number;
+  include_enrichments?: boolean;
+  manual_edit?: boolean;
+  rewrite?: boolean;
+  rewrite_mode?: "full_chapter" | "selection_edit";
+  feedback?: string;
+  source_version?: number;
+  coherence_pass?: boolean;
 }
 
 export interface Enrichment {

@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Chapter, ChapterContent } from "@/types";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import TipTapEditor, { TipTapSelection, TipTapEditorHandle } from "@/components/editor/TipTapEditor";
+import MagicEditBubble from "@/components/editor/MagicEditBubble";
+import RewritePromptBar from "@/components/editor/RewritePromptBar";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -20,6 +23,11 @@ export default function EditorPage() {
   const [saving, setSaving] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [selection, setSelection] = useState<TipTapSelection | null>(null);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
+  const editorRef = useRef<TipTapEditorHandle>(null);
+  const preRewriteContentRef = useRef<string>("");
 
   const fetchChapters = useCallback(async () => {
     try {
@@ -634,6 +642,7 @@ export default function EditorPage() {
               transition: "all 0.15s ease",
             }}
               title="Bold"
+              onClick={() => editorRef.current?.getEditor()?.chain().focus().toggleBold().run()}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             >
@@ -658,6 +667,7 @@ export default function EditorPage() {
               transition: "all 0.15s ease",
             }}
               title="Italic"
+              onClick={() => editorRef.current?.getEditor()?.chain().focus().toggleItalic().run()}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             >
@@ -684,10 +694,31 @@ export default function EditorPage() {
               transition: "all 0.15s ease",
             }}
               title="Quote"
+              onClick={() => editorRef.current?.getEditor()?.chain().focus().toggleBlockquote().run()}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             >
               &ldquo;
+            </button>
+            {/* Divider */}
+            <div style={{ width: 20, height: 1, background: "var(--ds-card-border)", margin: "4px 0" }} />
+            {/* Undo */}
+            <button style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s ease" }}
+              title="Undo"
+              onClick={() => editorRef.current?.getEditor()?.chain().focus().undo().run()}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
+            </button>
+            {/* Redo */}
+            <button style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s ease" }}
+              title="Redo"
+              onClick={() => editorRef.current?.getEditor()?.chain().focus().redo().run()}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" /></svg>
             </button>
             {/* Divider */}
             <div style={{ width: 20, height: 1, background: "var(--ds-card-border)", margin: "4px 0" }} />
@@ -792,32 +823,95 @@ export default function EditorPage() {
                   }} />
                 </div>
 
-                {/* Textarea */}
-                <textarea
-                  className="ds-editor-textarea"
-                  value={content}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Begin writing your chapter here, or generate content from the Generate page..."
-                  style={{
-                    background: "transparent",
-                    padding: "0 24px",
-                    fontSize: 19,
-                    lineHeight: 2.1,
-                    fontFamily: "var(--font-lora), Georgia, serif",
-                    letterSpacing: "0.01em",
-                    border: "none",
-                    outline: "none",
-                    width: "100%",
-                    minHeight: 600,
-                    resize: "none",
-                    color: "var(--text-primary)",
-                    boxSizing: "border-box",
-                    textAlign: "justify",
-                  }}
-                />
+                {/* TipTap Editor */}
+                <div style={{ position: "relative" }}>
+                  <TipTapEditor
+                    ref={editorRef}
+                    content={content}
+                    onChange={handleContentChange}
+                    onSelectionChange={setSelection}
+                    editable={!isRewriting}
+                    placeholder="Begin writing your chapter here, or generate content from the Generate page..."
+                  />
+                  <MagicEditBubble
+                    editor={editorRef.current?.getEditor() ?? null}
+                    selection={selection}
+                    chapterId={activeChapter?.id || ""}
+                    onRewritten={() => {
+                      const editor = editorRef.current?.getEditor();
+                      if (editor) {
+                        const paragraphs: string[] = [];
+                        editor.state.doc.forEach((node) => paragraphs.push(node.textContent));
+                        const newContent = paragraphs.join("\n\n");
+                        setContent(newContent);
+                        setWordCount(newContent.split(/\s+/).filter(Boolean).length);
+                        setSaved(false);
+                        saveContent();
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Rewrite Prompt Bar */}
+          {activeChapter && content.trim() && (
+            <RewritePromptBar
+              chapterId={activeChapter.id}
+              disabled={isRewriting}
+              onRewriteStart={() => {
+                preRewriteContentRef.current = content;
+                setIsRewriting(true);
+                setRewriteError(null);
+              }}
+              onRewriteChunk={(accumulated) => {
+                setContent(accumulated);
+                setWordCount(accumulated.split(/\s+/).filter(Boolean).length);
+              }}
+              onRewriteComplete={(finalText) => {
+                setContent(finalText);
+                setWordCount(finalText.split(/\s+/).filter(Boolean).length);
+                setIsRewriting(false);
+                setSaved(false);
+                setTimeout(() => saveContent(), 100);
+              }}
+              onRewriteError={(error) => {
+                setContent(preRewriteContentRef.current);
+                setWordCount(preRewriteContentRef.current.split(/\s+/).filter(Boolean).length);
+                setIsRewriting(false);
+                setRewriteError(error);
+                setTimeout(() => setRewriteError(null), 5000);
+              }}
+            />
+          )}
+
+          {/* Rewriting overlay */}
+          {isRewriting && (
+            <div style={{
+              position: "absolute", top: 16, right: 24, zIndex: 20,
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 16px", borderRadius: 20,
+              background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.3)", backdropFilter: "blur(8px)",
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#C17A47", animation: "pulse 1.5s infinite" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#C17A47", fontFamily: "var(--font-manrope), sans-serif" }}>
+                Magic Rewrite in progress...
+              </span>
+            </div>
+          )}
+
+          {/* Rewrite error toast */}
+          {rewriteError && (
+            <div style={{
+              position: "absolute", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 20,
+              padding: "10px 20px", borderRadius: 10, background: "rgba(220,38,38,0.9)", color: "white",
+              fontSize: 13, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 500,
+              boxShadow: "0 4px 16px rgba(220,38,38,0.3)",
+            }}>
+              {rewriteError}
+            </div>
+          )}
 
           {/* Floating Save Button — bottom right */}
           <button
@@ -890,11 +984,36 @@ export default function EditorPage() {
         </div>
       </div>
 
-      {/* Keyframe for save spinner */}
+      {/* Keyframes + TipTap styles */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .ds-tiptap-editor .ProseMirror {
+          outline: none;
+        }
+        .ds-tiptap-editor .ProseMirror ::selection {
+          background: rgba(193,122,71,0.25);
+        }
+        .ds-magic-edit-active.ProseMirror ::selection {
+          background: rgba(193,122,71,0.3) !important;
+        }
+        .ds-tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: var(--text-tertiary);
+          pointer-events: none;
+          height: 0;
+          font-style: italic;
         }
       `}</style>
     </PageShell>

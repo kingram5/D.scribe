@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
     { temperature: 0.4 }
   );
   const raw = result.text;
-  await recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", result.usage);
+  // Non-blocking — don't let Ink tracking failure abort the enrichment
+  recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", result.usage).catch(console.error);
 
   try {
     console.log("[enrich] Raw Claude response:", raw.slice(0, 500));

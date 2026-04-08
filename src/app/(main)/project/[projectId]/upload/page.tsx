@@ -73,7 +73,7 @@ export default function UploadPage() {
                 <span style={{ fontSize: 22, fontWeight: 300, color: "var(--ds-ink)", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
               </div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 28 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 28, overflow: "hidden", minHeight: 0 }}>
               <div style={{ textAlign: "center" }}>
                 <h1 style={{
                   fontFamily: "var(--font-lora), serif",
@@ -99,7 +99,7 @@ export default function UploadPage() {
                   Talk through your ideas with AI. Speak or type — the AI asks questions to draw out your best thinking.
                 </p>
               </div>
-              <div style={{ maxWidth: 500, display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+              <div style={{ maxWidth: 400, display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
                 {[
                   "Tap \"Speak\" and talk naturally — no need to type",
                   "The AI asks follow-up questions to deepen your ideas",
@@ -108,14 +108,13 @@ export default function UploadPage() {
                   <div key={i} style={{
                     display: "flex",
                     alignItems: "flex-start",
-                    gap: 10,
-                    fontSize: 33,
-                    color: "var(--ds-ink)",
-                    fontFamily: "var(--font-lora), serif",
-                    fontStyle: "italic",
-                    lineHeight: 1.3,
+                    gap: 8,
+                    fontSize: 15,
+                    color: "var(--text-secondary)",
+                    fontFamily: "var(--font-manrope), sans-serif",
+                    lineHeight: 1.5,
                   }}>
-                    <span style={{ color: "var(--ds-ink)", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
+                    <span style={{ color: "var(--text-tertiary)", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
                     {tip}
                   </div>
                 ))}

@@ -95,15 +95,15 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div style={{ padding: "0 16px", marginBottom: 12 }}>
+    <div style={{ padding: "8px 8px", marginBottom: 4 }}>
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
           width: "100%",
           background: "rgba(0,0,0,0.03)",
           border: "1px solid rgba(0,0,0,0.06)",
-          borderRadius: 10,
-          padding: "10px 14px",
+          borderRadius: 12,
+          padding: "14px 16px",
           cursor: "pointer",
           textAlign: "left",
         }}
@@ -113,74 +113,78 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 6,
+          marginBottom: 10,
         }}>
           <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: "var(--text-secondary)",
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#191816",
             fontFamily: "var(--font-manrope), sans-serif",
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
           }}>
-            Ink
+            Ink Balance
           </span>
           <span style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: "var(--text-tertiary)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#191816",
             fontFamily: "var(--font-geist-mono), monospace",
           }}>
-            {data.balance.toFixed(1)} / {limit}
+            {data.balance.toFixed(1)} <span style={{ color: "#a0978a", fontWeight: 400 }}>/ {limit}</span>
           </span>
         </div>
 
         {/* Progress bar */}
         <div style={{
           width: "100%",
-          height: 4,
+          height: 8,
           background: "rgba(0,0,0,0.06)",
-          borderRadius: 2,
+          borderRadius: 4,
           overflow: "hidden",
         }}>
           <div style={{
             width: `${100 - pct}%`,
             height: "100%",
             background: color,
-            borderRadius: 2,
+            borderRadius: 4,
             transition: "width 0.5s ease, background 0.3s ease",
           }} />
         </div>
 
-        {/* Tier label */}
+        {/* Tier label + expand arrow */}
         <div style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginTop: 4,
+          marginTop: 8,
         }}>
           <span style={{
-            fontSize: 10,
-            color: "var(--text-tertiary)",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#a0978a",
             fontFamily: "var(--font-manrope), sans-serif",
           }}>
             {TIER_LABELS[data.tier] || data.tier}
           </span>
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="var(--text-tertiary)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            style={{
-              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease",
-            }}
-          >
-            <path d="M2 4l3 3 3-3" />
-          </svg>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 10, color: "#a0978a" }}>
+              {expanded ? "Hide" : "Details"}
+            </span>
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="#a0978a"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              style={{
+                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s ease",
+              }}
+            >
+              <path d="M2 4l3 3 3-3" />
+            </svg>
+          </div>
         </div>
       </button>
 

@@ -77,9 +77,11 @@ export default function GeneratePage() {
         const data = await res.json();
         setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
       } else {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        console.error("Enrichment failed:", err);
-        alert(`Enrichment failed: ${err.error || res.statusText}`);
+        const text = await res.text();
+        let errMsg = `HTTP ${res.status}`;
+        try { errMsg = JSON.parse(text).error || errMsg; } catch { errMsg = text.slice(0, 200) || errMsg; }
+        console.error("Enrichment failed:", res.status, text);
+        alert(`Enrichment failed: ${errMsg}`);
       }
     } catch (err) {
       console.error("Enrichment error:", err);

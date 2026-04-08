@@ -55,7 +55,14 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    const items = JSON.parse(cleanJson(raw));
+    console.log("[enrich] Raw Claude response:", raw.slice(0, 500));
+    const cleaned = cleanJson(raw);
+    console.log("[enrich] Cleaned JSON:", cleaned.slice(0, 500));
+    const items = JSON.parse(cleaned);
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "No enrichment items found in response" }, { status: 500 });
+    }
 
     // Delete existing enrichments for this chapter
     await supabase.from("enrichments").delete().eq("chapter_id", chapter_id);
@@ -66,20 +73,24 @@ export async function POST(req: NextRequest) {
       .insert(
         items.map((item: Record<string, unknown>) => ({
           chapter_id,
-          quote_text: item.quote_text,
-          source_author: item.source_author,
-          source_title: item.source_title,
-          source_type: item.source_type,
-          relevance_note: item.relevance_note,
+          quote_text: item.quote_text || "",
+          source_author: item.source_author || "Unknown",
+          source_title: item.source_title || "",
+          source_type: item.source_type || "book",
+          relevance_note: item.relevance_note || "",
           included: true,
         }))
       )
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[enrich] Supabase insert error:", error);
+      return NextResponse.json({ error: `DB error: ${error.message}` }, { status: 500 });
+    }
     return NextResponse.json(enrichments);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Enrichment failed";
+    console.error("[enrich] Error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

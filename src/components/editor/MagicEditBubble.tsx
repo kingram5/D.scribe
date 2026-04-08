@@ -147,7 +147,12 @@ export default function MagicEditBubble({
   return (
     <div
       ref={bubbleRef}
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        // Don't prevent default on input clicks — allows typing
+        if ((e.target as HTMLElement).tagName !== "INPUT") {
+          e.preventDefault();
+        }
+      }}
       style={{
         position: "absolute",
         top: position.top,

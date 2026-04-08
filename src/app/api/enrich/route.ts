@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
+import { recordInkUsage } from "@/lib/ink";
 
 // POST /api/enrich — find enrichment quotes for a chapter
 export async function POST(req: NextRequest) {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     keyPoints = data;
   }
 
-  const raw = await askClaude(
+  const result = await askClaudeWithUsage(
     ENRICH_SYSTEM,
     enrichPrompt(
       chapter.title,
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
     ),
     { temperature: 0.4 }
   );
+  const raw = result.text;
+  await recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", result.usage);
 
   try {
     console.log("[enrich] Raw Claude response:", raw.slice(0, 500));

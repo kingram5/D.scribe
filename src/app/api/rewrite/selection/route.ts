@@ -5,7 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { askClaudeWithUsage, creativeFreedomToTemp } from "@/lib/claude-lite";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { selectionEditSystem, selectionEditPrompt } from "@/lib/prompts/rewrite";
-import { recordInkUsage } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 // POST /api/rewrite/selection — rewrite a selected text range
 export async function POST(req: NextRequest) {
@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
         status: 429,
         headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
       }
+    );
+  }
+
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
     );
   }
 

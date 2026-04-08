@@ -13,12 +13,15 @@ import JobProgress from "@/components/ui/JobProgress";
 import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
+import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
+import { useInkGuard } from "@/hooks/useInkGuard";
 
 export default function GeneratePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showUpgrade, setShowUpgrade, guardedFetch } = useInkGuard();
   const [creativeFreedom, setCreativeFreedom] = useState(50);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
@@ -68,7 +71,7 @@ export default function GeneratePage() {
   async function fetchEnrichments(chapterId: string) {
     setEnriching(chapterId);
     try {
-      const res = await fetch("/api/enrich", {
+      const res = await guardedFetch("/api/enrich", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chapter_id: chapterId }),
@@ -705,6 +708,7 @@ export default function GeneratePage() {
         message="Your manuscript is ready — time to edit and refine."
         onDone={() => setShowCelebration(false)}
       />
+      {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}
     </PageShell>
   );
 }

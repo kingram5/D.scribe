@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
-import { recordInkUsage } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 // POST /api/enrich — find enrichment quotes for a chapter
 export async function POST(req: NextRequest) {
@@ -31,6 +31,15 @@ export async function POST(req: NextRequest) {
   // Verify the chapter's project belongs to this user
   if (chapter.projects?.user_id !== user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
+    );
   }
 
   // Get key points for this chapter

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { recordInkUsage } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -37,8 +37,17 @@ Start by asking what they want to write about today. Keep it casual.`;
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const { error: authError } = await requireAuth();
+  const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "out_of_ink", message: inkCheck.reason }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   const { messages } = await req.json();
 

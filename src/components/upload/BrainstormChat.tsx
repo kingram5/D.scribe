@@ -472,17 +472,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
 
       {/* Input */}
       <div style={{
-        padding: "12px 24px 20px",
+        padding: "16px 24px 24px",
         borderTop: "1px solid rgba(0,0,0,0.06)",
       }}>
         <div style={{
           display: "flex",
           alignItems: "flex-end",
-          gap: 8,
+          gap: 12,
           background: "rgba(255,255,255,0.8)",
           border: "1px solid rgba(0,0,0,0.1)",
-          borderRadius: 12,
-          padding: "8px 12px",
+          borderRadius: 16,
+          padding: "14px 16px",
         }}>
           <textarea
             ref={inputRef}
@@ -496,18 +496,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             }}
             placeholder={streaming ? "AI is thinking..." : speechSupported ? "Tap the mic or type your ideas..." : "Share your ideas..."}
             disabled={streaming}
-            rows={1}
+            rows={2}
             style={{
               flex: 1,
               border: "none",
               outline: "none",
               resize: "none",
-              fontSize: 14,
+              fontSize: 16,
               fontFamily: "var(--font-manrope), sans-serif",
               background: "transparent",
               color: "var(--ds-ink)",
               lineHeight: 1.5,
-              maxHeight: 120,
+              maxHeight: 160,
             }}
           />
           {speechSupported && (
@@ -517,26 +517,26 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
               style={{
                 background: listening ? "#ef4444" : "rgba(0,0,0,0.04)",
                 border: listening ? "none" : "1px solid rgba(0,0,0,0.08)",
-                borderRadius: 10,
-                height: 36,
-                padding: "0 12px",
+                borderRadius: 14,
+                height: 56,
+                padding: "0 20px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 6,
+                gap: 8,
                 cursor: streaming ? "default" : "pointer",
                 transition: "background 0.15s",
                 flexShrink: 0,
                 animation: listening ? "micPulse 1.5s ease-in-out infinite" : "none",
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "#7a7369"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "#7a7369"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="5" y="1" width="6" height="9" rx="3" />
                 <path d="M3 7v1a5 5 0 0010 0V7" />
                 <path d="M8 13v2" />
               </svg>
               <span style={{
-                fontSize: 11,
+                fontSize: 14,
                 fontWeight: 600,
                 color: listening ? "#fff" : "#7a7369",
                 fontFamily: "var(--font-manrope), sans-serif",
@@ -558,9 +558,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             style={{
               background: input.trim() && !streaming ? "var(--ds-accent-500)" : "rgba(0,0,0,0.08)",
               border: "none",
-              borderRadius: 8,
-              width: 32,
-              height: 32,
+              borderRadius: 14,
+              width: 56,
+              height: 56,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -569,7 +569,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
               flexShrink: 0,
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={input.trim() && !streaming ? "#fff" : "#a0978a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke={input.trim() && !streaming ? "#fff" : "#a0978a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2L7 9" />
               <path d="M14 2l-5 12-2-5-5-2z" />
             </svg>

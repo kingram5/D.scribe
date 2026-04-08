@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import InkMeter from "./InkMeter";
 
 export default function UserMenu() {
   const { user, loading, signOut } = useAuth();
@@ -62,7 +63,7 @@ export default function UserMenu() {
           padding: 8,
           zIndex: 200,
         }}>
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)", marginBottom: 4 }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#191816" }}>
               {user.user_metadata?.full_name || "User"}
             </div>
@@ -70,6 +71,7 @@ export default function UserMenu() {
               {user.email}
             </div>
           </div>
+          <InkMeter />
           <button
             onClick={signOut}
             style={{

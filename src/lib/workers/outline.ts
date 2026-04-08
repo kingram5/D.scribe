@@ -1,7 +1,8 @@
 import { createServerClient } from "@/lib/supabase";
 import { updateJob } from "@/lib/jobs";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
+import { recordInkUsage } from "@/lib/ink";
 
 export async function runOutlineJob(
   jobId: string,
@@ -14,7 +15,7 @@ export async function runOutlineJob(
 
     // Get project + key points
     const [projectRes, keyPointsRes] = await Promise.all([
-      supabase.from("projects").select("*").eq("id", input.project_id).single(),
+      supabase.from("projects").select("*, user_id").eq("id", input.project_id).single(),
       supabase.from("key_points").select("*").eq("project_id", input.project_id).order("created_at"),
     ]);
 
@@ -26,7 +27,7 @@ export async function runOutlineJob(
 
     const chapterCount = input.num_chapters || Math.max(3, Math.ceil(keyPoints.length / 3));
 
-    const raw = await askClaude(
+    const result = await askClaudeWithUsage(
       OUTLINE_SYSTEM,
       outlinePrompt(
         keyPoints.map((kp) => ({ title: kp.title, summary: kp.summary })),
@@ -37,8 +38,9 @@ export async function runOutlineJob(
       ),
       { temperature: 0.5 }
     );
+    if (project.user_id) await recordInkUsage(project.user_id, input.project_id, "outline", "quality", result.usage);
 
-    const chapters = JSON.parse(cleanJson(raw));
+    const chapters = JSON.parse(cleanJson(result.text));
 
     // Delete existing chapters for this project
     await supabase.from("chapters").delete().eq("project_id", input.project_id);

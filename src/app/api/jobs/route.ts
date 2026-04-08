@@ -6,7 +6,7 @@ import { createJob, updateJob, type JobType } from "@/lib/jobs";
 // Use maxDuration to extend the function timeout — on Hobby this caps at 60s.
 // The real fix is Vercel Pro or an external job queue.
 export const maxDuration = 60;
-import { checkCredits, deductCredit } from "@/lib/credits";
+import { checkInk } from "@/lib/ink";
 import { createServerClient } from "@/lib/supabase";
 import { runAnalyzeJob } from "@/lib/workers/analyze";
 import { runOutlineJob } from "@/lib/workers/outline";
@@ -50,19 +50,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Check credits before creating job
-  const creditCheck = await checkCredits(project.user_id);
-  if (!creditCheck.allowed) {
+  // Check Ink balance before creating job
+  const inkCheck = await checkInk(project.user_id);
+  if (!inkCheck.allowed) {
     return NextResponse.json(
-      { error: creditCheck.reason, credits_remaining: creditCheck.balance },
+      { error: inkCheck.reason, ink_remaining: inkCheck.balance },
       { status: 402 }
     );
   }
 
   const job = await createJob(project_id, type, { project_id, ...rest });
-
-  // Deduct 1 credit
-  await deductCredit(project.user_id);
 
   // Fire-and-forget: run the worker after the response is sent
   const runWorker = async () => {

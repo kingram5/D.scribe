@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase";
 import { updateJob } from "@/lib/jobs";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
+import { recordInkUsage } from "@/lib/ink";
 
 const BATCH_SIZE = 5;
 
@@ -95,7 +96,7 @@ export async function runCoherenceJob(
         return section;
       }).join("\n\n===== TRANSITION =====\n\n");
 
-      const raw = await askClaude(
+      const cohResult = await askClaudeWithUsage(
         `You are a book editor specializing in narrative coherence and chapter transitions. ${voiceNote} Maintain the author's authentic voice while improving flow.`,
         `Review the transitions between chapters in this book. For each chapter boundary, provide revised closing and opening paragraphs that create smooth, natural transitions.
 
@@ -120,6 +121,8 @@ Only include transitions that need changes. If a transition is already smooth, s
 Return ONLY valid JSON.`,
         { maxTokens: 8192, model: "quality" }
       );
+      const raw = cohResult.text;
+      if (project.user_id) await recordInkUsage(project.user_id, input.project_id, "coherence", "quality", cohResult.usage);
 
       try {
         const transitions = JSON.parse(cleanJson(raw));

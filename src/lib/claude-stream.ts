@@ -6,7 +6,7 @@
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
-import type { ModelTier } from "./claude-lite";
+import type { ModelTier, ClaudeUsage } from "./claude-lite";
 
 const MODELS: Record<ModelTier, string> = {
   fast: "claude-haiku-4-5-20251001",
@@ -16,16 +16,25 @@ const MODELS: Record<ModelTier, string> = {
 /**
  * Stream a Claude response as a ReadableStream of text chunks.
  * Use this for long-form generation where the user shouldn't stare at a blank screen.
+ * Optional onUsage callback fires with token counts when the stream completes.
  */
 export function streamClaude(
   system: string,
   userMessage: string,
-  options?: { model?: ModelTier; maxTokens?: number; temperature?: number }
+  options?: {
+    model?: ModelTier;
+    maxTokens?: number;
+    temperature?: number;
+    onUsage?: (usage: ClaudeUsage) => void;
+  }
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
   return new ReadableStream({
     async start(controller) {
+      let inputTokens = 0;
+      let outputTokens = 0;
+
       try {
         const res = await fetch(API_URL, {
           method: "POST",
@@ -82,10 +91,22 @@ export function streamClaude(
                   encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
                 );
               }
+              // Capture usage from message_start and message_delta events
+              if (event.type === "message_start" && event.message?.usage) {
+                inputTokens = event.message.usage.input_tokens || 0;
+              }
+              if (event.type === "message_delta" && event.usage) {
+                outputTokens = event.usage.output_tokens || 0;
+              }
             } catch {
               // Skip malformed JSON lines
             }
           }
+        }
+
+        // Fire usage callback
+        if (options?.onUsage && (inputTokens > 0 || outputTokens > 0)) {
+          options.onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
         }
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));

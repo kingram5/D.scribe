@@ -1,13 +1,14 @@
 import { createServerClient } from "@/lib/supabase";
 import { updateJob } from "@/lib/jobs";
 import {
-  askClaude,
+  askClaudeWithUsage,
   creativeFreedomToTemp,
   creativeFreedomToInstruction,
 } from "@/lib/claude-lite";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
+import { recordInkUsage } from "@/lib/ink";
 
 export async function runGenerateJob(
   jobId: string,
@@ -42,7 +43,7 @@ export async function runGenerateJob(
         ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
         : "";
 
-      const rawContent = await askClaude(
+      const fwResult = await askClaudeWithUsage(
         `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}\n${HUMANIZER_RULES}`,
         `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
 
@@ -61,7 +62,8 @@ Target: ~1500 words. Write the full foreword now.
 REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write like a human.`,
         { temperature, maxTokens: 8192 }
       );
-      const content = sanitizeGenerated(rawContent);
+      if (project.user_id) await recordInkUsage(project.user_id, input.project_id!, "generate", "quality", fwResult.usage);
+      const content = sanitizeGenerated(fwResult.text);
 
       // Save as chapter 0
       await supabase.from("chapters").delete()
@@ -178,8 +180,9 @@ REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write like a human.`,
       freedomInstruction,
     });
 
-    const rawContent = await askClaude(system, prompt, { temperature, maxTokens: 16384 });
-    const content = sanitizeGenerated(rawContent);
+    const genResult = await askClaudeWithUsage(system, prompt, { temperature, maxTokens: 16384 });
+    if (project.user_id) await recordInkUsage(project.user_id, chapter.project_id, "generate", "quality", genResult.usage);
+    const content = sanitizeGenerated(genResult.text);
     const wordCount = content.split(/\s+/).length;
 
     // Get next version number

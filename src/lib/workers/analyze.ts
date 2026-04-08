@@ -1,10 +1,11 @@
 import { createServerClient } from "@/lib/supabase";
 import { updateJob } from "@/lib/jobs";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { VOICE_PROFILE_SYSTEM, voiceProfilePrompt } from "@/lib/prompts/voice-profile";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
+import { recordInkUsage } from "@/lib/ink";
 
 export async function runAnalyzeJob(
   jobId: string,
@@ -24,12 +25,14 @@ export async function runAnalyzeJob(
 
     if (!transcript) throw new Error("Transcript not found");
 
-    // Get existing project for voice profile
+    // Get existing project for voice profile + user_id
     const { data: project } = await supabase
       .from("projects")
-      .select("voice_profile")
+      .select("voice_profile, user_id")
       .eq("id", input.project_id)
       .single();
+
+    const userId = project?.user_id;
 
     // Step 1: Extract key points from chunked transcript
     const chunks = chunkTranscript(transcript.full_text);
@@ -48,7 +51,9 @@ export async function runAnalyzeJob(
 
       const previousTitles = allKeyPoints.map((kp) => kp.title);
       const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previousTitles);
-      const raw = await askClaude(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+      const result = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+      const raw = result.text;
+      if (userId) await recordInkUsage(userId, input.project_id, "analyze", "fast", result.usage);
 
       try {
         const parsed = JSON.parse(cleanJson(raw));
@@ -85,11 +90,13 @@ export async function runAnalyzeJob(
         words.slice(-sampleSize).join(" "),
       ];
 
-      const raw = await askClaude(
+      const vpResult = await askClaudeWithUsage(
         VOICE_PROFILE_SYSTEM,
         voiceProfilePrompt(samples, project?.voice_profile),
         { model: "fast", maxTokens: 2048 }
       );
+      const raw = vpResult.text;
+      if (userId) await recordInkUsage(userId, input.project_id, "voice_profile", "fast", vpResult.usage);
       try {
         const profile = JSON.parse(cleanJson(raw));
         await supabase
@@ -105,13 +112,15 @@ export async function runAnalyzeJob(
     const mindMapPromise = (async () => {
       if (allKeyPoints.length === 0) return null;
 
-      const raw = await askClaude(
+      const mmResult = await askClaudeWithUsage(
         MIND_MAP_SYSTEM,
         mindMapPrompt(
           allKeyPoints.map((kp) => ({ title: kp.title, summary: kp.summary, tags: kp.tags }))
         ),
         { model: "fast", maxTokens: 4096 }
       );
+      const raw = mmResult.text;
+      if (userId) await recordInkUsage(userId, input.project_id, "mind_map", "fast", mmResult.usage);
       try {
         const { nodes, edges } = JSON.parse(cleanJson(raw));
 

@@ -103,7 +103,12 @@ export async function POST(req: NextRequest) {
     const { spawn } = await import("child_process");
     const { resolve } = await import("path");
     const script = resolve(process.cwd(), "scripts/run-pipeline.mjs");
-    const child = spawn("node", [script, project_id, stageMap[type] || type], {
+    // Map foreword requests to the "foreword" stage
+    let stage = stageMap[type] || type;
+    if (type === "generate" && rest.generate_type === "foreword") {
+      stage = "foreword";
+    }
+    const child = spawn("node", [script, project_id, stage], {
       stdio: "inherit",
       detached: true,
     });

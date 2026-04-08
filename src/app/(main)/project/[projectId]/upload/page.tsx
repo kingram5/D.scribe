@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import LeftPanel from "@/components/upload/LeftPanel";
 import RightPanel from "@/components/upload/RightPanel";
-import BrainstormChat from "@/components/upload/BrainstormChat";
 import { useUploadEngine } from "./useUploadEngine";
 
 export default function UploadPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const engine = useUploadEngine(projectId);
-  const [showBrainstorm, setShowBrainstorm] = useState(false);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -58,42 +55,23 @@ export default function UploadPage() {
           onToggleRecording={engine.toggleRecording}
           onStopRecording={engine.stopRecording}
         />
-        {showBrainstorm ? (
-          <div className="upload-slide-right" style={{
-            width: "55%",
-            height: "100%",
-            background: "var(--ds-surface)",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            overflow: "hidden",
-          }}>
-            <BrainstormChat
-              projectId={projectId}
-              onComplete={() => router.push(`/project/${projectId}/transcript`)}
-              onBack={() => setShowBrainstorm(false)}
-            />
-          </div>
-        ) : (
-          <RightPanel
-            files={engine.files}
-            uploading={engine.uploading}
-            progress={engine.progress}
-            progressEntries={engine.progressEntries}
-            dragging={engine.dragging}
-            setDragging={engine.setDragging}
-            youtubeUrl={engine.youtubeUrl}
-            setYoutubeUrl={engine.setYoutubeUrl}
-            youtubeError={engine.youtubeError}
-            setYoutubeError={engine.setYoutubeError}
-            handleDrop={engine.handleDrop}
-            handleFileInput={engine.handleFileInput}
-            canInitialize={engine.canInitialize}
-            allDone={engine.allDone}
-            onInitialize={handleInitialize}
-            onBrainstorm={() => setShowBrainstorm(true)}
-          />
-        )}
+        <RightPanel
+          files={engine.files}
+          uploading={engine.uploading}
+          progress={engine.progress}
+          progressEntries={engine.progressEntries}
+          dragging={engine.dragging}
+          setDragging={engine.setDragging}
+          youtubeUrl={engine.youtubeUrl}
+          setYoutubeUrl={engine.setYoutubeUrl}
+          youtubeError={engine.youtubeError}
+          setYoutubeError={engine.setYoutubeError}
+          handleDrop={engine.handleDrop}
+          handleFileInput={engine.handleFileInput}
+          canInitialize={engine.canInitialize}
+          allDone={engine.allDone}
+          onInitialize={handleInitialize}
+        />
       </div>
     </PageShell>
   );

@@ -79,16 +79,12 @@ export default function GeneratePage() {
       if (res.ok) {
         const data = await res.json();
         setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
-      } else {
-        const text = await res.text();
-        let errMsg = `HTTP ${res.status}`;
-        try { errMsg = JSON.parse(text).error || errMsg; } catch { errMsg = text.slice(0, 200) || errMsg; }
-        console.error("Enrichment failed:", res.status, text);
-        alert(`Enrichment failed: ${errMsg}`);
+      } else if (res.status !== 402) {
+        // 402 is handled by the upgrade modal via guardedFetch — skip it here
+        console.error("Enrichment failed:", res.status);
       }
     } catch (err) {
       console.error("Enrichment error:", err);
-      alert("Enrichment request failed — check console for details");
     }
     setEnriching(null);
   }

@@ -5,6 +5,56 @@ import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 
+// GET /api/enrich?project_id=xxx — read existing enrichments for all chapters in a project
+export async function GET(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const projectId = new URL(req.url).searchParams.get("project_id");
+  if (!projectId) {
+    return NextResponse.json({ error: "project_id required" }, { status: 400 });
+  }
+
+  const supabase = createServerClient();
+
+  // Verify project ownership
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // Get all enrichments for this project's chapters
+  const { data: chapters } = await supabase
+    .from("chapters")
+    .select("id")
+    .eq("project_id", projectId);
+
+  if (!chapters?.length) {
+    return NextResponse.json({});
+  }
+
+  const chapterIds = chapters.map(c => c.id);
+  const { data: enrichments } = await supabase
+    .from("enrichments")
+    .select("*")
+    .in("chapter_id", chapterIds);
+
+  // Group by chapter_id
+  const grouped: Record<string, typeof enrichments> = {};
+  for (const e of enrichments || []) {
+    if (!grouped[e.chapter_id]) grouped[e.chapter_id] = [];
+    grouped[e.chapter_id].push(e);
+  }
+
+  return NextResponse.json(grouped);
+}
+
 // POST /api/enrich — find enrichment quotes for a chapter
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();

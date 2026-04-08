@@ -47,23 +47,17 @@ export default function GeneratePage() {
       .catch(() => setLoading(false));
   }, [projectId]);
 
-  // Load existing enrichments (read-only — editing happens on the Outline page)
+  // Load existing enrichments from DB (no API calls to Claude)
   useEffect(() => {
     if (chapters.length === 0) return;
-    chapters.forEach((ch) => {
-      fetch("/api/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter_id: ch.id }),
+    fetch(`/api/enrich?project_id=${projectId}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((grouped) => {
+        if (grouped && typeof grouped === "object") {
+          setEnrichments(grouped);
+        }
       })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data) => {
-          if (Array.isArray(data) && data.length > 0) {
-            setEnrichments((prev) => ({ ...prev, [ch.id]: data }));
-          }
-        })
-        .catch(() => {});
-    });
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapters.length]);
 

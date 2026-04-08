@@ -146,6 +146,17 @@ export default function GeneratePage() {
   }, [regenerateJob.status]);
 
   // Foreword toggle is just a flag — generation happens in "Generate All"
+  // But if chapters are already generated, allow standalone foreword generation
+  const forewordJob = useJob();
+  async function generateForewordOnly() {
+    await forewordJob.start({
+      type: "generate",
+      project_id: projectId,
+      generate_type: "foreword",
+      creative_freedom: creativeFreedom,
+      chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
+    });
+  }
 
   const freedomLabel =
     creativeFreedom <= 30
@@ -280,30 +291,53 @@ export default function GeneratePage() {
                     AI-generated intro chapter previewing the topics ahead
                   </div>
                 </div>
-                <button
-                  onClick={() => setIncludeForeword(!includeForeword)}
-                  style={{
-                    width: 44,
-                    height: 24,
-                    borderRadius: 12,
-                    border: "none",
-                    cursor: "pointer",
-                    background: includeForeword ? "#C17A47" : "var(--ds-input-border)",
-                    position: "relative",
-                    transition: "background 0.2s",
-                  }}
-                >
-                  <div style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    background: "white",
-                    position: "absolute",
-                    top: 3,
-                    left: includeForeword ? 23 : 3,
-                    transition: "left 0.2s",
-                  }} />
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {allGenerated && includeForeword && (
+                    <button
+                      onClick={generateForewordOnly}
+                      disabled={forewordJob.isRunning}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "var(--ds-accent-500, #C17A47)",
+                        color: "#fff",
+                        cursor: forewordJob.isRunning ? "wait" : "pointer",
+                        fontFamily: "var(--font-manrope), sans-serif",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {forewordJob.isRunning ? "Writing..." : "Generate Foreword"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIncludeForeword(!includeForeword)}
+                    disabled={forewordJob.isRunning}
+                    style={{
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      border: "none",
+                      cursor: forewordJob.isRunning ? "wait" : "pointer",
+                      background: includeForeword ? "#C17A47" : "var(--ds-input-border)",
+                      position: "relative",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    <div style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "white",
+                      position: "absolute",
+                      top: 3,
+                      left: includeForeword ? 23 : 3,
+                      transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
               </div>
 
               {/* Slider */}

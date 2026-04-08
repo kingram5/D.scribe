@@ -51,7 +51,7 @@ export default function UploadPage() {
           }
         }
       `}</style>
-      <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden" }}>
+      <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
         {showBrainstorm ? (
           <div
             className="upload-slide-left"

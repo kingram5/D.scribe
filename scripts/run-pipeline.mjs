@@ -53,14 +53,19 @@ async function resolveUserId(projectId) {
 async function recordInk(operation, model, inputTokens, outputTokens) {
   if (!_userId || !_projectId) return;
   const modelName = model === HAIKU ? "haiku" : "sonnet";
-  await sb.rpc("deduct_ink", {
-    p_user_id: _userId,
-    p_project_id: _projectId,
-    p_operation: operation,
-    p_model: modelName,
-    p_input_tokens: inputTokens,
-    p_output_tokens: outputTokens,
-  }).catch(err => console.log("  ⚠ Ink tracking error:", err.message));
+  try {
+    const { error } = await sb.rpc("deduct_ink", {
+      p_user_id: _userId,
+      p_project_id: _projectId,
+      p_operation: operation,
+      p_model: modelName,
+      p_input_tokens: inputTokens,
+      p_output_tokens: outputTokens,
+    });
+    if (error) console.log("  ⚠ Ink tracking error:", error.message);
+  } catch (err) {
+    console.log("  ⚠ Ink tracking error:", err.message);
+  }
 }
 
 async function ask(model, system, user, maxTokens = 4096, temperature = 0.6, operation = "generate") {

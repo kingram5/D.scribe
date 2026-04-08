@@ -67,14 +67,23 @@ export default function GeneratePage() {
 
   async function fetchEnrichments(chapterId: string) {
     setEnriching(chapterId);
-    const res = await fetch("/api/enrich", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chapter_id: chapterId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+    try {
+      const res = await fetch("/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: chapterId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+      } else {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Enrichment failed:", err);
+        alert(`Enrichment failed: ${err.error || res.statusText}`);
+      }
+    } catch (err) {
+      console.error("Enrichment error:", err);
+      alert("Enrichment request failed — check console for details");
     }
     setEnriching(null);
   }

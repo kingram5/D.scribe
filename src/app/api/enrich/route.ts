@@ -33,10 +33,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Get key points for this chapter
-  const { data: keyPoints } = await supabase
-    .from("key_points")
-    .select("title")
-    .in("id", chapter.key_point_ids || []);
+  const kpIds = chapter.key_point_ids || [];
+  let keyPoints: { title: string }[] | null = [];
+  if (kpIds.length > 0) {
+    const { data } = await supabase
+      .from("key_points")
+      .select("title")
+      .in("id", kpIds);
+    keyPoints = data;
+  }
 
   const raw = await askClaude(
     ENRICH_SYSTEM,

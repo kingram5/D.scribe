@@ -23,6 +23,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSendRef = useRef<(() => void) | null>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,6 +48,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
 
   const toggleListening = useCallback(() => {
     if (listening) {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       recognitionRef.current?.stop();
       setListening(false);
       return;
@@ -60,6 +63,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     recognition.lang = "en-US";
 
     let finalTranscript = "";
+    let hasFinalResult = false;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "";
@@ -67,18 +71,34 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcript + " ";
+          hasFinalResult = true;
         } else {
           interim = transcript;
         }
       }
       setInput(finalTranscript + interim);
+
+      // Reset silence timer on every result
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
+      // If we have final text and no interim (user stopped talking), start 3s countdown
+      if (hasFinalResult && !interim) {
+        silenceTimerRef.current = setTimeout(() => {
+          recognition.stop();
+          setListening(false);
+          // Auto-send via ref (avoids stale closure)
+          autoSendRef.current?.();
+        }, 3000);
+      }
     };
 
     recognition.onerror = () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       setListening(false);
     };
 
     recognition.onend = () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       setListening(false);
     };
 
@@ -90,6 +110,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   // Clean up recognition on unmount
   useEffect(() => {
     return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       recognitionRef.current?.stop();
     };
   }, []);
@@ -212,6 +233,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     inputRef.current?.focus();
   }, [input, streaming, messages]);
 
+  // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
+  useEffect(() => {
+    autoSendRef.current = sendMessage;
+  }, [sendMessage]);
+
   const finishBrainstorm = useCallback(async () => {
     // Need at least 2 user messages to have meaningful content
     const userMessages = messages.filter(m => m.role === "user");
@@ -239,7 +265,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     }
   }, [messages, projectId, onComplete]);
 
+  const undoLast = useCallback(() => {
+    if (streaming || messages.length < 2) return;
+    // Remove last AI response + last user message
+    const lastAiIdx = messages.length - 1;
+    const lastUserIdx = messages.length - 2;
+    if (messages[lastAiIdx]?.role === "assistant" && messages[lastUserIdx]?.role === "user") {
+      setMessages(messages.slice(0, -2));
+    }
+  }, [messages, streaming]);
+
   const userMessageCount = messages.filter(m => m.role === "user").length;
+  const canUndo = userMessageCount > 0 && !streaming && !summarizing && messages.length >= 2;
   const canFinish = userMessageCount >= 2 && !streaming && !summarizing;
 
   // Pre-start state
@@ -406,27 +443,54 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             Brainstorm Session
           </span>
         </div>
-        {canFinish && (
-          <button
-            onClick={finishBrainstorm}
-            style={{
-              background: "var(--ds-accent-500)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              padding: "6px 16px",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "var(--font-manrope), sans-serif",
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-          >
-            Finish & Transcribe →
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {canUndo && (
+            <button
+              onClick={undoLast}
+              style={{
+                background: "none",
+                color: "var(--text-tertiary)",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 8,
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7h7a4 4 0 010 8H8" />
+                <path d="M6 4L3 7l3 3" />
+              </svg>
+              Undo
+            </button>
+          )}
+          {canFinish && (
+            <button
+              onClick={finishBrainstorm}
+              style={{
+                background: "var(--ds-accent-500)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "6px 16px",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+            >
+              Finish & Transcribe →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

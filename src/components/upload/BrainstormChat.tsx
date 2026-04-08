@@ -287,6 +287,24 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
           }}>
             Have a conversation to develop your ideas. The AI will ask questions to draw out your thoughts — no blank page required.
           </p>
+          {speechSupported && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 8,
+              fontSize: 12,
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="1" width="6" height="9" rx="3" />
+                <path d="M3 7v1a5 5 0 0010 0V7" />
+                <path d="M8 13v2" />
+              </svg>
+              Voice enabled — tap the mic to speak
+            </div>
+          )}
         </div>
         <button
           onClick={startConversation}
@@ -476,7 +494,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
                 sendMessage();
               }
             }}
-            placeholder={streaming ? "AI is thinking..." : "Share your ideas..."}
+            placeholder={streaming ? "AI is thinking..." : speechSupported ? "Tap the mic or type your ideas..." : "Share your ideas..."}
             disabled={streaming}
             rows={1}
             style={{
@@ -498,25 +516,34 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
               disabled={streaming}
               style={{
                 background: listening ? "#ef4444" : "rgba(0,0,0,0.04)",
-                border: "none",
-                borderRadius: 8,
-                width: 32,
-                height: 32,
+                border: listening ? "none" : "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 10,
+                height: 36,
+                padding: "0 12px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 6,
                 cursor: streaming ? "default" : "pointer",
                 transition: "background 0.15s",
                 flexShrink: 0,
                 animation: listening ? "micPulse 1.5s ease-in-out infinite" : "none",
               }}
-              title={listening ? "Stop listening" : "Speak your ideas"}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "#7a7369"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="5" y="1" width="6" height="9" rx="3" />
                 <path d="M3 7v1a5 5 0 0010 0V7" />
                 <path d="M8 13v2" />
               </svg>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: listening ? "#fff" : "#7a7369",
+                fontFamily: "var(--font-manrope), sans-serif",
+                whiteSpace: "nowrap",
+              }}>
+                {listening ? "Listening..." : "Speak"}
+              </span>
             </button>
           )}
           <button

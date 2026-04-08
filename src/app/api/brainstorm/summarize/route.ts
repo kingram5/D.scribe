@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
-import { askClaudeLite } from "@/lib/claude-lite";
+import { askClaudeWithUsage } from "@/lib/claude-lite";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -45,6 +46,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // Check Ink balance
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: inkCheck.reason, ink_remaining: inkCheck.balance },
+      { status: 402 }
+    );
+  }
+
   // Format conversation for summarization
   const conversationText = messages
     .map((m: { role: string; content: string }) =>
@@ -53,11 +63,15 @@ export async function POST(req: NextRequest) {
     .join("\n\n");
 
   // Summarize with user-voice weighting
-  const summary = await askClaudeLite(
+  const result = await askClaudeWithUsage(
     SUMMARIZE_SYSTEM,
     conversationText,
     { model: "quality", maxTokens: 4096, temperature: 0.4 }
   );
+  const summary = result.text;
+
+  // Record Ink usage
+  await recordInkUsage(user.id, project_id, "brainstorm_summarize", "quality", result.usage);
 
   const wordCount = summary.split(/\s+/).filter(Boolean).length;
 

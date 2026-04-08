@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import InkMeter from "./InkMeter";
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -71,7 +72,10 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             </span>
           </div>
 
-          {/* Step indicator: "Step 2 of 6" with mini progress dots */}
+          {/* Ink meter + Step indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <InkMeter compact />
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex", gap: 4 }}>
               {STEPS.map((step, i) => (

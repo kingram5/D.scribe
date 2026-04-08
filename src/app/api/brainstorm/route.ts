@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { recordInkUsage } from "@/lib/ink";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -88,8 +87,6 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = "";
-      let inputTokens = 0;
-      let outputTokens = 0;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -109,20 +106,10 @@ export async function POST(req: NextRequest) {
               if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
               }
-              if (event.type === "message_start" && event.message?.usage) {
-                inputTokens = event.message.usage.input_tokens || 0;
-              }
-              if (event.type === "message_delta" && event.usage) {
-                outputTokens = event.usage.output_tokens || 0;
-              }
             } catch {
               // skip malformed
             }
           }
-        }
-        // Record Ink usage
-        if (inputTokens > 0 || outputTokens > 0) {
-          recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch(console.error);
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();

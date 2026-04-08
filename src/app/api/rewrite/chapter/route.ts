@@ -5,7 +5,6 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { creativeFreedomToTemp } from "@/lib/claude-lite";
 import { streamClaude } from "@/lib/claude-stream";
 import { rewriteChapterSystem, rewriteChapterPrompt } from "@/lib/prompts/rewrite";
-import { recordInkUsage } from "@/lib/ink";
 
 // POST /api/rewrite/chapter — streaming full chapter rewrite
 export async function POST(req: NextRequest) {
@@ -142,9 +141,6 @@ export async function POST(req: NextRequest) {
   const stream = streamClaude(system, prompt, {
     maxTokens: 16384,
     temperature,
-    onUsage: (usage) => {
-      recordInkUsage(user.id, chapter.project_id, "rewrite", "quality", usage).catch(console.error);
-    },
   });
 
   return new Response(stream, {

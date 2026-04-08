@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { askClaudeWithUsage, creativeFreedomToTemp } from "@/lib/claude-lite";
+import { askClaude, creativeFreedomToTemp } from "@/lib/claude-lite";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { selectionEditSystem, selectionEditPrompt } from "@/lib/prompts/rewrite";
-import { recordInkUsage } from "@/lib/ink";
 
 // POST /api/rewrite/selection — rewrite a selected text range
 export async function POST(req: NextRequest) {
@@ -73,13 +72,12 @@ export async function POST(req: NextRequest) {
 
   const temperature = creativeFreedomToTemp(creative_freedom);
 
-  const result = await askClaudeWithUsage(system, prompt, {
+  const raw = await askClaude(system, prompt, {
     maxTokens: 4096,
     temperature,
   });
-  await recordInkUsage(user.id, chapter.project_id, "rewrite", "quality", result.usage);
 
-  const rewritten = sanitizeGenerated(result.text);
+  const rewritten = sanitizeGenerated(raw);
 
   return NextResponse.json({ rewritten_text: rewritten });
 }

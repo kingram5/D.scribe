@@ -108,7 +108,12 @@ export async function POST(req: NextRequest) {
     if (type === "generate" && rest.generate_type === "foreword") {
       stage = "foreword";
     }
-    const child = spawn("node", [script, project_id, stage], {
+    const args = [script, project_id, stage];
+    // Pass foreword flag for generate-all if toggled on
+    if (type === "generate-all" && rest.include_foreword) {
+      args.push("--foreword");
+    }
+    const child = spawn("node", args, {
       stdio: "inherit",
       detached: true,
     });

@@ -28,7 +28,6 @@ export default function GeneratePage() {
   const [enriching, setEnriching] = useState<string | null>(null);
   const generateAllJob = useJob<{ chapters_generated: number; coherence_applied: boolean }>();
   const regenerateJob = useJob();
-  const forewordJob = useJob();
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
@@ -111,6 +110,7 @@ export default function GeneratePage() {
       type: "generate-all",
       project_id: projectId,
       creative_freedom: creativeFreedom,
+      include_foreword: includeForeword,
     });
   }
 
@@ -151,23 +151,7 @@ export default function GeneratePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regenerateJob.status]);
 
-  async function generateForeword() {
-    await forewordJob.start({
-      type: "generate",
-      project_id: projectId,
-      generate_type: "foreword",
-      creative_freedom: creativeFreedom,
-      chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
-    });
-  }
-
-  useEffect(() => {
-    if (forewordJob.status === "completed") {
-      setIncludeForeword(true);
-      forewordJob.reset();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forewordJob.status]);
+  // Foreword toggle is just a flag — generation happens in "Generate All"
 
   const freedomLabel =
     creativeFreedom <= 30
@@ -302,45 +286,30 @@ export default function GeneratePage() {
                     AI-generated intro chapter previewing the topics ahead
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {includeForeword && !forewordJob.isRunning && (
-                    <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>Generated</span>
-                  )}
-                  {forewordJob.isRunning && (
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>Writing...</span>
-                  )}
-                  <button
-                    onClick={() => {
-                      if (!includeForeword) {
-                        generateForeword();
-                      } else {
-                        setIncludeForeword(false);
-                      }
-                    }}
-                    disabled={forewordJob.isRunning}
-                    style={{
-                      width: 44,
-                      height: 24,
-                      borderRadius: 12,
-                      border: "none",
-                      cursor: forewordJob.isRunning ? "wait" : "pointer",
-                      background: includeForeword ? "#C17A47" : "var(--ds-input-border)",
-                      position: "relative",
-                      transition: "background 0.2s",
-                    }}
-                  >
-                    <div style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      background: "white",
-                      position: "absolute",
-                      top: 3,
-                      left: includeForeword ? 23 : 3,
-                      transition: "left 0.2s",
-                    }} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIncludeForeword(!includeForeword)}
+                  style={{
+                    width: 44,
+                    height: 24,
+                    borderRadius: 12,
+                    border: "none",
+                    cursor: "pointer",
+                    background: includeForeword ? "#C17A47" : "var(--ds-input-border)",
+                    position: "relative",
+                    transition: "background 0.2s",
+                  }}
+                >
+                  <div style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "white",
+                    position: "absolute",
+                    top: 3,
+                    left: includeForeword ? 23 : 3,
+                    transition: "left 0.2s",
+                  }} />
+                </button>
               </div>
 
               {/* Slider */}

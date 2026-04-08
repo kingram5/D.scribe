@@ -8,6 +8,7 @@ export async function runGenerateAllJob(
   input: {
     project_id: string;
     creative_freedom?: number;
+    include_foreword?: boolean;
   }
 ) {
   const supabase = createServerClient();
@@ -83,6 +84,42 @@ export async function runGenerateAllJob(
         throw new Error(
           `Chapter ${ch.chapter_number} failed: ${completedJob.error || "Unknown error"}`
         );
+      }
+    }
+
+    // Generate foreword if toggled on
+    if (input.include_foreword) {
+      await updateJob(jobId, {
+        progress: {
+          step: "foreword",
+          message: "Writing foreword...",
+          current: total,
+          total,
+        },
+      });
+
+      const { data: fwSubJob } = await supabase
+        .from("jobs")
+        .insert({
+          project_id: input.project_id,
+          type: "generate",
+          input: {
+            project_id: input.project_id,
+            generate_type: "foreword",
+            creative_freedom: input.creative_freedom ?? 50,
+            chapters: chapters.map(ch => ({ title: ch.title, summary: "" })),
+          },
+        })
+        .select()
+        .single();
+
+      if (fwSubJob) {
+        await runGenerateJob(fwSubJob.id, {
+          project_id: input.project_id,
+          generate_type: "foreword",
+          creative_freedom: input.creative_freedom ?? 50,
+          chapters: chapters.map(ch => ({ title: ch.title, summary: "" })),
+        });
       }
     }
 

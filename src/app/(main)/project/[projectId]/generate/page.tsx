@@ -30,6 +30,7 @@ export default function GeneratePage() {
   const regenerateJob = useJob();
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number } | null>(null);
 
   // Are all chapters generated?
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
@@ -43,6 +44,15 @@ export default function GeneratePage() {
         setChapters(chs);
         if (chs.length > 0) setActiveChapter(chs[0].id);
         setLoading(false);
+        const hasUngenerated = chs.some((ch: { status: string }) => ch.status !== "generated");
+        if (hasUngenerated) {
+          fetch(`/api/ink/estimate?project_id=${projectId}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((est) => {
+              if (est && est.chapter_count > 0) setInkEstimate(est);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => setLoading(false));
   }, [projectId]);
@@ -439,6 +449,31 @@ export default function GeneratePage() {
 
               {/* Divider */}
               <div style={{ height: 1, background: "var(--ds-card-border)", marginBottom: 24 }} />
+
+              {!allGenerated && inkEstimate && (
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 14px",
+                  borderRadius: 9999,
+                  background: "rgba(193,122,71,0.08)",
+                  border: "1px solid rgba(193,122,71,0.2)",
+                  marginBottom: 20,
+                }}>
+                  <svg width="13" height="16" viewBox="0 0 13 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6.5 0C6.5 0 1 6.5 1 10.5C1 13.537 3.463 16 6.5 16C9.537 16 12 13.537 12 10.5C12 6.5 6.5 0Z" fill="#C17A47" opacity="0.9" />
+                  </svg>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#C17A47",
+                    fontFamily: "var(--font-manrope), sans-serif",
+                  }}>
+                    ~{inkEstimate.total_low}–{inkEstimate.total_high} Ink to generate {inkEstimate.chapter_count} chapter{inkEstimate.chapter_count !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
 
               {/* Chapter info */}
               <div style={{ fontSize: 10, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.12em", marginBottom: 8 }}>

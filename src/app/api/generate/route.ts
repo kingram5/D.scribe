@@ -5,6 +5,7 @@ import {
   creativeFreedomToTemp,
   creativeFreedomToInstruction,
 } from "@/lib/claude-lite";
+import { logger } from "@/lib/logger";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 import { requireAuth } from "@/lib/auth";
@@ -307,6 +308,12 @@ Target: ~1500 words. Write the full foreword now.`,
       .eq("id", chapter_id);
 
     const message = err instanceof Error ? err.message : "Generation failed";
+    logger.error(message, {
+      route: "/api/generate",
+      userId: user.id,
+      error: err,
+      meta: { chapter_id },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -138,8 +138,6 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
 
     return (
       <div style={{
-        height: 600,
-        overflowY: "auto",
         padding: "0 24px",
         boxSizing: "border-box",
       }}>

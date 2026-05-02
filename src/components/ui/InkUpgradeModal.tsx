@@ -1,16 +1,50 @@
 "use client";
 
+import { useState } from "react";
+
 interface InkUpgradeModalProps {
   onClose: () => void;
+  reason?: "ink" | "tts" | "tts_locked";
 }
 
 const TIERS = [
-  { name: "Starter", price: 25, ink: 300, highlight: false },
-  { name: "Pro", price: 50, ink: 660, badge: "Most Popular", highlight: true },
-  { name: "Premium", price: 100, ink: 1500, highlight: false },
+  { name: "Starter", price: 25, ink: 300, ttsChars: "8K", highlight: false },
+  { name: "Pro", price: 50, ink: 660, ttsChars: "20K", badge: "Most Popular", highlight: true },
+  { name: "Premium", price: 100, ink: 1500, ttsChars: "60K", highlight: false },
 ];
 
-export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
+function getHeader(reason: "ink" | "tts" | "tts_locked") {
+  if (reason === "tts") return "Monthly voice limit reached";
+  if (reason === "tts_locked") return "Voice is a paid feature";
+  return "You’ve run out of Ink";
+}
+
+function getSubtitle(reason: "ink" | "tts" | "tts_locked") {
+  if (reason === "tts") return "Upgrade your plan to keep using AI voice this month.";
+  if (reason === "tts_locked") return "AI voice is available on all paid plans.";
+  return "Upgrade your plan to keep building your manuscript.";
+}
+
+export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeModalProps) {
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
+
+  async function handleChoose(tierName: string) {
+    setLoadingTier(tierName);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: tierName.toLowerCase() }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      setLoadingTier(null);
+    }
+  }
+
   return (
     <div
       style={{
@@ -30,13 +64,12 @@ export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
           background: "#fff",
           borderRadius: 20,
           padding: "32px 28px",
-          maxWidth: 560,
+          maxWidth: 580,
           width: "90%",
           boxShadow: "0 24px 80px rgba(0,0,0,0.2)",
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{
             width: 48,
@@ -61,7 +94,7 @@ export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
             fontFamily: "var(--font-manrope), sans-serif",
             marginBottom: 6,
           }}>
-            You've run out of Ink
+            {getHeader(reason)}
           </h2>
           <p style={{
             fontSize: 14,
@@ -69,11 +102,10 @@ export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
             fontFamily: "var(--font-manrope), sans-serif",
             lineHeight: 1.5,
           }}>
-            Upgrade your plan to keep building your manuscript.
+            {getSubtitle(reason)}
           </p>
         </div>
 
-        {/* Tier cards */}
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
           {TIERS.map(tier => (
             <div
@@ -131,9 +163,17 @@ export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
                 fontSize: 12,
                 color: "#7a7369",
                 fontFamily: "var(--font-geist-mono), monospace",
-                marginBottom: 16,
+                marginBottom: 4,
               }}>
                 {tier.ink.toLocaleString()} Ink
+              </div>
+              <div style={{
+                fontSize: 11,
+                color: "#a0978a",
+                fontFamily: "var(--font-geist-mono), monospace",
+                marginBottom: 16,
+              }}>
+                {tier.ttsChars} voice chars
               </div>
               <button
                 style={{
@@ -145,22 +185,20 @@ export default function InkUpgradeModal({ onClose }: InkUpgradeModalProps) {
                   color: tier.highlight ? "#fff" : "#191816",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: loadingTier ? "not-allowed" : "pointer",
                   fontFamily: "var(--font-manrope), sans-serif",
                   transition: "opacity 0.15s",
+                  opacity: loadingTier && loadingTier !== tier.name ? 0.5 : 1,
                 }}
-                onClick={() => {
-                  // Placeholder — Stripe checkout will go here
-                  alert(`Stripe checkout for ${tier.name} plan coming soon!`);
-                }}
+                disabled={!!loadingTier}
+                onClick={() => handleChoose(tier.name)}
               >
-                Choose {tier.name}
+                {loadingTier === tier.name ? "Loading..." : `Choose ${tier.name}`}
               </button>
             </div>
           ))}
         </div>
 
-        {/* Dismiss */}
         <button
           onClick={onClose}
           style={{

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import {
@@ -92,8 +93,13 @@ export async function POST(req: NextRequest) {
     try {
       const parsed = JSON.parse(cleanJson(raw));
       allKeyPoints.push(...parsed);
-    } catch {
-      console.error("Failed to parse key points chunk:", chunk.index);
+    } catch (err) {
+      logger.error("Failed to parse key points chunk", {
+        route: "/api/analyze",
+        userId: user.id,
+        error: err,
+        meta: { chunkIndex: chunk.index, project_id },
+      });
     }
   }
 

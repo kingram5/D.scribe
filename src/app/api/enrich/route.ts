@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
+import { logger } from "@/lib/logger";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
@@ -147,13 +148,23 @@ export async function POST(req: NextRequest) {
       .select();
 
     if (error) {
-      console.error("[enrich] Supabase insert error:", error);
+      logger.error("Supabase insert error in enrich", {
+        route: "/api/enrich",
+        userId: user.id,
+        error,
+        meta: { chapter_id },
+      });
       return NextResponse.json({ error: `DB error: ${error.message}` }, { status: 500 });
     }
     return NextResponse.json(enrichments);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Enrichment failed";
-    console.error("[enrich] Error:", message);
+    logger.error(message, {
+      route: "/api/enrich",
+      userId: user.id,
+      error: err,
+      meta: { chapter_id },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -90,6 +90,7 @@ export default function CinematicLandingPage() {
             <div className="hidden md:flex items-center gap-10">
               <Link href="#features" className="cinematic-nav-link">Features</Link>
               <Link href="#intelligence" className="cinematic-nav-link">Intelligence</Link>
+              <Link href="/pricing" className="cinematic-nav-link">Pricing</Link>
             </div>
 
             <div className="flex items-center gap-6">

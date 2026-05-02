@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function MainError({
   error,
@@ -12,6 +13,18 @@ export default function MainError({
 }) {
   useEffect(() => {
     console.error("[D.scribe] App error boundary caught:", error);
+    Sentry.captureException(error, { extra: { boundary: "main", digest: error.digest } });
+    // Fire-and-forget structured log to server
+    fetch("/api/log-client-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        boundary: "main",
+        message: error.message,
+        digest: error.digest,
+        stack: error.stack,
+      }),
+    }).catch(() => {/* best-effort — ignore network failures */});
   }, [error]);
 
   return (

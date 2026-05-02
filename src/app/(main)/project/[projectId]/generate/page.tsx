@@ -36,6 +36,13 @@ export default function GeneratePage() {
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
   const anyGenerated = chapters.some((ch) => ch.status === "generated");
 
+  // Load foreword preference from localStorage
+  useEffect(() => {
+    if (!projectId) return;
+    const stored = localStorage.getItem(`dscribe_foreword_${projectId}`);
+    if (stored === "true") setIncludeForeword(true);
+  }, [projectId]);
+
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
       .then((r) => r.json())
@@ -167,6 +174,20 @@ export default function GeneratePage() {
       chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
     });
   }
+
+  // Generation progress derived values
+  const genProg = generateAllJob.progress as { message?: string; current?: number; total?: number; step?: string } | null;
+  const genCurrent = genProg?.current ?? 0;
+  const genTotal = genProg?.total ?? chapters.length;
+  const genStep = genProg?.step;
+  const genRemaining = Math.max(0, genTotal - genCurrent);
+  const genEstMin = Math.ceil((genRemaining * 35 + (genStep === "coherence" ? 0 : 60)) / 60);
+  const genIsCoherence = genStep === "coherence";
+  const genProgressMessage = genIsCoherence
+    ? "Refining coherence between chapters..."
+    : genCurrent > 0
+      ? `Chapter ${genCurrent} printing...`
+      : "Starting generation...";
 
   const freedomLabel =
     creativeFreedom <= 30
@@ -323,7 +344,11 @@ export default function GeneratePage() {
                     </button>
                   )}
                   <button
-                    onClick={() => setIncludeForeword(!includeForeword)}
+                    onClick={() => {
+                      const next = !includeForeword;
+                      setIncludeForeword(next);
+                      localStorage.setItem(`dscribe_foreword_${projectId}`, String(next));
+                    }}
                     disabled={forewordJob.isRunning}
                     style={{
                       width: 44,
@@ -607,38 +632,59 @@ export default function GeneratePage() {
               {/* Generate All progress */}
               {generateAllJob.isRunning && (
                 <div style={{ marginBottom: 16 }}>
+                  {/* Do not exit warning */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 14px",
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: 8,
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", fontFamily: "var(--font-manrope), sans-serif" }}>
+                      Please do not leave this page while generating
+                    </span>
+                  </div>
                   <div style={{
                     padding: "14px 18px",
                     background: "var(--ds-input-bg)",
                     border: "1px solid var(--ds-card-border)",
                     borderRadius: "var(--radius-sm)",
-                    marginBottom: 8,
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
-                      {(generateAllJob.progress as { message?: string })?.message || "Generating..."}
+                      {genProgressMessage}
                     </div>
-                    {generateAllJob.progress && (
-                      <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{
+                        height: 4,
+                        background: "var(--ds-card-border)",
+                        borderRadius: 2,
+                        overflow: "hidden",
+                      }}>
                         <div style={{
-                          height: 4,
-                          background: "var(--ds-card-border)",
+                          height: "100%",
+                          background: "#C17A47",
                           borderRadius: 2,
-                          overflow: "hidden",
-                        }}>
-                          <div style={{
-                            height: "100%",
-                            background: "#C17A47",
-                            borderRadius: 2,
-                            width: `${((generateAllJob.progress as { current?: number; total?: number }).current || 0) / ((generateAllJob.progress as { current?: number; total?: number }).total || 1) * 100}%`,
-                            transition: "width 0.5s ease",
-                          }} />
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
-                          Chapter {(generateAllJob.progress as { current?: number }).current} of {(generateAllJob.progress as { total?: number }).total}
-                          {(generateAllJob.progress as { step?: string }).step === "coherence" && " — polishing transitions"}
-                        </div>
+                          width: `${(genCurrent / Math.max(genTotal, 1)) * 100}%`,
+                          transition: "width 0.5s ease",
+                        }} />
                       </div>
-                    )}
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                          {genIsCoherence ? "Final pass" : `${genCurrent} of ${genTotal} chapters`}
+                        </span>
+                        {genEstMin > 0 && !genIsCoherence && (
+                          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                            Est. ~{genEstMin} min remaining
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -716,12 +762,18 @@ export default function GeneratePage() {
               )}
 
               {/* Review & Edit link — shown when any chapter is generated */}
-              {anyGenerated && !isGenerating && (
+              {anyGenerated && (
                 <div style={{ marginTop: 16 }}>
                   <button
-                    onClick={() => router.push(`/project/${projectId}/editor`)}
+                    onClick={() => { if (!isGenerating) router.push(`/project/${projectId}/editor`); }}
                     className="nodum-btn"
-                    style={{ width: "100%", justifyContent: "center" }}
+                    disabled={isGenerating}
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      opacity: isGenerating ? 0.4 : 1,
+                      cursor: isGenerating ? "not-allowed" : "pointer",
+                    }}
                   >
                     Review &amp; Edit Manuscript →
                   </button>

@@ -8,6 +8,7 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import { useAuth } from "@/hooks/useAuth";
 import { STATUS_COLORS } from "@/lib/constants";
+import UsageWidget from "@/components/ui/UsageWidget";
 
 function MiniWaveform() {
   const ref = useRef<HTMLDivElement>(null);
@@ -358,7 +359,9 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right panel — Lined Paper Workspace Notes */}
+        {/* Right panel — Lined Paper Workspace Notes + Usage */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignSelf: "start" }}>
+        <UsageWidget />
         <div className="lined-paper" style={{ alignSelf: "start" }}>
           <div className="scribble" style={{ top: 10, right: 20 }}>
             * Coffee first.
@@ -391,6 +394,7 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </PageShell>

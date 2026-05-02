@@ -21,6 +21,7 @@ export type EditorAction =
   | { type: "DELETE_KEY_POINT"; keyPointId: string }
   | { type: "ADD_CHAPTER"; afterChapterId?: string }
   | { type: "ADD_KEY_POINT"; chapterId: string }
+  | { type: "REORDER_CHAPTERS"; orderedIds: string[] }
   | { type: "MARK_CLEAN" };
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -177,6 +178,15 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           : ch
       );
       return { ...state, keyPoints: [...state.keyPoints, newKp], chapters, dirty: true };
+    }
+
+    case "REORDER_CHAPTERS": {
+      const { orderedIds } = action;
+      const chapters = state.chapters.map((ch) => {
+        const newNum = orderedIds.indexOf(ch.id) + 1;
+        return { ...ch, chapter_number: newNum, sort_order: newNum - 1 };
+      });
+      return { ...state, chapters, dirty: true };
     }
 
     case "MARK_CLEAN":

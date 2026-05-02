@@ -114,11 +114,7 @@ export default function RewritePromptBar({
   return (
     <div
       style={{
-        position: "absolute",
-        bottom: 80,
-        left: 24,
-        right: 24,
-        zIndex: 10,
+        flex: 1,
         display: "flex",
         gap: 8,
         alignItems: "center",

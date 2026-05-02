@@ -3,6 +3,8 @@
  * Replaces the Anthropic SDK to avoid its ~1.8 GB memory footprint on Vercel.
  */
 
+import { logger } from "@/lib/logger";
+
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
@@ -10,7 +12,7 @@ export type ModelTier = "fast" | "quality";
 
 const MODELS: Record<ModelTier, string> = {
   fast: "claude-haiku-4-5-20251001",
-  quality: "claude-sonnet-4-20250514",
+  quality: "claude-sonnet-4-6",
 };
 
 export interface ClaudeUsage {
@@ -55,7 +57,15 @@ export async function askClaudeWithUsage(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Claude API ${res.status}: ${err.slice(0, 200)}`);
+    const message = `Claude API ${res.status}: ${err.slice(0, 200)}`;
+    logger.error(message, {
+      meta: {
+        status: res.status,
+        model: MODELS[options?.model ?? "quality"],
+        body: err.slice(0, 500),
+      },
+    });
+    throw new Error(message);
   }
 
   const data = await res.json();

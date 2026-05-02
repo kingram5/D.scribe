@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { logger } from "@/lib/logger";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -83,6 +84,11 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) {
     const err = await res.text();
+    logger.error(`Claude API ${res.status} in brainstorm`, {
+      route: "/api/brainstorm",
+      userId: user.id,
+      meta: { status: res.status, body: err.slice(0, 500) },
+    });
     return new Response(JSON.stringify({ error: `Claude API ${res.status}: ${err.slice(0, 200)}` }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -136,6 +142,11 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
+        logger.error("Brainstorm stream error", {
+          route: "/api/brainstorm",
+          userId: user.id,
+          error: err,
+        });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();

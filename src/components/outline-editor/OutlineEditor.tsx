@@ -101,6 +101,11 @@ function OutlineEditorInner({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Always-current refs — used inside stale event handler closures
+  const stateRef = useRef(state);
+  const dispatchRef = useRef(dispatch);
+  useEffect(() => { stateRef.current = state; dispatchRef.current = dispatch; }, [state, dispatch]);
+
   // Mutable column states for physics (avoid re-renders per frame)
   const columnsRef = useRef<Map<string, DragColumn>>(new Map());
   const dragRef = useRef<{
@@ -160,7 +165,8 @@ function OutlineEditorInner({
 
   // Rebuild layout when state changes
   useEffect(() => {
-    const { columns: newCols, edges: newEdges } = buildLayout(state.chapters, state.keyPoints);
+    const sortedChapters = [...state.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
+    const { columns: newCols, edges: newEdges } = buildLayout(sortedChapters, state.keyPoints);
     setColumns(newCols);
     setEdges(newEdges);
 
@@ -439,7 +445,24 @@ function OutlineEditorInner({
       if (col) {
         col.isDragging = false;
         col.targetRotation = col.baseRotation;
-        checkDropInteraction(noteId, col);
+
+        const combined = checkDropInteraction(noteId, col);
+        if (!combined) {
+          // Determine new order from X positions and reorder if changed
+          const chapters = stateRef.current.chapters;
+          const chapterIds = new Set(chapters.map((ch) => ch.id));
+          const sortedByX = [...columnsRef.current.entries()]
+            .filter(([id]) => chapterIds.has(id))
+            .sort(([, a], [, b]) => a.x - b.x)
+            .map(([id]) => id);
+          const currentOrder = [...chapters]
+            .sort((a, b) => a.chapter_number - b.chapter_number)
+            .map((ch) => ch.id);
+          const orderChanged = sortedByX.some((id, i) => id !== currentOrder[i]);
+          if (orderChanged) {
+            dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedByX });
+          }
+        }
       }
       dragRef.current.noteId = null;
       setRenderTick((t) => t + 1);
@@ -454,8 +477,9 @@ function OutlineEditorInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, findNearestColumn]);
 
-  // Check if a dropped column overlaps another column (chapter-chapter combine)
-  const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn) => {
+  // Check if a dropped column overlaps another column (chapter-chapter combine).
+  // Returns true if a combine was triggered, false otherwise.
+  const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
     for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
 
@@ -464,9 +488,10 @@ function OutlineEditorInner({
 
       if (overlapX && overlapY) {
         setConfirmCombine({ sourceId, targetId, type: "chapter" });
-        return;
+        return true;
       }
     }
+    return false;
   }, []);
 
   function handleConfirmCombine() {

@@ -53,8 +53,8 @@ export async function GET(req: NextRequest) {
   });
 
   const total = per_chapter.reduce((sum, v) => sum + v, 0);
-  const total_low = Math.round(total * 0.75 * 10) / 10;
-  const total_high = Math.round(total * 1.25 * 10) / 10;
+  const total_low = Math.max(0, Math.round((total - 5) * 10) / 10);
+  const total_high = Math.round((total + 5) * 10) / 10;
 
   return NextResponse.json({
     per_chapter,

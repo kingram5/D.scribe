@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import TtsMeter from "@/components/ui/TtsMeter";
 
 interface Message {
   role: "user" | "assistant";
@@ -26,6 +27,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
 
+  // TTS state
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const ttsEnabledRef = useRef(true);
+  const audioQueueRef = useRef<ArrayBuffer[]>([]);
+  const isPlayingRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const sentenceBufferRef = useRef("");
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -45,6 +55,57 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   // Check for speech recognition support
   const speechSupported = typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  // TTS helpers — defined before toggleListening to avoid TDZ
+  const playNext = useCallback(() => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+    isPlayingRef.current = true;
+    const buf = audioQueueRef.current.shift()!;
+    const ctx = (audioCtxRef.current ??= new AudioContext());
+    ctx.decodeAudioData(buf.slice(0), (decoded) => {
+      const src = ctx.createBufferSource();
+      src.buffer = decoded;
+      src.connect(ctx.destination);
+      currentSourceRef.current = src;
+      src.onended = () => {
+        isPlayingRef.current = false;
+        currentSourceRef.current = null;
+        playNext();
+      };
+      src.start();
+    });
+  }, []);
+
+  const speakSentence = useCallback(async (text: string) => {
+    if (!ttsEnabledRef.current || !text.trim()) return;
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return;
+      const buf = await res.arrayBuffer();
+      audioQueueRef.current.push(buf);
+      playNext();
+    } catch { /* TTS is enhancement only — never block chat */ }
+  }, [playNext]);
+
+  const stopAudio = useCallback(() => {
+    try { currentSourceRef.current?.stop(); } catch { /* ignore */ }
+    currentSourceRef.current = null;
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    sentenceBufferRef.current = "";
+  }, []);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+      audioCtxRef.current?.close().catch(() => {});
+    };
+  }, [stopAudio]);
 
   const toggleListening = useCallback(() => {
     if (listening) {
@@ -103,9 +164,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     };
 
     recognitionRef.current = recognition;
+    stopAudio(); // stop AI voice when user starts speaking
     recognition.start();
     setListening(true);
-  }, [listening]);
+  }, [listening, stopAudio]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -135,6 +197,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
       let buffer = "";
 
       setMessages([{ role: "assistant", content: "" }]);
+      sentenceBufferRef.current = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -154,21 +217,34 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             if (parsed.text) {
               aiText += parsed.text;
               setMessages([{ role: "assistant", content: aiText }]);
+              // Sentence detection for TTS
+              sentenceBufferRef.current += parsed.text;
+              const match = /^(.*?[.!?])(?:\s+)([\s\S]*)$/.exec(sentenceBufferRef.current);
+              if (match) {
+                speakSentence(match[1].trim());
+                sentenceBufferRef.current = match[2];
+              }
             }
           } catch {
             // skip
           }
         }
       }
+      // Flush any remaining text after stream ends
+      if (sentenceBufferRef.current.trim()) {
+        speakSentence(sentenceBufferRef.current.trim());
+        sentenceBufferRef.current = "";
+      }
     } catch (err) {
       console.error("Brainstorm start error:", err);
       aiText = "Hey! What would you like to write about today?";
       setMessages([{ role: "assistant", content: aiText }]);
+      speakSentence(aiText);
     }
 
     setStreaming(false);
     inputRef.current?.focus();
-  }, []);
+  }, [speakSentence]);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -200,6 +276,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
       let buffer = "";
 
       setMessages([...updatedMessages, { role: "assistant", content: "" }]);
+      sentenceBufferRef.current = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -219,11 +296,23 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             if (parsed.text) {
               aiText += parsed.text;
               setMessages([...updatedMessages, { role: "assistant", content: aiText }]);
+              // Sentence detection for TTS
+              sentenceBufferRef.current += parsed.text;
+              const match = /^(.*?[.!?])(?:\s+)([\s\S]*)$/.exec(sentenceBufferRef.current);
+              if (match) {
+                speakSentence(match[1].trim());
+                sentenceBufferRef.current = match[2];
+              }
             }
           } catch {
             // skip
           }
         }
+      }
+      // Flush any remaining text after stream ends
+      if (sentenceBufferRef.current.trim()) {
+        speakSentence(sentenceBufferRef.current.trim());
+        sentenceBufferRef.current = "";
       }
     } catch (err) {
       console.error("Brainstorm error:", err);
@@ -231,7 +320,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
 
     setStreaming(false);
     inputRef.current?.focus();
-  }, [input, streaming, messages]);
+  }, [input, streaming, messages, speakSentence]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {
@@ -444,6 +533,27 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={() => {
+              const next = !ttsEnabled;
+              setTtsEnabled(next);
+              ttsEnabledRef.current = next;
+              if (!next) stopAudio();
+            }}
+            title={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
+            style={{
+              background: "none",
+              border: "1px solid rgba(0,0,0,0.1)",
+              borderRadius: 16,
+              padding: "12px 20px",
+              fontSize: 28,
+              cursor: "pointer",
+              lineHeight: 1,
+            }}
+          >
+            {ttsEnabled ? "🔊" : "🔇"}
+          </button>
+          <TtsMeter compact />
           {canUndo && (
             <button
               onClick={undoLast}

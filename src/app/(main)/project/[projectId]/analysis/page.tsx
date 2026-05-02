@@ -77,6 +77,8 @@ export default function AnalysisPage() {
           mind_map_edges: project.mind_map_edges || [],
         });
         if (project.audience) setAudience(project.audience);
+        if (project.num_chapters) setNumChapters(project.num_chapters);
+        if (project.target_words_per_chapter) setTargetWords(project.target_words_per_chapter);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -152,10 +154,13 @@ export default function AnalysisPage() {
       const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
       if (!mmRes.ok) { const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed"); }
 
-      // Step 4: Generate outline (chapters) using structure settings
-      setAnalyzeStep("Generating chapter outline...");
-      const olRes = await fetch("/api/outline", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
-      if (!olRes.ok) { const e = await olRes.json().catch(() => ({ error: "Outline failed" })); throw new Error(e.error || "Outline generation failed"); }
+      // Step 4: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
+      const existingChapters = (await fetch(`/api/project/${projectId}`).then(r => r.json())).chapters || [];
+      if (existingChapters.length === 0) {
+        setAnalyzeStep("Generating chapter outline...");
+        const olRes = await fetch("/api/outline", { method: "POST", headers, body: JSON.stringify({ project_id: projectId, num_chapters: numChapters }) });
+        if (!olRes.ok) { const e = await olRes.json().catch(() => ({ error: "Outline failed" })); throw new Error(e.error || "Outline generation failed"); }
+      }
 
       // Refresh data
       const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
@@ -326,6 +331,35 @@ export default function AnalysisPage() {
   // Post-analysis view: tabs for outline editor, voice profile, concept map
   return (
     <PageShell projectId={projectId} currentStep="analysis">
+      {analyzing && (
+        <div style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 40px",
+          background: "rgba(193,122,71,0.12)",
+          borderBottom: "1px solid rgba(193,122,71,0.2)",
+        }}>
+          <div style={{
+            width: 16, height: 16, borderRadius: "50%",
+            border: "2px solid rgba(193,122,71,0.3)",
+            borderTopColor: "#C17A47",
+            animation: "spin 0.8s linear infinite",
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#C17A47",
+            fontFamily: "var(--font-manrope), sans-serif",
+          }}>
+            {analyzeStep || "Analyzing your transcript..."}
+          </span>
+        </div>
+      )}
       <div style={{ padding: "0 40px 40px" }}>
         {/* Tab bar */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>

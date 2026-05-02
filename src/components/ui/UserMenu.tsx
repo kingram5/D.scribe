@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import InkMeter from "./InkMeter";
+import TtsMeter from "./TtsMeter";
 
 export default function UserMenu() {
   const { user, loading, signOut } = useAuth();
@@ -72,6 +73,7 @@ export default function UserMenu() {
             </div>
           </div>
           <InkMeter />
+          <TtsMeter />
           <button
             onClick={signOut}
             style={{

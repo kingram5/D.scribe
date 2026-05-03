@@ -34,7 +34,6 @@ export default function StructurePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [projectTitle, setProjectTitle] = useState("");
   const [numChapters, setNumChapters] = useState(8);
   const [wordsPerChapter, setWordsPerChapter] = useState(2500);
   const [audience, setAudience] = useState("General");
@@ -46,7 +45,6 @@ export default function StructurePage() {
     fetch(`/api/project/${projectId}`)
       .then((r) => r.json())
       .then((p) => {
-        setProjectTitle(p.title || "Untitled");
         if (p.num_chapters) setNumChapters(p.num_chapters);
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         if (p.audience) setAudience(p.audience);

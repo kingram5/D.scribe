@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 interface CelebrationToastProps {
   message: string;
@@ -8,20 +8,15 @@ interface CelebrationToastProps {
 }
 
 export default function CelebrationToast({ message, show, onDone }: CelebrationToastProps) {
-  const [visible, setVisible] = useState(false);
-
   useEffect(() => {
-    if (show) {
-      setVisible(true);
-      const timer = setTimeout(() => {
-        setVisible(false);
-        onDone?.();
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
+    if (!show) return;
+    const timer = setTimeout(() => {
+      onDone?.();
+    }, 4000);
+    return () => clearTimeout(timer);
   }, [show, onDone]);
 
-  if (!visible) return null;
+  if (!show) return null;
 
   return (
     <div style={{

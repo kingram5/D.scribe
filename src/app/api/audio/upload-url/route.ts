@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
       r2_key: r2Key,
       upload_id: data.id,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: `Failed to generate upload URL: ${err.message}` }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: `Failed to generate upload URL: ${message}` }, { status: 500 });
   }
 }

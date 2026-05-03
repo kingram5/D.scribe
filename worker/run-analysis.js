@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * D.Scribe Analysis Runner — Standalone script (no HTTP server)
  *

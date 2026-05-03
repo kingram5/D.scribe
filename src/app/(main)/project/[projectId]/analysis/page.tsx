@@ -18,7 +18,6 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
-import JobProgress from "@/components/ui/JobProgress";
 import { useJob } from "@/hooks/useJob";
 
 const OutlineEditor = dynamic(
@@ -48,22 +47,12 @@ export default function AnalysisPage() {
   const [data, setData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"outline" | "voice" | "map">("outline");
-  const [numChapters, setNumChapters] = useState(5);
-  const [targetWords, setTargetWords] = useState(3000);
   const [audience, setAudience] = useState<Audience>("General");
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeJob = useJob();
 
-  const AUDIENCES: Audience[] = [
-    "General",
-    "Academic",
-    "Faith Community",
-    "Business/Leadership",
-    "Self-Help",
-    "Young Adult",
-  ];
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)

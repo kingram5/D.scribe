@@ -56,6 +56,10 @@ export default function LandingV2() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = 0.75;
+  }, []);
+
   // Respect reduced motion
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");

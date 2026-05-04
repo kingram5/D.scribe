@@ -584,26 +584,6 @@ export default function RightPanel({
               ? "View Transcripts →"
               : "Transcribe → (1 credit)"}
         </button>
-        {onBrainstorm && (
-          <button
-            onClick={onBrainstorm}
-            style={{
-              marginTop: 10,
-              width: "100%",
-              padding: "13px 20px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "var(--ds-ink)",
-              background: "rgba(255,255,255,0.6)",
-              border: "1px solid rgba(25,24,22,0.12)",
-              borderRadius: 100,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-          >
-            Brainstorm Instead →
-          </button>
-        )}
       </div>
     </div>
   );

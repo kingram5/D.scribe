@@ -50,18 +50,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Check credits before creating job
+  // Check Ink balance before creating job
   const creditCheck = await checkCredits(project.user_id);
   if (!creditCheck.allowed) {
     return NextResponse.json(
-      { error: creditCheck.reason, credits_remaining: creditCheck.balance },
+      { error: creditCheck.reason, ink_remaining: creditCheck.balance },
       { status: 402 }
     );
   }
 
   const job = await createJob(project_id, type, { project_id, ...rest });
 
-  // Deduct 1 credit
+  // Deduct 1 Ink
   await deductCredit(project.user_id);
 
   // Fire-and-forget: run the worker after the response is sent
@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
           await runGenerateAllJob(job.id, { project_id, ...rest });
           break;
       }
-      // Deduct credit after successful worker completion
+      // Deduct Ink after successful worker completion
       await deductCredit(project.user_id).catch((err) => {
-        console.error(`[jobs] Credit deduction failed for user ${project.user_id}:`, err);
+        console.error(`[jobs] Ink deduction failed for user ${project.user_id}:`, err);
       });
     } catch (err) {
       console.error(`[jobs] Worker ${type} crashed:`, err);

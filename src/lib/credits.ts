@@ -1,17 +1,17 @@
 import { createServerClient } from "@/lib/supabase";
 
 const DEFAULT_DAILY_LIMIT = 50;
-const DEFAULT_FREE_CREDITS = 10;
-const TEST_USER_BONUS_CREDITS = 40; // Total 50 for test users (10 default + 40 bonus)
+const DEFAULT_FREE_INK = 10;
+const TEST_USER_BONUS_INK = 40; // Total 50 for test users (10 default + 40 bonus)
 
-interface CreditCheck {
+interface InkCheck {
   allowed: boolean;
   reason?: string;
   balance: number;
 }
 
-/** Ensure a user_credits row exists, creating one with free credits if needed */
-async function ensureCredits(userId: string) {
+/** Ensure a user_credits row exists, creating one with free Ink if needed */
+async function ensureBalance(userId: string) {
   const supabase = createServerClient();
 
   const { data } = await supabase
@@ -22,20 +22,20 @@ async function ensureCredits(userId: string) {
 
   if (data) return data;
 
-  // New user — create with free credits
+  // New user — create with free Ink
   const { data: created } = await supabase
     .from("user_credits")
-    .insert({ user_id: userId, balance: DEFAULT_FREE_CREDITS })
+    .insert({ user_id: userId, balance: DEFAULT_FREE_INK })
     .select()
     .single();
 
-  // Grant test user bonus credits (remove this block when going public)
-  if (TEST_USER_BONUS_CREDITS > 0) {
+  // Grant test user bonus Ink (remove this block when going public)
+  if (TEST_USER_BONUS_INK > 0) {
     await supabase
       .from("usage_overrides")
       .upsert({
         user_id: userId,
-        bonus_credits: TEST_USER_BONUS_CREDITS,
+        bonus_credits: TEST_USER_BONUS_INK,
         note: "Test user bonus",
       });
   }
@@ -44,27 +44,27 @@ async function ensureCredits(userId: string) {
 }
 
 /** Check if a user can run a job. Returns allowed + reason if blocked. */
-export async function checkCredits(userId: string): Promise<CreditCheck> {
+export async function checkCredits(userId: string): Promise<InkCheck> {
   const supabase = createServerClient();
 
-  const credits = await ensureCredits(userId);
-  if (!credits) {
-    return { allowed: false, reason: "Could not load credits", balance: 0 };
+  const balance = await ensureBalance(userId);
+  if (!balance) {
+    return { allowed: false, reason: "Could not load Ink balance", balance: 0 };
   }
 
-  // Check balance (includes any bonus credits from overrides)
+  // Check balance (includes any bonus Ink from overrides)
   const { data: override } = await supabase
     .from("usage_overrides")
     .select("bonus_credits, daily_job_limit")
     .eq("user_id", userId)
     .single();
 
-  const totalBalance = credits.balance + (override?.bonus_credits || 0);
+  const totalBalance = balance.balance + (override?.bonus_credits || 0);
 
   if (totalBalance <= 0) {
     return {
       allowed: false,
-      reason: "No credits remaining. Purchase more to continue.",
+      reason: "No Ink remaining. Upgrade to continue.",
       balance: totalBalance,
     };
   }
@@ -91,11 +91,11 @@ export async function checkCredits(userId: string): Promise<CreditCheck> {
   return { allowed: true, balance: totalBalance };
 }
 
-/** Deduct 1 credit after a job is created */
+/** Deduct 1 unit of Ink after a job is created */
 export async function deductCredit(userId: string) {
   const supabase = createServerClient();
 
-  // Use bonus credits first (from overrides), then balance
+  // Use bonus Ink first (from overrides), then balance
   const { data: override } = await supabase
     .from("usage_overrides")
     .select("bonus_credits")
@@ -112,10 +112,10 @@ export async function deductCredit(userId: string) {
   }
 }
 
-/** Grant credits to a user (for purchases or manual top-ups) */
+/** Grant Ink to a user (for purchases or manual top-ups) */
 export async function grantCredits(userId: string, amount: number) {
   const supabase = createServerClient();
-  await ensureCredits(userId);
+  await ensureBalance(userId);
 
   const { data } = await supabase
     .from("user_credits")

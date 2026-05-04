@@ -418,7 +418,7 @@ export default function PricingPage() {
               color: "#7A7358",
             }}
           >
-            All plans include a 10 Ink free trial &middot; No credit card required to start
+            All plans include a 10 Ink free trial &middot; No payment required to start
           </p>
         </div>
       </div>

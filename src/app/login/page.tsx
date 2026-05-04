@@ -207,7 +207,7 @@ function LoginContent() {
           marginTop: 24,
           lineHeight: 1.5,
         }}>
-          10 free credits to start. No credit card required.
+          10 free Ink to start. No payment required.
         </p>
         <p style={{
           fontSize: 11,

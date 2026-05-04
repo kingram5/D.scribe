@@ -582,7 +582,7 @@ export default function RightPanel({
             ? "Processing..."
             : allDone
               ? "View Transcripts →"
-              : "Transcribe → (1 credit)"}
+              : "Transcribe →"}
         </button>
       </div>
     </div>

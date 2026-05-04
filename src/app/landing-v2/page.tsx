@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { CinematicMurmurWaveform } from "@/components/landing/CinematicClient";
 
 const PIPELINE = [
   { num: "01", title: "Upload", desc: "Record live, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
@@ -75,6 +76,7 @@ export default function LandingV2() {
         backdropFilter: scrolled ? "blur(20px)" : "none",
         borderBottom: scrolled ? "1px solid rgba(249,247,242,0.08)" : "1px solid transparent",
       }}>
+        {/* Box logo + scribe */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 36, height: 36,
@@ -89,11 +91,12 @@ export default function LandingV2() {
           </div>
           <span style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 18, fontWeight: 500, color: "#F9F7F2", letterSpacing: "0.01em",
+            fontSize: 18, fontWeight: 500, color: "#F9F7F2",
           }}>
             scribe
           </span>
         </div>
+        {/* Nav right */}
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           <Link href="/login" style={{
             fontSize: 14, color: "#F9F7F2", textDecoration: "none",
@@ -124,47 +127,54 @@ export default function LandingV2() {
           <source src="/bg-video-desk.mp4" type="video/mp4" />
         </video>
 
-        {/* Gradient overlay — lighter to let video breathe */}
+        {/* Overlay — light vignette, let video breathe */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
           background: `
-            linear-gradient(to bottom, rgba(44,36,25,0.40) 0%, rgba(44,36,25,0.08) 25%, rgba(44,36,25,0.12) 60%, rgba(44,36,25,0.70) 100%),
-            linear-gradient(to right, rgba(44,36,25,0.45) 0%, transparent 40%, transparent 70%, rgba(44,36,25,0.20) 100%)
+            linear-gradient(to bottom,
+              rgba(44,36,25,0.38) 0%,
+              rgba(44,36,25,0.05) 22%,
+              rgba(44,36,25,0.05) 55%,
+              rgba(44,36,25,0.62) 85%,
+              rgba(44,36,25,0.80) 100%
+            ),
+            linear-gradient(to right,
+              rgba(44,36,25,0.42) 0%,
+              transparent 30%,
+              transparent 75%,
+              rgba(44,36,25,0.18) 100%
+            )
           `,
         }} />
 
-        {/* D.scribe — massive centered title */}
+        {/* ── Animated D.scribe waveform logo — center, upper-mid ── */}
         <div style={{
-          position: "absolute", top: "16%", left: 0, right: 0,
-          textAlign: "center", zIndex: 2, pointerEvents: "none",
+          position: "absolute",
+          top: "14%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "82%",
+          height: "30vh",
+          zIndex: 2,
+          pointerEvents: "none",
         }}>
-          <h1 style={{
-            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontStyle: "italic",
-            fontSize: "clamp(72px, 13vw, 172px)",
-            fontWeight: 700,
-            lineHeight: 1,
-            color: "#F0E6CE",
-            letterSpacing: "-0.02em",
-            margin: 0,
-            textShadow: "0 4px 60px rgba(44,36,25,0.25)",
-          }}>
-            D.scribe
-          </h1>
+          <CinematicMurmurWaveform />
         </div>
 
-        {/* Your Story Starts → [HERE] */}
+        {/* ── Your Story Starts → [HERE] — centered below logo ── */}
         <div style={{
-          position: "absolute", top: "52%", left: 0, right: 0, zIndex: 2,
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 18,
+          position: "absolute",
+          top: "50%",
+          left: 0, right: 0,
+          zIndex: 2,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 20,
         }}>
           <span style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
             fontStyle: "italic",
-            fontSize: "clamp(16px, 1.8vw, 24px)",
+            fontSize: "clamp(17px, 1.9vw, 26px)",
             color: "#F0E6CE",
             opacity: 0.9,
-            letterSpacing: "0.01em",
           }}>
             Your Story Starts →
           </span>
@@ -173,41 +183,50 @@ export default function LandingV2() {
           </Link>
         </div>
 
-        {/* Center: You talk. It writes. */}
+        {/* ── You talk. It writes. — centered ── */}
         <div style={{
-          position: "absolute", top: "60%", left: 0, right: 0, zIndex: 2,
+          position: "absolute",
+          top: "58%",
+          left: 0, right: 0,
+          zIndex: 2,
           textAlign: "center",
         }}>
           <div style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(26px, 3.5vw, 46px)",
+            fontSize: "clamp(24px, 3.2vw, 44px)",
             fontWeight: 400,
             color: "#F9F7F2",
-            lineHeight: 1.15,
-            marginBottom: 10,
+            lineHeight: 1.2,
+            marginBottom: 8,
           }}>
             You talk.{" "}
             <em style={{ color: "#F0E6CE" }}>It writes.</em>
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 15, color: "rgba(249,247,242,0.60)",
-            marginBottom: 4,
+            fontSize: 15,
+            color: "rgba(249,247,242,0.58)",
+            marginBottom: 3,
           }}>
             Stop waiting to write your book...
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 15, fontWeight: 600,
-            color: "rgba(249,247,242,0.85)",
+            fontSize: 15,
+            fontWeight: 600,
+            color: "rgba(249,247,242,0.82)",
           }}>
             just start talking.
           </div>
         </div>
 
-        {/* Bottom-left: There's an author inside you */}
+        {/* ── There's an author inside you — bottom-left ── */}
         <div style={{
-          position: "absolute", bottom: 72, left: 40, zIndex: 2, maxWidth: 290,
+          position: "absolute",
+          bottom: 68,
+          left: 40,
+          zIndex: 2,
+          maxWidth: 280,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
@@ -224,8 +243,9 @@ export default function LandingV2() {
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 13, lineHeight: 1.6,
-            color: "rgba(249,247,242,0.55)",
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: "rgba(249,247,242,0.52)",
             marginBottom: 20,
           }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
@@ -235,30 +255,37 @@ export default function LandingV2() {
           </Link>
         </div>
 
-        {/* Bottom stats strip */}
+        {/* ── Bottom stats strip ── */}
         <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2,
-          display: "flex", justifyContent: "center", gap: "clamp(32px, 6vw, 80px)",
-          padding: "18px 40px",
-          background: "rgba(44,36,25,0.45)",
+          position: "absolute",
+          bottom: 0, left: 0, right: 0,
+          zIndex: 2,
+          display: "flex",
+          justifyContent: "center",
+          gap: "clamp(28px, 5.5vw, 72px)",
+          padding: "16px 40px",
+          background: "rgba(44,36,25,0.42)",
           backdropFilter: "blur(10px)",
         }}>
           {[
             { value: "< 10 min", label: "Audio to first chapter" },
-            { value: "6 steps", label: "From voice to published book" },
+            { value: "6 steps",  label: "From voice to published book" },
             { value: "Your voice", label: "AI writes in your style, not its own" },
           ].map((stat) => (
             <div key={stat.label} style={{ textAlign: "center" }}>
               <div style={{
                 fontFamily: "var(--font-playfair), serif",
-                fontSize: "clamp(16px, 1.8vw, 24px)",
-                fontWeight: 700, color: "#C17A47", marginBottom: 2,
+                fontSize: "clamp(15px, 1.7vw, 22px)",
+                fontWeight: 700,
+                color: "#C17A47",
+                marginBottom: 2,
               }}>
                 {stat.value}
               </div>
               <div style={{
                 fontFamily: "var(--font-lora), serif",
-                fontSize: 12, color: "rgba(249,247,242,0.55)",
+                fontSize: 12,
+                color: "rgba(249,247,242,0.52)",
               }}>
                 {stat.label}
               </div>
@@ -283,7 +310,7 @@ export default function LandingV2() {
           </div>
         </FadeSection>
         <div style={{ position: "relative" }}>
-          <div className="lv2-pipeline-line" style={{
+          <div style={{
             position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
             background: "rgba(193,122,71,0.2)",
           }} />
@@ -308,8 +335,7 @@ export default function LandingV2() {
                     {step.title}
                   </h3>
                   <p style={{
-                    fontFamily: "var(--font-lora), serif", fontSize: 16, lineHeight: 1.7,
-                    color: "#A89F94",
+                    fontFamily: "var(--font-lora), serif", fontSize: 16, lineHeight: 1.7, color: "#A89F94",
                   }}>
                     {step.desc}
                   </p>
@@ -320,7 +346,7 @@ export default function LandingV2() {
         </div>
       </section>
 
-      {/* ─── Human + AI Collaboration Section ─── */}
+      {/* ─── Human + AI Collaboration ─── */}
       <FadeSection>
         <section style={{
           padding: "96px 40px",
@@ -346,7 +372,7 @@ export default function LandingV2() {
               fontFamily: "var(--font-lora), serif", fontSize: 18, lineHeight: 1.7,
               color: "#A89F94", maxWidth: 540, margin: "0 auto 40px",
             }}>
-              D.&thinsp;scribe doesn&rsquo;t replace your ideas — it listens, learns your voice, and shapes your spoken words into prose that sounds like you wrote it by hand. Because you did. You just used your mouth instead of a keyboard.
+              D.&thinsp;scribe doesn&rsquo;t replace your ideas — it listens, learns your voice, and shapes your spoken words into prose that sounds like you wrote it by hand.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, marginTop: 48 }} className="lv2-pillars">
               {[
@@ -356,14 +382,10 @@ export default function LandingV2() {
               ].map((pillar) => (
                 <div key={pillar.title} style={{ textAlign: "left" }}>
                   <div style={{ width: 32, height: 2, background: "#C17A47", marginBottom: 16, opacity: 0.6 }} />
-                  <h3 style={{
-                    fontFamily: "var(--font-playfair), serif", fontSize: 18, fontWeight: 700, marginBottom: 8,
-                  }}>
+                  <h3 style={{ fontFamily: "var(--font-playfair), serif", fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
                     {pillar.title}
                   </h3>
-                  <p style={{
-                    fontFamily: "var(--font-lora), serif", fontSize: 15, lineHeight: 1.6, color: "#A89F94",
-                  }}>
+                  <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 15, lineHeight: 1.6, color: "#A89F94" }}>
                     {pillar.desc}
                   </p>
                 </div>
@@ -373,7 +395,7 @@ export default function LandingV2() {
         </section>
       </FadeSection>
 
-      {/* ─── Final CTA Block ─── */}
+      {/* ─── Final CTA ─── */}
       <FadeSection>
         <section style={{
           padding: "96px 40px", textAlign: "center",
@@ -409,10 +431,7 @@ export default function LandingV2() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         flexWrap: "wrap", gap: 16,
       }}>
-        <span style={{
-          fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
-          fontSize: 14, color: "#A89F94",
-        }}>
+        <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
         <span style={{ fontSize: 12, color: "rgba(168,159,148,0.5)" }}>
@@ -422,14 +441,33 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        /* Navbar pill CTA */
+        /* Waveform bar animation for landing-v2 */
+        .landing-v2 .murmur-svg {
+          width: 100%;
+          height: auto;
+          overflow: visible;
+        }
+        .landing-v2 .bar {
+          fill: #F0E6CE;
+          transform-box: fill-box;
+          transform-origin: center;
+          animation: lv2-murmurWave var(--anim-duration, 2s) cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+          animation-delay: var(--anim-delay, 0s);
+          filter: drop-shadow(0 0 8px rgba(240,230,206,0.4));
+        }
+        @keyframes lv2-murmurWave {
+          0%   { transform: scaleY(var(--scale-min, 0.2)); opacity: 0.75; }
+          100% { transform: scaleY(var(--scale-max, 1));   opacity: 1; }
+        }
+
+        /* Navbar pill */
         .lv2-pill-cta {
           display: inline-flex;
           align-items: center;
           padding: 9px 22px;
           background: #C8A882;
           color: #2C2419;
-          font-family: var(--font-lora), 'Lora', serif;
+          font-family: var(--font-lora), serif;
           font-size: 14px;
           font-weight: 700;
           border-radius: 999px;
@@ -439,14 +477,14 @@ export default function LandingV2() {
         }
         .lv2-pill-cta:hover { background: #b8936e; }
 
-        /* Hero HERE pill */
+        /* HERE pill */
         .lv2-pill-here {
           display: inline-flex;
           align-items: center;
           padding: 11px 30px;
           background: #C8A882;
           color: #2C2419;
-          font-family: var(--font-lora), 'Lora', serif;
+          font-family: var(--font-lora), serif;
           font-size: 15px;
           font-weight: 800;
           border-radius: 999px;
@@ -478,7 +516,7 @@ export default function LandingV2() {
           background: rgba(249,247,242,0.07);
         }
 
-        /* Final CTA button */
+        /* Final CTA */
         .lv2-cta {
           display: inline-flex;
           align-items: center;
@@ -486,7 +524,7 @@ export default function LandingV2() {
           padding: 16px 32px;
           background: #C17A47;
           color: #F9F7F2;
-          font-family: var(--font-playfair), 'Playfair Display', serif;
+          font-family: var(--font-playfair), serif;
           font-size: 18px;
           font-weight: 700;
           border: none;
@@ -510,6 +548,7 @@ export default function LandingV2() {
             transition-duration: 0.01ms !important;
           }
           .landing-v2 video { display: none; }
+          .landing-v2 .bar { animation: none !important; }
         }
       `}</style>
     </div>

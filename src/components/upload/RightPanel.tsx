@@ -19,6 +19,7 @@ interface RightPanelProps {
   canInitialize: boolean;
   allDone: boolean;
   onInitialize: () => void;
+  onBrainstorm?: () => void;
 }
 
 export default function RightPanel({

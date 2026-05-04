@@ -52,7 +52,8 @@ export default function AnalysisPage() {
   const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeJob = useJob();
-
+  const [numChapters, setNumChapters] = useState(5);
+  const [targetWords, setTargetWords] = useState(3000);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)

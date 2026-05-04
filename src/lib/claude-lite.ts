@@ -10,6 +10,11 @@ const API_VERSION = "2023-06-01";
 
 export type ModelTier = "fast" | "quality";
 
+export interface ClaudeUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+
 const MODELS: Record<ModelTier, string> = {
   fast: "claude-haiku-4-5-20251001",
   quality: "claude-sonnet-4-6",
@@ -80,6 +85,42 @@ export function cleanJsonLite(raw: string): string {
     }
   }
   return s;
+}
+
+export async function askClaudeWithUsage(
+  system: string,
+  userMessage: string,
+  options?: { model?: ModelTier; maxTokens?: number; temperature?: number }
+): Promise<{ text: string; usage: ClaudeUsage }> {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "anthropic-version": API_VERSION,
+    },
+    body: JSON.stringify({
+      model: MODELS[options?.model ?? "quality"],
+      max_tokens: options?.maxTokens ?? 8192,
+      temperature: options?.temperature ?? 0.6,
+      system,
+      messages: [{ role: "user", content: userMessage }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    const message = `Claude API ${res.status}: ${err.slice(0, 200)}`;
+    logger.error(message, { meta: { status: res.status, body: err.slice(0, 500) } });
+    throw new Error(message);
+  }
+
+  const data = await res.json();
+  const block = data.content?.[0];
+  return {
+    text: block?.type === "text" ? block.text : "",
+    usage: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
+  };
 }
 
 // Aliases for drop-in compatibility with claude.ts imports

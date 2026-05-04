@@ -12,7 +12,8 @@ const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "";
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "dscribe-audio";
 
-let _s3Client: { send: (command: unknown) => Promise<unknown> } | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _s3Client: any = null;
 
 async function getS3Client() {
   if (_s3Client) return _s3Client;

@@ -70,7 +70,7 @@ export default function GeneratePage() {
       .then((r) => (r.ok ? r.json() : {}))
       .then((grouped) => {
         if (grouped && typeof grouped === "object") {
-          setEnrichments(grouped);
+          setEnrichments(grouped as Record<string, Enrichment[]>);
         }
       })
       .catch(() => {});

@@ -47,8 +47,9 @@ export async function GET(req: NextRequest) {
     .in("chapter_id", chapterIds);
 
   // Group by chapter_id
-  const grouped: Record<string, typeof enrichments> = {};
-  for (const e of enrichments || []) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const grouped: Record<string, any[]> = {};
+  for (const e of enrichments ?? []) {
     if (!grouped[e.chapter_id]) grouped[e.chapter_id] = [];
     grouped[e.chapter_id].push(e);
   }

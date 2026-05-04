@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
           await runGenerateAllJob(job.id, { project_id, ...rest });
           break;
       }
+      // Deduct credit after successful worker completion
+      await deductCredit(project.user_id).catch((err) => {
+        console.error(`[jobs] Credit deduction failed for user ${project.user_id}:`, err);
+      });
     } catch (err) {
       console.error(`[jobs] Worker ${type} crashed:`, err);
       const { updateJob } = await import("@/lib/jobs");
@@ -126,6 +130,11 @@ export async function POST(req: NextRequest) {
         status: code === 0 ? "completed" : "failed",
         error: code !== 0 ? `Pipeline exited with code ${code}` : undefined,
       });
+      if (code === 0) {
+        await deductCredit(project.user_id).catch((err) => {
+          console.error(`[jobs] Credit deduction failed for user ${project.user_id}:`, err);
+        });
+      }
     });
   } else {
     // Run in after() — maxDuration=60 extends the execution window.

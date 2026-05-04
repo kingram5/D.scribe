@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CinematicMurmurWaveform } from "@/components/landing/CinematicClient";
 
 const PIPELINE = [
   { num: "01", title: "Upload", desc: "Record live, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
@@ -32,15 +31,11 @@ function FadeSection({ children, className = "", delay = 0 }: { children: React.
   const ref = useRef<HTMLDivElement>(null);
   const visible = useInView(ref);
   return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(24px)",
-        transition: `opacity 0.6s ease-out ${delay}s, transform 0.6s ease-out ${delay}s`,
-      }}
-    >
+    <div ref={ref} className={className} style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(24px)",
+      transition: `opacity 0.6s ease-out ${delay}s, transform 0.6s ease-out ${delay}s`,
+    }}>
       {children}
     </div>
   );
@@ -60,7 +55,6 @@ export default function LandingV2() {
     if (videoRef.current) videoRef.current.playbackRate = 0.75;
   }, []);
 
-  // Respect reduced motion
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (mq.matches && videoRef.current) {
@@ -72,41 +66,56 @@ export default function LandingV2() {
     <div className="landing-v2" style={{ background: "#2C2419", color: "#F9F7F2", minHeight: "100vh" }}>
 
       {/* ─── Navbar ─── */}
-      <nav
-        style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          padding: "0 40px", height: 64,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          transition: "all 0.3s ease",
-          background: scrolled ? "rgba(44,36,25,0.85)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(249,247,242,0.08)" : "1px solid transparent",
-        }}
-      >
-        <span style={{
-          fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-          fontStyle: "italic", fontSize: 20, fontWeight: 500, color: "#F9F7F2",
-        }}>
-          D. scribe
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <Link href="/login" style={{ fontSize: 14, color: "#A89F94", textDecoration: "none", fontFamily: "var(--font-lora), serif" }}>
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        padding: "0 40px", height: 64,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        transition: "all 0.3s ease",
+        background: scrolled ? "rgba(44,36,25,0.85)" : "transparent",
+        backdropFilter: scrolled ? "blur(20px)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(249,247,242,0.08)" : "1px solid transparent",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 36, height: 36,
+            border: "1.5px solid rgba(249,247,242,0.75)",
+            borderRadius: 5,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "#F9F7F2",
+            flexShrink: 0,
+          }}>
+            D.
+          </div>
+          <span style={{
+            fontFamily: "var(--font-lora), 'Lora', serif",
+            fontSize: 18, fontWeight: 500, color: "#F9F7F2", letterSpacing: "0.01em",
+          }}>
+            scribe
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <Link href="/login" style={{
+            fontSize: 14, color: "#F9F7F2", textDecoration: "none",
+            fontFamily: "var(--font-lora), serif", opacity: 0.85,
+          }}>
             Sign in
           </Link>
-          <Link href="/auth/signup" className="lv2-cta-sm" style={{ textDecoration: "none" }}>
-            Begin Your Book
+          <Link href="/auth/signup" className="lv2-pill-cta">
+            Get Started →
           </Link>
         </div>
       </nav>
 
       {/* ─── Hero Section ─── */}
-      <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "flex-end", overflow: "hidden" }}>
+      <section style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
+
         {/* Video background */}
         <video
           ref={videoRef}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center 40%",
+            objectFit: "cover", objectPosition: "center center",
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
           autoPlay loop muted playsInline preload="auto"
@@ -115,73 +124,124 @@ export default function LandingV2() {
           <source src="/bg-video-desk.mp4" type="video/mp4" />
         </video>
 
-        {/* Layered gradient overlay */}
+        {/* Gradient overlay — lighter to let video breathe */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
           background: `
-            linear-gradient(to top, rgba(44,36,25,0.97) 0%, rgba(44,36,25,0.80) 25%, rgba(44,36,25,0.25) 55%, transparent 100%),
-            linear-gradient(to bottom, rgba(44,36,25,0.50) 0%, transparent 25%),
-            rgba(44,36,25,0.12)
+            linear-gradient(to bottom, rgba(44,36,25,0.40) 0%, rgba(44,36,25,0.08) 25%, rgba(44,36,25,0.12) 60%, rgba(44,36,25,0.70) 100%),
+            linear-gradient(to right, rgba(44,36,25,0.45) 0%, transparent 40%, transparent 70%, rgba(44,36,25,0.20) 100%)
           `,
         }} />
 
-        {/* Hero content — left-aligned */}
+        {/* D.scribe — massive centered title */}
         <div style={{
-          position: "relative", zIndex: 2,
-          padding: "0 40px 80px", maxWidth: 640, width: "55%",
+          position: "absolute", top: "16%", left: 0, right: 0,
+          textAlign: "center", zIndex: 2, pointerEvents: "none",
         }}>
-          {/* Waveform */}
-          <div style={{ width: "100%", maxWidth: 520, height: 80, marginBottom: 20 }}>
-            <div style={{
-              width: "100%", height: "100%",
-              maskImage: "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-            }}>
-              <CinematicMurmurWaveform />
-            </div>
-          </div>
-
           <h1 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(44px, 7vw, 88px)",
-            fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.03em",
-            marginBottom: 20,
+            fontStyle: "italic",
+            fontSize: "clamp(72px, 13vw, 172px)",
+            fontWeight: 700,
+            lineHeight: 1,
+            color: "#F0E6CE",
+            letterSpacing: "-0.02em",
+            margin: 0,
+            textShadow: "0 4px 60px rgba(44,36,25,0.25)",
           }}>
-            There&rsquo;s an author<br />
-            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>inside you.</span>
+            D.scribe
           </h1>
+        </div>
 
+        {/* Your Story Starts → [HERE] */}
+        <div style={{
+          position: "absolute", top: "52%", left: 0, right: 0, zIndex: 2,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 18,
+        }}>
+          <span style={{
+            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontStyle: "italic",
+            fontSize: "clamp(16px, 1.8vw, 24px)",
+            color: "#F0E6CE",
+            opacity: 0.9,
+            letterSpacing: "0.01em",
+          }}>
+            Your Story Starts →
+          </span>
+          <Link href="/auth/signup" className="lv2-pill-here">
+            HERE
+          </Link>
+        </div>
+
+        {/* Center: You talk. It writes. */}
+        <div style={{
+          position: "absolute", top: "60%", left: 0, right: 0, zIndex: 2,
+          textAlign: "center",
+        }}>
+          <div style={{
+            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontSize: "clamp(26px, 3.5vw, 46px)",
+            fontWeight: 400,
+            color: "#F9F7F2",
+            lineHeight: 1.15,
+            marginBottom: 10,
+          }}>
+            You talk.{" "}
+            <em style={{ color: "#F0E6CE" }}>It writes.</em>
+          </div>
+          <div style={{
+            fontFamily: "var(--font-lora), 'Lora', serif",
+            fontSize: 15, color: "rgba(249,247,242,0.60)",
+            marginBottom: 4,
+          }}>
+            Stop waiting to write your book...
+          </div>
+          <div style={{
+            fontFamily: "var(--font-lora), 'Lora', serif",
+            fontSize: 15, fontWeight: 600,
+            color: "rgba(249,247,242,0.85)",
+          }}>
+            just start talking.
+          </div>
+        </div>
+
+        {/* Bottom-left: There's an author inside you */}
+        <div style={{
+          position: "absolute", bottom: 72, left: 40, zIndex: 2, maxWidth: 290,
+        }}>
+          <h2 style={{
+            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontSize: "clamp(26px, 3vw, 42px)",
+            fontWeight: 800,
+            lineHeight: 1.1,
+            color: "#F9F7F2",
+            marginBottom: 10,
+          }}>
+            There&rsquo;s an<br />author<br />
+            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
+              inside you.
+            </span>
+          </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 18, lineHeight: 1.7, color: "#A89F94",
-            maxWidth: 420, marginBottom: 32,
+            fontSize: 13, lineHeight: 1.6,
+            color: "rgba(249,247,242,0.55)",
+            marginBottom: 20,
           }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
-
-          <Link href="/auth/signup" className="lv2-cta">
+          <Link href="/auth/signup" className="lv2-ghost">
             Begin Your Book
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
           </Link>
-
-          {/* Scroll indicator */}
-          <div style={{
-            position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: 0.4,
-          }}>
-            <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom, transparent, #A89F94)" }} />
-          </div>
         </div>
-      </section>
 
-      {/* ─── Proof Strip ─── */}
-      <FadeSection>
-        <section style={{
-          padding: "48px 40px", borderTop: "1px solid rgba(249,247,242,0.06)",
-          borderBottom: "1px solid rgba(249,247,242,0.06)",
-          display: "flex", justifyContent: "center", gap: 64, flexWrap: "wrap",
+        {/* Bottom stats strip */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2,
+          display: "flex", justifyContent: "center", gap: "clamp(32px, 6vw, 80px)",
+          padding: "18px 40px",
+          background: "rgba(44,36,25,0.45)",
+          backdropFilter: "blur(10px)",
         }}>
           {[
             { value: "< 10 min", label: "Audio to first chapter" },
@@ -190,20 +250,22 @@ export default function LandingV2() {
           ].map((stat) => (
             <div key={stat.label} style={{ textAlign: "center" }}>
               <div style={{
-                fontFamily: "var(--font-playfair), serif", fontSize: 28, fontWeight: 700,
-                color: "#C17A47", marginBottom: 4,
+                fontFamily: "var(--font-playfair), serif",
+                fontSize: "clamp(16px, 1.8vw, 24px)",
+                fontWeight: 700, color: "#C17A47", marginBottom: 2,
               }}>
                 {stat.value}
               </div>
               <div style={{
-                fontFamily: "var(--font-lora), serif", fontSize: 14, color: "#A89F94",
+                fontFamily: "var(--font-lora), serif",
+                fontSize: 12, color: "rgba(249,247,242,0.55)",
               }}>
                 {stat.label}
               </div>
             </div>
           ))}
-        </section>
-      </FadeSection>
+        </div>
+      </section>
 
       {/* ─── Pipeline Section ─── */}
       <section style={{ padding: "96px 40px", maxWidth: 800, margin: "0 auto" }}>
@@ -211,8 +273,7 @@ export default function LandingV2() {
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
               fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
-              fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400,
-              marginBottom: 12,
+              fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400, marginBottom: 12,
             }}>
               Six steps. One manuscript.
             </h2>
@@ -221,14 +282,11 @@ export default function LandingV2() {
             </p>
           </div>
         </FadeSection>
-
         <div style={{ position: "relative" }}>
-          {/* Vertical connector line */}
           <div className="lv2-pipeline-line" style={{
             position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
             background: "rgba(193,122,71,0.2)",
           }} />
-
           {PIPELINE.map((step, i) => (
             <FadeSection key={step.num} delay={i * 0.08}>
               <div style={{
@@ -236,14 +294,12 @@ export default function LandingV2() {
                 padding: "28px 0",
                 borderBottom: i < PIPELINE.length - 1 ? "1px solid rgba(249,247,242,0.04)" : "none",
               }}>
-                {/* Step number */}
                 <div style={{
                   fontFamily: "var(--font-playfair), serif", fontSize: 56, fontWeight: 300,
                   color: "rgba(193,122,71,0.2)", lineHeight: 1, textAlign: "center",
                 }}>
                   {step.num}
                 </div>
-                {/* Content */}
                 <div>
                   <h3 style={{
                     fontFamily: "var(--font-playfair), serif", fontSize: 22, fontWeight: 700,
@@ -292,32 +348,21 @@ export default function LandingV2() {
             }}>
               D.&thinsp;scribe doesn&rsquo;t replace your ideas — it listens, learns your voice, and shapes your spoken words into prose that sounds like you wrote it by hand. Because you did. You just used your mouth instead of a keyboard.
             </p>
-
-            {/* Three pillars */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32,
-              marginTop: 48,
-            }}
-            className="lv2-pillars"
-            >
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, marginTop: 48 }} className="lv2-pillars">
               {[
                 { title: "Your Voice", desc: "AI captures your speaking style — rhythm, vocabulary, pacing — and writes in it." },
                 { title: "Your Ideas", desc: "Every key point comes from your words. Nothing invented. Nothing hallucinated." },
                 { title: "Your Book", desc: "Edit every sentence. Rearrange every chapter. Export when it's ready. It's yours." },
               ].map((pillar) => (
                 <div key={pillar.title} style={{ textAlign: "left" }}>
-                  <div style={{
-                    width: 32, height: 2, background: "#C17A47", marginBottom: 16, opacity: 0.6,
-                  }} />
+                  <div style={{ width: 32, height: 2, background: "#C17A47", marginBottom: 16, opacity: 0.6 }} />
                   <h3 style={{
-                    fontFamily: "var(--font-playfair), serif", fontSize: 18, fontWeight: 700,
-                    marginBottom: 8,
+                    fontFamily: "var(--font-playfair), serif", fontSize: 18, fontWeight: 700, marginBottom: 8,
                   }}>
                     {pillar.title}
                   </h3>
                   <p style={{
-                    fontFamily: "var(--font-lora), serif", fontSize: 15, lineHeight: 1.6,
-                    color: "#A89F94",
+                    fontFamily: "var(--font-lora), serif", fontSize: 15, lineHeight: 1.6, color: "#A89F94",
                   }}>
                     {pillar.desc}
                   </p>
@@ -331,8 +376,7 @@ export default function LandingV2() {
       {/* ─── Final CTA Block ─── */}
       <FadeSection>
         <section style={{
-          padding: "96px 40px",
-          textAlign: "center",
+          padding: "96px 40px", textAlign: "center",
           borderTop: "1px solid rgba(249,247,242,0.06)",
         }}>
           <h2 style={{
@@ -345,7 +389,7 @@ export default function LandingV2() {
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), serif", fontSize: 18,
-            color: "#A89F94", marginBottom: 40, maxWidth: 400, margin: "0 auto 40px",
+            color: "#A89F94", maxWidth: 400, margin: "0 auto 40px",
           }}>
             Just start talking.
           </p>
@@ -378,6 +422,63 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
+        /* Navbar pill CTA */
+        .lv2-pill-cta {
+          display: inline-flex;
+          align-items: center;
+          padding: 9px 22px;
+          background: #C8A882;
+          color: #2C2419;
+          font-family: var(--font-lora), 'Lora', serif;
+          font-size: 14px;
+          font-weight: 700;
+          border-radius: 999px;
+          cursor: pointer;
+          text-decoration: none;
+          transition: background 0.2s ease;
+        }
+        .lv2-pill-cta:hover { background: #b8936e; }
+
+        /* Hero HERE pill */
+        .lv2-pill-here {
+          display: inline-flex;
+          align-items: center;
+          padding: 11px 30px;
+          background: #C8A882;
+          color: #2C2419;
+          font-family: var(--font-lora), 'Lora', serif;
+          font-size: 15px;
+          font-weight: 800;
+          border-radius: 999px;
+          cursor: pointer;
+          text-decoration: none;
+          letter-spacing: 0.06em;
+          transition: background 0.2s ease;
+        }
+        .lv2-pill-here:hover { background: #b8936e; }
+
+        /* Ghost outline button */
+        .lv2-ghost {
+          display: inline-flex;
+          align-items: center;
+          padding: 10px 22px;
+          background: transparent;
+          color: #F9F7F2;
+          font-family: var(--font-lora), serif;
+          font-size: 13px;
+          font-weight: 600;
+          border: 1px solid rgba(249,247,242,0.5);
+          border-radius: 2px;
+          cursor: pointer;
+          text-decoration: none;
+          transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .lv2-ghost:hover {
+          border-color: rgba(249,247,242,0.9);
+          background: rgba(249,247,242,0.07);
+        }
+
+        /* Final CTA button */
         .lv2-cta {
           display: inline-flex;
           align-items: center;
@@ -394,44 +495,13 @@ export default function LandingV2() {
           text-decoration: none;
           transition: background 0.2s ease, transform 0.15s ease;
         }
-        .lv2-cta:hover {
-          background: #a8672f;
-          transform: translateY(-2px);
-        }
-        .lv2-cta:active {
-          transform: translateY(0) scale(0.98);
-        }
-
-        .lv2-cta-sm {
-          display: inline-flex;
-          align-items: center;
-          padding: 8px 20px;
-          background: #C17A47;
-          color: #F9F7F2;
-          font-family: var(--font-lora), serif;
-          font-size: 13px;
-          font-weight: 600;
-          border: none;
-          border-radius: 2px;
-          cursor: pointer;
-          transition: background 0.2s ease;
-        }
-        .lv2-cta-sm:hover {
-          background: #a8672f;
-        }
+        .lv2-cta:hover { background: #a8672f; transform: translateY(-2px); }
+        .lv2-cta:active { transform: translateY(0) scale(0.98); }
 
         /* Mobile */
         @media (max-width: 768px) {
-          .landing-v2 section:first-of-type > div:last-child {
-            width: 100% !important;
-            padding: 0 24px 60px !important;
-          }
-          .landing-v2 nav {
-            padding: 0 20px !important;
-          }
-          .lv2-pillars {
-            grid-template-columns: 1fr !important;
-          }
+          .landing-v2 nav { padding: 0 20px !important; }
+          .lv2-pillars { grid-template-columns: 1fr !important; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -439,9 +509,7 @@ export default function LandingV2() {
             animation-duration: 0.01ms !important;
             transition-duration: 0.01ms !important;
           }
-          .landing-v2 video {
-            display: none;
-          }
+          .landing-v2 video { display: none; }
         }
       `}</style>
     </div>

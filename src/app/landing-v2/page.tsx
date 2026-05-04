@@ -441,22 +441,33 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        /* Waveform bar animation for landing-v2 */
+        /* Waveform — exact match to main landing cinematic-landing.css */
         .landing-v2 .murmur-svg {
           width: 100%;
           height: auto;
-          overflow: visible;
+          max-height: 35vh;
+          display: block;
+          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 1))
+                  drop-shadow(0 0 15px rgba(240, 168, 120, 0.85))
+                  drop-shadow(0 0 35px rgba(193, 122, 71, 0.7))
+                  drop-shadow(0 0 60px rgba(193, 122, 71, 0.5))
+                  drop-shadow(0 0 100px rgba(193, 122, 71, 0.3))
+                  contrast(1.3) saturate(1.2) brightness(1.1);
+          margin: 0 auto;
+          will-change: filter;
+          transform: translateZ(0);
         }
         .landing-v2 .bar {
-          fill: #F0E6CE;
+          fill: #F0A878;
           transform-box: fill-box;
           transform-origin: center;
+          will-change: transform, opacity;
           animation: lv2-murmurWave var(--anim-duration, 2s) cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
           animation-delay: var(--anim-delay, 0s);
-          filter: drop-shadow(0 0 8px rgba(240,230,206,0.4));
+          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 0.75)) brightness(1.15);
         }
         @keyframes lv2-murmurWave {
-          0%   { transform: scaleY(var(--scale-min, 0.2)); opacity: 0.75; }
+          0%   { transform: scaleY(var(--scale-min, 0.2)); opacity: 0.95; }
           100% { transform: scaleY(var(--scale-max, 1));   opacity: 1; }
         }
 

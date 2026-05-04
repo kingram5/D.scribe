@@ -14,6 +14,7 @@ import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useInkGuard } from "@/hooks/useInkGuard";
+import InkTooltip from "@/components/ui/InkTooltip";
 
 export default function GeneratePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -29,7 +30,7 @@ export default function GeneratePage() {
   const regenerateJob = useJob();
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number } | null>(null);
+  const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number; per_chapter?: number[] } | null>(null);
 
   // Are all chapters generated?
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
@@ -55,7 +56,7 @@ export default function GeneratePage() {
           fetch(`/api/ink/estimate?project_id=${projectId}`)
             .then((r) => (r.ok ? r.json() : null))
             .then((est) => {
-              if (est && est.chapter_count > 0) setInkEstimate(est);
+              if (est && est.chapter_count > 0) setInkEstimate({ ...est, per_chapter: est.per_chapter });
             })
             .catch(() => {});
         }
@@ -517,24 +518,26 @@ export default function GeneratePage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <PanelTitle>Enrichment Quotes</PanelTitle>
                   {chapterEnrichments.length > 0 && (
-                    <button
-                      onClick={() => activeChapter && fetchEnrichments(activeChapter)}
-                      disabled={enriching === activeChapter}
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: enriching === activeChapter ? "var(--text-tertiary)" : "var(--text-secondary)",
-                        background: "none",
-                        border: "1px solid var(--ds-input-bg)",
-                        borderRadius: 8,
-                        padding: "6px 14px",
-                        cursor: enriching === activeChapter ? "wait" : "pointer",
-                        fontFamily: "var(--font-manrope), sans-serif",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {enriching === activeChapter ? "Refreshing..." : "Refresh"}
-                    </button>
+                    <InkTooltip label="~0.5 Ink to refresh quotes" position="top">
+                      <button
+                        onClick={() => activeChapter && fetchEnrichments(activeChapter)}
+                        disabled={enriching === activeChapter}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: enriching === activeChapter ? "var(--text-tertiary)" : "var(--text-secondary)",
+                          background: "none",
+                          border: "1px solid var(--ds-input-bg)",
+                          borderRadius: 8,
+                          padding: "6px 14px",
+                          cursor: enriching === activeChapter ? "wait" : "pointer",
+                          fontFamily: "var(--font-manrope), sans-serif",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {enriching === activeChapter ? "Refreshing..." : "Refresh"}
+                      </button>
+                    </InkTooltip>
                   )}
                 </div>
                 {chapterEnrichments.length > 0 ? (
@@ -581,6 +584,7 @@ export default function GeneratePage() {
                     ))}
                   </div>
                 ) : (
+                  <InkTooltip label="~0.5 Ink to find quotes" position="top">
                   <button
                     onClick={() => activeChapter && fetchEnrichments(activeChapter)}
                     disabled={enriching === activeChapter}
@@ -629,6 +633,7 @@ export default function GeneratePage() {
                       </>
                     )}
                   </button>
+                  </InkTooltip>
                 )}
               </div>
 
@@ -729,27 +734,41 @@ export default function GeneratePage() {
 
               {/* Footer buttons */}
               <div style={{ display: "flex", gap: 12 }}>
-                <button
-                  onClick={generateAll}
-                  disabled={isGenerating}
-                  className="nodum-btn"
+                <InkTooltip
+                  label={inkEstimate
+                    ? `~${inkEstimate.total_low}–${inkEstimate.total_high} Ink for all ${inkEstimate.chapter_count} chapters`
+                    : "Ink cost calculated before generating"}
+                  position="top"
                 >
-                  {generateAllJob.isRunning
-                    ? "Generating..."
-                    : `Generate All ${chapters.length} Chapters`}
-                </button>
-                <button
-                  onClick={() => regenerateChapter(active.id)}
-                  disabled={isGenerating}
-                  className="nodum-btn"
-                  style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                  <button
+                    onClick={generateAll}
+                    disabled={isGenerating}
+                    className="nodum-btn"
+                  >
+                    {generateAllJob.isRunning
+                      ? "Generating..."
+                      : `Generate All ${chapters.length} Chapters`}
+                  </button>
+                </InkTooltip>
+                <InkTooltip
+                  label={inkEstimate && inkEstimate.per_chapter
+                    ? `~${inkEstimate.per_chapter[chapters.findIndex(c => c.id === active.id)] ?? Math.round((inkEstimate.total_low + inkEstimate.total_high) / 2 / inkEstimate.chapter_count * 10) / 10} Ink for this chapter`
+                    : "~5–7 Ink for this chapter"}
+                  position="top"
                 >
-                  {regenerateJob.isRunning
-                    ? "Regenerating..."
-                    : active.status === "generated"
-                      ? "Regenerate Chapter"
-                      : "Generate Chapter"}
-                </button>
+                  <button
+                    onClick={() => regenerateChapter(active.id)}
+                    disabled={isGenerating}
+                    className="nodum-btn"
+                    style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                  >
+                    {regenerateJob.isRunning
+                      ? "Regenerating..."
+                      : active.status === "generated"
+                        ? "Regenerate Chapter"
+                        : "Generate Chapter"}
+                  </button>
+                </InkTooltip>
               </div>
 
               {/* Generate All completed summary */}

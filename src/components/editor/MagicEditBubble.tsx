@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import type { TipTapSelection } from "./TipTapEditor";
+import InkTooltip from "@/components/ui/InkTooltip";
 
 interface MagicEditBubbleProps {
   editor: Editor | null;
@@ -265,6 +266,7 @@ export default function MagicEditBubble({
                 color: "var(--text-primary)",
               }}
             />
+            <InkTooltip label="~0.5 Ink per edit" position="top">
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleSubmit}
@@ -297,6 +299,7 @@ export default function MagicEditBubble({
                 "Apply"
               )}
             </button>
+            </InkTooltip>
           </div>
           {error && (
             <div style={{ fontSize: 12, color: "#dc2626", fontFamily: "var(--font-manrope), sans-serif" }}>

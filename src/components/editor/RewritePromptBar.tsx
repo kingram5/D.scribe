@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
+import InkTooltip from "@/components/ui/InkTooltip";
 
 interface RewritePromptBarProps {
   chapterId: string;
@@ -203,6 +204,7 @@ export default function RewritePromptBar({
           </button>
         </div>
       ) : (
+        <InkTooltip label="~1–3 Ink per rewrite" position="top">
         <button
           onClick={handleSubmit}
           disabled={!feedback.trim() || disabled}
@@ -228,6 +230,7 @@ export default function RewritePromptBar({
         >
           Rewrite
         </button>
+        </InkTooltip>
       )}
     </div>
   );

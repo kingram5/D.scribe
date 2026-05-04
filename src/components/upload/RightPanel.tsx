@@ -376,6 +376,15 @@ export default function RightPanel({
           </div>
         </InputCard>
 
+        {/* Or divider */}
+        {onBrainstorm && (
+          <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 4px" }}>
+            <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Or</span>
+            <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
+          </div>
+        )}
+
         {/* Brainstorm card */}
         {onBrainstorm && (
           <InputCard onClick={onBrainstorm}>

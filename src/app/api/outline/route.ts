@@ -4,11 +4,21 @@ import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
+import { checkInk } from "@/lib/ink";
 
 // POST /api/outline — generate chapter outline from key points
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
+    );
+  }
 
   const { project_id, num_chapters } = await req.json();
   if (!project_id) {

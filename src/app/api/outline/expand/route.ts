@@ -4,6 +4,7 @@ import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, expandOutlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
+import { checkInk } from "@/lib/ink";
 
 // POST /api/outline/expand
 // Body { project_id, dry_run: true }     → Claude proposes new chapters, no DB writes
@@ -99,6 +100,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Dry-run mode: call Claude, return proposal ──────────────────────────────
+  // Pre-flight Ink check (only dry-run calls Claude; confirm is a DB insert)
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
+    );
+  }
+
   const numNewChapters = Math.max(1, Math.ceil(unassigned.length / 3));
 
   const raw = await askClaude(

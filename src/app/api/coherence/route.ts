@@ -4,6 +4,7 @@ import { askClaude, cleanJson } from "@/lib/claude-lite";
 import { HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkInk } from "@/lib/ink";
 
 // POST /api/coherence — run a coherence pass across all chapters
 // Reads first+last paragraphs of each chapter, generates revised transitions
@@ -19,6 +20,15 @@ export async function POST(req: NextRequest) {
         status: 429,
         headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
       }
+    );
+  }
+
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
     );
   }
 

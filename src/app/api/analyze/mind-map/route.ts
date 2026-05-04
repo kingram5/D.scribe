@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
+import { checkInk } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -10,6 +11,11 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
 
   const { project_id } = await req.json();
   if (!project_id) {

@@ -4,6 +4,7 @@ import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
+import { checkInk } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -12,6 +13,11 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
 
   const { project_id, transcript_id, chunk_index, previous_titles } = await req.json();
   if (!project_id || !transcript_id || chunk_index === undefined) {

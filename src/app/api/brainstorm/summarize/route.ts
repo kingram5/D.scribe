@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
+import { checkInk } from "@/lib/ink";
 
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
 
   const { messages, project_id } = await req.json();
 

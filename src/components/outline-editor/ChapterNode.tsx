@@ -63,6 +63,7 @@ function ChapterNoteComponent({
           : "0 4px 6px rgba(0,0,0,0.05), 2px 2px 0 rgba(0,0,0,0.02)",
         fontFamily: "'Kalam', cursive",
         position: "relative",
+        overflow: "visible",
         transition: isDragging ? "none" : "box-shadow 0.2s",
         userSelect: "none",
       }}
@@ -85,8 +86,8 @@ function ChapterNoteComponent({
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             position: "absolute",
-            top: 8,
-            right: 8,
+            top: -10,
+            right: -10,
             width: 22,
             height: 22,
             borderRadius: "50%",
@@ -100,7 +101,7 @@ function ChapterNoteComponent({
             alignItems: "center",
             justifyContent: "center",
             lineHeight: 1,
-            zIndex: 10,
+            zIndex: 100,
           }}
         >
           ×

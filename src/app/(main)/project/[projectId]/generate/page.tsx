@@ -244,6 +244,10 @@ export default function GeneratePage() {
   const chapterEnrichments = activeChapter ? enrichments[activeChapter] || [] : [];
   const isGenerating = generateAllJob.isRunning || regenerateJob.isRunning;
 
+  const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
+  const estimatedSeconds = ungeneratedCount * 45;
+  const estimatedMinutes = Math.ceil(estimatedSeconds / 60);
+
   return (
     <PageShell projectId={projectId} currentStep="generate">
       <div className="ds-pipeline-grid" style={{
@@ -647,6 +651,9 @@ export default function GeneratePage() {
                     </svg>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", fontFamily: "var(--font-manrope), sans-serif" }}>
                       Please do not leave this page while generating
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", marginLeft: "auto" }}>
+                      Estimated time: ~{estimatedMinutes} min
                     </span>
                   </div>
                   <div style={{

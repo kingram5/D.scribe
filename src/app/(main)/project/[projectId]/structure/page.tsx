@@ -38,6 +38,7 @@ export default function StructurePage() {
   const [wordsPerChapter, setWordsPerChapter] = useState(2500);
   const [audience, setAudience] = useState("General");
   const [saving, setSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
 
   const AUDIENCES = ["General", "Academic", "Faith Community", "Business/Leadership", "Self-Help", "Young Adult"];
 
@@ -48,6 +49,7 @@ export default function StructurePage() {
         if (p.num_chapters) setNumChapters(p.num_chapters);
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         if (p.audience) setAudience(p.audience);
+        if (p.num_chapters) setHasSaved(true);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -64,12 +66,28 @@ export default function StructurePage() {
         audience,
       }),
     }).catch(() => {});
+
+    // After saving project settings, update existing chapters' target_word_count
+    const projectData = await fetch(`/api/project/${projectId}`).then(r => r.json());
+    const existingChapters = projectData.chapters || [];
+    if (existingChapters.length > 0) {
+      await Promise.all(existingChapters.map((ch: { id: string }) =>
+        fetch(`/api/project/${projectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chapter_id: ch.id, target_word_count: wordsPerChapter }),
+        })
+      ));
+    }
+
+    setHasSaved(true);
+    setSaving(false);
     router.push(`/project/${projectId}/analysis`);
   }
 
   if (loading) {
     return (
-      <PageShell projectId={projectId} currentStep="structure">
+      <PageShell projectId={projectId} currentStep="structure" disableNextStep={!hasSaved}>
         <Spinner />
       </PageShell>
     );
@@ -82,7 +100,7 @@ export default function StructurePage() {
     totalWords < 80000 ? "standard book" : "long book";
 
   return (
-    <PageShell projectId={projectId} currentStep="structure">
+    <PageShell projectId={projectId} currentStep="structure" disableNextStep={!hasSaved}>
       <style>{`
         @media (max-width: 768px) {
           .ds-structure-wrap { overflow-y: auto !important; padding: 16px !important; align-items: flex-start !important; }

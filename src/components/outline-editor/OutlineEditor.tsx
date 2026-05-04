@@ -680,7 +680,7 @@ function OutlineEditorInner({
                 left: dragCol.x,
                 top: dragCol.y,
                 transform: `rotate(${dragCol.rotation}deg) scale(${scale})`,
-                zIndex: dragCol.isDragging ? 50 : 10,
+                zIndex: dragCol.isDragging ? 100 : 10,
                 transition: dragCol.isDragging ? "none" : "transform 0.3s ease-out",
               }}
             >

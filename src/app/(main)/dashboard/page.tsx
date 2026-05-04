@@ -403,7 +403,7 @@ export default function Dashboard() {
                         </div>
 
                         <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 600, color: statusColor, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--font-manrope), sans-serif" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 600, color: project.status === "draft" ? "rgba(200,200,200,0.7)" : project.status === "in_progress" ? "#C17A47" : statusColor, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--font-manrope), sans-serif" }}>
                             <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
                             {project.status.replace("_", " ")}
                           </div>
@@ -413,6 +413,14 @@ export default function Dashboard() {
                         </div>
 
                         <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
+
+                        {/* Status overlay — DRAFT gets a desaturating overlay, IN_PROGRESS gets amber strip at bottom */}
+                        {project.status === "draft" && (
+                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", borderRadius: "inherit", pointerEvents: "none" }} />
+                        )}
+                        {project.status === "in_progress" && (
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, background: "#C17A47", borderRadius: "0 0 10px 2px", pointerEvents: "none" }} />
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -437,12 +445,12 @@ export default function Dashboard() {
             <p>
               Total projects on the desk:{" "}
               <span style={{ fontWeight: 700, color: "#2C2419", fontSize: "1.4rem" }}>
-                {projects.length}
+                {activeProjects.length}
               </span>
             </p>
             <p style={{ marginTop: "1rem" }}>
               Currently in the works:{" "}
-              <span style={{ color: "#C17A47", fontWeight: 700 }}>{inProgressCount}</span>
+              <span style={{ color: "#C17A47", fontWeight: 700 }}>{projects.filter(p => p.status !== "complete" && p.status !== "erased").length}</span>
             </p>
             <p style={{ marginTop: "1rem" }}>
               Finished &amp; ready:{" "}

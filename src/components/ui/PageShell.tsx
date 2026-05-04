@@ -6,6 +6,7 @@ interface PageShellProps {
   projectId?: string;
   currentStep?: string;
   hideFooterNav?: boolean;
+  disableNextStep?: boolean;
 }
 
 const STEPS = [
@@ -18,7 +19,7 @@ const STEPS = [
   { key: "export", label: "Export", path: "export" },
 ];
 
-export default function PageShell({ children, projectId, currentStep, hideFooterNav }: PageShellProps) {
+export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep }: PageShellProps) {
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
   const currentLabel = currentIdx >= 0 ? STEPS[currentIdx].label : "";
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
@@ -76,25 +77,39 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           {/* Step indicator: "Step 2 of 6" with mini progress dots */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex", gap: 4 }}>
-              {STEPS.map((step, i) => (
-                <Link
-                  key={step.key}
-                  href={`/project/${projectId}/${step.path}`}
-                  title={step.label}
-                  style={{
-                    width: i === currentIdx ? 20 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    background: i === currentIdx
-                      ? "#C17A47"
-                      : i < currentIdx
-                        ? "var(--text-primary, #F9F7F2)"
-                        : "rgba(0,0,0,0.08)",
-                    transition: "all 0.2s",
-                    display: "block",
-                  }}
-                />
-              ))}
+              {STEPS.map((step, i) => {
+                const isClickable = i < currentIdx || (i === currentIdx + 1 && !disableNextStep);
+                const dotStyle = {
+                  width: i === currentIdx ? 20 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: i === currentIdx
+                    ? "#C17A47"
+                    : i < currentIdx
+                      ? "var(--text-primary, #F9F7F2)"
+                      : "rgba(0,0,0,0.08)",
+                  transition: "all 0.2s",
+                  display: "block",
+                  cursor: isClickable ? "pointer" : "default",
+                };
+                if (isClickable) {
+                  return (
+                    <Link
+                      key={step.key}
+                      href={`/project/${projectId}/${step.path}`}
+                      title={step.label}
+                      style={dotStyle}
+                    />
+                  );
+                }
+                return (
+                  <span
+                    key={step.key}
+                    title={step.label}
+                    style={dotStyle}
+                  />
+                );
+              })}
             </div>
             <span style={{
               fontSize: 11,
@@ -164,28 +179,54 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           </span>
 
           {nextStep ? (
-            <Link
-              href={`/project/${projectId}/${nextStep.path}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#F9F7F2",
-                textDecoration: "none",
-                transition: "all 0.2s",
-                padding: "12px 28px",
-                borderRadius: 9999,
-                background: "var(--ds-accent-400, #C17A47)",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
-              }}
-            >
-              {nextStep.label}
-              <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 2l5 5-5 5" />
-              </svg>
-            </Link>
+            disableNextStep ? (
+              <button
+                disabled
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#F9F7F2",
+                  border: "none",
+                  cursor: "not-allowed",
+                  padding: "12px 28px",
+                  borderRadius: 9999,
+                  background: "var(--ds-accent-400, #C17A47)",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+                  opacity: 0.4,
+                }}
+              >
+                {nextStep.label}
+                <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 2l5 5-5 5" />
+                </svg>
+              </button>
+            ) : (
+              <Link
+                href={`/project/${projectId}/${nextStep.path}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#F9F7F2",
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                  padding: "12px 28px",
+                  borderRadius: 9999,
+                  background: "var(--ds-accent-400, #C17A47)",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+                }}
+              >
+                {nextStep.label}
+                <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 2l5 5-5 5" />
+                </svg>
+              </Link>
+            )
           ) : (
             <div />
           )}

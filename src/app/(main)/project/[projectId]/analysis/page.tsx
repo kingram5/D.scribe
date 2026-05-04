@@ -150,7 +150,7 @@ export default function AnalysisPage() {
       if (!mmRes.ok) { const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed"); }
 
       // Step 4: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
-      const existingChapters = (await fetch(`/api/project/${projectId}`).then(r => r.json())).chapters || [];
+      const existingChapters = data?.chapters ?? [];
       if (existingChapters.length === 0) {
         setAnalyzeStep("Generating chapter outline...");
         const olRes = await fetch("/api/outline", { method: "POST", headers, body: JSON.stringify({ project_id: projectId, num_chapters: numChapters }) });

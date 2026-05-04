@@ -79,8 +79,6 @@ export default function TranscriptPage() {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
   const [fullEditMode, setFullEditMode] = useState(false);
   const [fullEditText, setFullEditText] = useState("");
@@ -129,35 +127,6 @@ export default function TranscriptPage() {
     }));
   }, [merged]);
 
-  async function saveEdit(paragraphIdx: number, newText: string) {
-    if (!active) return;
-    setSaving(true);
-
-    const updatedMerged = merged.map((m, i) =>
-      i === paragraphIdx ? { ...m, text: newText } : m
-    );
-    const newFullText = updatedMerged.map((m) => m.text).join(" ");
-    const newWordCount = newFullText.split(/\s+/).filter(Boolean).length;
-
-    await fetch(`/api/project/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transcript_id: active.id,
-        full_text: newFullText,
-        word_count: newWordCount,
-      }),
-    });
-
-    setTranscripts((prev) =>
-      prev.map((t, i) =>
-        i === activeIdx ? { ...t, full_text: newFullText, word_count: newWordCount } : t
-      )
-    );
-    setEditingIdx(null);
-    setSaving(false);
-  }
-
   async function saveFullEdit() {
     if (!active) return;
     setSaving(true);
@@ -171,11 +140,9 @@ export default function TranscriptPage() {
         word_count: newWordCount,
       }),
     });
-    setTranscripts((prev) =>
-      prev.map((t, i) =>
-        i === activeIdx ? { ...t, full_text: fullEditText, word_count: newWordCount } : t
-      )
-    );
+    const refreshed = await fetch(`/api/project/${projectId}`).then(r => r.json());
+    const updatedTranscripts = refreshed.transcripts || [];
+    setTranscripts(updatedTranscripts);
     setFullEditMode(false);
     setSaving(false);
   }
@@ -848,85 +815,25 @@ export default function TranscriptPage() {
                           paddingBottom: 24,
                           minWidth: 0,
                         }}>
-                          {editingIdx === i ? (
-                            <div>
-                              <textarea
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  minHeight: 200,
-                                  maxHeight: 600,
-                                  fontSize: "1.15rem",
-                                  lineHeight: 1.8,
-                                  color: P.text,
-                                  background: P.inputBg,
-                                  border: `1px solid ${P.accent}`,
-                                  borderRadius: 8,
-                                  padding: "14px 16px",
-                                  outline: "none",
-                                  resize: "vertical",
-                                  fontFamily: P.serif,
-                                }}
-                              />
-                              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                                <button
-                                  onClick={() => saveEdit(i, editText)}
-                                  disabled={saving}
-                                  style={{
-                                    padding: "7px 20px",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    fontFamily: P.sans,
-                                    background: P.accent,
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: 6,
-                                    cursor: saving ? "not-allowed" : "pointer",
-                                  }}
-                                >
-                                  {saving ? "Saving..." : "Save"}
-                                </button>
-                                <button
-                                  onClick={() => setEditingIdx(null)}
-                                  style={{
-                                    padding: "7px 20px",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    fontFamily: P.sans,
-                                    background: "transparent",
-                                    color: P.muted,
-                                    border: `1px solid ${P.border}`,
-                                    borderRadius: 6,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p
-                              onClick={() => { setEditingIdx(i); setEditText(para.text); }}
-                              style={{
-                                fontSize: "1.15rem",
-                                lineHeight: 1.8,
-                                color: P.text,
-                                margin: 0,
-                                cursor: "text",
-                                padding: "4px 8px",
-                                borderRadius: 6,
-                                transition: "background 0.15s",
-                                whiteSpace: "pre-wrap",
-                                fontFamily: P.serif,
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = P.inputBg)}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                            >
-                              {para.text}
-                            </p>
-                          )}
+                          <p
+                            onClick={() => { setFullEditText(active?.full_text || ""); setFullEditMode(true); }}
+                            style={{
+                              fontSize: "1.15rem",
+                              lineHeight: 1.8,
+                              color: P.text,
+                              margin: 0,
+                              cursor: "text",
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              transition: "background 0.15s",
+                              whiteSpace: "pre-wrap",
+                              fontFamily: P.serif,
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = P.inputBg)}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          >
+                            {para.text}
+                          </p>
                         </div>
                       </div>
                       </div>

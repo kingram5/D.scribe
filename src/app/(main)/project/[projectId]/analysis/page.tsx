@@ -54,6 +54,11 @@ export default function AnalysisPage() {
   const analyzeJob = useJob();
   const [numChapters, setNumChapters] = useState(5);
   const [targetWords, setTargetWords] = useState(3000);
+  const [expandState, setExpandState] = useState<"idle" | "previewing" | "review" | "confirming">("idle");
+  const [proposedChapters, setProposedChapters] = useState<
+    { title: string; summary: string; narrative_arc: string; key_point_ids: string[]; included: boolean }[]
+  >([]);
+  const [expandError, setExpandError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -189,6 +194,65 @@ export default function AnalysisPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analyzeJob.status]);
+
+  const unassignedKeyPoints = useMemo(() => {
+    const assignedIds = new Set((data?.chapters ?? []).flatMap((c) => c.key_point_ids ?? []));
+    return (data?.key_points ?? []).filter((kp) => !assignedIds.has(kp.id));
+  }, [data]);
+
+  async function previewExpand() {
+    setExpandState("previewing");
+    setExpandError(null);
+    try {
+      const res = await fetch("/api/outline/expand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId, dry_run: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Preview failed");
+      setProposedChapters(
+        json.proposed_chapters.map((ch: { title: string; summary: string; narrative_arc: string; key_point_ids: string[] }) => ({
+          ...ch,
+          included: true,
+        }))
+      );
+      setExpandState("review");
+    } catch (err) {
+      setExpandError(err instanceof Error ? err.message : "Preview failed");
+      setExpandState("idle");
+    }
+  }
+
+  async function confirmExpand() {
+    setExpandState("confirming");
+    setExpandError(null);
+    try {
+      const toSave = proposedChapters.filter((ch) => ch.included);
+      const res = await fetch("/api/outline/expand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId, chapters: toSave }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Confirm failed");
+      // Refresh project data
+      const project = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+      setData({
+        key_points: project.key_points || [],
+        chapters: project.chapters || [],
+        voice_profile: project.voice_profile,
+        mind_map_nodes: project.mind_map_nodes || [],
+        mind_map_edges: project.mind_map_edges || [],
+      });
+      setExpandState("idle");
+      setProposedChapters([]);
+      setTab("outline");
+    } catch (err) {
+      setExpandError(err instanceof Error ? err.message : "Could not save chapters");
+      setExpandState("review");
+    }
+  }
 
   // React Flow nodes/edges for concept mind map tab
   const flowNodes: Node[] = useMemo(() => {
@@ -379,6 +443,188 @@ export default function AnalysisPage() {
         </div>
 
         {/* Outline tab — interactive mind map editor */}
+        {tab === "outline" && hasChapters && unassignedKeyPoints.length > 0 && expandState === "idle" && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 20px",
+            marginBottom: 16,
+            background: "rgba(217,119,6,0.08)",
+            border: "1px solid rgba(217,119,6,0.2)",
+            borderRadius: 12,
+          }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "#92400e", marginBottom: 2 }}>
+                {unassignedKeyPoints.length} new key point{unassignedKeyPoints.length !== 1 ? "s" : ""} from your latest upload
+              </p>
+              <p style={{ fontSize: 12, color: "#b45309" }}>
+                These haven&apos;t been added to the outline yet.
+              </p>
+            </div>
+            <button
+              onClick={previewExpand}
+              style={{
+                padding: "9px 18px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: "#92400e",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Preview New Chapters →
+            </button>
+          </div>
+        )}
+
+        {tab === "outline" && hasChapters && expandState === "previewing" && (
+          <div style={{
+            padding: "14px 20px",
+            marginBottom: 16,
+            background: "rgba(217,119,6,0.06)",
+            border: "1px solid rgba(217,119,6,0.15)",
+            borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}>
+            <div style={{
+              width: 14, height: 14, borderRadius: "50%",
+              border: "2px solid rgba(217,119,6,0.3)",
+              borderTopColor: "#b45309",
+              animation: "spin 0.8s linear infinite",
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+              Generating chapter proposals...
+            </span>
+          </div>
+        )}
+
+        {tab === "outline" && (expandState === "review" || expandState === "confirming") && (
+          <div style={{
+            marginBottom: 20,
+            background: "rgba(255,255,255,0.7)",
+            border: "1px solid rgba(0,0,0,0.08)",
+            borderRadius: 14,
+            overflow: "hidden",
+          }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#191816" }}>
+                Proposed New Chapters
+              </p>
+              <p style={{ fontSize: 12, color: "#7a7369", marginTop: 2 }}>
+                Review and edit before adding to your outline. Uncheck any you want to skip.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {proposedChapters.map((ch, i) => (
+                <div key={i} style={{
+                  display: "flex",
+                  gap: 14,
+                  padding: "16px 20px",
+                  borderBottom: i < proposedChapters.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                  background: ch.included ? "transparent" : "rgba(0,0,0,0.02)",
+                  opacity: ch.included ? 1 : 0.5,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={ch.included}
+                    onChange={(e) => {
+                      setProposedChapters((prev) =>
+                        prev.map((c, j) => j === i ? { ...c, included: e.target.checked } : c)
+                      );
+                    }}
+                    style={{ marginTop: 3, flexShrink: 0, cursor: "pointer" }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      value={ch.title}
+                      onChange={(e) => setProposedChapters((prev) =>
+                        prev.map((c, j) => j === i ? { ...c, title: e.target.value } : c)
+                      )}
+                      style={{
+                        width: "100%",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "#191816",
+                        border: "none",
+                        background: "transparent",
+                        outline: "none",
+                        marginBottom: 4,
+                        fontFamily: "inherit",
+                      }}
+                    />
+                    <textarea
+                      value={ch.summary}
+                      onChange={(e) => setProposedChapters((prev) =>
+                        prev.map((c, j) => j === i ? { ...c, summary: e.target.value } : c)
+                      )}
+                      rows={2}
+                      style={{
+                        width: "100%",
+                        fontSize: 12,
+                        color: "#7a7369",
+                        border: "none",
+                        background: "transparent",
+                        outline: "none",
+                        resize: "none",
+                        fontFamily: "inherit",
+                        lineHeight: 1.5,
+                      }}
+                    />
+                    <p style={{ fontSize: 11, color: "#a0978a", marginTop: 4 }}>
+                      {ch.key_point_ids.length} key point{ch.key_point_ids.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {expandError && (
+              <div style={{ padding: "10px 20px", background: "rgba(220,38,38,0.06)", borderTop: "1px solid rgba(220,38,38,0.1)" }}>
+                <p style={{ fontSize: 12, color: "#dc2626" }}>{expandError}</p>
+              </div>
+            )}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 10,
+              padding: "14px 20px",
+              borderTop: "1px solid rgba(0,0,0,0.06)",
+            }}>
+              <button
+                onClick={() => { setExpandState("idle"); setProposedChapters([]); setExpandError(null); }}
+                style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "transparent", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8, cursor: "pointer", color: "#7a7369" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmExpand}
+                disabled={expandState === "confirming" || proposedChapters.filter((c) => c.included).length === 0}
+                style={{
+                  padding: "8px 18px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: "#191816",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: expandState === "confirming" ? "wait" : "pointer",
+                  opacity: proposedChapters.filter((c) => c.included).length === 0 ? 0.4 : 1,
+                }}
+              >
+                {expandState === "confirming" ? "Saving..." : `Confirm & Add ${proposedChapters.filter((c) => c.included).length} Chapter${proposedChapters.filter((c) => c.included).length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        )}
+
         {tab === "outline" && hasChapters && data && (
           <OutlineEditor
             projectId={projectId}

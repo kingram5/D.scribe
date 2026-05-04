@@ -220,17 +220,17 @@ export default function LandingV2() {
           </div>
         </div>
 
-        {/* ── There's an author inside you — bottom-left ── */}
+        {/* ── There's an author inside you — left, starts at ~37% from top ── */}
         <div style={{
           position: "absolute",
-          top: "52%",
+          top: "37%",
           left: 40,
           zIndex: 2,
-          maxWidth: 300,
+          maxWidth: 295,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(26px, 3vw, 42px)",
+            fontSize: "clamp(28px, 3vw, 42px)",
             fontWeight: 800,
             lineHeight: 1.1,
             color: "#F9F7F2",
@@ -243,10 +243,10 @@ export default function LandingV2() {
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 13,
+            fontSize: 12,
             lineHeight: 1.6,
-            color: "rgba(249,247,242,0.52)",
-            marginBottom: 20,
+            color: "rgba(249,247,242,0.38)",
+            marginBottom: 18,
           }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>

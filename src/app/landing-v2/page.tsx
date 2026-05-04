@@ -230,7 +230,7 @@ export default function LandingV2() {
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(28px, 3vw, 42px)",
+            fontSize: "clamp(30px, 3.2vw, 46px)",
             fontWeight: 800,
             lineHeight: 1.1,
             color: "#F9F7F2",
@@ -510,13 +510,13 @@ export default function LandingV2() {
         .lv2-ghost {
           display: inline-flex;
           align-items: center;
-          padding: 16px 42px;
-          background: #F0E6A8;
+          padding: 10px 22px;
+          background: transparent;
           color: #F9F7F2;
-          font-family: var(--font-playfair), serif;
-          font-size: 36px;
+          font-family: var(--font-lora), serif;
+          font-size: 13px;
           font-weight: 600;
-          border: none;
+          border: 1px solid rgba(249,247,242,0.5);
           border-radius: 2px;
           cursor: pointer;
           text-decoration: none;

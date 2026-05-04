@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe, TIER_INK } from "@/lib/stripe";
+import { getStripeClient, TIER_INK } from "@/lib/stripe";
 import { createServerClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 
@@ -12,6 +12,7 @@ async function activateSubscription(
   subscriptionId: string,
   customerId: string
 ) {
+  const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
   const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
@@ -34,6 +35,7 @@ async function activateSubscription(
 }
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripeClient();
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
 

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripeClient();
   const { user, error } = await requireAuth();
   if (error) return error;
 

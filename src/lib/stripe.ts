@@ -1,8 +1,15 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia" as const,
-});
+export function getStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("STRIPE_SECRET_KEY is not set");
+  }
+
+  return new Stripe(key, {
+    apiVersion: "2024-12-18.acacia" as const,
+  });
+}
 
 export const STRIPE_PRICES: Record<string, string> = {
   starter: process.env.STRIPE_PRICE_STARTER!,

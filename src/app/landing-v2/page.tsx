@@ -223,10 +223,10 @@ export default function LandingV2() {
         {/* ── There's an author inside you — bottom-left ── */}
         <div style={{
           position: "absolute",
-          bottom: 68,
+          top: "52%",
           left: 40,
           zIndex: 2,
-          maxWidth: 280,
+          maxWidth: 300,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",

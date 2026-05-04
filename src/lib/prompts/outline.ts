@@ -47,3 +47,22 @@ Double-check your output: ensure no key_point_id number appears in more than one
 
   return prompt;
 }
+
+export function expandOutlinePrompt(
+  unassigned: { title: string; summary: string }[],
+  numNewChapters: number,
+  existingChapters: { chapter_number: number; title: string; summary: string }[],
+  audience: Audience,
+  projectTitle: string,
+  voiceProfile?: VoiceProfile | null
+): string {
+  const existingList = existingChapters
+    .sort((a, b) => a.chapter_number - b.chapter_number)
+    .map((ch) => `Chapter ${ch.chapter_number}: ${ch.title}\n${ch.summary}`)
+    .join("\n\n");
+  const unassignedList = unassigned.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n");
+  let prompt = `Expand an existing book outline by adding ${numNewChapters} NEW chapters.\n\nExisting Chapters (DO NOT modify or duplicate):\n${existingList || "(none)"}\n\nUnassigned Key Points (assign ALL to new chapters exactly once):\n${unassignedList}\n\nTarget Audience: ${audience}\nBook Title: ${projectTitle}`;
+  if (voiceProfile) prompt += `\nVoice Profile: ${voiceProfile.tone}, ${voiceProfile.vocabulary_level}`;
+  prompt += `\n\nRules:\n- Do not rewrite existing chapters\n- Assign every unassigned key point exactly once\n- Keep thematic continuity with prior chapters\n- Avoid duplicate themes from existing chapters\n\nReturn valid JSON array:\n[{title, summary, key_point_ids: number[], narrative_arc}]\nWhere key_point_ids are 1-based indexes into the Unassigned Key Points list.\nNo markdown fencing.`;
+  return prompt;
+}

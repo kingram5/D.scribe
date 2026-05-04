@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useCallback, useRef, useEffect } from "react";
+import { useReducer, useCallback, useRef, useEffect, useState } from "react";
 import { Chapter, KeyPoint } from "@/types";
 
 export interface EditorState {
@@ -208,6 +208,13 @@ export function useOutlineState() {
 
   const pastRef = useRef<EditorState[]>([]);
   const futureRef = useRef<EditorState[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const syncHistoryFlags = useCallback(() => {
+    setCanUndo(pastRef.current.length > 0);
+    setCanRedo(futureRef.current.length > 0);
+  }, []);
 
   const dispatch = useCallback((action: EditorAction) => {
     if (action.type === "INIT" || action.type === "MARK_CLEAN") {
@@ -216,6 +223,7 @@ export function useOutlineState() {
         pastRef.current = [];
         futureRef.current = [];
       }
+      syncHistoryFlags();
       return;
     }
 
@@ -223,7 +231,8 @@ export function useOutlineState() {
     pastRef.current = [...pastRef.current.slice(-(MAX_HISTORY - 1)), { ...state }];
     futureRef.current = [];
     rawDispatch(action);
-  }, [state]);
+    syncHistoryFlags();
+  }, [state, syncHistoryFlags]);
 
   const undo = useCallback(() => {
     if (pastRef.current.length === 0) return;
@@ -231,7 +240,8 @@ export function useOutlineState() {
     pastRef.current = pastRef.current.slice(0, -1);
     futureRef.current = [...futureRef.current, { ...state }];
     rawDispatch({ type: "INIT", chapters: previous.chapters, keyPoints: previous.keyPoints });
-  }, [state]);
+    syncHistoryFlags();
+  }, [state, syncHistoryFlags]);
 
   const redo = useCallback(() => {
     if (futureRef.current.length === 0) return;
@@ -239,7 +249,8 @@ export function useOutlineState() {
     futureRef.current = futureRef.current.slice(0, -1);
     pastRef.current = [...pastRef.current, { ...state }];
     rawDispatch({ type: "INIT", chapters: next.chapters, keyPoints: next.keyPoints });
-  }, [state]);
+    syncHistoryFlags();
+  }, [state, syncHistoryFlags]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -262,7 +273,7 @@ export function useOutlineState() {
     dispatch,
     undo,
     redo,
-    canUndo: pastRef.current.length > 0,
-    canRedo: futureRef.current.length > 0,
+    canUndo,
+    canRedo,
   };
 }

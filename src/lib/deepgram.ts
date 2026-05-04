@@ -1,6 +1,9 @@
 import { TranscriptSegment } from "@/types";
 
-let dgClient: any = null;
+let dgClient: { listen: { v1: { media: { transcribeFile: (
+  input: { data: Uint8Array; contentType: string },
+  options: Record<string, unknown>
+) => Promise<unknown> } } } } | null = null;
 
 async function getClient() {
   if (!dgClient) {

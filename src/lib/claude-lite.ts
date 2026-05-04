@@ -15,30 +15,11 @@ const MODELS: Record<ModelTier, string> = {
   quality: "claude-sonnet-4-6",
 };
 
-export interface ClaudeUsage {
-  input_tokens: number;
-  output_tokens: number;
-}
-
-export interface ClaudeResponse {
-  text: string;
-  usage: ClaudeUsage;
-}
-
 export async function askClaudeLite(
   system: string,
   userMessage: string,
   options?: { model?: ModelTier; maxTokens?: number; temperature?: number }
 ): Promise<string> {
-  const result = await askClaudeWithUsage(system, userMessage, options);
-  return result.text;
-}
-
-export async function askClaudeWithUsage(
-  system: string,
-  userMessage: string,
-  options?: { model?: ModelTier; maxTokens?: number; temperature?: number }
-): Promise<ClaudeResponse> {
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -70,13 +51,7 @@ export async function askClaudeWithUsage(
 
   const data = await res.json();
   const block = data.content?.[0];
-  return {
-    text: block?.type === "text" ? block.text : "",
-    usage: {
-      input_tokens: data.usage?.input_tokens ?? 0,
-      output_tokens: data.usage?.output_tokens ?? 0,
-    },
-  };
+  return block?.type === "text" ? block.text : "";
 }
 
 /** Strip markdown fences from JSON responses and extract only the JSON portion */

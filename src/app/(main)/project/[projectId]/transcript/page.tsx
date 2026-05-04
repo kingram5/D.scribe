@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Transcript, TranscriptSegment } from "@/types";
 import PageShell from "@/components/ui/PageShell";
@@ -1024,7 +1024,8 @@ export default function TranscriptPage() {
               {/* waveform bars */}
               <div style={{ display: "flex", alignItems: "end", gap: 2, height: 28 }}>
                 {Array.from({ length: 80 }).map((_, i) => {
-                  const h = 6 + Math.sin(i * 0.4) * 10 + Math.random() * 8;
+                  const jitter = ((i * 37) % 9);
+                  const h = 6 + Math.sin(i * 0.4) * 10 + jitter;
                   return (
                     <div
                       key={i}

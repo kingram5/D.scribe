@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { Chapter, Enrichment } from "@/types";
 import GlassCard from "@/components/ui/GlassCard";
 import PanelTitle from "@/components/ui/PanelTitle";
-import MenuSection from "@/components/ui/MenuSection";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";

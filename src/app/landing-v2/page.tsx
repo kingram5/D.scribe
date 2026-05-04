@@ -69,7 +69,7 @@ export default function LandingV2() {
       {/* ─── Navbar ─── */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        padding: "0 40px", height: 64,
+        padding: "0 54px", height: 92,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         transition: "all 0.3s ease",
         background: scrolled ? "rgba(44,36,25,0.85)" : "transparent",
@@ -79,28 +79,28 @@ export default function LandingV2() {
         {/* Box logo + scribe */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 36, height: 36,
-            border: "1.5px solid rgba(249,247,242,0.75)",
-            borderRadius: 5,
+            width: 58, height: 58,
+            background: "rgba(200,168,130,0.92)",
+            borderRadius: 10,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "#F9F7F2",
+            fontStyle: "normal", fontWeight: 500, fontSize: 50, color: "#F9F7F2",
             flexShrink: 0,
           }}>
             D.
           </div>
           <span style={{
-            fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 18, fontWeight: 500, color: "#F9F7F2",
+            fontFamily: "var(--font-manrope), sans-serif",
+            fontSize: 48, fontWeight: 700, lineHeight: 1, color: "#F9F7F2",
           }}>
             scribe
           </span>
         </div>
         {/* Nav right */}
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 28, background: "rgba(0,0,0,0.62)", padding: "8px 8px 8px 24px", borderRadius: 999 }}>
           <Link href="/login" style={{
-            fontSize: 14, color: "#F9F7F2", textDecoration: "none",
-            fontFamily: "var(--font-lora), serif", opacity: 0.85,
+            fontSize: 40, color: "rgba(249,247,242,0.75)", textDecoration: "none",
+            fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600,
           }}>
             Sign in
           </Link>
@@ -150,11 +150,11 @@ export default function LandingV2() {
         {/* ── Animated D.scribe waveform logo — center, upper-mid ── */}
         <div style={{
           position: "absolute",
-          top: "14%",
+          top: "22%",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "82%",
-          height: "30vh",
+          width: "52%",
+          height: "20vh",
           zIndex: 2,
           pointerEvents: "none",
         }}>
@@ -164,7 +164,7 @@ export default function LandingV2() {
         {/* ── Your Story Starts → [HERE] — centered below logo ── */}
         <div style={{
           position: "absolute",
-          top: "50%",
+          top: "47%",
           left: 0, right: 0,
           zIndex: 2,
           display: "flex", alignItems: "center", justifyContent: "center", gap: 20,
@@ -172,7 +172,7 @@ export default function LandingV2() {
           <span style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
             fontStyle: "italic",
-            fontSize: "clamp(17px, 1.9vw, 26px)",
+            fontSize: "clamp(44px, 3vw, 72px)",
             color: "#F0E6CE",
             opacity: 0.9,
           }}>
@@ -186,14 +186,14 @@ export default function LandingV2() {
         {/* ── You talk. It writes. — centered ── */}
         <div style={{
           position: "absolute",
-          top: "58%",
+          top: "54%",
           left: 0, right: 0,
           zIndex: 2,
           textAlign: "center",
         }}>
           <div style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(24px, 3.2vw, 44px)",
+            fontSize: "clamp(64px, 5.8vw, 128px)",
             fontWeight: 400,
             color: "#F9F7F2",
             lineHeight: 1.2,
@@ -204,7 +204,7 @@ export default function LandingV2() {
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 15,
+            fontSize: 51,
             color: "rgba(249,247,242,0.58)",
             marginBottom: 3,
           }}>
@@ -212,7 +212,7 @@ export default function LandingV2() {
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 15,
+            fontSize: 51,
             fontWeight: 600,
             color: "rgba(249,247,242,0.82)",
           }}>
@@ -223,27 +223,27 @@ export default function LandingV2() {
         {/* ── There's an author inside you — left, starts at ~37% from top ── */}
         <div style={{
           position: "absolute",
-          top: "37%",
-          left: 40,
+          top: "52%",
+          left: 90,
           zIndex: 2,
-          maxWidth: 295,
+          maxWidth: 480,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(28px, 3vw, 42px)",
+            fontSize: "clamp(60px, 4.6vw, 106px)",
             fontWeight: 800,
             lineHeight: 1.1,
             color: "#F9F7F2",
             marginBottom: 10,
           }}>
             There&rsquo;s an<br />author<br />
-            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
+              <span style={{ fontStyle: "italic", fontWeight: 400, color: "#F0E6CE" }}>
               inside you.
             </span>
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 12,
+            fontSize: 38,
             lineHeight: 1.6,
             color: "rgba(249,247,242,0.38)",
             marginBottom: 18,
@@ -264,7 +264,7 @@ export default function LandingV2() {
           justifyContent: "center",
           gap: "clamp(28px, 5.5vw, 72px)",
           padding: "16px 40px",
-          background: "rgba(44,36,25,0.42)",
+          background: "rgba(0,0,0,0.3)",
           backdropFilter: "blur(10px)",
         }}>
           {[
@@ -464,11 +464,11 @@ export default function LandingV2() {
         .lv2-pill-cta {
           display: inline-flex;
           align-items: center;
-          padding: 9px 22px;
+          padding: 20px 52px;
           background: #C8A882;
-          color: #2C2419;
-          font-family: var(--font-lora), serif;
-          font-size: 14px;
+          color: #F9F7F2;
+          font-family: var(--font-manrope), sans-serif;
+          font-size: 44px;
           font-weight: 700;
           border-radius: 999px;
           cursor: pointer;
@@ -481,11 +481,11 @@ export default function LandingV2() {
         .lv2-pill-here {
           display: inline-flex;
           align-items: center;
-          padding: 11px 30px;
+          padding: 26px 76px;
           background: #C8A882;
-          color: #2C2419;
-          font-family: var(--font-lora), serif;
-          font-size: 15px;
+          color: #F9F7F2;
+          font-family: var(--font-manrope), sans-serif;
+          font-size: 50px;
           font-weight: 800;
           border-radius: 999px;
           cursor: pointer;
@@ -499,13 +499,13 @@ export default function LandingV2() {
         .lv2-ghost {
           display: inline-flex;
           align-items: center;
-          padding: 10px 22px;
-          background: transparent;
+          padding: 16px 42px;
+          background: #F0E6A8;
           color: #F9F7F2;
-          font-family: var(--font-lora), serif;
-          font-size: 13px;
+          font-family: var(--font-playfair), serif;
+          font-size: 36px;
           font-weight: 600;
-          border: 1px solid rgba(249,247,242,0.5);
+          border: none;
           border-radius: 2px;
           cursor: pointer;
           text-decoration: none;

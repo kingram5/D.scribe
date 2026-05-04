@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<"all" | "draft" | "in_progress" | "complete" | "erased">("all");
   const [eraseMode, setEraseMode] = useState(false);
   const [erasingId, setErasingId] = useState<string | null>(null);
+  const [confirmEraseProject, setConfirmEraseProject] = useState<Project | null>(null);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "";
 
   useEffect(() => {
@@ -347,23 +348,16 @@ export default function Dashboard() {
                   return (
                     <div
                       key={project.id}
-                      onClick={() => !isErasing && eraseProject(project.id)}
+                      onClick={() => !isErasing && setConfirmEraseProject(project)}
                       style={{ textDecoration: "none", perspective: 1000, width: 200, height: 280, cursor: isErasing ? "wait" : "pointer" }}
                     >
                       <div style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.2s", transform: "scale(0.97)" }}>
                         <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 12px 12px 2px", opacity: 0.4 }} />
-                        <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.75)", borderRadius: "2px 12px 12px 2px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                          {isErasing ? (
-                            <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", animation: "spin 0.8s linear infinite" }} />
-                          ) : (
-                            <>
-                              <span style={{ fontSize: 28, color: "#fff" }}>⌫</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textAlign: "center", padding: "0 12px" }}>
-                                Erase &ldquo;{project.title}&rdquo;?
-                              </span>
-                              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Click to confirm</span>
-                            </>
-                          )}
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.65)", borderRadius: "2px 12px 12px 2px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          <span style={{ fontSize: 28, color: "#fff" }}>⌫</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", textAlign: "center", padding: "0 12px" }}>
+                            {project.title}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -466,6 +460,79 @@ export default function Dashboard() {
         </div>
         </div>
       </div>
+      {/* Erase confirmation modal */}
+      {confirmEraseProject && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 100,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}
+          onClick={() => setConfirmEraseProject(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: "32px 28px",
+              maxWidth: 380,
+              width: "90%",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⌫</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#2C2419", marginBottom: 8 }}>
+              Erase this project?
+            </h2>
+            <p style={{ fontSize: 14, color: "#7A7358", lineHeight: 1.6, marginBottom: 24 }}>
+              Are you sure you want to erase <strong>&ldquo;{confirmEraseProject.title}&rdquo;</strong>? It will be moved to your Erased tab.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => setConfirmEraseProject(null)}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: "transparent",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: "#7A7358",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const p = confirmEraseProject;
+                  setConfirmEraseProject(null);
+                  eraseProject(p.id);
+                }}
+                disabled={erasingId === confirmEraseProject.id}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: "#dc2626",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                Yes, Erase It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

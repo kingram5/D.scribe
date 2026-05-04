@@ -57,7 +57,9 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "draft" | "in_progress" | "complete">("all");
+  const [filter, setFilter] = useState<"all" | "draft" | "in_progress" | "complete" | "erased">("all");
+  const [eraseMode, setEraseMode] = useState(false);
+  const [erasingId, setErasingId] = useState<string | null>(null);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "";
 
   useEffect(() => {
@@ -70,11 +72,27 @@ export default function Dashboard() {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = filter === "all" ? projects : projects.filter((p) => p.status === filter);
+  const activeProjects = projects.filter((p) => p.status !== "erased");
+  const filtered = filter === "all"
+    ? activeProjects
+    : projects.filter((p) => p.status === filter);
 
   const draftCount = projects.filter((p) => p.status === "draft").length;
   const inProgressCount = projects.filter((p) => p.status === "in_progress").length;
   const completeCount = projects.filter((p) => p.status === "complete").length;
+  const erasedCount = projects.filter((p) => p.status === "erased").length;
+
+  async function eraseProject(projectId: string) {
+    setErasingId(projectId);
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "erased" }),
+    });
+    setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, status: "erased" as const } : p));
+    setErasingId(null);
+    setEraseMode(false);
+  }
 
   // Paper-theme overrides for cards floating on dark video bg
   const paperCard: React.CSSProperties & Record<string, string> = {
@@ -170,10 +188,11 @@ export default function Dashboard() {
           <div className="handwritten-note">
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {[
-                { label: `All (${projects.length})`, active: filter === "all", onClick: () => setFilter("all") },
+                { label: `All (${activeProjects.length})`, active: filter === "all", onClick: () => setFilter("all") },
                 { label: `Draft (${draftCount})`, active: filter === "draft", onClick: () => setFilter("draft") },
                 { label: `In Progress (${inProgressCount})`, active: filter === "in_progress", onClick: () => setFilter("in_progress") },
                 { label: `Complete (${completeCount})`, active: filter === "complete", onClick: () => setFilter("complete") },
+                { label: `Erased (${erasedCount})`, active: filter === "erased", onClick: () => setFilter("erased") },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -195,7 +214,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: "3rem" }}>
+            <div style={{ marginTop: "3rem", display: "flex", flexDirection: "column", gap: 10 }}>
               <Link
                 href="/project/new"
                 className="nodum-btn"
@@ -212,6 +231,28 @@ export default function Dashboard() {
               >
                 + New Project
               </Link>
+              <button
+                onClick={() => setEraseMode((v) => !v)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontFamily: "var(--font-kalam), 'Kalam', cursive",
+                  fontSize: "1rem",
+                  background: eraseMode ? "rgba(220,38,38,0.08)" : "transparent",
+                  color: eraseMode ? "#dc2626" : "#7A7358",
+                  border: `1px solid ${eraseMode ? "#dc2626" : "rgba(0,0,0,0.15)"}`,
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {eraseMode ? "✕ Cancel Erase" : "⌫ Erase Project"}
+              </button>
+              {eraseMode && (
+                <p style={{ fontSize: "0.8rem", color: "#dc2626", textAlign: "center", fontFamily: "var(--font-kalam), 'Kalam', cursive" }}>
+                  Click a project to erase it
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -300,6 +341,34 @@ export default function Dashboard() {
                 ];
                 const cover = covers[idx % covers.length];
                 const statusColor = STATUS_COLORS[project.status] || "#A39B7D";
+                const isErasing = erasingId === project.id;
+
+                if (eraseMode) {
+                  return (
+                    <div
+                      key={project.id}
+                      onClick={() => !isErasing && eraseProject(project.id)}
+                      style={{ textDecoration: "none", perspective: 1000, width: 200, height: 280, cursor: isErasing ? "wait" : "pointer" }}
+                    >
+                      <div style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.2s", transform: "scale(0.97)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 12px 12px 2px", opacity: 0.4 }} />
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.75)", borderRadius: "2px 12px 12px 2px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          {isErasing ? (
+                            <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", animation: "spin 0.8s linear infinite" }} />
+                          ) : (
+                            <>
+                              <span style={{ fontSize: 28, color: "#fff" }}>⌫</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textAlign: "center", padding: "0 12px" }}>
+                                Erase &ldquo;{project.title}&rdquo;?
+                              </span>
+                              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Click to confirm</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <Link key={project.id} href={`/project/${project.id}`} style={{ textDecoration: "none", perspective: 1000, width: 200, height: 280 }}>

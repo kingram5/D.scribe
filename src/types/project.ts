@@ -4,7 +4,7 @@ export interface Project {
   title: string;
   description: string;
   audience: Audience;
-  status: "draft" | "in_progress" | "complete";
+  status: "draft" | "in_progress" | "complete" | "erased";
   voice_profile: VoiceProfile | null;
   narrative_tracker: NarrativeTracker | null;
   created_at: string;

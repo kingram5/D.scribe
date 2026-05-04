@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
 
@@ -84,6 +85,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(inserted);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to parse outline";
+    logger.error(message, {
+      route: "/api/outline",
+      userId: user.id,
+      error: err,
+      meta: { project_id },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

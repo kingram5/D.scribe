@@ -390,7 +390,7 @@ export default function StructurePage() {
             onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = "#D98B58"; }}
             onMouseLeave={(e) => { if (!saving) e.currentTarget.style.background = "#C17A47"; }}
           >
-            <span style={{ flex: 1 }}>{saving ? "Saving..." : "Commence Mapping"}</span>
+            <span style={{ flex: 1 }}>{saving ? "Saving..." : "Set Chapters / Words"}</span>
             <div style={{
               width: 40,
               height: 40,

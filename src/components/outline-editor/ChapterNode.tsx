@@ -85,8 +85,8 @@ function ChapterNoteComponent({
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             position: "absolute",
-            top: -8,
-            right: -8,
+            top: 8,
+            right: 8,
             width: 22,
             height: 22,
             borderRadius: "50%",
@@ -103,7 +103,7 @@ function ChapterNoteComponent({
             zIndex: 10,
           }}
         >
-          x
+          ×
         </button>
       )}
 

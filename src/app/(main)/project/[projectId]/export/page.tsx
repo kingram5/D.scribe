@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
@@ -114,6 +114,40 @@ export default function ExportPage() {
   const [format, setFormat] = useState<"pdf" | "docx">("pdf");
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+
+  const [isPublic, setIsPublic] = useState(false);
+  const [publishedExcerpt, setPublishedExcerpt] = useState("");
+  const [publishedAuthor, setPublishedAuthor] = useState("");
+  const [publishSaving, setPublishSaving] = useState(false);
+  const [publishSaved, setPublishSaved] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/project/${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setIsPublic(!!data.is_public);
+        setPublishedExcerpt(data.published_excerpt || "");
+        setPublishedAuthor(data.published_author || "");
+      })
+      .catch(() => {});
+  }, [projectId]);
+
+  async function savePublishSettings() {
+    setPublishSaving(true);
+    setPublishSaved(false);
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        is_public: isPublic,
+        published_excerpt: publishedExcerpt,
+        published_author: publishedAuthor,
+      }),
+    });
+    setPublishSaving(false);
+    setPublishSaved(true);
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -427,6 +461,201 @@ export default function ExportPage() {
             Export complete — your manuscript is ready to share.
           </div>
         )}
+
+        {/* Publish to Community */}
+        <div
+          style={{
+            marginTop: 40,
+            maxWidth: 1000,
+            width: "100%",
+            background: "var(--ds-card-bg)",
+            border: "1px solid var(--ds-card-border)",
+            borderRadius: 24,
+            padding: 32,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <div>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "var(--text-primary)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  margin: 0,
+                }}
+              >
+                Publish to Community
+              </h2>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  marginTop: 4,
+                  margin: "4px 0 0 0",
+                }}
+              >
+                Share your book with other D. scribe readers on the community gallery.
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 9999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  background: isPublic ? "rgba(52,211,153,0.12)" : "rgba(168,159,148,0.12)",
+                  border: isPublic ? "1px solid rgba(52,211,153,0.3)" : "1px solid rgba(168,159,148,0.2)",
+                  color: isPublic ? "#34d399" : "var(--text-secondary)",
+                }}
+              >
+                {isPublic ? "Published" : "Private"}
+              </span>
+              <button
+                onClick={() => setIsPublic(!isPublic)}
+                style={{
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  border: "none",
+                  cursor: "pointer",
+                  background: isPublic ? "#C17A47" : "var(--ds-input-border, rgba(168,159,148,0.3))",
+                  position: "relative",
+                  transition: "background 0.2s",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "white",
+                    position: "absolute",
+                    top: 3,
+                    left: isPublic ? 23 : 3,
+                    transition: "left 0.2s",
+                  }}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  marginBottom: 8,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase" as const,
+                }}
+              >
+                Display Name
+              </label>
+              <input
+                type="text"
+                value={publishedAuthor}
+                onChange={(e) => setPublishedAuthor(e.target.value)}
+                placeholder="e.g. Marcus T."
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  border: "1px solid var(--ds-card-border)",
+                  background: "var(--ds-input-bg)",
+                  color: "var(--text-primary)",
+                  fontSize: 14,
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  outline: "none",
+                  boxSizing: "border-box" as const,
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  marginBottom: 8,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase" as const,
+                }}
+              >
+                Short Excerpt{" "}
+                <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+                  ({publishedExcerpt.length}/300)
+                </span>
+              </label>
+              <textarea
+                value={publishedExcerpt}
+                onChange={(e) => setPublishedExcerpt(e.target.value.slice(0, 300))}
+                placeholder="A short blurb that will appear in the community gallery..."
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  border: "1px solid var(--ds-card-border)",
+                  background: "var(--ds-input-bg)",
+                  color: "var(--text-primary)",
+                  fontSize: 14,
+                  fontFamily: "var(--font-lora), var(--font-playfair), serif",
+                  fontStyle: "italic",
+                  outline: "none",
+                  resize: "vertical",
+                  lineHeight: 1.6,
+                  boxSizing: "border-box" as const,
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button
+                onClick={savePublishSettings}
+                disabled={publishSaving}
+                style={{
+                  padding: "12px 28px",
+                  borderRadius: 9999,
+                  border: "none",
+                  background: "#C17A47",
+                  color: "var(--text-primary)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  cursor: publishSaving ? "wait" : "pointer",
+                  opacity: publishSaving ? 0.7 : 1,
+                  transition: "opacity 0.2s",
+                }}
+              >
+                {publishSaving ? "Saving..." : "Save"}
+              </button>
+              {publishSaved && !publishSaving && (
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "#34d399",
+                    fontFamily: "var(--font-manrope), sans-serif",
+                  }}
+                >
+                  Saved
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Bottom bar */}
         <div

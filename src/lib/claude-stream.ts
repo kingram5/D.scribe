@@ -6,7 +6,7 @@
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
-import type { ModelTier } from "./claude-lite";
+import type { ModelTier, ClaudeUsage } from "./claude-lite";
 
 const MODELS: Record<ModelTier, string> = {
   fast: "claude-haiku-4-5-20251001",
@@ -20,7 +20,7 @@ const MODELS: Record<ModelTier, string> = {
 export function streamClaude(
   system: string,
   userMessage: string,
-  options?: { model?: ModelTier; maxTokens?: number; temperature?: number }
+  options?: { model?: ModelTier; maxTokens?: number; temperature?: number; onUsage?: (usage: ClaudeUsage) => void }
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
@@ -81,6 +81,8 @@ export function streamClaude(
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
                 );
+              } else if (event.type === "message_delta" && event.usage && options?.onUsage) {
+                options.onUsage({ input_tokens: event.usage.input_tokens ?? 0, output_tokens: event.usage.output_tokens ?? 0 });
               }
             } catch {
               // Skip malformed JSON lines

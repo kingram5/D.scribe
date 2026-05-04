@@ -6,8 +6,6 @@ import { Transcript, TranscriptSegment } from "@/types";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
-import JobProgress from "@/components/ui/JobProgress";
-import { useJob } from "@/hooks/useJob";
 import { SPEAKER_COLORS } from "@/lib/constants";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
@@ -81,10 +79,12 @@ export default function TranscriptPage() {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const analyzeJob = useJob();
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fullEditMode, setFullEditMode] = useState(false);
+  const [fullEditText, setFullEditText] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const active = transcripts[activeIdx] ?? null;
   const merged = active?.segments ? mergeSegments(active.segments) : [];
@@ -98,6 +98,8 @@ export default function TranscriptPage() {
       .then((r) => r.json())
       .then((data) => {
         setTranscripts(data.transcripts || []);
+        const uploads = data.audio_uploads || [];
+        setIsTranscribing(uploads.some((u: { status: string }) => u.status === "transcribing"));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -127,23 +129,6 @@ export default function TranscriptPage() {
     }));
   }, [merged]);
 
-  async function runAnalysis() {
-    if (transcripts.length === 0) return;
-    for (const transcript of transcripts) {
-      await analyzeJob.start({
-        type: "analyze",
-        project_id: projectId,
-        transcript_id: transcript.id,
-      });
-    }
-  }
-
-  useEffect(() => {
-    if (analyzeJob.status === "completed") {
-      router.push(`/project/${projectId}/analysis`);
-    }
-  }, [analyzeJob.status, projectId, router]);
-
   async function saveEdit(paragraphIdx: number, newText: string) {
     if (!active) return;
     setSaving(true);
@@ -170,6 +155,28 @@ export default function TranscriptPage() {
       )
     );
     setEditingIdx(null);
+    setSaving(false);
+  }
+
+  async function saveFullEdit() {
+    if (!active) return;
+    setSaving(true);
+    const newWordCount = fullEditText.split(/\s+/).filter(Boolean).length;
+    await fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript_id: active.id,
+        full_text: fullEditText,
+        word_count: newWordCount,
+      }),
+    });
+    setTranscripts((prev) =>
+      prev.map((t, i) =>
+        i === activeIdx ? { ...t, full_text: fullEditText, word_count: newWordCount } : t
+      )
+    );
+    setFullEditMode(false);
     setSaving(false);
   }
 
@@ -279,11 +286,40 @@ export default function TranscriptPage() {
   if (transcripts.length === 0) {
     return (
       <PageShell projectId={projectId} currentStep="transcript">
-        <EmptyState
-          message="No transcripts yet."
-          actionLabel="Upload Audio"
-          onAction={() => router.push(`/project/${projectId}/upload`)}
-        />
+        {isTranscribing ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 24, padding: 40 }}>
+            <div style={{ position: "relative", width: 64, height: 64 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: i * 18,
+                  width: 10,
+                  height: 10 + i * 12,
+                  background: P.accent,
+                  borderRadius: 4,
+                  opacity: 0.6 + i * 0.1,
+                  animation: `pulse 1.2s ease-in-out ${i * 0.15}s infinite alternate`,
+                }} />
+              ))}
+              <style>{`@keyframes pulse { from { transform: scaleY(0.4); } to { transform: scaleY(1); } }`}</style>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: P.text, fontFamily: P.serif, marginBottom: 8 }}>
+                Transcribing your audio...
+              </div>
+              <div style={{ fontSize: 14, color: P.muted, fontFamily: P.sans }}>
+                This usually takes 1–2 minutes. This page will update automatically.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            message="No transcripts yet."
+            actionLabel="Upload Audio"
+            onAction={() => router.push(`/project/${projectId}/upload`)}
+          />
+        )}
       </PageShell>
     );
   }
@@ -550,80 +586,31 @@ export default function TranscriptPage() {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* ── bottom CTA ── */}
-          <div style={{
-            padding: "16px 24px 20px",
-            borderTop: `1px solid ${P.border}`,
-          }}>
-            <div style={{
-              background: P.inputBg,
-              border: `1px solid ${P.border}`,
-              borderRadius: 10,
-              padding: "16px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                </svg>
-                <span style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: P.text,
-                  fontFamily: P.sans,
-                }}>
-                  AI Analysis
-                </span>
-              </div>
-              <p style={{
-                fontSize: 12,
-                color: P.muted,
-                lineHeight: 1.5,
-                margin: "0 0 12px",
-                fontFamily: P.sans,
-              }}>
-                Extract voice patterns, themes, and structural insights from your transcript.
-              </p>
-              {analyzeJob.isRunning && (
-                <div style={{ marginBottom: 10 }}>
-                  <JobProgress
-                    progress={analyzeJob.progress}
-                    error={analyzeJob.error}
-                    status={analyzeJob.status}
-                  />
-                </div>
-              )}
-              {analyzeJob.status === "failed" && (
-                <div style={{ marginBottom: 10 }}>
-                  <JobProgress
-                    progress={null}
-                    error={analyzeJob.error}
-                    status="failed"
-                    onRetry={runAnalysis}
-                  />
-                </div>
-              )}
+            {/* Edit transcript button */}
+            <div style={{ paddingBottom: 20 }}>
               <button
-                onClick={runAnalysis}
-                disabled={analyzeJob.isRunning}
+                onClick={() => {
+                  setFullEditText(active?.full_text || "");
+                  setFullEditMode(true);
+                }}
                 style={{
                   width: "100%",
                   padding: "10px 0",
-                  background: analyzeJob.isRunning ? "rgba(193,122,71,0.3)" : P.accent,
-                  color: "#fff",
-                  border: "none",
+                  background: "transparent",
+                  color: P.muted,
+                  border: `1px solid ${P.border}`,
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
                   fontFamily: P.sans,
-                  cursor: analyzeJob.isRunning ? "not-allowed" : "pointer",
-                  transition: "background 0.15s",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
                 }}
-                onMouseEnter={(e) => { if (!analyzeJob.isRunning) e.currentTarget.style.background = P.accentHover; }}
-                onMouseLeave={(e) => { if (!analyzeJob.isRunning) e.currentTarget.style.background = P.accent; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = P.inputBg; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                {analyzeJob.isRunning ? "Analyzing..." : "Analyze Transcript"}
+                Edit Transcript
               </button>
             </div>
           </div>
@@ -676,6 +663,65 @@ export default function TranscriptPage() {
             }
           `}</style>
           {/* scrollable transcript area */}
+          {fullEditMode ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "32px 48px", overflow: "auto" }}>
+              <textarea
+                value={fullEditText}
+                onChange={(e) => setFullEditText(e.target.value)}
+                style={{
+                  flex: 1,
+                  width: "100%",
+                  minHeight: 400,
+                  fontSize: "1.1rem",
+                  lineHeight: 1.8,
+                  color: P.text,
+                  background: P.inputBg,
+                  border: `1px solid ${P.accent}`,
+                  borderRadius: 12,
+                  padding: "24px",
+                  outline: "none",
+                  resize: "none",
+                  fontFamily: P.serif,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button
+                  onClick={saveFullEdit}
+                  disabled={saving}
+                  style={{
+                    padding: "10px 28px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: P.sans,
+                    background: P.accent,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: saving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  onClick={() => setFullEditMode(false)}
+                  style={{
+                    padding: "10px 28px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: P.sans,
+                    background: "transparent",
+                    color: P.muted,
+                    border: `1px solid ${P.border}`,
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
           <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
             <div
               ref={scrollRef}
@@ -905,6 +951,7 @@ export default function TranscriptPage() {
               <div ref={thumbRef} className="lq-thumb" />
             </div>
           </div>
+          )}
 
           {/* ═══════ BOTTOM AUDIO PLAYER BAR ═══════ */}
           <div style={{

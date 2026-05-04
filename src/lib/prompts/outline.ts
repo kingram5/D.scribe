@@ -34,14 +34,16 @@ For each chapter, provide:
 - narrative_arc: How this chapter connects to the previous and next
 
 Guidelines:
-- Each key point should appear in exactly one chapter
+- CRITICAL: Each key point number must appear in exactly ONE chapter's key_point_ids array. Never repeat a key point number across multiple chapters.
+- Every key point must be assigned to some chapter — do not leave any unassigned.
 - Chapters should have roughly equal weight
 - The sequence should have a natural narrative arc
 - The first chapter should hook the reader
 - The last chapter should close with a call to action or reflection
 
 Return valid JSON array: [{title, summary, key_point_ids: number[], narrative_arc}]
-No markdown fencing.`;
+No markdown fencing.
+Double-check your output: ensure no key_point_id number appears in more than one chapter's array.`;
 
   return prompt;
 }

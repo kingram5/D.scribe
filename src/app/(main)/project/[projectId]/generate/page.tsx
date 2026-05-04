@@ -12,25 +12,35 @@ import JobProgress from "@/components/ui/JobProgress";
 import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
+import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
+import { useInkGuard } from "@/hooks/useInkGuard";
 
 export default function GeneratePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showUpgrade, setShowUpgrade, guardedFetch } = useInkGuard();
   const [creativeFreedom, setCreativeFreedom] = useState(50);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
   const [enriching, setEnriching] = useState<string | null>(null);
   const generateAllJob = useJob<{ chapters_generated: number; coherence_applied: boolean }>();
   const regenerateJob = useJob();
-  const forewordJob = useJob();
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number } | null>(null);
 
   // Are all chapters generated?
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
   const anyGenerated = chapters.some((ch) => ch.status === "generated");
+
+  // Load foreword preference from localStorage
+  useEffect(() => {
+    if (!projectId) return;
+    const stored = localStorage.getItem(`dscribe_foreword_${projectId}`);
+    if (stored === "true") setIncludeForeword(true);
+  }, [projectId]);
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -40,40 +50,50 @@ export default function GeneratePage() {
         setChapters(chs);
         if (chs.length > 0) setActiveChapter(chs[0].id);
         setLoading(false);
+        const hasUngenerated = chs.some((ch: { status: string }) => ch.status !== "generated");
+        if (hasUngenerated) {
+          fetch(`/api/ink/estimate?project_id=${projectId}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((est) => {
+              if (est && est.chapter_count > 0) setInkEstimate(est);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => setLoading(false));
   }, [projectId]);
 
-  // Load existing enrichments (read-only — editing happens on the Outline page)
+  // Load existing enrichments from DB (no API calls to Claude)
   useEffect(() => {
     if (chapters.length === 0) return;
-    chapters.forEach((ch) => {
-      fetch("/api/enrich", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter_id: ch.id }),
+    fetch(`/api/enrich?project_id=${projectId}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((grouped) => {
+        if (grouped && typeof grouped === "object") {
+          setEnrichments(grouped as Record<string, Enrichment[]>);
+        }
       })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data) => {
-          if (Array.isArray(data) && data.length > 0) {
-            setEnrichments((prev) => ({ ...prev, [ch.id]: data }));
-          }
-        })
-        .catch(() => {});
-    });
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapters.length]);
 
   async function fetchEnrichments(chapterId: string) {
     setEnriching(chapterId);
-    const res = await fetch("/api/enrich", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chapter_id: chapterId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+    try {
+      const res = await guardedFetch("/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: chapterId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+      } else if (res.status !== 402) {
+        // 402 is handled by the upgrade modal via guardedFetch — skip it here
+        console.error("Enrichment failed:", res.status);
+      }
+    } catch (err) {
+      console.error("Enrichment error:", err);
     }
     setEnriching(null);
   }
@@ -100,6 +120,7 @@ export default function GeneratePage() {
       type: "generate-all",
       project_id: projectId,
       creative_freedom: creativeFreedom,
+      include_foreword: includeForeword,
     });
   }
 
@@ -140,7 +161,10 @@ export default function GeneratePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regenerateJob.status]);
 
-  async function generateForeword() {
+  // Foreword toggle is just a flag — generation happens in "Generate All"
+  // But if chapters are already generated, allow standalone foreword generation
+  const forewordJob = useJob();
+  async function generateForewordOnly() {
     await forewordJob.start({
       type: "generate",
       project_id: projectId,
@@ -150,13 +174,19 @@ export default function GeneratePage() {
     });
   }
 
-  useEffect(() => {
-    if (forewordJob.status === "completed") {
-      setIncludeForeword(true);
-      forewordJob.reset();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forewordJob.status]);
+  // Generation progress derived values
+  const genProg = generateAllJob.progress as { message?: string; current?: number; total?: number; step?: string } | null;
+  const genCurrent = genProg?.current ?? 0;
+  const genTotal = genProg?.total ?? chapters.length;
+  const genStep = genProg?.step;
+  const genRemaining = Math.max(0, genTotal - genCurrent);
+  const genEstMin = Math.ceil((genRemaining * 35 + (genStep === "coherence" ? 0 : 60)) / 60);
+  const genIsCoherence = genStep === "coherence";
+  const genProgressMessage = genIsCoherence
+    ? "Refining coherence between chapters..."
+    : genCurrent > 0
+      ? `Chapter ${genCurrent} printing...`
+      : "Starting generation...";
 
   const freedomLabel =
     creativeFreedom <= 30
@@ -291,20 +321,32 @@ export default function GeneratePage() {
                     AI-generated intro chapter previewing the topics ahead
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {includeForeword && !forewordJob.isRunning && (
-                    <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>Generated</span>
-                  )}
-                  {forewordJob.isRunning && (
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>Writing...</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {allGenerated && includeForeword && (
+                    <button
+                      onClick={generateForewordOnly}
+                      disabled={forewordJob.isRunning}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "var(--ds-accent-500, #C17A47)",
+                        color: "#fff",
+                        cursor: forewordJob.isRunning ? "wait" : "pointer",
+                        fontFamily: "var(--font-manrope), sans-serif",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {forewordJob.isRunning ? "Writing..." : "Generate Foreword"}
+                    </button>
                   )}
                   <button
                     onClick={() => {
-                      if (!includeForeword) {
-                        generateForeword();
-                      } else {
-                        setIncludeForeword(false);
-                      }
+                      const next = !includeForeword;
+                      setIncludeForeword(next);
+                      localStorage.setItem(`dscribe_foreword_${projectId}`, String(next));
                     }}
                     disabled={forewordJob.isRunning}
                     style={{
@@ -431,6 +473,31 @@ export default function GeneratePage() {
 
               {/* Divider */}
               <div style={{ height: 1, background: "var(--ds-card-border)", marginBottom: 24 }} />
+
+              {!allGenerated && inkEstimate && (
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 14px",
+                  borderRadius: 9999,
+                  background: "rgba(193,122,71,0.08)",
+                  border: "1px solid rgba(193,122,71,0.2)",
+                  marginBottom: 20,
+                }}>
+                  <svg width="13" height="16" viewBox="0 0 13 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6.5 0C6.5 0 1 6.5 1 10.5C1 13.537 3.463 16 6.5 16C9.537 16 12 13.537 12 10.5C12 6.5 6.5 0Z" fill="#C17A47" opacity="0.9" />
+                  </svg>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#C17A47",
+                    fontFamily: "var(--font-manrope), sans-serif",
+                  }}>
+                    ~{inkEstimate.total_low}–{inkEstimate.total_high} Ink to generate {inkEstimate.chapter_count} chapter{inkEstimate.chapter_count !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
 
               {/* Chapter info */}
               <div style={{ fontSize: 10, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.12em", marginBottom: 8 }}>
@@ -564,38 +631,59 @@ export default function GeneratePage() {
               {/* Generate All progress */}
               {generateAllJob.isRunning && (
                 <div style={{ marginBottom: 16 }}>
+                  {/* Do not exit warning */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 14px",
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: 8,
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", fontFamily: "var(--font-manrope), sans-serif" }}>
+                      Please do not leave this page while generating
+                    </span>
+                  </div>
                   <div style={{
                     padding: "14px 18px",
                     background: "var(--ds-input-bg)",
                     border: "1px solid var(--ds-card-border)",
                     borderRadius: "var(--radius-sm)",
-                    marginBottom: 8,
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
-                      {(generateAllJob.progress as { message?: string })?.message || "Generating..."}
+                      {genProgressMessage}
                     </div>
-                    {generateAllJob.progress && (
-                      <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{
+                        height: 4,
+                        background: "var(--ds-card-border)",
+                        borderRadius: 2,
+                        overflow: "hidden",
+                      }}>
                         <div style={{
-                          height: 4,
-                          background: "var(--ds-card-border)",
+                          height: "100%",
+                          background: "#C17A47",
                           borderRadius: 2,
-                          overflow: "hidden",
-                        }}>
-                          <div style={{
-                            height: "100%",
-                            background: "#C17A47",
-                            borderRadius: 2,
-                            width: `${((generateAllJob.progress as { current?: number; total?: number }).current || 0) / ((generateAllJob.progress as { current?: number; total?: number }).total || 1) * 100}%`,
-                            transition: "width 0.5s ease",
-                          }} />
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
-                          Chapter {(generateAllJob.progress as { current?: number }).current} of {(generateAllJob.progress as { total?: number }).total}
-                          {(generateAllJob.progress as { step?: string }).step === "coherence" && " — polishing transitions"}
-                        </div>
+                          width: `${(genCurrent / Math.max(genTotal, 1)) * 100}%`,
+                          transition: "width 0.5s ease",
+                        }} />
                       </div>
-                    )}
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                          {genIsCoherence ? "Final pass" : `${genCurrent} of ${genTotal} chapters`}
+                        </span>
+                        {genEstMin > 0 && !genIsCoherence && (
+                          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                            Est. ~{genEstMin} min remaining
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -673,12 +761,18 @@ export default function GeneratePage() {
               )}
 
               {/* Review & Edit link — shown when any chapter is generated */}
-              {anyGenerated && !isGenerating && (
+              {anyGenerated && (
                 <div style={{ marginTop: 16 }}>
                   <button
-                    onClick={() => router.push(`/project/${projectId}/editor`)}
+                    onClick={() => { if (!isGenerating) router.push(`/project/${projectId}/editor`); }}
                     className="nodum-btn"
-                    style={{ width: "100%", justifyContent: "center" }}
+                    disabled={isGenerating}
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      opacity: isGenerating ? 0.4 : 1,
+                      cursor: isGenerating ? "not-allowed" : "pointer",
+                    }}
                   >
                     Review &amp; Edit Manuscript →
                   </button>
@@ -693,6 +787,7 @@ export default function GeneratePage() {
         message="Your manuscript is ready — time to edit and refine."
         onDone={() => setShowCelebration(false)}
       />
+      {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}
     </PageShell>
   );
 }

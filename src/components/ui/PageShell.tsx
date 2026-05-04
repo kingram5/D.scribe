@@ -45,9 +45,8 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                width: 28,
-                height: 28,
+                gap: 6,
+                padding: "5px 10px 5px 8px",
                 borderRadius: 8,
                 background: "rgba(0,0,0,0.04)",
                 textDecoration: "none",
@@ -55,11 +54,14 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 transition: "background 0.15s",
                 flexShrink: 0,
               }}
-              title="Back to project"
+              title="Back to Progress dashboard"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2L4 7l5 5" />
               </svg>
+              <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+                Progress dashboard
+              </span>
             </Link>
             <span style={{
               fontSize: 13,
@@ -104,7 +106,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           </div>
         </nav>
       )}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {children}
       </div>
 

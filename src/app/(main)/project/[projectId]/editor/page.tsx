@@ -150,8 +150,41 @@ export default function EditorPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="editor">
+      {isRewriting && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 40px",
+          background: "rgba(193,122,71,0.95)",
+          backdropFilter: "blur(8px)",
+        }}>
+          <div style={{
+            width: 14, height: 14, borderRadius: "50%",
+            border: "2px solid rgba(255,255,255,0.4)",
+            borderTopColor: "#fff",
+            animation: "spin 0.8s linear infinite",
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#fff",
+            fontFamily: "var(--font-manrope), sans-serif",
+          }}>
+            Applying your notes...
+          </span>
+        </div>
+      )}
       <style>{`
+        html, body { overflow: hidden; }
         @media (max-width: 768px) {
+          html, body { overflow: auto; }
           .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100vh - 56px) !important; }
           .ds-editor-layout > div:first-child { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 250px !important; overflow-y: auto !important; }
           .ds-editor-layout > div:last-child { min-height: 500px !important; }
@@ -747,28 +780,33 @@ export default function EditorPage() {
             </button>
           </div>
 
-          {/* Scrollable Paper Area */}
+          {/* Paper Area — fills available height, no outer scroll */}
           <div style={{
             flex: 1,
-            overflowY: "auto",
-            padding: "72px 80px 60px",
+            overflow: "hidden",
+            padding: "20px 80px",
             display: "flex",
             justifyContent: "center",
+            minHeight: 0,
           }}>
             <div style={{
               width: "100%",
               maxWidth: 840,
-              minHeight: "100%",
-              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
             }}>
-              {/* Paper surface */}
+              {/* Paper surface — fixed height, flex column */}
               <div style={{
+                flex: 1,
+                overflow: "hidden",
                 background: "rgba(252,251,248,0.04)",
                 borderRadius: 4,
                 boxShadow: "0 2px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--ds-input-bg)",
-                padding: "64px 80px 80px",
                 position: "relative",
-                minHeight: 800,
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
               }}>
                 {/* Red margin line */}
                 <div style={{
@@ -778,6 +816,7 @@ export default function EditorPage() {
                   left: 64,
                   width: 1,
                   background: "rgba(193,122,71,0.12)",
+                  pointerEvents: "none",
                 }} />
                 {/* Second faint margin line */}
                 <div style={{
@@ -787,10 +826,11 @@ export default function EditorPage() {
                   left: 66,
                   width: 1,
                   background: "rgba(193,122,71,0.06)",
+                  pointerEvents: "none",
                 }} />
 
-                {/* Chapter Header */}
-                <div style={{ marginBottom: 48, paddingLeft: 24 }}>
+                {/* Chapter Header — static, never scrolls */}
+                <div style={{ flexShrink: 0, padding: "48px 80px 0", paddingLeft: 104 }}>
                   <div style={{
                     fontSize: 11,
                     fontWeight: 700,
@@ -813,9 +853,9 @@ export default function EditorPage() {
                   }}>
                     {activeChapter?.title || "Untitled Chapter"}
                   </h1>
-                  {/* Divider */}
                   <div style={{
                     marginTop: 20,
+                    marginBottom: 32,
                     width: 60,
                     height: 2,
                     background: "linear-gradient(90deg, #C17A47, transparent)",
@@ -823,8 +863,8 @@ export default function EditorPage() {
                   }} />
                 </div>
 
-                {/* TipTap Editor */}
-                <div style={{ position: "relative" }}>
+                {/* Text body — only this scrolls */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "0 80px 60px", paddingLeft: 104, position: "relative" }}>
                   <TipTapEditor
                     ref={editorRef}
                     content={content}
@@ -855,37 +895,6 @@ export default function EditorPage() {
             </div>
           </div>
 
-          {/* Rewrite Prompt Bar */}
-          {activeChapter && content.trim() && (
-            <RewritePromptBar
-              chapterId={activeChapter.id}
-              disabled={isRewriting}
-              onRewriteStart={() => {
-                preRewriteContentRef.current = content;
-                setIsRewriting(true);
-                setRewriteError(null);
-              }}
-              onRewriteChunk={(accumulated) => {
-                setContent(accumulated);
-                setWordCount(accumulated.split(/\s+/).filter(Boolean).length);
-              }}
-              onRewriteComplete={(finalText) => {
-                setContent(finalText);
-                setWordCount(finalText.split(/\s+/).filter(Boolean).length);
-                setIsRewriting(false);
-                setSaved(false);
-                setTimeout(() => saveContent(), 100);
-              }}
-              onRewriteError={(error) => {
-                setContent(preRewriteContentRef.current);
-                setWordCount(preRewriteContentRef.current.split(/\s+/).filter(Boolean).length);
-                setIsRewriting(false);
-                setRewriteError(error);
-                setTimeout(() => setRewriteError(null), 5000);
-              }}
-            />
-          )}
-
           {/* Rewriting overlay */}
           {isRewriting && (
             <div style={{
@@ -904,7 +913,7 @@ export default function EditorPage() {
           {/* Rewrite error toast */}
           {rewriteError && (
             <div style={{
-              position: "absolute", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 20,
+              position: "absolute", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 20,
               padding: "10px 20px", borderRadius: 10, background: "rgba(220,38,38,0.9)", color: "white",
               fontSize: 13, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 500,
               boxShadow: "0 4px 16px rgba(220,38,38,0.3)",
@@ -913,74 +922,112 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* Floating Save Button — bottom right */}
-          <button
-            onClick={saveContent}
-            disabled={saving || !content.trim()}
-            style={{
-              position: "absolute",
-              bottom: 24,
-              right: 24,
-              zIndex: 10,
-              height: 48,
-              borderRadius: 9999,
-              border: "none",
-              background: saved
-                ? "#059669"
-                : saving
-                  ? "rgba(193,122,71,0.5)"
-                  : "linear-gradient(135deg, #C17A47 0%, #A86230 100%)",
-              color: "#F9F7F2",
-              cursor: saving || !content.trim() ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              padding: "0 28px",
-              boxShadow: "0 4px 20px rgba(193,122,71,0.35)",
-              transition: "all 0.2s ease",
-              opacity: !content.trim() ? 0.4 : 1,
-              fontFamily: "var(--font-manrope), sans-serif",
-              fontSize: 14,
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-            }}
-            onMouseEnter={(e) => {
-              if (!saving && content.trim()) {
-                e.currentTarget.style.boxShadow = "0 6px 28px rgba(193,122,71,0.5)";
-                e.currentTarget.style.transform = "scale(1.03)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "0 4px 20px rgba(193,122,71,0.35)";
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            {saving ? (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-                Saving...
-              </>
-            ) : saved ? (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Saved
-              </>
+          {/* Bottom bar — rewrite input + save button, always in flow */}
+          <div style={{
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 24px",
+            borderTop: "1px solid var(--ds-card-border)",
+            background: "var(--env-bg)",
+          }}>
+            {activeChapter && content.trim() ? (
+              <RewritePromptBar
+                chapterId={activeChapter.id}
+                disabled={isRewriting}
+                onRewriteStart={() => {
+                  preRewriteContentRef.current = content;
+                  setIsRewriting(true);
+                  setRewriteError(null);
+                }}
+                onRewriteChunk={(accumulated) => {
+                  setContent(accumulated);
+                  setWordCount(accumulated.split(/\s+/).filter(Boolean).length);
+                }}
+                onRewriteComplete={(finalText) => {
+                  setContent(finalText);
+                  setWordCount(finalText.split(/\s+/).filter(Boolean).length);
+                  setIsRewriting(false);
+                  setSaved(false);
+                  setTimeout(() => saveContent(), 100);
+                }}
+                onRewriteError={(error) => {
+                  setContent(preRewriteContentRef.current);
+                  setWordCount(preRewriteContentRef.current.split(/\s+/).filter(Boolean).length);
+                  setIsRewriting(false);
+                  setRewriteError(error);
+                  setTimeout(() => setRewriteError(null), 5000);
+                }}
+              />
             ) : (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                Save Changes
-              </>
+              <div style={{ flex: 1 }} />
             )}
-          </button>
+            <button
+              onClick={saveContent}
+              disabled={saving || !content.trim()}
+              style={{
+                flexShrink: 0,
+                height: 48,
+                borderRadius: 9999,
+                border: "none",
+                background: saved
+                  ? "#059669"
+                  : saving
+                    ? "rgba(193,122,71,0.5)"
+                    : "linear-gradient(135deg, #C17A47 0%, #A86230 100%)",
+                color: "#F9F7F2",
+                cursor: saving || !content.trim() ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                padding: "0 28px",
+                boxShadow: "0 4px 20px rgba(193,122,71,0.35)",
+                transition: "all 0.2s ease",
+                opacity: !content.trim() ? 0.4 : 1,
+                fontFamily: "var(--font-manrope), sans-serif",
+                fontSize: 14,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && content.trim()) {
+                  e.currentTarget.style.boxShadow = "0 6px 28px rgba(193,122,71,0.5)";
+                  e.currentTarget.style.transform = "scale(1.03)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "0 4px 20px rgba(193,122,71,0.35)";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              {saving ? (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Saved
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  Save Changes
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

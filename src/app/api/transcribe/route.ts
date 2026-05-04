@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { transcribeAudio } from "@/lib/deepgram";
 import { requireAuth } from "@/lib/auth";
 import { getDownloadUrl } from "@/lib/r2";
+import { logger } from "@/lib/logger";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
@@ -95,6 +96,12 @@ export async function POST(req: NextRequest) {
       .eq("id", audio_upload_id);
 
     const message = err instanceof Error ? err.message : "Transcription failed";
+    logger.error(message, {
+      route: "/api/transcribe",
+      userId: user.id,
+      error: err,
+      meta: { audio_upload_id },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

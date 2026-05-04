@@ -39,11 +39,44 @@ function cleanJson(raw) {
   return s.trim();
 }
 
-async function ask(model, system, user, maxTokens = 4096, temperature = 0.6) {
+// Track Ink usage for each API call
+let _userId = null;
+let _projectId = null;
+
+async function resolveUserId(projectId) {
+  if (_userId) return _userId;
+  const { data } = await sb.from("projects").select("user_id").eq("id", projectId).single();
+  _userId = data?.user_id;
+  return _userId;
+}
+
+async function recordInk(operation, model, inputTokens, outputTokens) {
+  if (!_userId || !_projectId) return;
+  const modelName = model === HAIKU ? "haiku" : "sonnet";
+  try {
+    const { error } = await sb.rpc("deduct_ink", {
+      p_user_id: _userId,
+      p_project_id: _projectId,
+      p_operation: operation,
+      p_model: modelName,
+      p_input_tokens: inputTokens,
+      p_output_tokens: outputTokens,
+    });
+    if (error) console.log("  ⚠ Ink tracking error:", error.message);
+  } catch (err) {
+    console.log("  ⚠ Ink tracking error:", err.message);
+  }
+}
+
+async function ask(model, system, user, maxTokens = 4096, temperature = 0.6, operation = "generate") {
   const res = await claude.messages.create({
     model, max_tokens: maxTokens, temperature, system,
     messages: [{ role: "user", content: user }],
   });
+  // Track Ink usage
+  if (res.usage) {
+    await recordInk(operation, model, res.usage.input_tokens || 0, res.usage.output_tokens || 0);
+  }
   return res.content[0]?.type === "text" ? res.content[0].text : "";
 }
 
@@ -67,7 +100,7 @@ async function runAnalyze(projectId) {
     const kpRaw = await ask(HAIKU,
       "You extract key points from sermon/lecture transcripts. Return a JSON array of objects with: title, summary, supporting_quotes (array of short quotes), tags (array). Return ONLY valid JSON, no markdown.",
       "Extract 5-10 key points from this transcript:\n\n" + tx.full_text,
-      4096
+      4096, 0.6, "analyze"
     );
     let keyPoints = [];
     try { keyPoints = JSON.parse(cleanJson(kpRaw)); } catch (e) { console.log("  ⚠ Key points parse error:", e.message); }
@@ -103,7 +136,7 @@ async function runAnalyze(projectId) {
 - avg_sentence_length: Estimated average in words (number)
 - formality_score: 1-5 scale (number, 1=casual, 5=formal)
 
-Transcript:\n\n` + sample, 2048
+Transcript:\n\n` + sample, 2048, 0.6, "voice_profile"
     );
     try {
       const vp = JSON.parse(cleanJson(vpRaw));
@@ -117,7 +150,7 @@ Transcript:\n\n` + sample, 2048
       const mmRaw = await ask(HAIKU,
         "Create a mind map from key points. Return JSON: { nodes: [{id, label, description, node_type, parent_id}], edges: [{source_id, target_id, label, edge_type}] }. Root node_type is \"central\". Return ONLY valid JSON.",
         "Create mind map:\n\n" + JSON.stringify(keyPoints.map(k => ({ title: k.title, summary: k.summary, tags: k.tags }))),
-        4096
+        4096, 0.6, "mind_map"
       );
       try {
         const mm = JSON.parse(cleanJson(mmRaw));
@@ -162,7 +195,7 @@ async function runOutline(projectId) {
     "You create book chapter outlines from key points. Return a JSON array of objects with: title, summary, key_point_ids (array of 1-based indices into the key points list). Return ONLY valid JSON.",
     `Create ${numChapters} chapter outlines for a ${project.audience || "General"} audience book titled "${project.title}" from these key points:\n\n` +
     keyPoints.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n"),
-    4096, 0.5
+    4096, 0.5, "outline"
   );
 
   try {
@@ -213,7 +246,7 @@ async function runGenerate(projectId) {
     const content = await ask(SONNET,
       `You are a skilled book ghostwriter. Write in the speaker's authentic voice.${voiceNote} Write engaging, readable prose suitable for a ${project.audience || "General"} audience.`,
       `Write Chapter ${ch.chapter_number}: "${ch.title}"\n\nSummary: ${ch.summary}\n\nKey points to cover:\n${kpContext}\n\nSource transcript excerpt:\n${fullText.slice(0, 4000)}\n\nTarget: ~${ch.target_word_count || 3000} words.${tailContext}\n\nWrite the full chapter now.`,
-      16384, 0.6
+      16384, 0.6, "generate"
     );
 
     // Store tail for next chapter
@@ -289,7 +322,7 @@ Look for: thematic callbacks, tone mismatches, redundancy, opportunities for for
 ${context}
 
 Return JSON array: [{transition_index, revised_closing (or null), revised_opening (or null), note}]. Only include transitions needing changes. Return ONLY valid JSON.`,
-    8192, 0.5
+    8192, 0.5, "coherence"
   );
 
   let transitions = [];
@@ -367,7 +400,7 @@ The foreword should:
 - Be warm, inviting, and authentic to the speaker's voice
 
 Target: ~1500 words. Write the full foreword now.`,
-    8192, 0.6
+    8192, 0.6, "generate"
   );
 
   // Delete existing foreword
@@ -407,6 +440,11 @@ if (!projectId) {
 }
 
 console.log(`Pipeline: ${stage}${withForeword && stage !== "all" && stage !== "foreword" ? " +foreword" : ""} | Project: ${projectId}`);
+
+// Resolve user for Ink tracking
+_projectId = projectId;
+await resolveUserId(projectId);
+if (_userId) console.log(`Ink tracking enabled for user: ${_userId.slice(0, 8)}...`);
 
 try {
   if (stage === "analyze" || stage === "all") await runAnalyze(projectId);

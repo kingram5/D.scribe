@@ -1,8 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
+import { logger } from "@/lib/logger";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
+import { checkInk, recordInkUsage } from "@/lib/ink";
+
+// GET /api/enrich?project_id=xxx — read existing enrichments for all chapters in a project
+export async function GET(req: NextRequest) {
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const projectId = new URL(req.url).searchParams.get("project_id");
+  if (!projectId) {
+    return NextResponse.json({ error: "project_id required" }, { status: 400 });
+  }
+
+  const supabase = createServerClient();
+
+  // Verify project ownership
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // Get all enrichments for this project's chapters
+  const { data: chapters } = await supabase
+    .from("chapters")
+    .select("id")
+    .eq("project_id", projectId);
+
+  if (!chapters?.length) {
+    return NextResponse.json({});
+  }
+
+  const chapterIds = chapters.map(c => c.id);
+  const { data: enrichments } = await supabase
+    .from("enrichments")
+    .select("*")
+    .in("chapter_id", chapterIds);
+
+  // Group by chapter_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const grouped: Record<string, any[]> = {};
+  for (const e of enrichments ?? []) {
+    if (!grouped[e.chapter_id]) grouped[e.chapter_id] = [];
+    grouped[e.chapter_id].push(e);
+  }
+
+  return NextResponse.json(grouped);
+}
 
 // POST /api/enrich — find enrichment quotes for a chapter
 export async function POST(req: NextRequest) {
@@ -32,13 +85,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get key points for this chapter
-  const { data: keyPoints } = await supabase
-    .from("key_points")
-    .select("title")
-    .in("id", chapter.key_point_ids || []);
+  // Pre-flight Ink check
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json(
+      { error: "out_of_ink", message: inkCheck.reason },
+      { status: 402 }
+    );
+  }
 
-  const raw = await askClaude(
+  // Get key points for this chapter
+  const kpIds = chapter.key_point_ids || [];
+  let keyPoints: { title: string }[] | null = [];
+  if (kpIds.length > 0) {
+    const { data } = await supabase
+      .from("key_points")
+      .select("title")
+      .in("id", kpIds);
+    keyPoints = data;
+  }
+
+  const result = await askClaudeWithUsage(
     ENRICH_SYSTEM,
     enrichPrompt(
       chapter.title,
@@ -48,9 +115,19 @@ export async function POST(req: NextRequest) {
     ),
     { temperature: 0.4 }
   );
+  const raw = result.text;
+  // Non-blocking — don't let Ink tracking failure abort the enrichment
+  recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", result.usage).catch(console.error);
 
   try {
-    const items = JSON.parse(cleanJson(raw));
+    console.log("[enrich] Raw Claude response:", raw.slice(0, 500));
+    const cleaned = cleanJson(raw);
+    console.log("[enrich] Cleaned JSON:", cleaned.slice(0, 500));
+    const items = JSON.parse(cleaned);
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "No enrichment items found in response" }, { status: 500 });
+    }
 
     // Delete existing enrichments for this chapter
     await supabase.from("enrichments").delete().eq("chapter_id", chapter_id);
@@ -61,20 +138,34 @@ export async function POST(req: NextRequest) {
       .insert(
         items.map((item: Record<string, unknown>) => ({
           chapter_id,
-          quote_text: item.quote_text,
-          source_author: item.source_author,
-          source_title: item.source_title,
-          source_type: item.source_type,
-          relevance_note: item.relevance_note,
+          quote_text: item.quote_text || "",
+          source_author: item.source_author || "Unknown",
+          source_title: item.source_title || "",
+          source_type: item.source_type || "book",
+          relevance_note: item.relevance_note || "",
           included: true,
         }))
       )
       .select();
 
-    if (error) throw error;
+    if (error) {
+      logger.error("Supabase insert error in enrich", {
+        route: "/api/enrich",
+        userId: user.id,
+        error,
+        meta: { chapter_id },
+      });
+      return NextResponse.json({ error: `DB error: ${error.message}` }, { status: 500 });
+    }
     return NextResponse.json(enrichments);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Enrichment failed";
+    logger.error(message, {
+      route: "/api/enrich",
+      userId: user.id,
+      error: err,
+      meta: { chapter_id },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import UserMenu from "./UserMenu";
-import CreditBadge from "./CreditBadge";
 
 interface OsBarProps {
   rightSlot?: React.ReactNode;
@@ -48,7 +47,6 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
 
         {/* Right — desktop */}
         <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <CreditBadge />
           <Link href="/project/new" className="nodum-btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>
             New Project
           </Link>

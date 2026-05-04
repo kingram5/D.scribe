@@ -90,6 +90,7 @@ export default function CinematicLandingPage() {
             <div className="hidden md:flex items-center gap-10">
               <Link href="#features" className="cinematic-nav-link">Features</Link>
               <Link href="#intelligence" className="cinematic-nav-link">Intelligence</Link>
+              <Link href="/pricing" className="cinematic-nav-link">Pricing</Link>
             </div>
 
             <div className="flex items-center gap-6">
@@ -329,6 +330,154 @@ export default function CinematicLandingPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Community Books Section */}
+          <section className="py-32 relative z-20">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#1E1810]/60 to-transparent pointer-events-none" />
+
+            <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
+              <div className="text-center max-w-3xl mx-auto mb-24">
+                <h2
+                  className="italic text-4xl md:text-6xl text-[#F9F7F2] mb-6"
+                  style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
+                >
+                  Written by real people.
+                </h2>
+                <p
+                  className="text-[#A89F94] text-lg md:text-xl font-light"
+                  style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
+                >
+                  Everyday voices turned into books that last — stories, wisdom, and expertise finally on the page.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Book 1 */}
+                <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                  <div>
+                    <div
+                      className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3"
+                      style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
+                    >
+                      Marcus T.
+                    </div>
+                    <h3
+                      className="text-2xl font-semibold text-[#F9F7F2] leading-snug"
+                      style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
+                    >
+                      Leading with Clarity
+                    </h3>
+                  </div>
+                  <div>
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                        border: "1px solid rgba(193,122,71,0.4)",
+                        background: "rgba(193,122,71,0.08)",
+                        color: "#C17A47",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Business/Leadership
+                    </span>
+                  </div>
+                  <p
+                    className="text-[#A89F94] leading-relaxed italic flex-1"
+                    style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}
+                  >
+                    &ldquo;I never thought I&apos;d write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.&rdquo;
+                  </p>
+                </div>
+
+                {/* Book 2 */}
+                <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5 md:-translate-y-12">
+                  <div>
+                    <div
+                      className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3"
+                      style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
+                    >
+                      Pastor Renee J.
+                    </div>
+                    <h3
+                      className="text-2xl font-semibold text-[#F9F7F2] leading-snug"
+                      style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
+                    >
+                      Faith in the Everyday
+                    </h3>
+                  </div>
+                  <div>
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                        border: "1px solid rgba(193,122,71,0.4)",
+                        background: "rgba(193,122,71,0.08)",
+                        color: "#C17A47",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Faith Community
+                    </span>
+                  </div>
+                  <p
+                    className="text-[#A89F94] leading-relaxed italic flex-1"
+                    style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}
+                  >
+                    &ldquo;My congregation had been asking me to write down my sermons for years. What I couldn&apos;t have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.&rdquo;
+                  </p>
+                </div>
+
+                {/* Book 3 */}
+                <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                  <div>
+                    <div
+                      className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3"
+                      style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
+                    >
+                      Dr. Sam K.
+                    </div>
+                    <h3
+                      className="text-2xl font-semibold text-[#F9F7F2] leading-snug"
+                      style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}
+                    >
+                      The Anxiety Playbook
+                    </h3>
+                  </div>
+                  <div>
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                        border: "1px solid rgba(193,122,71,0.4)",
+                        background: "rgba(193,122,71,0.08)",
+                        color: "#C17A47",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Self-Help
+                    </span>
+                  </div>
+                  <p
+                    className="text-[#A89F94] leading-relaxed italic flex-1"
+                    style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}
+                  >
+                    &ldquo;I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I&apos;m genuinely proud of — a practical guide that my patients actually want to read.&rdquo;
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-center mt-16">
+                <a
+                  href="/discover"
+                  className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium"
+                  style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}
+                >
+                  Explore all books →
+                </a>
               </div>
             </div>
           </section>

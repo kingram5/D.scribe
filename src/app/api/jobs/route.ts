@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
           await runGenerateAllJob(job.id, { project_id, ...rest });
           break;
       }
+      // Deduct credit after successful worker completion
+      await deductCredit(project.user_id).catch((err) => {
+        console.error(`[jobs] Credit deduction failed for user ${project.user_id}:`, err);
+      });
     } catch (err) {
       console.error(`[jobs] Worker ${type} crashed:`, err);
       const { updateJob } = await import("@/lib/jobs");
@@ -106,7 +110,17 @@ export async function POST(req: NextRequest) {
     const { spawn } = await import("child_process");
     const { resolve } = await import("path");
     const script = resolve(process.cwd(), "scripts/run-pipeline.mjs");
-    const child = spawn("node", [script, project_id, stageMap[type] || type], {
+    // Map foreword requests to the "foreword" stage
+    let stage = stageMap[type] || type;
+    if (type === "generate" && rest.generate_type === "foreword") {
+      stage = "foreword";
+    }
+    const args = [script, project_id, stage];
+    // Pass foreword flag for generate-all if toggled on
+    if (type === "generate-all" && rest.include_foreword) {
+      args.push("--foreword");
+    }
+    const child = spawn("node", args, {
       stdio: "inherit",
       detached: true,
     });
@@ -116,6 +130,11 @@ export async function POST(req: NextRequest) {
         status: code === 0 ? "completed" : "failed",
         error: code !== 0 ? `Pipeline exited with code ${code}` : undefined,
       });
+      if (code === 0) {
+        await deductCredit(project.user_id).catch((err) => {
+          console.error(`[jobs] Credit deduction failed for user ${project.user_id}:`, err);
+        });
+      }
     });
   } else {
     // Run in after() — maxDuration=60 extends the execution window.

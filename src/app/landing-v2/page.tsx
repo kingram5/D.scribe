@@ -220,30 +220,30 @@ export default function LandingV2() {
           </div>
         </div>
 
-        {/* ── There's an author inside you — left, starts at ~37% from top ── */}
+        {/* ── There's an author inside you — bottom-left ── */}
         <div style={{
           position: "absolute",
-          top: "52%",
-          left: 90,
+          top: "37%",
+          left: 40,
           zIndex: 2,
-          maxWidth: 480,
+          maxWidth: 280,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(60px, 4.6vw, 106px)",
+            fontSize: "clamp(28px, 3vw, 42px)",
             fontWeight: 800,
             lineHeight: 1.1,
             color: "#F9F7F2",
             marginBottom: 10,
           }}>
             There&rsquo;s an<br />author<br />
-              <span style={{ fontStyle: "italic", fontWeight: 400, color: "#F0E6CE" }}>
+            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
               inside you.
             </span>
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 38,
+            fontSize: 12,
             lineHeight: 1.6,
             color: "rgba(249,247,242,0.38)",
             marginBottom: 18,

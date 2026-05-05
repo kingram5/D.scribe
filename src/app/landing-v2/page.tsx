@@ -411,6 +411,26 @@ export default function LandingV2() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 
+        /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
+        .circular-text {
+          width: 320px;
+          height: 320px;
+          position: relative;
+          border-radius: 50%;
+        }
+        .circular-text span {
+          position: absolute;
+          left: 50%;
+          font-size: 13px;
+          font-family: var(--font-inter), 'Inter', sans-serif;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.25em;
+          color: #F9F7F2;
+          opacity: 0.6;
+          transform-origin: 0 160px;
+        }
+
         /* Waveform — exact match to main landing cinematic-landing.css */
         .landing-v2 .murmur-svg {
           width: 100%;

@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CinematicMurmurWaveform } from "@/components/landing/CinematicClient";
+import { CinematicMurmurWaveform, CinematicCircularText } from "@/components/landing/CinematicClient";
+import "../cinematic-landing.css";
+
+function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" x2="12" y1="19" y2="22" />
+    </svg>
+  );
+}
 
 const PIPELINE = [
   { num: "01", title: "Upload", desc: "Record live, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
@@ -233,7 +244,7 @@ export default function LandingV2() {
               fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400,
               lineHeight: 1.2, marginBottom: 24,
             }}>
-              You bring the voice.<br />We bring the pen.
+              You bring the ideas. We fill in the gaps.
             </h2>
             <p style={{
               fontFamily: "var(--font-lora), serif", fontSize: 18, lineHeight: 1.7,
@@ -257,6 +268,96 @@ export default function LandingV2() {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+      </FadeSection>
+
+      {/* ─── Written by real people ─── */}
+      <FadeSection>
+        <section className="py-32 relative z-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#1E1810]/60 to-transparent pointer-events-none" />
+          <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
+            <div className="text-center max-w-3xl mx-auto mb-24">
+              <h2 className="italic text-4xl md:text-6xl text-[#F9F7F2] mb-6" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>
+                Written by real people.
+              </h2>
+              <p className="text-[#A89F94] text-lg md:text-xl font-light" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
+                Everyday voices turned into books that last — stories, wisdom, and expertise finally on the page.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Marcus T.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Leading with Clarity</h3>
+                </div>
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Business/Leadership</span>
+                </div>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;I never thought I&apos;d write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.&rdquo;
+                </p>
+              </div>
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5 md:-translate-y-12">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Pastor Renee J.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Faith in the Everyday</h3>
+                </div>
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Faith Community</span>
+                </div>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;My congregation had been asking me to write down my sermons for years. What I couldn&apos;t have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.&rdquo;
+                </p>
+              </div>
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Dr. Sam K.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>The Anxiety Playbook</h3>
+                </div>
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Self-Help</span>
+                </div>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I&apos;m genuinely proud of — a practical guide that my patients actually want to read.&rdquo;
+                </p>
+              </div>
+            </div>
+            <div className="text-center mt-16">
+              <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
+                Explore all books →
+              </Link>
+            </div>
+          </div>
+        </section>
+      </FadeSection>
+
+      {/* ─── Always listening. Always learning. ─── */}
+      <FadeSection>
+        <section id="intelligence" className="py-32 relative flex flex-col items-center justify-center overflow-hidden z-30">
+          <div className="absolute inset-0 bg-[#2C2419]/40 backdrop-blur-[2px] z-0" />
+          <div className="max-w-7xl mx-auto px-6 lg:px-12 w-full relative z-10 flex flex-col lg:flex-row items-center justify-center gap-16">
+            <div className="lg:w-1/2 text-center lg:text-left">
+              <h2 className="text-4xl md:text-6xl text-[#F9F7F2] mb-6" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>
+                Always listening.<br />Always learning.
+              </h2>
+              <p className="text-[#A89F94] text-lg md:text-xl font-light max-w-lg mx-auto lg:mx-0 leading-relaxed" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
+                Upload more recordings and D. scribe maps your vocabulary, sentence rhythms, and rhetorical patterns — so every chapter sounds like you wrote it, not a machine.
+              </p>
+            </div>
+            <div className="lg:w-1/2 relative flex justify-center items-center h-full min-h-[500px]">
+              <div className="absolute inset-0 flex items-center justify-center scale-75 md:scale-100">
+                <div className="w-64 h-64 border border-[#C17A47]/30 rounded-full absolute animate-ping" style={{ animationDuration: "4s" }} />
+                <div className="w-96 h-96 border border-[rgba(249,247,242,0.1)] rounded-full absolute cinematic-spin-slow" />
+                <div className="w-[450px] h-[450px] border border-[rgba(249,247,242,0.2)] border-dashed rounded-full absolute cinematic-spin-slow-reverse" />
+                <div className="relative z-10 w-28 h-28 bg-[#3D3428]/40 backdrop-blur-xl border border-[rgba(249,247,242,0.1)] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(193,122,71,0.3)] cinematic-pulse-glow">
+                  <MicIcon size={36} className="text-[#C17A47]" />
+                </div>
+                <div className="absolute">
+                  <CinematicCircularText />
+                </div>
+              </div>
             </div>
           </div>
         </section>

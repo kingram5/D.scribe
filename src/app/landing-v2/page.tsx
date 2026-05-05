@@ -79,19 +79,18 @@ export default function LandingV2() {
         {/* Box logo + scribe */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 58, height: 58,
-            background: "rgba(200,168,130,0.92)",
-            borderRadius: 10,
+            width: 42, height: 42,
+            background: "#C17A47",
+            borderRadius: 4,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontStyle: "normal", fontWeight: 500, fontSize: 50, color: "#F9F7F2",
+            fontWeight: 800, fontSize: 24, color: "#1A140E",
             flexShrink: 0,
           }}>
             D.
           </div>
           <span style={{
             fontFamily: "var(--font-manrope), sans-serif",
-            fontSize: 48, fontWeight: 700, lineHeight: 1, color: "#F9F7F2",
+            fontSize: 20, fontWeight: 700, lineHeight: 1, color: "#F9F7F2",
           }}>
             scribe
           </span>
@@ -99,7 +98,7 @@ export default function LandingV2() {
         {/* Nav right */}
         <div style={{ display: "flex", alignItems: "center", gap: 28, background: "rgba(0,0,0,0.62)", padding: "8px 8px 8px 24px", borderRadius: 999 }}>
           <Link href="/login" style={{
-            fontSize: 40, color: "rgba(249,247,242,0.75)", textDecoration: "none",
+            fontSize: 18, color: "rgba(249,247,242,0.75)", textDecoration: "none",
             fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600,
           }}>
             Sign in
@@ -170,13 +169,13 @@ export default function LandingV2() {
           display: "flex", alignItems: "center", justifyContent: "center", gap: 20,
         }}>
           <span style={{
-            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontFamily: "'Cormorant Garamond', serif",
             fontStyle: "italic",
-            fontSize: "clamp(44px, 3vw, 72px)",
-            color: "#F0E6CE",
+            fontSize: 46,
+            color: "#ffffff",
             opacity: 0.9,
           }}>
-            Your Story Starts →
+            Your Story Starts{" "}<span style={{ fontStyle: "normal" }}>→</span>
           </span>
           <Link href="/auth/signup" className="lv2-pill-here">
             HERE
@@ -193,28 +192,28 @@ export default function LandingV2() {
         }}>
           <div style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(64px, 5.8vw, 128px)",
+            fontSize: "clamp(38px, 3.8vw, 58px)",
             fontWeight: 400,
             color: "#F9F7F2",
             lineHeight: 1.2,
             marginBottom: 8,
           }}>
             You talk.{" "}
-            <em style={{ color: "#F0E6CE" }}>It writes.</em>
+            <em style={{ color: "#D9A820" }}>It writes.</em>
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 51,
-            color: "rgba(249,247,242,0.58)",
+            fontSize: 22,
+            color: "rgba(255,255,255,0.85)",
             marginBottom: 3,
           }}>
             Stop waiting to write your book...
           </div>
           <div style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 51,
-            fontWeight: 600,
-            color: "rgba(249,247,242,0.82)",
+            fontSize: 20,
+            fontWeight: 700,
+            color: "#C17A47",
           }}>
             just start talking.
           </div>
@@ -236,9 +235,9 @@ export default function LandingV2() {
             color: "#F9F7F2",
             marginBottom: 16,
           }}>
-            There&rsquo;s an<br />author<br />
+            There&rsquo;s an<br />Author<br />
             <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
-              inside you.
+              Inside You
             </span>
           </h2>
           <p style={{
@@ -252,7 +251,7 @@ export default function LandingV2() {
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
           <Link href="/auth/signup" className="lv2-ghost">
-            Begin Your Book
+            Begin Your Book <span style={{ marginLeft: 10, fontSize: 16 }}>→</span>
           </Link>
         </div>
 
@@ -442,6 +441,8 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+
         /* Waveform — exact match to main landing cinematic-landing.css */
         .landing-v2 .murmur-svg {
           width: 100%;
@@ -476,11 +477,11 @@ export default function LandingV2() {
         .lv2-pill-cta {
           display: inline-flex;
           align-items: center;
-          padding: 20px 52px;
+          padding: 10px 28px;
           background: #C8A882;
           color: #F9F7F2;
           font-family: var(--font-manrope), sans-serif;
-          font-size: 44px;
+          font-size: 16px;
           font-weight: 700;
           border-radius: 999px;
           cursor: pointer;
@@ -489,43 +490,43 @@ export default function LandingV2() {
         }
         .lv2-pill-cta:hover { background: #b8936e; }
 
-        /* HERE pill */
+        /* HERE button */
         .lv2-pill-here {
           display: inline-flex;
           align-items: center;
-          padding: 26px 76px;
-          background: #C8A882;
-          color: #F9F7F2;
-          font-family: var(--font-manrope), sans-serif;
-          font-size: 50px;
+          padding: 14px 44px;
+          background: #C17A47;
+          color: #1A140E;
+          font-size: 18px;
           font-weight: 800;
-          border-radius: 999px;
+          border-radius: 20px;
           cursor: pointer;
           text-decoration: none;
-          letter-spacing: 0.06em;
-          transition: background 0.2s ease;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+          transition: background 0.2s ease, transform 0.15s ease;
         }
-        .lv2-pill-here:hover { background: #b8936e; }
+        .lv2-pill-here:hover { background: #D98B58; transform: scale(1.05); }
 
-        /* Ghost outline button */
+        /* Begin Your Book button — gold filled */
         .lv2-ghost {
           display: inline-flex;
           align-items: center;
-          padding: 10px 22px;
-          background: transparent;
-          color: #F9F7F2;
-          font-family: var(--font-lora), serif;
-          font-size: 13px;
-          font-weight: 600;
-          border: 1px solid rgba(249,247,242,0.5);
-          border-radius: 2px;
+          padding: 8px 28px 10px 8px;
+          background: #E6C18B;
+          color: #1A140E;
+          font-size: 15px;
+          font-weight: 700;
+          border-radius: 4px;
           cursor: pointer;
           text-decoration: none;
-          transition: border-color 0.2s ease, background 0.2s ease;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          height: 50px;
+          transition: background 0.2s ease, transform 0.15s ease;
         }
         .lv2-ghost:hover {
-          border-color: rgba(249,247,242,0.9);
-          background: rgba(249,247,242,0.07);
+          background: #F0D6AF;
+          transform: scale(1.02);
         }
 
         /* Final CTA */

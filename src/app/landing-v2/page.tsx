@@ -346,7 +346,7 @@ export default function LandingV2() {
                 Upload more recordings and D. scribe maps your vocabulary, sentence rhythms, and rhetorical patterns — so every chapter sounds like you wrote it, not a machine.
               </p>
             </div>
-            <div className="lg:w-1/2 relative flex justify-center items-center h-full min-h-[500px]">
+            <div className="lg:w-1/2 relative flex justify-center items-center h-[500px]">
               <div className="absolute inset-0 flex items-center justify-center scale-75 md:scale-100">
                 <div className="w-64 h-64 border border-[#C17A47]/30 rounded-full absolute animate-ping" style={{ animationDuration: "4s" }} />
                 <div className="w-96 h-96 border border-[rgba(249,247,242,0.1)] rounded-full absolute cinematic-spin-slow" />

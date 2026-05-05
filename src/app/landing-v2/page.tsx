@@ -164,7 +164,7 @@ export default function LandingV2() {
         {/* ── Your Story Starts → [HERE] — centered below logo ── */}
         <div style={{
           position: "absolute",
-          top: "47%",
+          top: "45%",
           left: 0, right: 0,
           zIndex: 2,
           display: "flex", alignItems: "center", justifyContent: "center", gap: 20,
@@ -220,21 +220,21 @@ export default function LandingV2() {
           </div>
         </div>
 
-        {/* ── There's an author inside you — bottom-left ── */}
+        {/* ── There's an author inside you — left side ── */}
         <div style={{
           position: "absolute",
-          top: "37%",
-          left: 40,
+          top: "42%",
+          left: 80,
           zIndex: 2,
-          maxWidth: 280,
+          maxWidth: 360,
         }}>
           <h2 style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(30px, 3.2vw, 46px)",
+            fontSize: "clamp(40px, 4.5vw, 68px)",
             fontWeight: 800,
-            lineHeight: 1.1,
+            lineHeight: 0.95,
             color: "#F9F7F2",
-            marginBottom: 10,
+            marginBottom: 16,
           }}>
             There&rsquo;s an<br />author<br />
             <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
@@ -243,10 +243,11 @@ export default function LandingV2() {
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 12,
+            fontSize: 16,
             lineHeight: 1.6,
-            color: "rgba(249,247,242,0.38)",
-            marginBottom: 18,
+            color: "rgba(249,247,242,0.45)",
+            marginBottom: 20,
+            maxWidth: 300,
           }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
@@ -261,11 +262,10 @@ export default function LandingV2() {
           bottom: 0, left: 0, right: 0,
           zIndex: 2,
           display: "flex",
-          justifyContent: "center",
-          gap: "clamp(28px, 5.5vw, 72px)",
-          padding: "16px 40px",
-          background: "rgba(0,0,0,0.3)",
-          backdropFilter: "blur(10px)",
+          justifyContent: "space-around",
+          padding: "28px 80px",
+          background: "linear-gradient(to top, rgba(26,20,14,0.9), transparent)",
+          backdropFilter: "blur(4px)",
         }}>
           {[
             { value: "< 10 min", label: "Audio to first chapter" },
@@ -275,17 +275,18 @@ export default function LandingV2() {
             <div key={stat.label} style={{ textAlign: "center" }}>
               <div style={{
                 fontFamily: "var(--font-playfair), serif",
-                fontSize: "clamp(15px, 1.7vw, 22px)",
-                fontWeight: 700,
-                color: "#C17A47",
-                marginBottom: 2,
+                fontSize: "clamp(24px, 2.8vw, 44px)",
+                fontWeight: 900,
+                color: "#E6C18B",
+                marginBottom: 4,
               }}>
                 {stat.value}
               </div>
               <div style={{
-                fontFamily: "var(--font-lora), serif",
                 fontSize: 12,
-                color: "rgba(249,247,242,0.52)",
+                color: "rgba(255,255,255,0.6)",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
               }}>
                 {stat.label}
               </div>

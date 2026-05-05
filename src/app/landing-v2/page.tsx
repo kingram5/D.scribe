@@ -106,7 +106,7 @@ export default function LandingV2() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
-        <div style={{ position: "absolute", top: "8%", left: "55%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
+        <div style={{ position: "absolute", top: "8%", left: "50%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
           <CinematicMurmurWaveform />
         </div>
 
@@ -129,7 +129,7 @@ export default function LandingV2() {
         </div>
 
         {/* Left Side Author Content */}
-        <div style={{ position: "absolute", top: "42%", left: 80, maxWidth: 420, zIndex: 2 }}>
+        <div style={{ position: "absolute", top: "52%", left: 80, maxWidth: 420, zIndex: 2 }}>
           <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
           </h2>

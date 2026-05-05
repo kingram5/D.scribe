@@ -69,48 +69,24 @@ export default function LandingV2() {
       {/* ─── Navbar ─── */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        padding: "0 54px", height: 92,
+        padding: "0 60px", height: 80,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        transition: "all 0.3s ease",
-        background: scrolled ? "rgba(44,36,25,0.85)" : "transparent",
+        transition: "background 0.3s ease",
+        background: scrolled ? "rgba(26,20,14,0.85)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(249,247,242,0.08)" : "1px solid transparent",
       }}>
-        {/* Box logo + scribe */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 42, height: 42,
-            background: "#C17A47",
-            borderRadius: 4,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 800, fontSize: 24, color: "#1A140E",
-            flexShrink: 0,
-          }}>
-            D.
-          </div>
-          <span style={{
-            fontFamily: "var(--font-manrope), sans-serif",
-            fontSize: 20, fontWeight: 700, lineHeight: 1, color: "#F9F7F2",
-          }}>
-            scribe
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 42, height: 42, background: "#C17A47", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 24, color: "#1A140E", marginLeft: 5 }}>D.</div>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#F9F7F2", letterSpacing: "0.05em" }}>scribe</span>
         </div>
-        {/* Nav right */}
-        <div style={{ display: "flex", alignItems: "center", gap: 28, background: "rgba(0,0,0,0.62)", padding: "8px 8px 8px 24px", borderRadius: 999 }}>
-          <Link href="/login" style={{
-            fontSize: 18, color: "rgba(249,247,242,0.75)", textDecoration: "none",
-            fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600,
-          }}>
-            Sign in
-          </Link>
-          <Link href="/auth/signup" className="lv2-pill-cta">
-            Get Started →
-          </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
+          <Link href="/login" style={{ fontSize: 25, fontWeight: 600, color: "#F9F7F2", textDecoration: "none" }}>Sign in</Link>
+          <Link href="/auth/signup" className="lv2-pill-cta">Get Started <span style={{ fontSize: 18 }}>→</span></Link>
         </div>
       </nav>
 
       {/* ─── Hero Section ─── */}
-      <section style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
+      <section style={{ position: "relative", height: "100vh", zIndex: 1, overflow: "hidden" }}>
 
         {/* Video background */}
         <video
@@ -126,171 +102,62 @@ export default function LandingV2() {
           <source src="/bg-video-desk.mp4" type="video/mp4" />
         </video>
 
-        {/* Overlay — light vignette, let video breathe */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          background: `
-            linear-gradient(to bottom,
-              rgba(44,36,25,0.38) 0%,
-              rgba(44,36,25,0.05) 22%,
-              rgba(44,36,25,0.05) 55%,
-              rgba(44,36,25,0.62) 85%,
-              rgba(44,36,25,0.80) 100%
-            ),
-            linear-gradient(to right,
-              rgba(44,36,25,0.42) 0%,
-              transparent 30%,
-              transparent 75%,
-              rgba(44,36,25,0.18) 100%
-            )
-          `,
-        }} />
+        {/* Overlay */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
-        {/* ── Animated D.scribe waveform logo — center, upper-mid ── */}
-        <div style={{
-          position: "absolute",
-          top: "22%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "52%",
-          height: "20vh",
-          zIndex: 2,
-          pointerEvents: "none",
-        }}>
+        {/* Waveform Logo */}
+        <div style={{ position: "absolute", top: "8%", left: "55%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
           <CinematicMurmurWaveform />
         </div>
 
-        {/* ── Your Story Starts → [HERE] — centered below logo ── */}
-        <div style={{
-          position: "absolute",
-          top: "45%",
-          left: 0, right: 0,
-          zIndex: 2,
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 20,
-        }}>
-          <span style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic",
-            fontSize: 46,
-            color: "#ffffff",
-            opacity: 0.9,
-          }}>
-            Your Story Starts{" "}<span style={{ fontStyle: "normal" }}>→</span>
-          </span>
-          <Link href="/auth/signup" className="lv2-pill-here">
+        {/* Sub-hero CTA */}
+        <div style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 46, color: "#ffffff", opacity: 0.9, marginLeft: -176, marginRight: -7, marginTop: 2 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
+          <Link
+            href="/auth/signup"
+            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", marginLeft: 0, marginTop: 10, display: "inline-flex", alignItems: "center" }}
+          >
             HERE
           </Link>
         </div>
 
-        {/* ── You talk. It writes. — centered ── */}
-        <div style={{
-          position: "absolute",
-          top: "54%",
-          left: 0, right: 0,
-          zIndex: 2,
-          textAlign: "center",
-        }}>
-          <div style={{
-            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(38px, 3.8vw, 58px)",
-            fontWeight: 400,
-            color: "#F9F7F2",
-            lineHeight: 1.2,
-            marginBottom: 8,
-          }}>
-            You talk.{" "}
-            <em style={{ color: "#D9A820" }}>It writes.</em>
-          </div>
-          <div style={{
-            fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 22,
-            color: "rgba(255,255,255,0.85)",
-            marginBottom: 3,
-          }}>
-            Stop waiting to write your book...
-          </div>
-          <div style={{
-            fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 20,
-            fontWeight: 700,
-            color: "#C17A47",
-          }}>
-            just start talking.
-          </div>
+        {/* Center Tagline */}
+        <div style={{ position: "absolute", top: "54%", left: "50%", transform: "translateX(-50%)", textAlign: "center", width: "100%", zIndex: 2 }}>
+          <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 57, color: "#F9F7F2", fontWeight: 400, marginBottom: 12, marginTop: -30 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
+          <div style={{ fontSize: 25, color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em", marginLeft: -1, marginTop: -15 }}>Stop waiting to write your book...</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
         </div>
 
-        {/* ── There's an author inside you — left side ── */}
-        <div style={{
-          position: "absolute",
-          top: "42%",
-          left: 80,
-          zIndex: 2,
-          maxWidth: 360,
-        }}>
-          <h2 style={{
-            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-            fontSize: "clamp(40px, 4.5vw, 68px)",
-            fontWeight: 800,
-            lineHeight: 0.95,
-            color: "#F9F7F2",
-            marginBottom: 16,
-          }}>
-            There&rsquo;s an<br />Author<br />
-            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>
-              Inside You
-            </span>
+        {/* Left Side Author Content */}
+        <div style={{ position: "absolute", top: "42%", left: 80, maxWidth: 420, zIndex: 2 }}>
+          <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
+            There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
           </h2>
-          <p style={{
-            fontFamily: "var(--font-lora), 'Lora', serif",
-            fontSize: 16,
-            lineHeight: 1.6,
-            color: "rgba(249,247,242,0.45)",
-            marginBottom: 20,
-            maxWidth: 300,
-          }}>
+          <p style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.5)", marginBottom: 20, maxWidth: 320, marginLeft: -50, marginTop: 10, paddingLeft: 0, paddingTop: 0, paddingRight: 0, paddingBottom: 0, marginRight: 0, width: 500 }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
-          <Link href="/auth/signup" className="lv2-ghost">
-            Begin Your Book <span style={{ marginLeft: 10, fontSize: 16 }}>→</span>
+          <Link
+            href="/auth/signup"
+            style={{ display: "inline-flex", alignItems: "center", padding: "8px 29px 10px 7px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", width: 217.844, height: 50, marginLeft: -50, marginRight: 0, marginTop: -57, marginBottom: 12 }}
+          >
+            Begin Your Book <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
           </Link>
         </div>
 
-        {/* ── Bottom stats strip ── */}
-        <div style={{
-          position: "absolute",
-          bottom: 0, left: 0, right: 0,
-          zIndex: 2,
-          display: "flex",
-          justifyContent: "space-around",
-          padding: "28px 80px",
-          background: "linear-gradient(to top, rgba(26,20,14,0.9), transparent)",
-          backdropFilter: "blur(4px)",
-        }}>
-          {[
-            { value: "< 10 min", label: "Audio to first chapter" },
-            { value: "6 steps",  label: "From voice to published book" },
-            { value: "Your voice", label: "AI writes in your style, not its own" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ textAlign: "center" }}>
-              <div style={{
-                fontFamily: "var(--font-playfair), serif",
-                fontSize: "clamp(24px, 2.8vw, 44px)",
-                fontWeight: 900,
-                color: "#E6C18B",
-                marginBottom: 4,
-              }}>
-                {stat.value}
-              </div>
-              <div style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.6)",
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-              }}>
-                {stat.label}
-              </div>
-            </div>
-          ))}
+        {/* Bottom Stats Footer */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "space-around", padding: "40px 80px", paddingLeft: 80, marginTop: -14, background: "linear-gradient(to top, rgba(26, 20, 14, 0.9), transparent)", backdropFilter: "blur(4px)", zIndex: 2 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2, marginLeft: 215, marginTop: 0, marginRight: 1 }}>{"< 10 min"}</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: 215 }}>Audio to first chapter</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4, marginTop: 0, marginLeft: -510 }}>6 steps</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: -510 }}>From voice to published book</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4, marginLeft: -720, marginTop: 0 }}>Your voice</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: -700 }}>AI writes in your style, not its own</div>
+          </div>
         </div>
       </section>
 
@@ -473,61 +340,22 @@ export default function LandingV2() {
           100% { transform: scaleY(var(--scale-max, 1));   opacity: 1; }
         }
 
-        /* Navbar pill */
+        /* Navbar Get Started pill */
         .lv2-pill-cta {
           display: inline-flex;
           align-items: center;
-          padding: 10px 28px;
-          background: #C8A882;
-          color: #F9F7F2;
-          font-family: var(--font-manrope), sans-serif;
-          font-size: 16px;
+          gap: 8px;
+          padding: 12px 32px;
+          background: #C17A47;
+          color: #1A140E;
+          font-size: 20px;
           font-weight: 700;
           border-radius: 999px;
           cursor: pointer;
           text-decoration: none;
           transition: background 0.2s ease;
         }
-        .lv2-pill-cta:hover { background: #b8936e; }
-
-        /* HERE button */
-        .lv2-pill-here {
-          display: inline-flex;
-          align-items: center;
-          padding: 14px 44px;
-          background: #C17A47;
-          color: #1A140E;
-          font-size: 18px;
-          font-weight: 800;
-          border-radius: 20px;
-          cursor: pointer;
-          text-decoration: none;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-          transition: background 0.2s ease, transform 0.15s ease;
-        }
-        .lv2-pill-here:hover { background: #D98B58; transform: scale(1.05); }
-
-        /* Begin Your Book button — gold filled */
-        .lv2-ghost {
-          display: inline-flex;
-          align-items: center;
-          padding: 8px 28px 10px 8px;
-          background: #E6C18B;
-          color: #1A140E;
-          font-size: 15px;
-          font-weight: 700;
-          border-radius: 4px;
-          cursor: pointer;
-          text-decoration: none;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          height: 50px;
-          transition: background 0.2s ease, transform 0.15s ease;
-        }
-        .lv2-ghost:hover {
-          background: #F0D6AF;
-          transform: scale(1.02);
-        }
+        .lv2-pill-cta:hover { background: #D98B58; }
 
         /* Final CTA */
         .lv2-cta {

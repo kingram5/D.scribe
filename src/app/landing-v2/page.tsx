@@ -633,38 +633,50 @@ const LANDING_BOOKS = [
   {
     title: "Leading With Clarity",
     author: "Marcus T.",
+    genre: "Business / Leadership",
     cover: "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
     snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty — it's about direction. For years I thought great leaders never showed doubt. I was wrong. The teams that trusted me most were the ones who watched me sit with a hard problem, think out loud, and admit when I needed help. That vulnerability wasn't weakness. It was the whole thing.",
+    review: "I never thought I'd write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.",
   },
   {
     title: "Faith in the Everyday",
     author: "Pastor Renee J.",
+    genre: "Faith Community",
     cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
     snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years — the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
+    review: "My congregation had been asking me to write down my sermons for years. What I couldn't have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.",
   },
   {
     title: "The Anxiety Playbook",
     author: "Dr. Sam K.",
+    genre: "Self-Help",
     cover: "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
     snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it — it's acting anyway, one small step at a time. I've spent fifteen years as a therapist saying this. The book I ended up writing isn't about curing anxiety. It's about learning to move while it's loud. Every tool inside came from someone who thought they were too broken to use it — and used it anyway.",
+    review: "I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I'm genuinely proud of — a practical guide that my patients actually want to read.",
   },
   {
     title: "Fifty Miles, Fifty Lessons",
     author: "James R.",
+    genre: "Running / Memoir",
     cover: "linear-gradient(160deg, #6B5A42 0%, #4A3D2C 40%, #352B1F 100%)",
     snippet: "I signed up for my first ultramarathon at 47, eighteen months after my divorce. People thought I was having a crisis. Maybe I was. But somewhere around mile thirty-one on a trail in Colorado, I stopped running away from something and started running toward it. This book isn't really about running. It's about what happens when you put your body through something your mind says is impossible — and you survive it, and learn to do it again.",
+    review: "I never journaled, never kept notes — just ran. D. scribe turned thirty voice recordings from my training runs into a real manuscript. People at my gym ask me where they can buy it.",
   },
   {
     title: "The First Generation",
     author: "Maria L.",
+    genre: "Immigration / Family",
     cover: "linear-gradient(160deg, #8B3D50 0%, #6B2D3E 40%, #4A1F2C 100%)",
     snippet: "My mother crossed the border with eleven dollars and a name written on a napkin. She never learned to read English. Forty years later, I'm writing her story in a language she never had. This book is for every child who grew up translating — at the doctor's office, at the bank, at parent-teacher conferences. You weren't the child. You were the bridge. And that shaped you in ways you're still discovering.",
+    review: "Writing this felt impossible — too emotional, too personal, too much. D. scribe gave me enough distance to tell the story honestly. My mother cried the first time I read it to her.",
   },
   {
     title: "Built From the Ground Up",
     author: "Derek O.",
+    genre: "Entrepreneurship",
     cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
     snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had — the honest, unglamorous version of building something from nothing, mistake by mistake.",
+    review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about six weekends. Worth every minute.",
   },
 ];
 
@@ -794,6 +806,33 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
             transition: "all 0.3s ease",
           }} />
         ))}
+      </div>
+
+      {/* Review card — synced to current book */}
+      <div key={current} className="lbook-review-card" style={{
+        maxWidth: 640, margin: "48px auto 0",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(249,247,242,0.08)",
+        borderRadius: 20,
+        padding: "32px 40px",
+        display: "flex", flexDirection: "column", gap: 16,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: "#A89F94", marginBottom: 4, fontFamily: "var(--font-manrope), sans-serif" }}>
+              {books[current].author}
+            </div>
+            <div style={{ fontFamily: "var(--font-playfair), serif", fontSize: 20, fontWeight: 600, color: "#F9F7F2" }}>
+              {books[current].title}
+            </div>
+          </div>
+          <span style={{ padding: "4px 14px", borderRadius: 999, fontSize: 11, fontWeight: 600, fontFamily: "var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+            {books[current].genre}
+          </span>
+        </div>
+        <p style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.7, color: "#A89F94" }}>
+          &ldquo;{books[current].review}&rdquo;
+        </p>
       </div>
     </div>
   );
@@ -1072,40 +1111,6 @@ export default function LandingV2() {
             </div>
             <BookCarousel books={LANDING_BOOKS} />
 
-            {/* Review cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Marcus T.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Leading with Clarity</h3>
-                </div>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Business/Leadership</span>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;I never thought I&apos;d write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D.&thinsp;scribe turned three hours of rambling voice memos into twelve coherent chapters.&rdquo;
-                </p>
-              </div>
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5 md:-translate-y-12">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Pastor Renee J.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Faith in the Everyday</h3>
-                </div>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Faith Community</span>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;My congregation had been asking me to write down my sermons for years. What I couldn&apos;t have done in a decade, D.&thinsp;scribe helped me accomplish in a weekend. Every word still sounds like me.&rdquo;
-                </p>
-              </div>
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Dr. Sam K.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>The Anxiety Playbook</h3>
-                </div>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Self-Help</span>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;I recorded my thoughts during my morning runs for three months. D.&thinsp;scribe organized them into something I&apos;m genuinely proud of — a practical guide that my patients actually want to read.&rdquo;
-                </p>
-              </div>
-            </div>
-
             <div className="text-center mt-16">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →
@@ -1279,6 +1284,13 @@ export default function LandingV2() {
         }
         .lv2-cta:hover { background: #a8672f; transform: translateY(-2px); }
         .lv2-cta:active { transform: translateY(0) scale(0.98); }
+
+        /* Review card fade-in */
+        @keyframes lbook-card-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .lbook-review-card { animation: lbook-card-in 0.45s ease-out both; }
 
         /* Landing books */
         .lbook-wrap:hover .lbook-cover { transform: rotateY(-155deg); }

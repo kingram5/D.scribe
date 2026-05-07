@@ -388,37 +388,37 @@ function PipelineDashboard() {
 // ---------------------------------------------------------------------------
 
 const BS_SCRIPTS = [
-  // 1 — Entrepreneur
+  // 1 - Entrepreneur
   [
     { role: "user", text: "I want to write a book about building my business from zero to a million dollars" },
     { role: "ai",   text: "That's a powerful story. What was the single moment you knew it was actually going to work?" },
-    { role: "user", text: "When our first corporate client signed — a six-figure contract. I just sat in my car and cried" },
+    { role: "user", text: "When our first corporate client signed a six-figure deal. I just sat in my car and cried" },
     { role: "ai",   text: "What had you given up to get to that moment? What did that contract really mean?" },
     { role: "user", text: "Everything. I hadn't paid myself in eight months. My wife believed in me more than I did" },
     { role: "ai",   text: "That's the heart of the book right there. Who do you most want to read this story?" },
-    { role: "user", text: "Other entrepreneurs in the dark years — when you don't know if it's going to work" },
+    { role: "user", text: "Other entrepreneurs in the dark years, when you don't know if it's going to work" },
     { role: "ai",   text: "The dark years. What kept you going when you had every reason to quit?" },
     { role: "user", text: "Stubbornness. And one mentor who said the hardest part is always right before the breakthrough" },
     { role: "ai",   text: "That mentor deserves a chapter. What's the one thing he told you that changed everything?" },
     { role: "user", text: "He said: 'Stop trying to be ready. You never will be. Just ship the thing.'" },
     { role: "ai",   text: "That's your title. Or your first chapter. Let's build the whole structure around that moment." },
   ],
-  // 2 — Grief & Running
+  // 2 - Grief & Running
   [
     { role: "user", text: "I want to write about the year I ran 12 marathons and what it taught me about grief" },
-    { role: "ai",   text: "Grief and running — deeply connected. Who did you lose, and when did the running start?" },
+    { role: "ai",   text: "Grief and running. Both pull you forward. Who did you lose, and when did the running start?" },
     { role: "user", text: "My dad. Six months after the funeral I signed up for a race just to have something to wake up for" },
     { role: "ai",   text: "Something to wake up for. That's a book right there. What did the first race feel like?" },
     { role: "user", text: "Terrible. I cried through mile eight. But I finished, and for the first time in months I felt something" },
-    { role: "ai",   text: "What was that feeling exactly — not 'hope,' something more specific?" },
+    { role: "ai",   text: "What was that feeling exactly. Not hope. Something more specific." },
     { role: "user", text: "Like I was still here. Like my body was proof I was alive even when my mind wasn't sure" },
     { role: "ai",   text: "That's extraordinary. Did the other runners know what you were carrying?" },
     { role: "user", text: "One woman did. She ran beside me for three miles without saying a word. Just stayed there." },
     { role: "ai",   text: "She has to be in the book. What would you want readers to take from your story?" },
-    { role: "user", text: "That grief doesn't end — it changes shape. Running didn't fix me. It gave the pain somewhere to go." },
+    { role: "user", text: "That grief doesn't end. It changes shape. Running didn't fix me. It gave the pain somewhere to go." },
     { role: "ai",   text: "That's your last line. Now let's work backward and build everything that earns it." },
   ],
-  // 3 — ER Doctor
+  // 3 - ER Doctor
   [
     { role: "user", text: "I've been an ER doctor for 22 years and I want to write about what the job really looks like" },
     { role: "ai",   text: "What does the public get most wrong about emergency medicine?" },
@@ -428,27 +428,27 @@ const BS_SCRIPTS = [
     { role: "ai",   text: "Tell me about one of those moments. A specific patient, a specific night." },
     { role: "user", text: "A kid came in alone at 2am. Fourteen years old. I won't say why. I stayed with him until morning." },
     { role: "ai",   text: "You don't have to say more. What does a night like that cost you?" },
-    { role: "user", text: "Everything you don't talk about. That's why I'm writing this — because we don't talk about it" },
-    { role: "ai",   text: "Who should read this — other doctors, or people who've never seen inside an ER?" },
+    { role: "user", text: "Everything you don't talk about. That's why I'm writing this. Because we don't talk about it." },
+    { role: "ai",   text: "Who should read this? Other doctors, or people who've never seen inside an ER?" },
     { role: "user", text: "Both. I want patients to understand what we carry. And young doctors to know it's okay to feel it." },
-    { role: "ai",   text: "That's your purpose. This isn't just a memoir — it's permission. Let's build it around that." },
+    { role: "ai",   text: "That's your purpose. This isn't just a memoir. It's permission. Let's build it around that." },
   ],
-  // 4 — Family Legacy
+  // 4 - Family Legacy
   [
     { role: "user", text: "My grandmother came from Cuba in 1962 and I want to write her story before it's lost" },
-    { role: "ai",   text: "Before it's lost — that urgency matters. Is she still with you?" },
+    { role: "ai",   text: "Before it's lost. That urgency is real. Is she still with you?" },
     { role: "user", text: "She's 91. Her memory comes and goes. I've been recording her on my phone for two years" },
     { role: "ai",   text: "Two years of recordings. What does she talk about most when she's clear?" },
     { role: "user", text: "The house she left behind. She had a mango tree in the yard. Describes it like she can still smell it" },
     { role: "ai",   text: "The mango tree. That's the image that carries the whole book. What did leaving Cuba cost her?" },
-    { role: "user", text: "Everything material. But she always said she left with the important things — her kids, her faith, her recipes" },
+    { role: "user", text: "Everything material. But she always said she left with the important things: her kids, her faith, her recipes" },
     { role: "ai",   text: "Her recipes. Are they written down anywhere?" },
-    { role: "user", text: "Only in her head. I've been writing them down too. I want the book to include them — food as memory" },
+    { role: "user", text: "Only in her head. I've been writing them down too. I want the book to include them as memory" },
     { role: "ai",   text: "A memoir with recipes woven through it. Each dish a portal to a different chapter of her life." },
     { role: "user", text: "Exactly. I want my kids to cook her ropa vieja and feel like they actually knew her" },
     { role: "ai",   text: "That's the most beautiful reason to write a book I've heard. Let's make sure it does exactly that." },
   ],
-  // 5 — Life Coach
+  // 5 - Life Coach
   [
     { role: "user", text: "I'm a life coach and I want to write about the one question that changed every client I've had" },
     { role: "ai",   text: "One question. What is it?" },
@@ -461,7 +461,22 @@ const BS_SCRIPTS = [
     { role: "user", text: "I quit my corporate job in 48 hours. Best decision of my life. Terrifying for six months after." },
     { role: "ai",   text: "The terror is part of the story. What do you want readers to do after finishing your book?" },
     { role: "user", text: "Write down their answer and actually do something about it that same week." },
-    { role: "ai",   text: "That's your call to action — and your last chapter. Let's design the whole book to build toward it." },
+    { role: "ai",   text: "That's your call to action and your last chapter. Let's design the whole book to build toward it." },
+  ],
+  // 6 - Faith
+  [
+    { role: "user", text: "I've been leading our congregation for fifteen years and I want to write about everyday faith" },
+    { role: "ai",   text: "Everyday faith. What does that mean to you, separate from Sunday morning faith?" },
+    { role: "user", text: "Most people think faith is for big moments. Funerals, miracles, weddings. But it lives in the Tuesday" },
+    { role: "ai",   text: "The Tuesday afternoon. What does faith actually look like there?" },
+    { role: "user", text: "It looks like choosing patience in the checkout line. Forgiving someone before they ask. Showing up anyway." },
+    { role: "ai",   text: "Those are stories, not principles. Which one changed you personally the most?" },
+    { role: "user", text: "When I almost walked away from ministry. I was burned out. Empty. Preaching words I wasn't feeling." },
+    { role: "ai",   text: "What brought you back?" },
+    { role: "user", text: "I admitted it from the pulpit. That I was dry. That I needed the congregation as much as they needed me." },
+    { role: "ai",   text: "That moment of honesty belongs in the first chapter. What happened after you said it?" },
+    { role: "user", text: "People cried. Then we prayed together. It was the most alive our church had felt in years." },
+    { role: "ai",   text: "That's the whole book in one scene. Faith isn't performance. It's presence. Let's build from there." },
   ],
 ];
 
@@ -690,7 +705,7 @@ function BrainstormMock() {
           </div>
         </div>
         <div style={{ fontSize: 11, color: "rgba(0,0,0,0.3)", textAlign: "center", marginTop: 6, fontFamily: "var(--font-manrope), sans-serif" }}>
-          {displayed.length >= 2 ? `${Math.floor(displayed.length / 2)} exchanges · Ready to finish when you are` : "Keep going — share a few more ideas before finishing"}
+          {displayed.length >= 2 ? `${Math.floor(displayed.length / 2)} exchanges · Ready to finish when you are` : "Keep going, share a few more ideas before finishing"}
         </div>
       </div>
     </div>
@@ -703,7 +718,7 @@ const LANDING_BOOKS = [
     author: "Marcus T.",
     genre: "Business / Leadership",
     cover: "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
-    snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty — it's about direction. For years I thought great leaders never showed doubt. I was wrong. The teams that trusted me most were the ones who watched me sit with a hard problem, think out loud, and admit when I needed help. That vulnerability wasn't weakness. It was the whole thing.",
+    snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty. It's about direction. For years I thought great leaders never showed doubt. I was wrong. The teams that trusted me most were the ones who watched me sit with a hard problem, think out loud, and admit when I needed help. That vulnerability wasn't weakness. It was the whole thing.",
     review: "I never thought I'd write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.",
   },
   {
@@ -711,7 +726,7 @@ const LANDING_BOOKS = [
     author: "Pastor Renee J.",
     genre: "Faith Community",
     cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
-    snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years — the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
+    snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years: the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
     review: "My congregation had been asking me to write down my sermons for years. What I couldn't have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.",
   },
   {
@@ -719,31 +734,31 @@ const LANDING_BOOKS = [
     author: "Dr. Sam K.",
     genre: "Self-Help",
     cover: "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
-    snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it — it's acting anyway, one small step at a time. I've spent fifteen years as a therapist saying this. The book I ended up writing isn't about curing anxiety. It's about learning to move while it's loud. Every tool inside came from someone who thought they were too broken to use it — and used it anyway.",
-    review: "I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I'm genuinely proud of — a practical guide that my patients actually want to read.",
+    snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it. It's acting anyway, one small step at a time. I've spent fifteen years as a therapist saying this. The book I ended up writing isn't about curing anxiety. It's about learning to move while it's loud. Every tool inside came from someone who thought they were too broken to use it, and used it anyway.",
+    review: "I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I'm genuinely proud of, a practical guide that my patients actually want to read.",
   },
   {
     title: "Fifty Miles, Fifty Lessons",
     author: "James R.",
     genre: "Running / Memoir",
     cover: "linear-gradient(160deg, #6B5A42 0%, #4A3D2C 40%, #352B1F 100%)",
-    snippet: "I signed up for my first ultramarathon at 47, eighteen months after my divorce. People thought I was having a crisis. Maybe I was. But somewhere around mile thirty-one on a trail in Colorado, I stopped running away from something and started running toward it. This book isn't really about running. It's about what happens when you put your body through something your mind says is impossible — and you survive it, and learn to do it again.",
-    review: "I never journaled, never kept notes — just ran. D. scribe turned thirty voice recordings from my training runs into a real manuscript. People at my gym ask me where they can buy it.",
+    snippet: "I signed up for my first ultramarathon at 47, eighteen months after my divorce. People thought I was having a crisis. Maybe I was. But somewhere around mile thirty-one on a trail in Colorado, I stopped running away from something and started running toward it. This book isn't really about running. It's about what happens when you put your body through something your mind says is impossible, and you survive it, and learn to do it again.",
+    review: "I never journaled, never kept notes, just ran. D. scribe turned thirty voice recordings from my training runs into a real manuscript. People at my gym ask me where they can buy it.",
   },
   {
     title: "The First Generation",
     author: "Maria L.",
     genre: "Immigration / Family",
     cover: "linear-gradient(160deg, #8B3D50 0%, #6B2D3E 40%, #4A1F2C 100%)",
-    snippet: "My mother crossed the border with eleven dollars and a name written on a napkin. She never learned to read English. Forty years later, I'm writing her story in a language she never had. This book is for every child who grew up translating — at the doctor's office, at the bank, at parent-teacher conferences. You weren't the child. You were the bridge. And that shaped you in ways you're still discovering.",
-    review: "Writing this felt impossible — too emotional, too personal, too much. D. scribe gave me enough distance to tell the story honestly. My mother cried the first time I read it to her.",
+    snippet: "My mother crossed the border with eleven dollars and a name written on a napkin. She never learned to read English. Forty years later, I'm writing her story in a language she never had. This book is for every child who grew up translating: at the doctor's office, at the bank, at parent-teacher conferences. You weren't the child. You were the bridge. And that shaped you in ways you're still discovering.",
+    review: "Writing this felt impossible. Too emotional, too personal, too much. D. scribe gave me enough distance to tell the story honestly. My mother cried the first time I read it to her.",
   },
   {
     title: "Built From the Ground Up",
     author: "Derek O.",
     genre: "Entrepreneurship",
     cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
-    snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had — the honest, unglamorous version of building something from nothing, mistake by mistake.",
+    snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had. The honest, unglamorous version of building something from nothing, mistake by mistake.",
     review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about two weekends. Worth every minute.",
   },
 ];

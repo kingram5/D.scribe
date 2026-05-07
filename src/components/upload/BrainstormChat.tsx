@@ -21,6 +21,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const [summarizing, setSummarizing] = useState(false);
   const [started, setStarted] = useState(false);
   const [listening, setListening] = useState(false);
+  const [showResume, setShowResume] = useState(false);
+  const [savedMessages, setSavedMessages] = useState<Message[]>([]);
+  const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -340,6 +343,25 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     autoSendRef.current = sendMessage;
   }, [sendMessage]);
 
+  // Load saved session on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(sessionKey);
+      if (raw) {
+        const msgs: Message[] = JSON.parse(raw);
+        if (msgs.length >= 2) { setSavedMessages(msgs); setShowResume(true); }
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave on every message change
+  useEffect(() => {
+    if (started && messages.length > 0) {
+      localStorage.setItem(sessionKey, JSON.stringify(messages));
+    }
+  }, [messages, started, sessionKey]);
+
   const finishBrainstorm = useCallback(async () => {
     // Need at least 2 user messages to have meaningful content
     const userMessages = messages.filter(m => m.role === "user");
@@ -355,6 +377,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
       });
 
       if (res.ok) {
+        localStorage.removeItem(sessionKey);
         onComplete();
       } else {
         const err = await res.json();
@@ -380,6 +403,50 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const canUndo = userMessageCount > 0 && !streaming && !summarizing && messages.length >= 2;
   const canFinish = userMessageCount >= 2 && !streaming && !summarizing;
+
+  // Resume prompt
+  if (showResume) {
+    const lastMsg = savedMessages[savedMessages.length - 1];
+    const preview = lastMsg?.content.slice(0, 110) + (lastMsg?.content.length > 110 ? "…" : "");
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20, padding: "0 48px" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: "1.4rem", fontWeight: 400, color: "var(--ds-ink)", marginBottom: 8 }}>
+            Continue where you left off?
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 300, lineHeight: 1.5, marginBottom: 4 }}>
+            Last message:
+          </p>
+          <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-tertiary)", fontFamily: "var(--font-lora), serif", maxWidth: 320, lineHeight: 1.6 }}>
+            &ldquo;{preview}&rdquo;
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 }}>
+          <button
+            className="transcribe-btn"
+            onClick={() => { setMessages(savedMessages); setStarted(true); setShowResume(false); }}
+          >
+            Continue Session →
+          </button>
+          <button
+            className="transcribe-btn"
+            style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+            onClick={() => { localStorage.removeItem(sessionKey); setSavedMessages([]); setShowResume(false); }}
+          >
+            Start New Session
+          </button>
+        </div>
+        <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}>
+          ← Back to upload options
+        </button>
+      </div>
+    );
+  }
 
   // Pre-start state
   if (!started) {

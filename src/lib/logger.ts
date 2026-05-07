@@ -14,12 +14,12 @@ import pino from "pino";
 import path from "path";
 import fs from "fs";
 
-// Ensure logs/ directory exists at module load time
+const IS_VERCEL = !!process.env.VERCEL;
 const LOG_DIR = path.join(process.cwd(), "logs");
 const LOG_FILE = path.join(LOG_DIR, "app.log");
 
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+if (!IS_VERCEL && !fs.existsSync(LOG_DIR)) {
+  try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch { /* read-only fs */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -51,15 +51,14 @@ export interface LogOptions {
 function buildTransports(): pino.TransportMultiOptions | pino.TransportSingleOptions | undefined {
   const isDev = process.env.NODE_ENV !== "production";
 
-  // File transport target — always present
-  const fileTransport: pino.TransportTargetOptions = {
+  // File transport — only usable on local (Vercel filesystem is read-only)
+  const fileTransport: pino.TransportTargetOptions | null = IS_VERCEL ? null : {
     target: "pino/file",
     level: "info",
     options: { destination: LOG_FILE, append: true, mkdir: true },
   };
 
   if (isDev) {
-    // Development: pretty console + file
     const prettyTransport: pino.TransportTargetOptions = {
       target: "pino-pretty",
       level: "info",
@@ -70,18 +69,16 @@ function buildTransports(): pino.TransportMultiOptions | pino.TransportSingleOpt
         messageFormat: "{route} {msg}",
       },
     };
-    return {
-      targets: [prettyTransport, fileTransport],
-    };
+    const targets = fileTransport ? [prettyTransport, fileTransport] : [prettyTransport];
+    return { targets };
   }
 
-  // Production: Axiom (if configured) + file
+  // Production: Axiom (if configured) + file (if available)
   const axiomToken = process.env.AXIOM_TOKEN;
   const axiomDataset = process.env.AXIOM_DATASET;
 
   if (!axiomToken) {
-    // Warn once at startup — still write to file
-    console.warn("[logger] AXIOM_TOKEN not set — skipping Axiom transport, writing to file only");
+    if (!fileTransport) return undefined; // Vercel + no Axiom → pino stdout only
     return { targets: [fileTransport] };
   }
 
@@ -94,9 +91,8 @@ function buildTransports(): pino.TransportMultiOptions | pino.TransportSingleOpt
     },
   };
 
-  return {
-    targets: [axiomTransport, fileTransport],
-  };
+  const targets = fileTransport ? [axiomTransport, fileTransport] : [axiomTransport];
+  return { targets };
 }
 
 // ---------------------------------------------------------------------------

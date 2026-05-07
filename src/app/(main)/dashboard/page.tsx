@@ -10,13 +10,34 @@ import { useAuth } from "@/hooks/useAuth";
 import { STATUS_COLORS } from "@/lib/constants";
 import UsageWidget from "@/components/ui/UsageWidget";
 
-// ── Rotating quotes — replace these with your 25 ──────────────────────────
+// ── Rotating quotes ────────────────────────────────────────────────────────
 const WORKSPACE_QUOTES: { text: string; author: string }[] = [
-  { text: "The first draft is just you telling yourself the story.", author: "Terry Pratchett" },
-  { text: "A writer only begins a book. A reader finishes it.", author: "Samuel Johnson" },
-  { text: "You don't start out writing good stuff. You start out writing crap and thinking it's good stuff.", author: "Octavia Butler" },
-  { text: "Fill your paper with the breathings of your heart.", author: "William Wordsworth" },
-  { text: "The scariest moment is always just before you start.", author: "Stephen King" },
+  { text: "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters.", author: "Colossians 3:23" },
+  { text: "Commit to the Lord whatever you do, and he will establish your plans.", author: "Proverbs 16:3" },
+  { text: "Then the Lord replied: ‘Write down the revelation and make it plain on tablets so that a herald may run with it.’", author: "Habakkuk 2:2" },
+  { text: "Do not despise these small beginnings, for the Lord rejoices to see the work begin.", author: "Zechariah 4:10" },
+  { text: "My mouth shall speak wisdom; the meditation of my heart shall give understanding.", author: "Psalm 49:3" },
+  { text: "Start writing, no matter what. The water does not flow until the faucet is turned on.", author: "Louis L’Amour" },
+  { text: "There is no greater agony than bearing an untold story inside you.", author: "Maya Angelou" },
+  { text: "Creativity takes courage.", author: "Henri Matisse" },
+  { text: "A professional writer is an amateur who didn’t quit.", author: "Richard Bach" },
+  { text: "Write what should not be forgotten.", author: "Isabel Allende" },
+  { text: "We are all apprentices in a craft where no one ever becomes a master.", author: "Ernest Hemingway" },
+  { text: "Let the favor of the Lord our God be upon us, and establish the work of our hands upon us; yes, establish the work of our hands!", author: "Psalm 90:17" },
+  { text: "Whatever your hand finds to do, do it with all your might.", author: "Ecclesiastes 9:10" },
+  { text: "Let your light so shine before men, that they may see your good works, and glorify your Father which is in heaven.", author: "Matthew 5:16" },
+  { text: "I have filled him with the Spirit of God, with wisdom, with understanding, with knowledge and with all kinds of skills—to make artistic designs.", author: "Exodus 31:3–4" },
+  { text: "Each of you should use whatever gift you have received to serve others, as faithful stewards of God’s grace in its various forms.", author: "1 Peter 4:10" },
+  { text: "A word after a word after a word is power.", author: "Margaret Atwood" },
+  { text: "If there’s a book that you want to read, but it hasn’t been written yet, then you must write it.", author: "Toni Morrison" },
+  { text: "Writing is the painting of the voice.", author: "Voltaire" },
+  { text: "I write to discover what I know.", author: "Flannery O’Connor" },
+  { text: "The artist is nothing without the gift, but the gift is nothing without work.", author: "Émile Zola" },
+  { text: "Inspiration exists, but it has to find you working.", author: "Pablo Picasso" },
+  { text: "Whatever you can do, or dream you can, begin it. Boldness has genius, power, and magic in it.", author: "Johann Wolfgang von Goethe" },
+  { text: "The role of a writer is not to say what we all can say, but what we are unable to say.", author: "Anaïs Nin" },
+  { text: "There is no rule on how to write. Sometimes it comes easily and perfectly; sometimes it’s like drilling rock and then blasting it out with charges.", author: "Ernest Hemingway" },
+  { text: "We write to taste life twice, in the moment and in retrospect.", author: "Anaïs Nin" },
 ];
 
 function MiniWaveform() {

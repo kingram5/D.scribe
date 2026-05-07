@@ -13,6 +13,8 @@ import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk } from "@/lib/ink";
 
+export const maxDuration = 60;
+
 // POST /api/generate — generate a chapter or foreword
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();

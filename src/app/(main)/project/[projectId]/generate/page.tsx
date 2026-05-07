@@ -31,7 +31,8 @@ export default function GeneratePage() {
   const [genAllError, setGenAllError] = useState<string | null>(null);
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
-  const regenerateJob = useJob();
+  const [regenRunning, setRegenRunning] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number; per_chapter?: number[] } | null>(null);
@@ -120,19 +121,6 @@ export default function GeneratePage() {
     });
   }
 
-  // Poll a job until it reaches a terminal state
-  async function awaitJob(jobId: string): Promise<{ status: string; error?: string }> {
-    while (true) {
-      await new Promise(r => setTimeout(r, 2000));
-      try {
-        const res = await fetch(`/api/jobs/${jobId}`);
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (data.status === "completed" || data.status === "failed") return data;
-      } catch { /* keep polling on network error */ }
-    }
-  }
-
   async function generateAll() {
     const toGenerate = chapters.filter(ch => ch.status !== "generated");
     if (toGenerate.length === 0) return;
@@ -144,37 +132,42 @@ export default function GeneratePage() {
     try {
       const total = toGenerate.length;
 
-      // Generate each chapter with a separate Vercel function call
+      // Call /api/generate directly — synchronous, maxDuration=60, no after() overhead
       for (let i = 0; i < toGenerate.length; i++) {
         const ch = toGenerate[i];
         setGenAllProgress({ step: "generating", current: i + 1, total, message: `Writing chapter ${i + 1} of ${total}: ${ch.title}` });
 
-        const startRes = await fetch("/api/jobs", {
+        const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "generate", project_id: projectId, chapter_id: ch.id, creative_freedom: creativeFreedom }),
+          body: JSON.stringify({ chapter_id: ch.id, creative_freedom: creativeFreedom }),
         });
 
-        if (startRes.status === 402) { setShowUpgrade(true); return; }
-        if (!startRes.ok) { const e = await startRes.json(); throw new Error(e.error || `Chapter ${i + 1} failed to start`); }
-
-        const { job_id } = await startRes.json();
-        const result = await awaitJob(job_id);
-        if (result.status === "failed") throw new Error(result.error || `Chapter ${i + 1} failed`);
+        if (res.status === 402) { setShowUpgrade(true); return; }
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error((e as { error?: string }).error || `Chapter ${i + 1} generation failed`);
+        }
 
         setChapters(prev => prev.map(c => c.id === ch.id ? { ...c, status: "generated" as const } : c));
       }
 
-      // Coherence pass
+      // Coherence pass — direct call, synchronous
       setGenAllProgress({ step: "coherence", current: total, total, message: "Smoothing transitions between chapters..." });
-      const cohRes = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "coherence", project_id: projectId }) });
-      if (cohRes.ok) { const { job_id } = await cohRes.json(); await awaitJob(job_id); }
+      await fetch("/api/coherence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId }),
+      }).catch(() => {/* non-fatal: coherence is best-effort */});
 
-      // Foreword (optional)
+      // Foreword (optional) — direct call to /api/generate with type=foreword
       if (includeForeword) {
         setGenAllProgress({ step: "foreword", current: total, total, message: "Writing foreword..." });
-        const fwRes = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "generate", project_id: projectId, generate_type: "foreword", creative_freedom: creativeFreedom, chapters: chapters.map(c => ({ title: c.title, summary: c.summary })) }) });
-        if (fwRes.ok) { const { job_id } = await fwRes.json(); await awaitJob(job_id); }
+        await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "foreword", project_id: projectId, creative_freedom: creativeFreedom, chapters: chapters.map(c => ({ title: c.title, summary: c.summary })) }),
+        }).catch(() => {});
       }
 
       setGenAllResult({ chapters_generated: toGenerate.length });
@@ -190,27 +183,28 @@ export default function GeneratePage() {
   }
 
   async function regenerateChapter(chapterId: string) {
-    await regenerateJob.start({
-      type: "generate",
-      project_id: projectId,
-      chapter_id: chapterId,
-      creative_freedom: creativeFreedom,
-    });
+    setRegenRunning(true);
+    setRegenError(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: chapterId, creative_freedom: creativeFreedom }),
+      });
+      if (res.status === 402) { setShowUpgrade(true); return; }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error((e as { error?: string }).error || "Chapter generation failed");
+      }
+      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, status: "generated" as const } : c));
+    } catch (err) {
+      setRegenError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setRegenRunning(false);
+    }
   }
 
 
-  // Update chapter status when regenerate job completes
-  useEffect(() => {
-    if (regenerateJob.status === "completed") {
-      setChapters((prev) =>
-        prev.map((ch) =>
-          ch.id === activeChapter ? { ...ch, status: "generated" as const } : ch
-        )
-      );
-      regenerateJob.reset();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regenerateJob.status]);
 
   // Foreword toggle is just a flag — generation happens in "Generate All"
   // But if chapters are already generated, allow standalone foreword generation
@@ -288,7 +282,7 @@ export default function GeneratePage() {
 
   const active = chapters.find((ch) => ch.id === activeChapter);
   const chapterEnrichments = activeChapter ? enrichments[activeChapter] || [] : [];
-  const isGenerating = genAllRunning || regenerateJob.isRunning;
+  const isGenerating = genAllRunning || regenRunning;
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
   const estimatedSeconds = ungeneratedCount * 45;
@@ -757,20 +751,16 @@ export default function GeneratePage() {
               )}
 
               {/* Regenerate progress */}
-              {regenerateJob.isRunning && (
+              {regenRunning && (
                 <div style={{ marginBottom: 16 }}>
-                  <JobProgress
-                    progress={regenerateJob.progress}
-                    error={regenerateJob.error}
-                    status={regenerateJob.status}
-                  />
+                  <JobProgress progress={null} error={null} status="running" />
                 </div>
               )}
-              {regenerateJob.status === "failed" && (
+              {regenError && !regenRunning && (
                 <div style={{ marginBottom: 16 }}>
                   <JobProgress
                     progress={null}
-                    error={regenerateJob.error}
+                    error={regenError}
                     status="failed"
                     onRetry={() => regenerateChapter(active.id)}
                   />
@@ -807,7 +797,7 @@ export default function GeneratePage() {
                     className="nodum-btn"
                     style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
                   >
-                    {regenerateJob.isRunning
+                    {regenRunning
                       ? "Regenerating..."
                       : active.status === "generated"
                         ? "Regenerate Chapter"

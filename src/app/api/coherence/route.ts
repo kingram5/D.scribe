@@ -6,8 +6,9 @@ import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk } from "@/lib/ink";
 
-// POST /api/coherence — run a coherence pass across all chapters
-// Reads first+last paragraphs of each chapter, generates revised transitions
+export const maxDuration = 60;
+
+// POST /api/coherence — synchronous coherence pass, no job queue
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;

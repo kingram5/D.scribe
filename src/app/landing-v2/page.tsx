@@ -676,7 +676,7 @@ const LANDING_BOOKS = [
     genre: "Entrepreneurship",
     cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
     snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had — the honest, unglamorous version of building something from nothing, mistake by mistake.",
-    review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about six weekends. Worth every minute.",
+    review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about two weekends. Worth every minute.",
   },
 ];
 

@@ -74,13 +74,14 @@ export default function TtsMeter({ compact = false }: { compact?: boolean }) {
           }} />
         </div>
         <span style={{
-          fontSize: 20,
+          fontSize: 12,
           fontWeight: 600,
           color: "var(--text-secondary)",
           fontFamily: "var(--font-geist-mono), monospace",
           whiteSpace: "nowrap",
         }}>
           {used.toLocaleString()}
+          <span style={{ fontWeight: 400, opacity: 0.6 }}> / {limit.toLocaleString()}</span>
         </span>
       </div>
     );

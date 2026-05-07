@@ -23,14 +23,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const [listening, setListening] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
+  const [showTtsPrompt, setShowTtsPrompt] = useState(false);
+  const [pendingResume, setPendingResume] = useState(false);
   const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
-
-  const [pendingTts, setPendingTts] = useState(true);
 
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -184,8 +184,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
 
   // Start the conversation — AI sends first message
   const startConversation = useCallback(async () => {
-    setTtsEnabled(pendingTts);
-    ttsEnabledRef.current = pendingTts;
     setStarted(true);
     setStreaming(true);
 
@@ -432,27 +430,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 }}>
           <button
-            onClick={() => setPendingTts(v => !v)}
-            style={{
-              display: "flex", alignItems: "center", gap: 10, justifyContent: "center",
-              background: "var(--input-bg)", border: "1px solid var(--border-subtle)",
-              borderRadius: 40, padding: "8px 16px", cursor: "pointer",
-              fontFamily: "var(--font-manrope), sans-serif", fontSize: 13,
-              color: "var(--text-secondary)",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={pendingTts ? "var(--ds-accent)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round">
-              <rect x="5" y="1" width="6" height="9" rx="3" />
-              <path d="M3 7v1a5 5 0 0010 0V7" /><path d="M8 13v2" />
-            </svg>
-            Voice read-back
-            <div style={{ width: 32, height: 18, borderRadius: 9, position: "relative", background: pendingTts ? "var(--ds-accent)" : "rgba(0,0,0,0.12)", transition: "background 0.2s" }}>
-              <div style={{ position: "absolute", top: 2, left: pendingTts ? 14 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-            </div>
-          </button>
-          <button
             className="transcribe-btn"
-            onClick={() => { setTtsEnabled(pendingTts); ttsEnabledRef.current = pendingTts; setMessages(savedMessages); setStarted(true); setShowResume(false); }}
+            onClick={() => { setPendingResume(true); setShowTtsPrompt(true); setShowResume(false); }}
           >
             Continue Session →
           </button>
@@ -467,6 +446,55 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}>
           ← Back to upload options
         </button>
+      </div>
+    );
+  }
+
+  // TTS choice modal
+  if (showTtsPrompt) {
+    function chooseTts(on: boolean) {
+      setTtsEnabled(on);
+      ttsEnabledRef.current = on;
+      setShowTtsPrompt(false);
+      if (pendingResume) {
+        setMessages(savedMessages);
+        setStarted(true);
+      } else {
+        startConversation();
+      }
+    }
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 24, padding: "0 48px" }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 16,
+          background: "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
+            <rect x="5" y="1" width="6" height="9" rx="3" />
+            <path d="M3 7v1a5 5 0 0010 0V7" /><path d="M8 13v2" />
+          </svg>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: "1.4rem", fontWeight: 400, color: "var(--ds-ink)", marginBottom: 10 }}>
+            Read responses aloud?
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 280, lineHeight: 1.5 }}>
+            AI responses can be spoken back to you using your voice allowance. You can toggle this any time during the session.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 260 }}>
+          <button className="transcribe-btn" onClick={() => chooseTts(true)}>
+            Yes, read responses aloud
+          </button>
+          <button
+            className="transcribe-btn"
+            style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+            onClick={() => chooseTts(false)}
+          >
+            No thanks, text only
+          </button>
+        </div>
       </div>
     );
   }
@@ -535,38 +563,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             </div>
           )}
         </div>
-        {/* TTS toggle */}
         <button
-          onClick={() => setPendingTts(v => !v)}
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            background: "var(--input-bg)", border: "1px solid var(--border-subtle)",
-            borderRadius: 40, padding: "8px 16px", cursor: "pointer",
-            fontFamily: "var(--font-manrope), sans-serif", fontSize: 13,
-            color: "var(--text-secondary)",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={pendingTts ? "var(--ds-accent)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round">
-            <rect x="5" y="1" width="6" height="9" rx="3" />
-            <path d="M3 7v1a5 5 0 0010 0V7" /><path d="M8 13v2" />
-          </svg>
-          Voice read-back
-          <div style={{
-            width: 32, height: 18, borderRadius: 9, position: "relative",
-            background: pendingTts ? "var(--ds-accent)" : "rgba(0,0,0,0.12)",
-            transition: "background 0.2s",
-          }}>
-            <div style={{
-              position: "absolute", top: 2, left: pendingTts ? 14 : 2, width: 14, height: 14,
-              borderRadius: "50%", background: "#fff", transition: "left 0.2s",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-            }} />
-          </div>
-        </button>
-        <button
-          onClick={startConversation}
+          onClick={() => { setPendingResume(false); setShowTtsPrompt(true); }}
           className="transcribe-btn"
-          style={{ marginTop: 4 }}
+          style={{ marginTop: 8 }}
         >
           Start Brainstorming →
         </button>

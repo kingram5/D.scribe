@@ -1189,9 +1189,6 @@ export default function LandingV2() {
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
-        <span style={{ fontSize: 12, color: "rgba(168,159,148,0.5)" }}>
-          &copy; {new Date().getFullYear()} Ingram Family AI
-        </span>
       </footer>
 
       {/* ─── Styles ─── */}

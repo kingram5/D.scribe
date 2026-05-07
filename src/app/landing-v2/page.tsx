@@ -668,10 +668,10 @@ const LANDING_BOOKS = [
   },
 ];
 
-function LandingBook({ title, author, cover, snippet }: { title: string; author: string; cover: string; snippet: string }) {
+function LandingBook({ title, author, cover, snippet, interactive = true }: { title: string; author: string; cover: string; snippet: string; interactive?: boolean }) {
   return (
-    <div style={{ perspective: 1000, width: 266, height: 373, margin: "0 auto", cursor: "default" }}>
-      <div className="lbook-wrap" style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}>
+    <div style={{ perspective: 1000, width: BOOK_W, height: BOOK_H, margin: "0 auto", cursor: "default" }}>
+      <div className={`lbook-wrap${interactive ? "" : " lbook-static"}`} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}>
         {/* Glow */}
         <div className="lbook-glow" style={{ position: "absolute", bottom: -20, left: 20, right: 20, height: 40, background: "radial-gradient(ellipse, rgba(193,122,71,0.25) 0%, transparent 70%)", opacity: 0, transition: "opacity 0.6s ease", transform: "translateZ(-1px)" }} />
         {/* Back cover */}
@@ -716,58 +716,80 @@ function LandingBook({ title, author, cover, snippet }: { title: string; author:
 }
 
 const BOOK_W = 266;
-const BOOK_GAP = 40;
-const VISIBLE = 3;
+const BOOK_H = 373;
 
 function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
-  const [page, setPage] = useState(0);
-  const maxPage = Math.ceil(books.length / VISIBLE) - 1;
-  const slideBy = VISIBLE * (BOOK_W + BOOK_GAP);
+  const [current, setCurrent] = useState(0);
+  const n = books.length;
+
+  function circularOffset(i: number) {
+    let d = ((i - current) % n + n) % n;
+    if (d > Math.floor(n / 2)) d -= n;
+    return d;
+  }
+
+  const goNext = () => setCurrent(c => (c + 1) % n);
+  const goPrev = () => setCurrent(c => (c - 1 + n) % n);
+
+  const arrowStyle: React.CSSProperties = {
+    position: "absolute", top: `calc(50% - ${BOOK_H / 2 + 8}px)`, marginTop: BOOK_H / 2,
+    width: 48, height: 48, borderRadius: "50%",
+    background: "rgba(193,122,71,0.12)", border: "1px solid rgba(193,122,71,0.3)",
+    color: "#C17A47", fontSize: 26, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "background 0.2s",
+    zIndex: 20,
+  };
 
   return (
-    <div style={{ position: "relative" }}>
-      {/* Track */}
-      <div style={{ overflow: "hidden", width: VISIBLE * BOOK_W + (VISIBLE - 1) * BOOK_GAP, margin: "0 auto" }}>
-        <div style={{
-          display: "flex",
-          gap: BOOK_GAP,
-          transition: "transform 0.65s cubic-bezier(0.16,1,0.3,1)",
-          transform: `translateX(-${page * slideBy}px)`,
-        }}>
-          {books.map((book) => (
-            <div key={book.title} style={{ flexShrink: 0, width: BOOK_W }}>
-              <LandingBook {...book} />
+    <div style={{ position: "relative", padding: "0 80px" }}>
+      {/* 3D Stage */}
+      <div style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%" }}>
+        {books.map((book, i) => {
+          const d = circularOffset(i);
+          const isCenter = d === 0;
+          const isAdj = Math.abs(d) === 1;
+          const isVisible = Math.abs(d) <= 1;
+          const tx = d * 348;
+          const scale = isCenter ? 1 : 0.72;
+          const ry = d * -28;
+          const opacity = isCenter ? 1 : isAdj ? 0.65 : 0;
+
+          return (
+            <div
+              key={book.title}
+              onClick={() => {
+                if (d === 1) goNext();
+                if (d === -1) goPrev();
+              }}
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                transform: `translate(calc(-50% + ${tx}px), -50%) scale(${scale}) rotateY(${ry}deg)`,
+                opacity,
+                zIndex: isCenter ? 10 : isAdj ? 5 : 0,
+                transition: "transform 0.65s cubic-bezier(0.16,1,0.3,1), opacity 0.65s cubic-bezier(0.16,1,0.3,1)",
+                cursor: isAdj ? "pointer" : "default",
+                pointerEvents: isVisible ? "auto" : "none",
+              }}
+            >
+              <LandingBook {...book} interactive={isCenter} />
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* Arrows */}
-      {page > 0 && (
-        <button onClick={() => setPage(p => p - 1)} style={{
-          position: "absolute", left: -56, top: "50%", transform: "translateY(-50%)",
-          width: 44, height: 44, borderRadius: "50%",
-          background: "rgba(193,122,71,0.12)", border: "1px solid rgba(193,122,71,0.3)",
-          color: "#C17A47", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "background 0.2s",
-        }}>‹</button>
-      )}
-      {page < maxPage && (
-        <button onClick={() => setPage(p => p + 1)} style={{
-          position: "absolute", right: -56, top: "50%", transform: "translateY(-50%)",
-          width: 44, height: 44, borderRadius: "50%",
-          background: "rgba(193,122,71,0.12)", border: "1px solid rgba(193,122,71,0.3)",
-          color: "#C17A47", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "background 0.2s",
-        }}>›</button>
-      )}
+      <button onClick={goPrev} style={{ ...arrowStyle, left: 16 }}>‹</button>
+      <button onClick={goNext} style={{ ...arrowStyle, right: 16 }}>›</button>
 
       {/* Dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
-        {Array.from({ length: maxPage + 1 }).map((_, i) => (
-          <button key={i} onClick={() => setPage(i)} style={{
-            width: i === page ? 24 : 8, height: 8, borderRadius: 4,
-            background: i === page ? "#C17A47" : "rgba(193,122,71,0.25)",
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 8 }}>
+        {books.map((_, i) => (
+          <button key={i} onClick={() => setCurrent(i)} style={{
+            width: i === current ? 24 : 8, height: 8, borderRadius: 4,
+            background: i === current ? "#C17A47" : "rgba(193,122,71,0.25)",
             border: "none", cursor: "pointer", padding: 0,
             transition: "all 0.3s ease",
           }} />
@@ -1227,6 +1249,8 @@ export default function LandingV2() {
         /* Landing books */
         .lbook-wrap:hover .lbook-cover { transform: rotateY(-155deg); }
         .lbook-wrap:hover .lbook-glow { opacity: 1; }
+        .lbook-static:hover .lbook-cover { transform: none !important; }
+        .lbook-static:hover .lbook-glow { opacity: 0 !important; }
 
         /* Mobile */
         @media (max-width: 768px) {

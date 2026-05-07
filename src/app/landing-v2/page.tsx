@@ -629,7 +629,7 @@ function BrainstormMock() {
   );
 }
 
-function FadeSection({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number; key?: React.Key }) {
+function FadeSection({ children, className = "", delay = 0, style = {} }: { children: React.ReactNode; className?: string; delay?: number; key?: React.Key; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null);
   const visible = useInView(ref);
   return (
@@ -637,6 +637,7 @@ function FadeSection({ children, className = "", delay = 0 }: { children: React.
       opacity: visible ? 1 : 0,
       transform: visible ? "translateY(0)" : "translateY(24px)",
       transition: `opacity 0.6s ease-out ${delay}s, transform 0.6s ease-out ${delay}s`,
+      ...style,
     }}>
       {children}
     </div>
@@ -834,11 +835,11 @@ export default function LandingV2() {
         padding: "96px 40px",
         background: "linear-gradient(to bottom, rgba(193,122,71,0.04), transparent)",
         borderTop: "1px solid rgba(249,247,242,0.06)",
-        width: "2245.67px",
+        width: "2298.67px",
       }}>
         <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: 80, alignItems: "center" }}>
           {/* Left: text + pillars */}
-          <FadeSection>
+          <FadeSection style={{ width: "1220.26px", paddingLeft: "17px" }}>
             <div style={{ marginLeft: "-4px", width: "1206.11px", paddingLeft: "-30px", paddingRight: "0px" }}>
               <div style={{
                 fontFamily: "var(--font-lora), serif", fontSize: 26,

@@ -387,22 +387,91 @@ function PipelineDashboard() {
 // Brainstorm chat mock — animated replica of the real BrainstormChat UI
 // ---------------------------------------------------------------------------
 
-const BS_SCRIPT = [
-  { role: "user", text: "I want to write a book about building my business from zero to a million dollars" },
-  { role: "ai",   text: "That's a powerful story. What was the single moment you knew it was actually going to work?" },
-  { role: "user", text: "When our first corporate client signed — a six-figure contract. I just sat in my car and cried" },
-  { role: "ai",   text: "What had you given up to get to that moment? What did that contract really mean?" },
-  { role: "user", text: "Everything. I hadn't paid myself in eight months. My wife believed in me more than I did" },
-  { role: "ai",   text: "That's the heart of the book right there. Who do you most want to read this story?" },
-] as const;
+const BS_SCRIPTS = [
+  // 1 — Entrepreneur
+  [
+    { role: "user", text: "I want to write a book about building my business from zero to a million dollars" },
+    { role: "ai",   text: "That's a powerful story. What was the single moment you knew it was actually going to work?" },
+    { role: "user", text: "When our first corporate client signed — a six-figure contract. I just sat in my car and cried" },
+    { role: "ai",   text: "What had you given up to get to that moment? What did that contract really mean?" },
+    { role: "user", text: "Everything. I hadn't paid myself in eight months. My wife believed in me more than I did" },
+    { role: "ai",   text: "That's the heart of the book right there. Who do you most want to read this story?" },
+    { role: "user", text: "Other entrepreneurs in the dark years — when you don't know if it's going to work" },
+    { role: "ai",   text: "The dark years. What kept you going when you had every reason to quit?" },
+    { role: "user", text: "Stubbornness. And one mentor who said the hardest part is always right before the breakthrough" },
+    { role: "ai",   text: "That mentor deserves a chapter. What's the one thing he told you that changed everything?" },
+    { role: "user", text: "He said: 'Stop trying to be ready. You never will be. Just ship the thing.'" },
+    { role: "ai",   text: "That's your title. Or your first chapter. Let's build the whole structure around that moment." },
+  ],
+  // 2 — Grief & Running
+  [
+    { role: "user", text: "I want to write about the year I ran 12 marathons and what it taught me about grief" },
+    { role: "ai",   text: "Grief and running — deeply connected. Who did you lose, and when did the running start?" },
+    { role: "user", text: "My dad. Six months after the funeral I signed up for a race just to have something to wake up for" },
+    { role: "ai",   text: "Something to wake up for. That's a book right there. What did the first race feel like?" },
+    { role: "user", text: "Terrible. I cried through mile eight. But I finished, and for the first time in months I felt something" },
+    { role: "ai",   text: "What was that feeling exactly — not 'hope,' something more specific?" },
+    { role: "user", text: "Like I was still here. Like my body was proof I was alive even when my mind wasn't sure" },
+    { role: "ai",   text: "That's extraordinary. Did the other runners know what you were carrying?" },
+    { role: "user", text: "One woman did. She ran beside me for three miles without saying a word. Just stayed there." },
+    { role: "ai",   text: "She has to be in the book. What would you want readers to take from your story?" },
+    { role: "user", text: "That grief doesn't end — it changes shape. Running didn't fix me. It gave the pain somewhere to go." },
+    { role: "ai",   text: "That's your last line. Now let's work backward and build everything that earns it." },
+  ],
+  // 3 — ER Doctor
+  [
+    { role: "user", text: "I've been an ER doctor for 22 years and I want to write about what the job really looks like" },
+    { role: "ai",   text: "What does the public get most wrong about emergency medicine?" },
+    { role: "user", text: "That it's dramatic. Mostly it's exhaustion, paperwork, and holding a broken system together" },
+    { role: "ai",   text: "And yet you stayed for 22 years. What keeps an ER doctor showing up?" },
+    { role: "user", text: "The moments. You can go 14 hours of chaos and one patient looks at you and you remember why" },
+    { role: "ai",   text: "Tell me about one of those moments. A specific patient, a specific night." },
+    { role: "user", text: "A kid came in alone at 2am. Fourteen years old. I won't say why. I stayed with him until morning." },
+    { role: "ai",   text: "You don't have to say more. What does a night like that cost you?" },
+    { role: "user", text: "Everything you don't talk about. That's why I'm writing this — because we don't talk about it" },
+    { role: "ai",   text: "Who should read this — other doctors, or people who've never seen inside an ER?" },
+    { role: "user", text: "Both. I want patients to understand what we carry. And young doctors to know it's okay to feel it." },
+    { role: "ai",   text: "That's your purpose. This isn't just a memoir — it's permission. Let's build it around that." },
+  ],
+  // 4 — Family Legacy
+  [
+    { role: "user", text: "My grandmother came from Cuba in 1962 and I want to write her story before it's lost" },
+    { role: "ai",   text: "Before it's lost — that urgency matters. Is she still with you?" },
+    { role: "user", text: "She's 91. Her memory comes and goes. I've been recording her on my phone for two years" },
+    { role: "ai",   text: "Two years of recordings. What does she talk about most when she's clear?" },
+    { role: "user", text: "The house she left behind. She had a mango tree in the yard. Describes it like she can still smell it" },
+    { role: "ai",   text: "The mango tree. That's the image that carries the whole book. What did leaving Cuba cost her?" },
+    { role: "user", text: "Everything material. But she always said she left with the important things — her kids, her faith, her recipes" },
+    { role: "ai",   text: "Her recipes. Are they written down anywhere?" },
+    { role: "user", text: "Only in her head. I've been writing them down too. I want the book to include them — food as memory" },
+    { role: "ai",   text: "A memoir with recipes woven through it. Each dish a portal to a different chapter of her life." },
+    { role: "user", text: "Exactly. I want my kids to cook her ropa vieja and feel like they actually knew her" },
+    { role: "ai",   text: "That's the most beautiful reason to write a book I've heard. Let's make sure it does exactly that." },
+  ],
+  // 5 — Life Coach
+  [
+    { role: "user", text: "I'm a life coach and I want to write about the one question that changed every client I've had" },
+    { role: "ai",   text: "One question. What is it?" },
+    { role: "user", text: "'What would you do if you weren't afraid?' Simple. But most people have never honestly answered it." },
+    { role: "ai",   text: "Why not? What stops people from answering?" },
+    { role: "user", text: "They've confused their fears with their identity. They think the fear IS them." },
+    { role: "ai",   text: "That's a powerful distinction. When did you realize it yourself?" },
+    { role: "user", text: "When I almost didn't become a coach. I told myself I wasn't qualified. That was fear, not fact." },
+    { role: "ai",   text: "So the book is also your story. What happened when you finally asked yourself that question?" },
+    { role: "user", text: "I quit my corporate job in 48 hours. Best decision of my life. Terrifying for six months after." },
+    { role: "ai",   text: "The terror is part of the story. What do you want readers to do after finishing your book?" },
+    { role: "user", text: "Write down their answer and actually do something about it that same week." },
+    { role: "ai",   text: "That's your call to action — and your last chapter. Let's design the whole book to build toward it." },
+  ],
+];
 
 function BrainstormMock() {
   const [displayed, setDisplayed] = useState<{ role: string; text: string }[]>([]);
   const [currentText, setCurrentText] = useState("");
   const [typingRole, setTypingRole] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [scriptIdx, setScriptIdx] = useState(0);
   const [fading, setFading] = useState(false);
+  const scriptSetRef = useRef(0);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -419,7 +488,7 @@ function BrainstormMock() {
       for (let i = 0; i <= text.length; i++) {
         if (cancelled) return;
         setCurrentText(text.slice(0, i));
-        await sleep(28);
+        await sleep(22);
       }
       if (cancelled) return;
       setDisplayed(prev => [...prev, { role, text }]);
@@ -428,28 +497,28 @@ function BrainstormMock() {
     }
 
     async function run() {
+      const script = BS_SCRIPTS[scriptSetRef.current % BS_SCRIPTS.length];
       await sleep(600);
-      for (let i = scriptIdx; i < BS_SCRIPT.length; i++) {
+      for (let i = 0; i < script.length; i++) {
         if (cancelled) return;
-        const entry = BS_SCRIPT[i];
+        const entry = script[i];
         if (entry.role === "ai") {
           setThinking(true);
-          await sleep(1300);
+          await sleep(1100);
           if (cancelled) return;
           setThinking(false);
         }
         await typeMessage(entry.text, entry.role);
         if (cancelled) return;
-        setScriptIdx(i + 1);
-        await sleep(700);
+        await sleep(600);
       }
-      // loop: fade out then restart
+      // Fade out, rotate to next script
       if (cancelled) return;
       setFading(true);
       await sleep(800);
       if (cancelled) return;
       setDisplayed([]);
-      setScriptIdx(0);
+      scriptSetRef.current += 1;
       setFading(false);
       await sleep(500);
       if (!cancelled) run();
@@ -457,7 +526,6 @@ function BrainstormMock() {
 
     run();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -629,6 +629,75 @@ function BrainstormMock() {
   );
 }
 
+const LANDING_BOOKS = [
+  {
+    title: "Leading With Clarity",
+    author: "Marcus T.",
+    cover: "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
+    snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty — it's about direction.",
+  },
+  {
+    title: "Faith in the Everyday",
+    author: "Pastor Renee J.",
+    cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
+    snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary.",
+  },
+  {
+    title: "The Anxiety Playbook",
+    author: "Dr. Sam K.",
+    cover: "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
+    snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it — it's acting anyway, one small step at a time.",
+  },
+];
+
+function LandingBook({ title, author, cover, snippet }: { title: string; author: string; cover: string; snippet: string }) {
+  return (
+    <div style={{ perspective: 1000, width: 200, height: 280, margin: "0 auto", cursor: "default" }}>
+      <div className="lbook-wrap" style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}>
+        {/* Glow */}
+        <div className="lbook-glow" style={{ position: "absolute", bottom: -20, left: 20, right: 20, height: 40, background: "radial-gradient(ellipse, rgba(193,122,71,0.25) 0%, transparent 70%)", opacity: 0, transition: "opacity 0.6s ease", transform: "translateZ(-1px)" }} />
+        {/* Back cover */}
+        <div style={{ position: "absolute", inset: 0, background: "#2C1F15", borderRadius: "2px 8px 8px 2px", transform: "translateZ(-24px)" }} />
+        {/* Page block */}
+        <div style={{ position: "absolute", top: 4, bottom: 4, right: 0, width: 22, background: "linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8)", transform: "translateZ(-12px) translateX(4px)", borderRadius: "0 4px 4px 0", boxShadow: "inset -1px 0 2px rgba(0,0,0,0.05)" }}>
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} style={{ position: "absolute", right: 2, top: 8 + i * 12, width: 16, height: 0.5, background: "rgba(0,0,0,0.04)" }} />
+          ))}
+        </div>
+        {/* Spine */}
+        <div style={{ position: "absolute", left: -12, top: 0, bottom: 0, width: 24, background: "linear-gradient(90deg, rgba(0,0,0,0.4), rgba(0,0,0,0.15) 30%, rgba(255,255,255,0.05) 70%, rgba(0,0,0,0.1))", transform: "rotateY(90deg) translateZ(0px)", transformOrigin: "right center", borderRadius: "4px 0 0 4px" }}>
+          <div style={{ position: "absolute", top: 20, left: 4, right: 4, height: 1, background: "rgba(193,122,71,0.3)" }} />
+          <div style={{ position: "absolute", bottom: 20, left: 4, right: 4, height: 1, background: "rgba(193,122,71,0.3)" }} />
+        </div>
+        {/* Inner page — revealed when cover swings open */}
+        <div style={{ position: "absolute", inset: 0, background: "#FAF8F3", borderRadius: "2px 12px 12px 2px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "20px 16px", boxSizing: "border-box" }}>
+          <div style={{ width: 20, height: 1, background: "#C17A47", opacity: 0.5, marginBottom: 14 }} />
+          <p style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: 11, lineHeight: 1.75, color: "#4A3D2C", marginBottom: 14 }}>
+            &ldquo;{snippet}&rdquo;
+          </p>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "#9A8B7A" }}>— {author}</span>
+        </div>
+        {/* Front cover — rotates open on hover */}
+        <div className="lbook-cover" style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", transformOrigin: "left center", transition: "transform 0.75s cubic-bezier(0.16,1,0.3,1)" }}>
+          {/* Front face */}
+          <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 12px 12px 2px", padding: "28px 20px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", backfaceVisibility: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", opacity: 0.04, mixBlendMode: "multiply", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: 12, left: 12, right: 12, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.3), transparent)" }} />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ width: 24, height: 1, background: "rgba(193,122,71,0.5)", marginBottom: 16 }} />
+              <h3 style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 18, fontWeight: 500, color: "#F4E8D1", lineHeight: 1.2, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>{title}</h3>
+              <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 8 }}>{author}</p>
+            </div>
+            <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
+          </div>
+          {/* Inside of cover (paper) */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #EDE5D8, #F5EFE4)", borderRadius: "2px 12px 12px 2px", transform: "rotateY(180deg) translateZ(1px)", backfaceVisibility: "hidden" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FadeSection({ children, className = "", delay = 0, style = {} }: { children: React.ReactNode; className?: string; delay?: number; key?: React.Key; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null);
   const visible = useInView(ref);
@@ -938,6 +1007,15 @@ export default function LandingV2() {
                 </p>
               </div>
             </div>
+            {/* Books row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+              {LANDING_BOOKS.map((book) => (
+                <FadeSection key={book.title} delay={0.1}>
+                  <LandingBook {...book} />
+                </FadeSection>
+              ))}
+            </div>
+
             <div className="text-center mt-16">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →
@@ -1111,6 +1189,10 @@ export default function LandingV2() {
         }
         .lv2-cta:hover { background: #a8672f; transform: translateY(-2px); }
         .lv2-cta:active { transform: translateY(0) scale(0.98); }
+
+        /* Landing books */
+        .lbook-wrap:hover .lbook-cover { transform: rotateY(-155deg); }
+        .lbook-wrap:hover .lbook-glow { opacity: 1; }
 
         /* Mobile */
         @media (max-width: 768px) {

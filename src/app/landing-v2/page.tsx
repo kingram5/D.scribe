@@ -975,7 +975,7 @@ export default function LandingV2() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
           <Link href="/login" style={{ fontSize: 25, fontWeight: 600, color: "#F9F7F2", textDecoration: "none" }}>Sign in</Link>
-          <Link href="/auth/signup" className="lv2-pill-cta">Get Started <span style={{ fontSize: 18 }}>→</span></Link>
+          <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 18 }}>→</span></Link>
         </div>
       </nav>
 
@@ -1008,7 +1008,7 @@ export default function LandingV2() {
         <div style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
           <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 46, color: "#ffffff", opacity: 0.9, marginLeft: -176, marginRight: -7, marginTop: 2 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
           <Link
-            href="/auth/signup"
+            href="/login"
             style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", marginLeft: 0, marginTop: 10, display: "inline-flex", alignItems: "center" }}
           >
             HERE
@@ -1031,7 +1031,7 @@ export default function LandingV2() {
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
           <Link
-            href="/auth/signup"
+            href="/login"
             style={{ display: "inline-flex", alignItems: "center", padding: "8px 29px 10px 7px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", width: 217.844, height: 50, marginLeft: -50, marginRight: 0, marginTop: -57, marginBottom: 12 }}
           >
             Begin Your Book <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
@@ -1253,7 +1253,7 @@ export default function LandingV2() {
           }}>
             Just start talking.
           </p>
-          <Link href="/auth/signup" className="lv2-cta">
+          <Link href="/login" className="lv2-cta">
             Begin Your Book
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />

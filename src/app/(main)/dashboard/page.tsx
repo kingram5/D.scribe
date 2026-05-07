@@ -10,6 +10,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { STATUS_COLORS } from "@/lib/constants";
 import UsageWidget from "@/components/ui/UsageWidget";
 
+// ── Rotating quotes — replace these with your 25 ──────────────────────────
+const WORKSPACE_QUOTES: { text: string; author: string }[] = [
+  { text: "The first draft is just you telling yourself the story.", author: "Terry Pratchett" },
+  { text: "A writer only begins a book. A reader finishes it.", author: "Samuel Johnson" },
+  { text: "You don't start out writing good stuff. You start out writing crap and thinking it's good stuff.", author: "Octavia Butler" },
+  { text: "Fill your paper with the breathings of your heart.", author: "William Wordsworth" },
+  { text: "The scariest moment is always just before you start.", author: "Stephen King" },
+];
+
 function MiniWaveform() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -55,6 +64,7 @@ function MiniWaveform() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [quoteIdx] = useState(() => Math.floor(Math.random() * WORKSPACE_QUOTES.length));
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "draft" | "in_progress" | "complete" | "erased">("all");
@@ -458,10 +468,10 @@ export default function Dashboard() {
             </p>
             <div style={{ marginTop: "3rem", borderTop: "1px dashed rgba(0,0,0,0.1)", paddingTop: "1rem" }}>
               <p style={{ fontSize: "1rem", opacity: 0.8 }}>
-                &ldquo;The first draft is just you telling yourself the story.&rdquo;
+                &ldquo;{WORKSPACE_QUOTES[quoteIdx].text}&rdquo;
               </p>
               <p style={{ fontSize: "0.9rem", textAlign: "right", marginTop: "0.5rem" }}>
-                — Terry Pratchett
+                — {WORKSPACE_QUOTES[quoteIdx].author}
               </p>
             </div>
           </div>

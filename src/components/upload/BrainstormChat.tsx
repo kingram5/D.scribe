@@ -270,11 +270,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     setInput("");
     setStreaming(true);
 
-    // Build API messages — include the hidden init prompt + all visible messages
-    const apiMessages: Message[] = [
-      { role: "user", content: "Start the brainstorm session." },
-      ...updatedMessages,
-    ];
+    // Build API messages: pin init + first exchange, window the rest to last 8 (4 exchanges)
+    const WINDOW_SIZE = 8;
+    const initMsg: Message = { role: "user", content: "Start the brainstorm session." };
+    const firstExchange = updatedMessages.slice(0, 2); // user topic + AI first question
+    const remainder = updatedMessages.slice(2);
+    const windowed = remainder.length > WINDOW_SIZE ? remainder.slice(-WINDOW_SIZE) : remainder;
+    const apiMessages: Message[] = [initMsg, ...firstExchange, ...windowed];
 
     let aiText = "";
 

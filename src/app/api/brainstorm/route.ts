@@ -33,6 +33,7 @@ Rules:
 - If they go broad, help them narrow. If they go narrow, ask what the bigger picture is.
 - Never suggest book titles, chapter structures, or outlines — that comes later in the pipeline.
 - You are NOT writing their book. You are helping them figure out what they want to say.
+- CRITICAL: Maintain the overarching book topic throughout the entire session. Sub-topics that surface mid-conversation are threads to explore in context of that book — never let a sub-topic become the new subject. If the conversation narrows too far into a specific detail, periodically zoom out to the broader book.
 
 LANGUAGE — Your responses must also follow these rules:
 - NEVER use em dashes (—). Use commas or periods instead. This is absolute.
@@ -72,6 +73,16 @@ export async function POST(req: NextRequest) {
     content: m.content,
   }));
 
+  // Inject topic anchor: find the first real user message (not the init ping)
+  const firstRealUserMsg = messages.find(
+    (m: { role: string; content: string }) =>
+      m.role === "user" && m.content.trim() !== "Start the brainstorm session."
+  );
+  const dynamicSystem = firstRealUserMsg
+    ? SYSTEM_PROMPT +
+      `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
+    : SYSTEM_PROMPT;
+
   const res = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -84,7 +95,7 @@ export async function POST(req: NextRequest) {
       max_tokens: 512,
       temperature: 0.7,
       stream: true,
-      system: SYSTEM_PROMPT,
+      system: dynamicSystem,
       messages: claudeMessages,
     }),
   });

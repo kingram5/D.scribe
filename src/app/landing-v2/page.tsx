@@ -634,34 +634,52 @@ const LANDING_BOOKS = [
     title: "Leading With Clarity",
     author: "Marcus T.",
     cover: "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
-    snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty — it's about direction.",
+    snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty — it's about direction. For years I thought great leaders never showed doubt. I was wrong. The teams that trusted me most were the ones who watched me sit with a hard problem, think out loud, and admit when I needed help. That vulnerability wasn't weakness. It was the whole thing.",
   },
   {
     title: "Faith in the Everyday",
     author: "Pastor Renee J.",
     cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
-    snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary.",
+    snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years — the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
   },
   {
     title: "The Anxiety Playbook",
     author: "Dr. Sam K.",
     cover: "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
-    snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it — it's acting anyway, one small step at a time.",
+    snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it — it's acting anyway, one small step at a time. I've spent fifteen years as a therapist saying this. The book I ended up writing isn't about curing anxiety. It's about learning to move while it's loud. Every tool inside came from someone who thought they were too broken to use it — and used it anyway.",
+  },
+  {
+    title: "Fifty Miles, Fifty Lessons",
+    author: "James R.",
+    cover: "linear-gradient(160deg, #6B5A42 0%, #4A3D2C 40%, #352B1F 100%)",
+    snippet: "I signed up for my first ultramarathon at 47, eighteen months after my divorce. People thought I was having a crisis. Maybe I was. But somewhere around mile thirty-one on a trail in Colorado, I stopped running away from something and started running toward it. This book isn't really about running. It's about what happens when you put your body through something your mind says is impossible — and you survive it, and learn to do it again.",
+  },
+  {
+    title: "The First Generation",
+    author: "Maria L.",
+    cover: "linear-gradient(160deg, #8B3D50 0%, #6B2D3E 40%, #4A1F2C 100%)",
+    snippet: "My mother crossed the border with eleven dollars and a name written on a napkin. She never learned to read English. Forty years later, I'm writing her story in a language she never had. This book is for every child who grew up translating — at the doctor's office, at the bank, at parent-teacher conferences. You weren't the child. You were the bridge. And that shaped you in ways you're still discovering.",
+  },
+  {
+    title: "Built From the Ground Up",
+    author: "Derek O.",
+    cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
+    snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had — the honest, unglamorous version of building something from nothing, mistake by mistake.",
   },
 ];
 
 function LandingBook({ title, author, cover, snippet }: { title: string; author: string; cover: string; snippet: string }) {
   return (
-    <div style={{ perspective: 1000, width: 200, height: 280, margin: "0 auto", cursor: "default" }}>
+    <div style={{ perspective: 1000, width: 266, height: 373, margin: "0 auto", cursor: "default" }}>
       <div className="lbook-wrap" style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}>
         {/* Glow */}
         <div className="lbook-glow" style={{ position: "absolute", bottom: -20, left: 20, right: 20, height: 40, background: "radial-gradient(ellipse, rgba(193,122,71,0.25) 0%, transparent 70%)", opacity: 0, transition: "opacity 0.6s ease", transform: "translateZ(-1px)" }} />
         {/* Back cover */}
-        <div style={{ position: "absolute", inset: 0, background: "#2C1F15", borderRadius: "2px 8px 8px 2px", transform: "translateZ(-24px)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "#2C1F15", borderRadius: "2px 10px 10px 2px", transform: "translateZ(-24px)" }} />
         {/* Page block */}
-        <div style={{ position: "absolute", top: 4, bottom: 4, right: 0, width: 22, background: "linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8)", transform: "translateZ(-12px) translateX(4px)", borderRadius: "0 4px 4px 0", boxShadow: "inset -1px 0 2px rgba(0,0,0,0.05)" }}>
-          {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} style={{ position: "absolute", right: 2, top: 8 + i * 12, width: 16, height: 0.5, background: "rgba(0,0,0,0.04)" }} />
+        <div style={{ position: "absolute", top: 4, bottom: 4, right: 0, width: 28, background: "linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8)", transform: "translateZ(-12px) translateX(4px)", borderRadius: "0 5px 5px 0", boxShadow: "inset -1px 0 2px rgba(0,0,0,0.05)" }}>
+          {Array.from({ length: 26 }).map((_, i) => (
+            <div key={i} style={{ position: "absolute", right: 2, top: 8 + i * 13, width: 20, height: 0.5, background: "rgba(0,0,0,0.04)" }} />
           ))}
         </div>
         {/* Spine */}
@@ -670,29 +688,90 @@ function LandingBook({ title, author, cover, snippet }: { title: string; author:
           <div style={{ position: "absolute", bottom: 20, left: 4, right: 4, height: 1, background: "rgba(193,122,71,0.3)" }} />
         </div>
         {/* Inner page — revealed when cover swings open */}
-        <div style={{ position: "absolute", inset: 0, background: "#FAF8F3", borderRadius: "2px 12px 12px 2px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "20px 16px", boxSizing: "border-box" }}>
-          <div style={{ width: 20, height: 1, background: "#C17A47", opacity: 0.5, marginBottom: 14 }} />
-          <p style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: 11, lineHeight: 1.75, color: "#4A3D2C", marginBottom: 14 }}>
+        <div style={{ position: "absolute", inset: 0, background: "#FAF8F3", borderRadius: "2px 14px 14px 2px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 20px", boxSizing: "border-box", overflow: "hidden" }}>
+          <div style={{ width: 20, height: 1, background: "#C17A47", opacity: 0.5, marginBottom: 16 }} />
+          <p style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: 11.5, lineHeight: 1.75, color: "#4A3D2C" }}>
             &ldquo;{snippet}&rdquo;
           </p>
-          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "#9A8B7A" }}>— {author}</span>
         </div>
         {/* Front cover — rotates open on hover */}
         <div className="lbook-cover" style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", transformOrigin: "left center", transition: "transform 0.75s cubic-bezier(0.16,1,0.3,1)" }}>
           {/* Front face */}
-          <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 12px 12px 2px", padding: "28px 20px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", backfaceVisibility: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 14px 14px 2px", padding: "32px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", backfaceVisibility: "hidden" }}>
             <div style={{ position: "absolute", inset: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", opacity: 0.04, mixBlendMode: "multiply", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: 12, left: 12, right: 12, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.3), transparent)" }} />
+            <div style={{ position: "absolute", top: 14, left: 14, right: 14, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.3), transparent)" }} />
             <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ width: 24, height: 1, background: "rgba(193,122,71,0.5)", marginBottom: 16 }} />
-              <h3 style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 18, fontWeight: 500, color: "#F4E8D1", lineHeight: 1.2, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>{title}</h3>
-              <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 8 }}>{author}</p>
+              <div style={{ width: 28, height: 1, background: "rgba(193,122,71,0.5)", marginBottom: 18 }} />
+              <h3 style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 22, fontWeight: 500, color: "#F4E8D1", lineHeight: 1.2, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>{title}</h3>
+              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 10 }}>{author}</p>
             </div>
-            <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
+            <div style={{ position: "absolute", bottom: 14, left: 14, right: 14, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
           </div>
           {/* Inside of cover (paper) */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #EDE5D8, #F5EFE4)", borderRadius: "2px 12px 12px 2px", transform: "rotateY(180deg) translateZ(1px)", backfaceVisibility: "hidden" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #EDE5D8, #F5EFE4)", borderRadius: "2px 14px 14px 2px", transform: "rotateY(180deg) translateZ(1px)", backfaceVisibility: "hidden" }} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+const BOOK_W = 266;
+const BOOK_GAP = 40;
+const VISIBLE = 3;
+
+function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
+  const [page, setPage] = useState(0);
+  const maxPage = Math.ceil(books.length / VISIBLE) - 1;
+  const slideBy = VISIBLE * (BOOK_W + BOOK_GAP);
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Track */}
+      <div style={{ overflow: "hidden", width: VISIBLE * BOOK_W + (VISIBLE - 1) * BOOK_GAP, margin: "0 auto" }}>
+        <div style={{
+          display: "flex",
+          gap: BOOK_GAP,
+          transition: "transform 0.65s cubic-bezier(0.16,1,0.3,1)",
+          transform: `translateX(-${page * slideBy}px)`,
+        }}>
+          {books.map((book) => (
+            <div key={book.title} style={{ flexShrink: 0, width: BOOK_W }}>
+              <LandingBook {...book} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Arrows */}
+      {page > 0 && (
+        <button onClick={() => setPage(p => p - 1)} style={{
+          position: "absolute", left: -56, top: "50%", transform: "translateY(-50%)",
+          width: 44, height: 44, borderRadius: "50%",
+          background: "rgba(193,122,71,0.12)", border: "1px solid rgba(193,122,71,0.3)",
+          color: "#C17A47", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "background 0.2s",
+        }}>‹</button>
+      )}
+      {page < maxPage && (
+        <button onClick={() => setPage(p => p + 1)} style={{
+          position: "absolute", right: -56, top: "50%", transform: "translateY(-50%)",
+          width: 44, height: 44, borderRadius: "50%",
+          background: "rgba(193,122,71,0.12)", border: "1px solid rgba(193,122,71,0.3)",
+          color: "#C17A47", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "background 0.2s",
+        }}>›</button>
+      )}
+
+      {/* Dots */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 32 }}>
+        {Array.from({ length: maxPage + 1 }).map((_, i) => (
+          <button key={i} onClick={() => setPage(i)} style={{
+            width: i === page ? 24 : 8, height: 8, borderRadius: 4,
+            background: i === page ? "#C17A47" : "rgba(193,122,71,0.25)",
+            border: "none", cursor: "pointer", padding: 0,
+            transition: "all 0.3s ease",
+          }} />
+        ))}
       </div>
     </div>
   );
@@ -969,52 +1048,7 @@ export default function LandingV2() {
                 Everyday voices turned into books that last — stories, wisdom, and expertise finally on the page.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Marcus T.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Leading with Clarity</h3>
-                </div>
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Business/Leadership</span>
-                </div>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;I never thought I&apos;d write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.&rdquo;
-                </p>
-              </div>
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5 md:-translate-y-12">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Pastor Renee J.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Faith in the Everyday</h3>
-                </div>
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Faith Community</span>
-                </div>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;My congregation had been asking me to write down my sermons for years. What I couldn&apos;t have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.&rdquo;
-                </p>
-              </div>
-              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Dr. Sam K.</div>
-                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>The Anxiety Playbook</h3>
-                </div>
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Self-Help</span>
-                </div>
-                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
-                  &ldquo;I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I&apos;m genuinely proud of — a practical guide that my patients actually want to read.&rdquo;
-                </p>
-              </div>
-            </div>
-            {/* Books row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-              {LANDING_BOOKS.map((book) => (
-                <FadeSection key={book.title} delay={0.1}>
-                  <LandingBook {...book} />
-                </FadeSection>
-              ))}
-            </div>
+            <BookCarousel books={LANDING_BOOKS} />
 
             <div className="text-center mt-16">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>

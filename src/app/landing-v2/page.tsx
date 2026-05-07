@@ -835,12 +835,11 @@ export default function LandingV2() {
         padding: "96px 40px",
         background: "linear-gradient(to bottom, rgba(193,122,71,0.04), transparent)",
         borderTop: "1px solid rgba(249,247,242,0.06)",
-        width: "2298.67px",
       }}>
         <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: 80, alignItems: "center" }}>
           {/* Left: text + pillars */}
-          <FadeSection style={{ width: "1220.26px", paddingLeft: "17px" }}>
-            <div style={{ marginLeft: "-4px", width: "1206.11px", paddingLeft: "-30px", paddingRight: "0px" }}>
+          <FadeSection>
+            <div>
               <div style={{
                 fontFamily: "var(--font-lora), serif", fontSize: 26,
                 textTransform: "uppercase", letterSpacing: "0.14em",

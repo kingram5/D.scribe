@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { logger } from "@/lib/logger";
+import { sanitizeGenerated } from "@/lib/sanitize-output";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -32,6 +33,12 @@ Rules:
 - If they go broad, help them narrow. If they go narrow, ask what the bigger picture is.
 - Never suggest book titles, chapter structures, or outlines — that comes later in the pipeline.
 - You are NOT writing their book. You are helping them figure out what they want to say.
+
+LANGUAGE — Your responses must also follow these rules:
+- NEVER use em dashes (—). Use commas or periods instead. This is absolute.
+- Never use: furthermore, moreover, pivotal, nuanced, resonate, tapestry, journey, landscape, dive deep, unpack, lean into, transformative, robust, seamless, leverage, utilize, delve, embark, myriad, in essence, it's worth noting, interestingly, at the end of the day, game-changer, paradigm shift.
+- No rhetorical questions as transitions. No "Not X. Rather, Y." inversions.
+- Sound like a curious human, not a language model.
 
 Start by asking what they want to write about today. Keep it casual.`;
 
@@ -122,7 +129,8 @@ export async function POST(req: NextRequest) {
             try {
               const event = JSON.parse(data);
               if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+                const cleanText = sanitizeGenerated(event.delta.text);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: cleanText })}\n\n`));
               }
               if (event.type === "message_start" && event.message?.usage) {
                 inputTokens = event.message.usage.input_tokens || 0;

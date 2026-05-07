@@ -192,6 +192,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         body: JSON.stringify({ messages: initMessages }),
       });
 
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `API error ${res.status}`);
+      }
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -237,9 +242,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
       }
     } catch (err) {
       console.error("Brainstorm start error:", err);
-      aiText = "Hey! What would you like to write about today?";
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      const isInkError = msg.includes("ink") || msg.includes("402");
+      aiText = isInkError
+        ? "You're out of Ink for this session. Upgrade your plan to continue brainstorming."
+        : "Couldn't connect to the brainstorm session. Please try again.";
       setMessages([{ role: "assistant", content: aiText }]);
-      speakSentence(aiText);
     }
 
     setStreaming(false);
@@ -270,6 +278,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: apiMessages }),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `API error ${res.status}`);
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();

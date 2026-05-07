@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 interface TtsData {
   tts_chars_used: number;
@@ -12,20 +12,25 @@ interface TtsData {
 export default function TtsMeter({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<TtsData | null>(null);
 
-  const fetchTts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/ink/usage");
-      if (res.ok) setData(await res.json());
-    } catch {
-      // silent fail
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTts() {
+      try {
+        const res = await fetch("/api/ink/usage");
+        if (res.ok && !cancelled) setData(await res.json());
+      } catch {
+        // silent fail
+      }
+    }
+
     fetchTts();
     const interval = setInterval(fetchTts, 30000);
-    return () => clearInterval(interval);
-  }, [fetchTts]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   if (!data) return null;
 

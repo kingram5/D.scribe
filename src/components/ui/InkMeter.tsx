@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 interface InkData {
   balance: number;
@@ -27,23 +27,25 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<InkData | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const fetchInk = useCallback(async () => {
-    try {
-      const res = await fetch("/api/ink");
-      if (res.ok) {
-        setData(await res.json());
-      }
-    } catch {
-      // silent fail
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchInk() {
+      try {
+        const res = await fetch("/api/ink");
+        if (res.ok && !cancelled) setData(await res.json());
+      } catch {
+        // silent fail
+      }
+    }
+
     fetchInk();
-    // Poll every 30 seconds for live updates
     const interval = setInterval(fetchInk, 30000);
-    return () => clearInterval(interval);
-  }, [fetchInk]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   if (!data) return null;
 

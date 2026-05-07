@@ -54,6 +54,20 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
+  // Idempotency: ignore events already processed
+  const { error: insertError } = await supabase
+    .from("stripe_events")
+    .insert({ id: event.id, type: event.type });
+
+  if (insertError) {
+    // PK conflict = duplicate delivery; treat as success
+    if (insertError.code === "23505") {
+      return NextResponse.json({ received: true });
+    }
+    logger.error("Failed to log Stripe event", { event_id: event.id, error: insertError });
+    return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;

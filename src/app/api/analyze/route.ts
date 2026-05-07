@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const { allowed, retryAfterMs } = checkRateLimit(user.id, "analyze");
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "analyze");
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please wait before trying again." },

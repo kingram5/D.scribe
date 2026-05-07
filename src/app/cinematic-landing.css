@@ -135,6 +135,16 @@
   100% { transform: translateX(-50%); }
 }
 
+@keyframes cinematic-dot-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(193,122,71,0.9); }
+  50% { opacity: 0.5; box-shadow: 0 0 2px rgba(193,122,71,0.3); }
+}
+
+@keyframes bs-dot-pulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
 @keyframes cinematic-spin-slow {
   to { transform: rotate(360deg); }
 }

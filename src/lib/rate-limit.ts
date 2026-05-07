@@ -1,58 +1,76 @@
 /**
- * Simple in-memory rate limiter — no external dependencies.
- * Stores per-key timestamps in a Map and evicts expired entries on each check.
+ * Distributed rate limiter backed by Supabase (Postgres).
  *
- * NOT suitable for multi-instance deployments (each instance has its own map).
- * Replace with @upstash/ratelimit if the app scales to multiple Vercel instances.
+ * Uses check_rate_limit() — a single atomic upsert function defined in
+ * migration 010. Works across multiple Next.js instances (Vercel, etc.).
+ *
+ * Falls back to in-memory if the RPC call fails (e.g., local dev without
+ * the migration applied) — logs a warning so it doesn't fail silently.
  */
 
-const requests = new Map<string, number[]>();
+import { createServerClient } from "@/lib/supabase";
 
-/**
- * Returns true if the request is allowed, false if rate-limited.
- *
- * @param key      Unique key — e.g. `${userId}:analyze`
- * @param limit    Max requests allowed in the window
- * @param windowMs Window duration in milliseconds (default: 60_000 = 1 minute)
- */
-export function rateLimit(
-  key: string,
-  limit: number,
-  windowMs: number = 60_000
-): boolean {
+// ---------------------------------------------------------------------------
+// Fallback: in-memory (single-instance only, used if DB is unavailable)
+// ---------------------------------------------------------------------------
+
+const _local = new Map<string, { count: number; expires: number }>();
+
+function localCheck(key: string, limit: number, windowMs: number): { allowed: boolean; retryAfterMs: number } {
   const now = Date.now();
-  const timestamps = (requests.get(key) ?? []).filter(
-    (t) => now - t < windowMs
-  );
+  const entry = _local.get(key);
 
-  if (timestamps.length >= limit) return false;
+  if (!entry || entry.expires <= now) {
+    _local.set(key, { count: 1, expires: now + windowMs });
+    return { allowed: true, retryAfterMs: 0 };
+  }
 
-  timestamps.push(now);
-  requests.set(key, timestamps);
-  return true;
+  entry.count += 1;
+  if (entry.count > limit) {
+    return { allowed: false, retryAfterMs: entry.expires - now };
+  }
+  return { allowed: true, retryAfterMs: 0 };
 }
 
-/** Convenience wrapper — returns a 429 NextResponse body string on failure, or null on success. */
-export function checkRateLimit(
+// ---------------------------------------------------------------------------
+// Primary: Postgres via Supabase RPC
+// ---------------------------------------------------------------------------
+
+export async function checkRateLimit(
   userId: string,
   route: string,
   limit = 10,
   windowMs = 60_000
-): { allowed: boolean; retryAfterMs: number } {
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
   const key = `${userId}:${route}`;
-  const now = Date.now();
-  const timestamps = (requests.get(key) ?? []).filter(
-    (t) => now - t < windowMs
-  );
 
-  if (timestamps.length >= limit) {
-    // Time until the oldest request falls out of the window
-    const oldest = timestamps[0] ?? now;
-    const retryAfterMs = windowMs - (now - oldest);
-    return { allowed: false, retryAfterMs };
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase.rpc("check_rate_limit", {
+      p_key: key,
+      p_limit: limit,
+      p_window_ms: windowMs,
+    });
+
+    if (error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      allowed: row.allowed as boolean,
+      retryAfterMs: Number(row.retry_after_ms ?? 0),
+    };
+  } catch (err) {
+    // Migration not yet applied or DB unreachable — fall back to in-memory
+    console.warn("[rate-limit] Falling back to in-memory limiter:", (err as Error).message);
+    return localCheck(key, limit, windowMs);
   }
+}
 
-  timestamps.push(now);
-  requests.set(key, timestamps);
-  return { allowed: true, retryAfterMs: 0 };
+/**
+ * Legacy synchronous shim — kept for any callers that haven't migrated yet.
+ * Prefer checkRateLimit() (async) in new code.
+ * @deprecated Use checkRateLimit() instead.
+ */
+export function rateLimit(key: string, limit: number, windowMs = 60_000): boolean {
+  return localCheck(key, limit, windowMs).allowed;
 }

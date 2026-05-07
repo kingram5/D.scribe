@@ -1072,6 +1072,40 @@ export default function LandingV2() {
             </div>
             <BookCarousel books={LANDING_BOOKS} />
 
+            {/* Review cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Marcus T.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Leading with Clarity</h3>
+                </div>
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Business/Leadership</span>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;I never thought I&apos;d write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D.&thinsp;scribe turned three hours of rambling voice memos into twelve coherent chapters.&rdquo;
+                </p>
+              </div>
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5 md:-translate-y-12">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Pastor Renee J.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>Faith in the Everyday</h3>
+                </div>
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Faith Community</span>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;My congregation had been asking me to write down my sermons for years. What I couldn&apos;t have done in a decade, D.&thinsp;scribe helped me accomplish in a weekend. Every word still sounds like me.&rdquo;
+                </p>
+              </div>
+              <div className="cinematic-glass-card rounded-2xl p-10 flex flex-col gap-5">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-[#A89F94] mb-3" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Dr. Sam K.</div>
+                  <h3 className="text-2xl font-semibold text-[#F9F7F2] leading-snug" style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif" }}>The Anxiety Playbook</h3>
+                </div>
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold w-fit" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", border: "1px solid rgba(193,122,71,0.4)", background: "rgba(193,122,71,0.08)", color: "#C17A47", letterSpacing: "0.04em" }}>Self-Help</span>
+                <p className="text-[#A89F94] leading-relaxed italic flex-1" style={{ fontFamily: "var(--font-lora), var(--font-playfair), serif" }}>
+                  &ldquo;I recorded my thoughts during my morning runs for three months. D.&thinsp;scribe organized them into something I&apos;m genuinely proud of — a practical guide that my patients actually want to read.&rdquo;
+                </p>
+              </div>
+            </div>
+
             <div className="text-center mt-16">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →

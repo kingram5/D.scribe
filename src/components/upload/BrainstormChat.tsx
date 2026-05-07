@@ -25,6 +25,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
+  const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
   const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -364,6 +365,21 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
     }
   }, [messages, started, sessionKey]);
 
+  // Fetch TTS availability when modal opens
+  useEffect(() => {
+    if (!showTtsPrompt) return;
+    setTtsAvail("loading");
+    fetch("/api/ink/usage")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) { setTtsAvail("available"); return; }
+        if (d.tts_limit === 0) setTtsAvail("locked");
+        else if (d.tts_chars_used >= d.tts_limit) setTtsAvail("exhausted");
+        else setTtsAvail("available");
+      })
+      .catch(() => setTtsAvail("available"));
+  }, [showTtsPrompt]);
+
   const finishBrainstorm = useCallback(async () => {
     // Need at least 2 user messages to have meaningful content
     const userMessages = messages.filter(m => m.role === "user");
@@ -463,14 +479,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
         startConversation();
       }
     }
+
+    const isLocked = ttsAvail === "locked";
+    const isExhausted = ttsAvail === "exhausted";
+    const ttsBlocked = isLocked || isExhausted;
+
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 24, padding: "0 48px" }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
-          background: "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))",
+          background: ttsBlocked ? "rgba(0,0,0,0.06)" : "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke={ttsBlocked ? "var(--text-tertiary)" : "#fff"} strokeWidth="1.8" strokeLinecap="round">
             <rect x="5" y="1" width="6" height="9" rx="3" />
             <path d="M3 7v1a5 5 0 0010 0V7" /><path d="M8 13v2" />
           </svg>
@@ -480,21 +501,44 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
             Read responses aloud?
           </h2>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 280, lineHeight: 1.5 }}>
-            AI responses can be spoken back to you using your voice allowance. You can toggle this any time during the session.
+            {isLocked
+              ? "Voice read-back is available on paid plans."
+              : isExhausted
+              ? "You've used your monthly voice allowance. Resets at the start of next month."
+              : "AI responses can be spoken back to you using your voice allowance. You can toggle this any time."}
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 260 }}>
-          <button className="transcribe-btn" onClick={() => chooseTts(true)}>
-            Yes, read responses aloud
-          </button>
+          {ttsBlocked ? (
+            <div style={{
+              padding: "10px 16px", borderRadius: 8, textAlign: "center",
+              background: "rgba(0,0,0,0.04)", border: "1px solid var(--border-subtle)",
+              fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              {isLocked ? "Voice unavailable on your plan" : "Monthly limit reached"}
+            </div>
+          ) : (
+            <button
+              className="transcribe-btn"
+              disabled={ttsAvail === "loading"}
+              onClick={() => chooseTts(true)}
+            >
+              {ttsAvail === "loading" ? "Checking…" : "Yes, read responses aloud"}
+            </button>
+          )}
           <button
             className="transcribe-btn"
             style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
             onClick={() => chooseTts(false)}
           >
-            No thanks, text only
+            {ttsBlocked ? "Continue — text only" : "No thanks, text only"}
           </button>
         </div>
+        {isLocked && (
+          <a href="/pricing" style={{ fontSize: 12, color: "var(--ds-accent)", fontFamily: "var(--font-manrope), sans-serif", textDecoration: "none" }}>
+            View plans →
+          </a>
+        )}
       </div>
     );
   }

@@ -308,8 +308,15 @@ export default function GeneratePage() {
   const estimatedSeconds = ungeneratedCount * 45;
   const estimatedMinutes = Math.ceil(estimatedSeconds / 60);
 
+  const activeIdx = chapters.findIndex(ch => ch.id === activeChapter);
+  const nextChapter = activeIdx >= 0 && activeIdx < chapters.length - 1 ? chapters[activeIdx + 1] : null;
+
   return (
-    <PageShell projectId={projectId} currentStep="generate">
+    <PageShell
+      projectId={projectId}
+      currentStep="generate"
+      disabledStepKeys={!anyGenerated || isGenerating ? ["editor"] : []}
+    >
       <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "340px 1fr",
@@ -699,25 +706,25 @@ export default function GeneratePage() {
               {/* Generate All progress */}
               {genAllRunning && (
                 <div style={{ marginBottom: 16 }}>
-                  {/* Do not exit warning */}
+                  {/* Stay-on-page notice */}
                   <div style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
                     padding: "10px 14px",
-                    background: "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
+                    background: "rgba(99,102,241,0.07)",
+                    border: "1px solid rgba(99,102,241,0.18)",
                     borderRadius: "var(--radius-sm)",
                     marginBottom: 8,
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", fontFamily: "var(--font-manrope), sans-serif" }}>
-                      Please do not leave this page while generating
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#6366f1", fontFamily: "var(--font-manrope), sans-serif" }}>
+                      Keep this page open while writing
                     </span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", marginLeft: "auto" }}>
-                      Estimated time: ~{estimatedMinutes} min
+                      ~{estimatedMinutes} min remaining
                     </span>
                   </div>
                   <div style={{
@@ -787,43 +794,63 @@ export default function GeneratePage() {
                 </div>
               )}
 
-              {/* Footer buttons */}
-              <div style={{ display: "flex", gap: 12 }}>
-                <InkTooltip
-                  label={inkEstimate
-                    ? `~${inkEstimate.total_low}–${inkEstimate.total_high} Ink for all ${inkEstimate.chapter_count} chapters`
-                    : "Ink cost calculated before generating"}
-                  position="top"
+              {/* Footer buttons — Next Chapter (left) | Generate Chapter (center) | Generate All (right) */}
+              <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+                {/* Left: Next Chapter navigation */}
+                <button
+                  onClick={() => nextChapter && setActiveChapter(nextChapter.id)}
+                  disabled={!nextChapter || isGenerating}
+                  className="nodum-btn"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--ds-card-border)",
+                    color: "var(--text-secondary)",
+                    opacity: !nextChapter ? 0.3 : 1,
+                  }}
                 >
-                  <button
-                    onClick={generateAll}
-                    disabled={isGenerating}
-                    className="nodum-btn"
+                  Next Chapter →
+                </button>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  {/* Center: Generate this chapter */}
+                  <InkTooltip
+                    label={inkEstimate && inkEstimate.per_chapter
+                      ? `~${inkEstimate.per_chapter[chapters.findIndex(c => c.id === active.id)] ?? Math.round((inkEstimate.total_low + inkEstimate.total_high) / 2 / inkEstimate.chapter_count * 10) / 10} Ink`
+                      : "~5–7 Ink"}
+                    position="top"
                   >
-                    {genAllRunning
-                      ? "Generating..."
-                      : `Generate All ${chapters.length} Chapters`}
-                  </button>
-                </InkTooltip>
-                <InkTooltip
-                  label={inkEstimate && inkEstimate.per_chapter
-                    ? `~${inkEstimate.per_chapter[chapters.findIndex(c => c.id === active.id)] ?? Math.round((inkEstimate.total_low + inkEstimate.total_high) / 2 / inkEstimate.chapter_count * 10) / 10} Ink for this chapter`
-                    : "~5–7 Ink for this chapter"}
-                  position="top"
-                >
-                  <button
-                    onClick={() => regenerateChapter(active.id)}
-                    disabled={isGenerating}
-                    className="nodum-btn"
-                    style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                    <button
+                      onClick={() => regenerateChapter(active.id)}
+                      disabled={isGenerating}
+                      className="nodum-btn"
+                      style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                    >
+                      {regenRunning
+                        ? "Writing..."
+                        : active.status === "generated"
+                          ? "Regenerate"
+                          : "Generate Chapter"}
+                    </button>
+                  </InkTooltip>
+
+                  {/* Right: Generate All */}
+                  <InkTooltip
+                    label={inkEstimate
+                      ? `~${inkEstimate.total_low}–${inkEstimate.total_high} Ink for all ${inkEstimate.chapter_count} chapters`
+                      : "Ink cost calculated before generating"}
+                    position="top"
                   >
-                    {regenRunning
-                      ? "Regenerating..."
-                      : active.status === "generated"
-                        ? "Regenerate Chapter"
-                        : "Generate Chapter"}
-                  </button>
-                </InkTooltip>
+                    <button
+                      onClick={generateAll}
+                      disabled={isGenerating}
+                      className="nodum-btn"
+                    >
+                      {genAllRunning
+                        ? "Generating..."
+                        : `Generate All ${chapters.length} Chapters`}
+                    </button>
+                  </InkTooltip>
+                </div>
               </div>
 
               {/* Generate All completed summary */}

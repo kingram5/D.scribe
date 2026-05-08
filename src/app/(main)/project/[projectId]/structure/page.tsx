@@ -40,7 +40,24 @@ export default function StructurePage() {
   const [saving, setSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  const AUDIENCES = ["General", "Academic", "Faith Community", "Business/Leadership", "Self-Help", "Young Adult"];
+  const AUDIENCES = [
+    "General",
+    "Christian Living",
+    "Faith Community",
+    "Leadership",
+    "Business & Economics",
+    "Self-Help",
+    "Personal Development",
+    "Health & Wellness",
+    "Relationships & Family",
+    "Parenting",
+    "Memoir & Biography",
+    "Lifestyle",
+    "Psychology & Motivation",
+    "Money & Finance",
+    "Young Adult",
+    "Academic",
+  ];
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)

@@ -12,9 +12,11 @@ interface BrainstormChatProps {
   projectId: string;
   onComplete: () => void;
   onBack: () => void;
+  triggerFinish?: boolean;
+  onFinishTriggered?: () => void;
 }
 
-export default function BrainstormChat({ projectId, onComplete, onBack }: BrainstormChatProps) {
+export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered }: BrainstormChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -419,6 +421,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack }: Brains
       setMessages(messages.slice(0, -2));
     }
   }, [messages, streaming]);
+
+  // Allow parent (footer Transcript button) to trigger finish externally
+  useEffect(() => {
+    if (triggerFinish && canFinish) {
+      finishBrainstorm();
+      onFinishTriggered?.();
+    } else if (triggerFinish) {
+      onFinishTriggered?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerFinish]);
 
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const canUndo = userMessageCount > 0 && !streaming && !summarizing && messages.length >= 2;

@@ -13,6 +13,7 @@ export default function UploadPage() {
   const router = useRouter();
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
+  const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -27,7 +28,11 @@ export default function UploadPage() {
   }
 
   return (
-    <PageShell projectId={projectId} currentStep="upload">
+    <PageShell
+      projectId={projectId}
+      currentStep="upload"
+      onNextClick={showBrainstorm ? () => setTriggerBrainstormFinish(true) : undefined}
+    >
       <style>{`
         @media (max-width: 768px) {
           .ds-upload-split {
@@ -152,6 +157,8 @@ export default function UploadPage() {
               projectId={projectId}
               onComplete={() => router.push(`/project/${projectId}/transcript`)}
               onBack={() => setShowBrainstorm(false)}
+              triggerFinish={triggerBrainstormFinish}
+              onFinishTriggered={() => setTriggerBrainstormFinish(false)}
             />
           </div>
         ) : (

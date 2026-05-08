@@ -7,6 +7,10 @@ interface PageShellProps {
   currentStep?: string;
   hideFooterNav?: boolean;
   disableNextStep?: boolean;
+  /** Override the next-step button click (e.g. to trigger an action before navigating) */
+  onNextClick?: () => void;
+  /** Step keys that should appear greyed-out / non-navigable in the dot progress bar */
+  disabledStepKeys?: string[];
 }
 
 const STEPS = [
@@ -19,7 +23,7 @@ const STEPS = [
   { key: "export", label: "Export", path: "export" },
 ];
 
-export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep }: PageShellProps) {
+export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep, onNextClick, disabledStepKeys }: PageShellProps) {
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
   const currentLabel = currentIdx >= 0 ? STEPS[currentIdx].label : "";
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
@@ -78,7 +82,8 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex", gap: 4 }}>
               {STEPS.map((step, i) => {
-                const isClickable = i < currentIdx || (i === currentIdx + 1 && !disableNextStep);
+                const isStepDisabled = disabledStepKeys?.includes(step.key);
+                const isClickable = !isStepDisabled && (i < currentIdx || (i === currentIdx + 1 && !disableNextStep));
                 const dotStyle = {
                   width: i === currentIdx ? 20 : 6,
                   height: 6,
@@ -183,19 +188,29 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               <button
                 disabled
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#F9F7F2",
-                  border: "none",
-                  cursor: "not-allowed",
-                  padding: "12px 28px",
-                  borderRadius: 9999,
-                  background: "var(--ds-accent-400, #C17A47)",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
-                  opacity: 0.4,
+                  display: "flex", alignItems: "center", gap: 12,
+                  fontSize: 15, fontWeight: 600, color: "#F9F7F2",
+                  border: "none", cursor: "not-allowed", padding: "12px 28px",
+                  borderRadius: 9999, background: "var(--ds-accent-400, #C17A47)",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)", opacity: 0.4,
+                  fontFamily: "var(--font-manrope), sans-serif",
+                }}
+              >
+                {nextStep.label}
+                <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 2l5 5-5 5" />
+                </svg>
+              </button>
+            ) : onNextClick ? (
+              <button
+                onClick={onNextClick}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  fontSize: 15, fontWeight: 600, color: "#F9F7F2",
+                  border: "none", cursor: "pointer", padding: "12px 28px",
+                  borderRadius: 9999, background: "var(--ds-accent-400, #C17A47)",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)", transition: "all 0.2s",
+                  fontFamily: "var(--font-manrope), sans-serif",
                 }}
               >
                 {nextStep.label}
@@ -207,17 +222,10 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               <Link
                 href={`/project/${projectId}/${nextStep.path}`}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#F9F7F2",
-                  textDecoration: "none",
-                  transition: "all 0.2s",
-                  padding: "12px 28px",
-                  borderRadius: 9999,
-                  background: "var(--ds-accent-400, #C17A47)",
+                  display: "flex", alignItems: "center", gap: 12,
+                  fontSize: 15, fontWeight: 600, color: "#F9F7F2",
+                  textDecoration: "none", transition: "all 0.2s", padding: "12px 28px",
+                  borderRadius: 9999, background: "var(--ds-accent-400, #C17A47)",
                   boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
                 }}
               >

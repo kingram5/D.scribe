@@ -1061,7 +1061,7 @@ export default function LandingV2() {
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
               fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
-              fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 400, marginBottom: 12,
+              fontSize: "clamp(56px, 8vw, 84px)", fontWeight: 400, marginBottom: 12,
             }}>
               Seven steps. One manuscript.
             </h2>

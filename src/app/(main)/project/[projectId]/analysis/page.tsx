@@ -18,6 +18,7 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useJob } from "@/hooks/useJob";
 
 const OutlineEditor = dynamic(
@@ -54,6 +55,7 @@ export default function AnalysisPage() {
   const analyzeJob = useJob();
   const [numChapters, setNumChapters] = useState(5);
   const [targetWords, setTargetWords] = useState(3000);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [expandState, setExpandState] = useState<"idle" | "previewing" | "review" | "confirming">("idle");
   const [proposedChapters, setProposedChapters] = useState<
     { title: string; summary: string; narrative_arc: string; key_point_ids: string[]; included: boolean }[]
@@ -127,6 +129,7 @@ export default function AnalysisPage() {
           }),
         });
         if (!kpRes.ok) {
+          if (kpRes.status === 402) { setShowUpgrade(true); setAnalyzing(false); setAnalyzeStep(null); return; }
           const e = await kpRes.json().catch(() => ({ error: "Key points failed" }));
           throw new Error(e.error || "Key points failed");
         }
@@ -142,12 +145,18 @@ export default function AnalysisPage() {
       // Step 2: Voice profile
       setAnalyzeStep("Building voice profile...");
       const vpRes = await fetch("/api/analyze/voice-profile", { method: "POST", headers, body: JSON.stringify(body) });
-      if (!vpRes.ok) { const e = await vpRes.json().catch(() => ({ error: "Voice profile failed" })); throw new Error(e.error || "Voice profile failed"); }
+      if (!vpRes.ok) {
+        if (vpRes.status === 402) { setShowUpgrade(true); setAnalyzing(false); setAnalyzeStep(null); return; }
+        const e = await vpRes.json().catch(() => ({ error: "Voice profile failed" })); throw new Error(e.error || "Voice profile failed");
+      }
 
       // Step 3: Mind map
       setAnalyzeStep("Creating mind map...");
       const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
-      if (!mmRes.ok) { const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed"); }
+      if (!mmRes.ok) {
+        if (mmRes.status === 402) { setShowUpgrade(true); setAnalyzing(false); setAnalyzeStep(null); return; }
+        const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed");
+      }
 
       // Step 4: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
       const existingChapters = data?.chapters ?? [];
@@ -365,9 +374,33 @@ export default function AnalysisPage() {
             {analyzeError && (
               <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 16 }}>{analyzeError}</p>
             )}
-            {analyzing && analyzeStep && (
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>{analyzeStep}</p>
+
+            {analyzing && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif" }}>
+                    {analyzeStep || "Starting analysis..."}
+                  </span>
+                </div>
+                {/* Indeterminate progress bar */}
+                <div style={{ height: 4, background: "var(--ds-card-border)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    width: "40%",
+                    background: "linear-gradient(90deg, transparent 0%, #C17A47 50%, transparent 100%)",
+                    borderRadius: 2,
+                    animation: "analysisProgress 1.4s ease-in-out infinite",
+                  }} />
+                </div>
+                <style>{`
+                  @keyframes analysisProgress {
+                    0% { transform: translateX(-200%); }
+                    100% { transform: translateX(350%); }
+                  }
+                `}</style>
+              </div>
             )}
+
             <button
               onClick={runAnalysis}
               disabled={analyzing}
@@ -378,6 +411,7 @@ export default function AnalysisPage() {
             </button>
           </GlassCard>
         </div>
+        {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}
       </PageShell>
     );
   }
@@ -728,6 +762,7 @@ export default function AnalysisPage() {
           </GlassCard>
         )}
       </div>
+      {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}
     </PageShell>
   );
 }

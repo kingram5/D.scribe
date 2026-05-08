@@ -17,13 +17,17 @@ function LoginContent() {
 
   async function signInWithGoogle() {
     setLoading(true);
-    const supabase = createBrowserClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      redirect_uri: "https://d-scribe.app/auth/google/callback",
+      response_type: "code",
+      scope: "openid email profile",
+      // state carries the post-login destination
+      state: next,
+      access_type: "offline",
+      prompt: "select_account",
     });
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
 
   async function handleMagicLink(e: React.FormEvent) {

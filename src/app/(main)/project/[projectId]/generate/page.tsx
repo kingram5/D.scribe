@@ -121,6 +121,45 @@ export default function GeneratePage() {
     });
   }
 
+  // Consume a streaming /api/generate SSE response and wait for done/error event
+  async function streamGenerate(chapterId: string): Promise<void> {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chapter_id: chapterId, creative_freedom: creativeFreedom }),
+    });
+
+    if (res.status === 402) { setShowUpgrade(true); throw new Error("out_of_ink"); }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error((e as { error?: string }).error || "Generation failed");
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const raw = line.slice(6).trim();
+        if (raw === "[DONE]") return;
+        try {
+          const ev = JSON.parse(raw);
+          if (ev.done) return;
+          if (ev.error) throw new Error(ev.error);
+        } catch (parseErr) {
+          if (parseErr instanceof Error && parseErr.message !== "Unexpected token") throw parseErr;
+        }
+      }
+    }
+  }
+
   async function generateAll() {
     const toGenerate = chapters.filter(ch => ch.status !== "generated");
     if (toGenerate.length === 0) return;
@@ -132,23 +171,11 @@ export default function GeneratePage() {
     try {
       const total = toGenerate.length;
 
-      // Call /api/generate directly — synchronous, maxDuration=60, no after() overhead
       for (let i = 0; i < toGenerate.length; i++) {
         const ch = toGenerate[i];
         setGenAllProgress({ step: "generating", current: i + 1, total, message: `Writing chapter ${i + 1} of ${total}: ${ch.title}` });
 
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chapter_id: ch.id, creative_freedom: creativeFreedom }),
-        });
-
-        if (res.status === 402) { setShowUpgrade(true); return; }
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          throw new Error((e as { error?: string }).error || `Chapter ${i + 1} generation failed`);
-        }
-
+        await streamGenerate(ch.id);
         setChapters(prev => prev.map(c => c.id === ch.id ? { ...c, status: "generated" as const } : c));
       }
 
@@ -186,19 +213,12 @@ export default function GeneratePage() {
     setRegenRunning(true);
     setRegenError(null);
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter_id: chapterId, creative_freedom: creativeFreedom }),
-      });
-      if (res.status === 402) { setShowUpgrade(true); return; }
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error((e as { error?: string }).error || "Chapter generation failed");
-      }
+      await streamGenerate(chapterId);
       setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, status: "generated" as const } : c));
     } catch (err) {
-      setRegenError(err instanceof Error ? err.message : "Generation failed");
+      if ((err as Error).message !== "out_of_ink") {
+        setRegenError(err instanceof Error ? err.message : "Generation failed");
+      }
     } finally {
       setRegenRunning(false);
     }

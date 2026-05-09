@@ -684,9 +684,15 @@ input[type=range] {
 
   /* Hide desktop-layout hero elements */
   .lv2-hero-subarrow,
-  .lv2-hero-author,
-  .lv2-hero-waveform {
+  .lv2-hero-author {
     display: none !important;
+  }
+
+  /* Waveform: keep visible but move to top so it doesn't block tagline */
+  .lv2-hero-waveform {
+    top: 64px !important;
+    height: 18vh !important;
+    max-height: 130px !important;
   }
 
   /* Center tagline — reset absolute positioning */

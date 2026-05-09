@@ -830,7 +830,7 @@ export default function EditorPage() {
                 }} />
 
                 {/* Chapter Header — static, never scrolls */}
-                <div style={{ flexShrink: 0, padding: "48px 80px 0", paddingLeft: 104 }}>
+                <div className="ds-paper-header" style={{ flexShrink: 0, padding: "48px 80px 0", paddingLeft: 104 }}>
                   <div style={{
                     fontSize: 11,
                     fontWeight: 700,
@@ -864,7 +864,7 @@ export default function EditorPage() {
                 </div>
 
                 {/* Text body — only this scrolls */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "0 80px 60px", paddingLeft: 104, position: "relative" }}>
+                <div className="ds-paper-body" style={{ flex: 1, overflowY: "auto", padding: "0 80px 60px", paddingLeft: 104, position: "relative" }}>
                   <TipTapEditor
                     ref={editorRef}
                     content={content}

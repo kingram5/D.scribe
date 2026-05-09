@@ -362,7 +362,7 @@ export default function AnalysisPage() {
   if (!hasAnalysis) {
     return (
       <PageShell projectId={projectId} currentStep="analysis">
-        <div style={{ padding: "0 40px 40px", maxWidth: 500, margin: "0 auto" }}>
+        <div className="ds-analyze-card" style={{ padding: "0 40px 40px", maxWidth: 500, margin: "0 auto" }}>
           <GlassCard style={{ padding: 32, textAlign: "center" }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Analysis
@@ -681,7 +681,7 @@ export default function AnalysisPage() {
           <GlassCard style={{ padding: 32 }}>
             <PanelTitle>Voice Profile</PanelTitle>
             {data?.voice_profile ? (
-              <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="ds-voice-grid" style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
                     Tone
@@ -737,7 +737,7 @@ export default function AnalysisPage() {
         {tab === "map" && (
           <GlassCard style={{ padding: 0, overflow: "hidden" }}>
             {flowNodes.length > 0 ? (
-              <div style={{ height: 500 }}>
+              <div className="ds-mindmap-container" style={{ height: 500 }}>
                 <ReactFlow
                   nodes={flowNodes}
                   edges={flowEdges}

@@ -1001,7 +1001,7 @@ export default function LandingV2() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
-        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
+        <div className="lv2-hero-waveform" style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
           <CinematicMurmurWaveform />
         </div>
 

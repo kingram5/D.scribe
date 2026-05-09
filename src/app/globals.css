@@ -684,7 +684,8 @@ input[type=range] {
 
   /* Hide desktop-layout hero elements */
   .lv2-hero-subarrow,
-  .lv2-hero-author {
+  .lv2-hero-author,
+  .lv2-hero-waveform {
     display: none !important;
   }
 

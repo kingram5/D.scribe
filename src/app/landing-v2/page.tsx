@@ -244,7 +244,7 @@ function PipelineDashboard() {
   const step = DASH_PIPELINE[active];
 
   return (
-    <div style={{
+    <div className="lv2-pipeline-dash" style={{
       borderRadius: 20,
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",
@@ -556,7 +556,7 @@ function BrainstormMock() {
   const ink    = "#191816";
 
   return (
-    <div style={{
+    <div className="lv2-brainstorm-inner" style={{
       background: paper,
       borderRadius: 20,
       boxShadow: "0 32px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)",
@@ -564,6 +564,7 @@ function BrainstormMock() {
       flexDirection: "column",
       height: 650,
       width: 840,
+      maxWidth: "100%",
       overflow: "hidden",
       opacity: fading ? 0 : 1,
       transition: "opacity 0.6s ease",
@@ -573,7 +574,7 @@ function BrainstormMock() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "14px 18px",
         borderBottom: `1px solid ${border}`,
-        width: 840,
+        width: "100%",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: ink }}>
@@ -599,7 +600,7 @@ function BrainstormMock() {
       <div ref={messagesRef} style={{
         flex: 1, overflowY: "auto", padding: "16px 20px",
         display: "flex", flexDirection: "column", gap: 12,
-        width: 840,
+        width: "100%",
       }}>
         {displayed.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
@@ -1005,7 +1006,7 @@ export default function LandingV2() {
         </div>
 
         {/* Sub-hero CTA */}
-        <div style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
+        <div className="lv2-hero-subarrow" style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
           <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 46, color: "#ffffff", opacity: 0.9, marginLeft: -176, marginRight: -7, marginTop: 2 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
           <Link
             href="/login"
@@ -1016,14 +1017,14 @@ export default function LandingV2() {
         </div>
 
         {/* Center Tagline */}
-        <div style={{ position: "absolute", top: "54%", left: "50%", transform: "translateX(-50%)", textAlign: "center", width: "100%", zIndex: 2 }}>
+        <div className="lv2-hero-tagline" style={{ position: "absolute", top: "54%", left: "50%", transform: "translateX(-50%)", textAlign: "center", width: "100%", zIndex: 2 }}>
           <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 57, color: "#F9F7F2", fontWeight: 400, marginBottom: 12, marginTop: -30 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
           <div style={{ fontSize: 25, color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em", marginLeft: -1, marginTop: -15 }}>Stop waiting to write your book...</div>
           <div style={{ fontSize: 24, fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
         </div>
 
         {/* Left Side Author Content */}
-        <div style={{ position: "absolute", top: "47%", left: 80, maxWidth: 420, zIndex: 2 }}>
+        <div className="lv2-hero-author" style={{ position: "absolute", top: "47%", left: 80, maxWidth: 420, zIndex: 2 }}>
           <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
           </h2>
@@ -1039,7 +1040,7 @@ export default function LandingV2() {
         </div>
 
         {/* Bottom Stats Footer */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "space-around", padding: "40px 80px", paddingLeft: 80, marginTop: -14, background: "linear-gradient(to top, rgba(26, 20, 14, 0.9), transparent)", backdropFilter: "blur(4px)", zIndex: 2 }}>
+        <div className="lv2-hero-stats" style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "space-around", padding: "40px 80px", paddingLeft: 80, marginTop: -14, background: "linear-gradient(to top, rgba(26, 20, 14, 0.9), transparent)", backdropFilter: "blur(4px)", zIndex: 2 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2, marginLeft: 215, marginTop: 0, marginRight: 1 }}>{"< 10 min"}</div>
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: 215 }}>Audio to first chapter</div>
@@ -1077,7 +1078,7 @@ export default function LandingV2() {
           alignItems: "center",
         }}>
           {/* Left: animated dashboard */}
-          <div style={{ transform: "translateX(-25%)" }}>
+          <div className="lv2-dashboard-wrap" style={{ transform: "translateX(-25%)" }}>
             <FadeSection delay={0.1}>
               <PipelineDashboard />
             </FadeSection>
@@ -1174,7 +1175,9 @@ export default function LandingV2() {
 
           {/* Right: brainstorm chat mock */}
           <FadeSection delay={0.2}>
-            <BrainstormMock />
+            <div className="lv2-brainstorm-wrap">
+              <BrainstormMock />
+            </div>
           </FadeSection>
         </div>
       </section>

@@ -657,6 +657,134 @@ input[type=range] {
   transition: background 0.3s;
 }
 
+/* ========== Landing V2 Mobile ========== */
+@media (max-width: 768px) {
+  /* Navbar */
+  .landing-v2 nav {
+    padding: 0 20px !important;
+    height: 60px !important;
+  }
+  .landing-v2 nav > div:last-child > a:first-child {
+    display: none !important;
+  }
+  .landing-v2 nav > div:last-child {
+    gap: 12px !important;
+  }
+
+  /* Hero — switch from absolute to stacked flex */
+  .landing-v2 section:first-of-type {
+    height: auto !important;
+    min-height: 100svh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 80px 24px 40px !important;
+  }
+
+  /* Hide desktop-layout hero elements */
+  .lv2-hero-subarrow,
+  .lv2-hero-author {
+    display: none !important;
+  }
+
+  /* Center tagline — reset absolute positioning */
+  .lv2-hero-tagline {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    text-align: center !important;
+    width: 100% !important;
+    padding: 0 8px !important;
+  }
+  .lv2-hero-tagline > div:first-child {
+    font-size: 36px !important;
+    margin-bottom: 8px !important;
+    margin-top: 0 !important;
+  }
+  .lv2-hero-tagline > div:nth-child(2) {
+    font-size: 18px !important;
+    margin-top: 0 !important;
+  }
+  .lv2-hero-tagline > div:nth-child(3) {
+    font-size: 17px !important;
+  }
+
+  /* Stats footer — reset to simple centered row */
+  .lv2-hero-stats {
+    position: relative !important;
+    bottom: auto !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 20px !important;
+    padding: 24px 20px !important;
+    margin-top: 32px !important;
+  }
+  .lv2-hero-stats > div {
+    margin-left: 0 !important;
+  }
+  .lv2-hero-stats > div > div {
+    margin-left: 0 !important;
+    font-size: 32px !important;
+  }
+
+  /* Pipeline section */
+  .lv2-pipeline-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+  /* Hide the complex 1122px dashboard mock on mobile */
+  .lv2-dashboard-wrap {
+    display: none !important;
+  }
+
+  /* Human + AI grid */
+  .lv2-humanai-grid {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+  /* Scale down the 840x650 brainstorm mock */
+  .lv2-brainstorm-wrap {
+    width: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .lv2-brainstorm-inner {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 480px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Book carousel */
+  .landing-v2 [style*="padding: 0 80px"] {
+    padding: 0 8px !important;
+  }
+
+  /* Pipeline section padding */
+  .landing-v2 section:nth-of-type(2) {
+    padding: 60px 20px !important;
+  }
+
+  /* Human+AI section */
+  .landing-v2 section:nth-of-type(3) {
+    padding: 60px 20px !important;
+  }
+
+  /* Font size reductions for landing headings */
+  .landing-v2 h2 {
+    font-size: clamp(32px, 8vw, 56px) !important;
+  }
+  .landing-v2 p[style*="font-size: 36"] {
+    font-size: 20px !important;
+  }
+  .landing-v2 p[style*="font-size: 30"] {
+    font-size: 18px !important;
+  }
+}
+
 .btn-3d {
   background: var(--ds-device-trim, #D9D7CE);
   box-shadow: 0 2px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5);

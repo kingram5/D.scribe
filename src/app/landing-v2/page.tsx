@@ -1025,9 +1025,9 @@ export default function LandingV2() {
 
         {/* Left Side Author Content */}
         <div className="lv2-hero-author" style={{ position: "absolute", top: "47%", left: 80, maxWidth: 420, zIndex: 2 }}>
-          <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
+          <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
-          </h2>
+          </h1>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.5)", marginBottom: 20, maxWidth: 320, marginLeft: -50, marginTop: 10, paddingLeft: 0, paddingTop: 0, paddingRight: 0, paddingBottom: 0, marginRight: 0, width: 500 }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
@@ -1039,22 +1039,23 @@ export default function LandingV2() {
           </Link>
         </div>
 
+      </section>
+
         {/* Bottom Stats Footer */}
-        <div className="lv2-hero-stats" style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "space-around", padding: "40px 80px", paddingLeft: 80, marginTop: -14, background: "linear-gradient(to top, rgba(26, 20, 14, 0.9), transparent)", backdropFilter: "blur(4px)", zIndex: 2 }}>
+        <div className="lv2-hero-stats" style={{ display: "flex", justifyContent: "space-around", padding: "40px 80px", background: "rgba(26, 20, 14, 0.95)", backdropFilter: "blur(4px)" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2, marginLeft: 215, marginTop: 0, marginRight: 1 }}>{"< 10 min"}</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: 215 }}>Audio to first chapter</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2 }}>{"< 10 min"}</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Audio to first chapter</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4, marginTop: 0, marginLeft: -510 }}>7 steps</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: -510 }}>From voice to published book</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>7 steps</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>From voice to published book</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4, marginLeft: -720, marginTop: 0 }}>Your voice</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: -700 }}>AI writes in your style, not its own</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Your voice</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>AI writes in your style, not its own</div>
           </div>
         </div>
-      </section>
 
       {/* ─── Pipeline Section ─── */}
       <section style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto" }}>
@@ -1232,6 +1233,45 @@ export default function LandingV2() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+      </FadeSection>
+
+      {/* ─── FAQ ─── */}
+      <FadeSection>
+        <section style={{ padding: "96px 40px 80px", maxWidth: 860, margin: "0 auto" }}>
+          <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#C17A47", marginBottom: 16, textAlign: "center" }}>FAQ</p>
+          <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 400, fontStyle: "italic", color: "#F9F7F2", textAlign: "center", marginBottom: 60 }}>
+            Questions, answered
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {[
+              {
+                q: "How does D.scribe work?",
+                a: "Upload any audio recording — a sermon, a coaching call, a podcast episode, or a voice memo. D.scribe transcribes it word-for-word, builds a structure based on your chapter targets, analyzes your themes and voice patterns, then generates a full manuscript chapter by chapter. The entire process takes minutes, not months.",
+              },
+              {
+                q: "What audio formats does D.scribe support?",
+                a: "D.scribe accepts MP3, MP4, WAV, M4A, and most common audio and video formats. You can also paste a YouTube link and D.scribe will pull the audio automatically.",
+              },
+              {
+                q: "Do I need writing experience to use D.scribe?",
+                a: "None. D.scribe is built for people who are excellent at speaking but have never written a book before. If you can explain your ideas out loud, D.scribe can turn that into a polished manuscript.",
+              },
+              {
+                q: "How long does it take to generate a manuscript?",
+                a: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
+              },
+              {
+                q: "Can D.scribe match my voice and writing style?",
+                a: "Yes. D.scribe builds a voice profile from your recordings — capturing your vocabulary, sentence rhythms, and rhetorical patterns. The more you upload, the more precisely it writes in your voice.",
+              },
+            ].map((item, i) => (
+              <div key={i} style={{ padding: "28px 0", borderBottom: "1px solid rgba(249,247,242,0.08)", borderTop: i === 0 ? "1px solid rgba(249,247,242,0.08)" : "none" }}>
+                <p style={{ fontFamily: "var(--font-playfair), serif", fontSize: 20, fontWeight: 400, color: "#F9F7F2", marginBottom: 12 }}>{item.q}</p>
+                <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 15, color: "#A89F94", lineHeight: 1.75, margin: 0 }}>{item.a}</p>
+              </div>
+            ))}
           </div>
         </section>
       </FadeSection>

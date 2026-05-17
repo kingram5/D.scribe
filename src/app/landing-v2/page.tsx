@@ -1176,7 +1176,7 @@ export default function LandingV2() {
 
           {/* Right: brainstorm chat mock */}
           <FadeSection delay={0.2}>
-            <div className="lv2-brainstorm-wrap">
+            <div className="lv2-brainstorm-wrap" style={{ marginLeft: "-5%" }}>
               <BrainstormMock />
             </div>
           </FadeSection>

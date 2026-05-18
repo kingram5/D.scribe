@@ -1255,16 +1255,16 @@ export default function LandingV2() {
                 a: "D.scribe accepts MP3, MP4, WAV, M4A, and most common audio and video formats. You can also paste a YouTube link and D.scribe will pull the audio automatically.",
               },
               {
-                q: "Do I need writing experience to use D.scribe?",
-                a: "None. D.scribe is built for people who are excellent at speaking but have never written a book before. If you can explain your ideas out loud, D.scribe can turn that into a polished manuscript.",
+                q: "How does Ink work?",
+                a: "Ink is D.scribe's credit system. Every action that uses AI — transcription, analysis, chapter generation — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 200–400 Ink depending on length. You can always see your balance before taking any action.",
               },
               {
                 q: "How long does it take to generate a manuscript?",
                 a: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
               },
               {
-                q: "Can D.scribe match my voice and writing style?",
-                a: "Yes. D.scribe builds a voice profile from your recordings — capturing your vocabulary, sentence rhythms, and rhetorical patterns. The more you upload, the more precisely it writes in your voice.",
+                q: "Who is D.scribe for?",
+                a: "D.scribe is built for people who already have something to say — coaches, pastors, speakers, consultants, and experts who think best out loud. If you've been told you should write a book but never had the time or the process to do it, D.scribe is the bridge between your voice and a finished manuscript.",
               },
             ].map((item, i) => (
               <div key={i} style={{ padding: "28px 0", borderBottom: "1px solid rgba(249,247,242,0.08)", borderTop: i === 0 ? "1px solid rgba(249,247,242,0.08)" : "none" }}>

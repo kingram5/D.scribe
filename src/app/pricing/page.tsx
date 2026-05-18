@@ -1,4 +1,36 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Pricing — AI Book Writing Plans Starting at $25",
+  description: "D.scribe pricing starts at $25/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.",
+  alternates: {
+    canonical: "https://d-scribe.app/pricing",
+  },
+  openGraph: {
+    title: "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+    description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
+    url: "https://d-scribe.app/pricing",
+    siteName: "D.scribe",
+    type: "website",
+  },
+};
+
+const pricingSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "D.scribe Pricing — AI Book Writing Plans",
+  url: "https://d-scribe.app/pricing",
+  description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
+  isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
+};
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "D.scribe",
+  url: "https://d-scribe.app",
+};
 
 const TIERS = [
   {
@@ -55,6 +87,9 @@ const TIERS = [
 
 export default function PricingPage() {
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
     <div
       style={{
         minHeight: "100vh",
@@ -421,7 +456,43 @@ export default function PricingPage() {
             All plans include a 10 Ink free trial &middot; No payment required to start
           </p>
         </div>
+
+        {/* How Ink Works */}
+        <div style={{ maxWidth: 720, margin: "96px auto 0", borderTop: "1px solid rgba(249,247,242,0.08)", paddingTop: 72 }}>
+          <h2 style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif", fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 400, fontStyle: "italic", color: "#F9F7F2", textAlign: "center", marginBottom: 40 }}>
+            How Ink works
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            {[
+              {
+                title: "Ink is your generation budget",
+                body: "Every action that calls the AI — transcription, chapter generation, enrichment passes, coherence rewrites — costs Ink. Think of it like tokens on a prepaid meter. You can see exactly how much each action will cost before you run it.",
+              },
+              {
+                title: "One book ≈ 100 Ink",
+                body: "A standard 40,000-word book runs roughly 100 Ink end to end. The Starter plan (300 Ink) covers about 3 full books. Pro (660 Ink) handles 6. Premium (1,500 Ink) is built for high-volume authors, coaches, or teams producing content consistently.",
+              },
+              {
+                title: "Unused Ink rolls over",
+                body: "Ink you don't use in a billing period carries forward as long as your subscription is active. You're never paying for something you won't use.",
+              },
+              {
+                title: "No surprise overages",
+                body: "D.scribe shows you an Ink estimate before every major action. If you're running low, you'll see a warning — you'll never hit a wall mid-chapter without knowing it's coming.",
+              },
+            ].map((item) => (
+              <div key={item.title} style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C17A47", marginTop: 8, flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 15, fontWeight: 700, color: "#F9F7F2", marginBottom: 6 }}>{item.title}</p>
+                  <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 14, color: "#A89F94", lineHeight: 1.75, margin: 0 }}>{item.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
+    </>
   );
 }

@@ -18,7 +18,7 @@ function LoginContent() {
   async function signInWithGoogle() {
     setLoading(true);
     const params = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!.trim(),
       redirect_uri: "https://d-scribe.app/auth/google/callback",
       response_type: "code",
       scope: "openid email profile",

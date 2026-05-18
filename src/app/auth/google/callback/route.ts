@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenRes.json();
 
   if (!tokens.id_token) {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+    const reason = encodeURIComponent(tokens.error ?? "no_id_token");
+    return NextResponse.redirect(`${origin}/login?error=auth&reason=${reason}`);
   }
 
   // Sign into Supabase using the Google ID token
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
   });
 
   if (error || !data.user) {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+    const reason = encodeURIComponent(error?.message ?? "no_user");
+    return NextResponse.redirect(`${origin}/login?error=auth&reason=${reason}`);
   }
 
   // Beta allowlist check

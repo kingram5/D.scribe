@@ -1079,7 +1079,7 @@ export default function LandingV2() {
           alignItems: "center",
         }}>
           {/* Left: animated dashboard */}
-          <div className="lv2-dashboard-wrap" style={{ transform: "translateX(-25%)" }}>
+          <div className="lv2-dashboard-wrap" style={{ transform: "translateX(-20%)" }}>
             <FadeSection delay={0.1}>
               <PipelineDashboard />
             </FadeSection>

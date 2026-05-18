@@ -1256,7 +1256,7 @@ export default function LandingV2() {
               },
               {
                 q: "How does Ink work?",
-                a: "Ink is D.scribe's credit system. Every action that uses AI — transcription, analysis, chapter generation — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 200–400 Ink depending on length. You can always see your balance before taking any action.",
+                a: "Ink is D.scribe's credit system. Every action that uses AI — transcription, analysis, chapter generation — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 100–200 Ink depending on length. You can always see your balance before taking any action.",
               },
               {
                 q: "How long does it take to generate a manuscript?",

@@ -128,7 +128,7 @@ export default function Dashboard() {
 
   // Paper-theme overrides for cards floating on dark video bg
   const paperCard: React.CSSProperties & Record<string, string> = {
-    background: "rgba(28,22,16,0.4)",
+    background: "rgba(28,22,16,0.15)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
     border: "1px solid rgba(249,247,242,0.12)",
@@ -137,7 +137,7 @@ export default function Dashboard() {
     "--text-primary": "#F9F7F2",
     "--text-secondary": "#C8C0B4",
     "--text-tertiary": "#A89F94",
-    "--glass-bg": "rgba(28,22,16,0.4)",
+    "--glass-bg": "rgba(28,22,16,0.15)",
     "--glass-border": "rgba(249,247,242,0.12)",
     "--glass-highlight": "rgba(249,247,242,0.06)",
     "--ds-card-hover": "rgba(249,247,242,0.06)",

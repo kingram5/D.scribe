@@ -251,7 +251,7 @@ export default function PricingPage() {
               marginBottom: 20,
             }}
           >
-            Write your book.<br />Pay for what you use.
+            Write your book.<br />Pick the plan that fits.
           </h1>
           <p
             style={{
@@ -263,8 +263,8 @@ export default function PricingPage() {
               lineHeight: 1.7,
             }}
           >
-            Every plan includes the full D. scribe toolkit. Ink scales with how much
-            you write. Cancel anytime.
+            Every plan includes the full D.scribe toolkit — you just choose the
+            monthly Ink that matches how much you write. Cancel anytime.
           </p>
         </div>
 

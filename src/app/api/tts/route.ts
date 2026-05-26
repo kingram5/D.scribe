@@ -21,9 +21,9 @@ export async function POST(req: NextRequest) {
 
   const tier = balance?.tier ?? "free";
 
-  if (tier === "free") {
+  if (tier === "free" || tier === "starter") {
     return NextResponse.json(
-      { error: "tts_locked", message: "Voice is a paid feature. Upgrade to unlock." },
+      { error: "tts_locked", message: "Voice is a Pro feature. Upgrade to unlock." },
       { status: 403 }
     );
   }

@@ -33,6 +33,7 @@ async function activateSubscription(
       current_period_end: periodEnd,
       tts_chars_used: 0,
       tts_period_start: new Date().toISOString(),
+      ink_period_start: new Date().toISOString(),
     });
 }
 
@@ -137,6 +138,38 @@ export async function POST(req: NextRequest) {
           tts_period_start: new Date().toISOString(),
         })
         .eq("user_id", balance.user_id);
+    }
+  }
+
+  // Plan A: billing-aligned Ink reset. On each subscription invoice (initial +
+  // renewals), refill Ink to the tier allotment with NO rollover, and advance
+  // the Ink period. Keyed off invoice.customer (stable across API versions) +
+  // billing_reason, so we avoid the dahlia invoice-shape churn.
+  if (event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = invoice.customer as string | null;
+    const reason = invoice.billing_reason; // 'subscription_create' | 'subscription_cycle' | ...
+    const isSubscriptionInvoice =
+      reason === "subscription_create" ||
+      reason === "subscription_cycle" ||
+      reason === "subscription_update";
+
+    if (customerId && isSubscriptionInvoice) {
+      const { data: balance } = await supabase
+        .from("ink_balances")
+        .select("user_id, tier")
+        .eq("stripe_customer_id", customerId)
+        .single();
+
+      if (balance && TIER_INK[balance.tier] != null) {
+        await supabase
+          .from("ink_balances")
+          .update({
+            ink_balance: TIER_INK[balance.tier],
+            ink_period_start: new Date().toISOString(),
+          })
+          .eq("user_id", balance.user_id);
+      }
     }
   }
 

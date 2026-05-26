@@ -21,10 +21,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No billing account found" }, { status: 404 });
   }
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
-  });
-
-  return NextResponse.json({ url: session.url });
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
+    });
+    return NextResponse.json({ url: session.url });
+  } catch (e) {
+    // Most common cause: the Stripe Customer Portal hasn't been configured/saved
+    // in the Stripe dashboard for this mode (test vs live). Surface it instead of 500ing blind.
+    const message = e instanceof Error ? e.message : "Stripe billing portal error";
+    console.error("[stripe/portal] billingPortal.sessions.create failed:", message);
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

@@ -186,28 +186,6 @@ export default function PricingPage() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link
-              href="/#features"
-              style={{
-                fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
-                fontSize: 14,
-                color: "#A89F94",
-                textDecoration: "none",
-              }}
-            >
-              Features
-            </Link>
-            <Link
-              href="/#intelligence"
-              style={{
-                fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
-                fontSize: 14,
-                color: "#A89F94",
-                textDecoration: "none",
-              }}
-            >
-              Intelligence
-            </Link>
-            <Link
               href="/pricing"
               style={{
                 fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",

@@ -13,7 +13,10 @@ import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 
-export const maxDuration = 60;
+// Full chapters can take 60-180s to stream from Claude. On the 60s cap the
+// Vercel function was killed before the save block ran, leaving blank chapters
+// that the client mistook for success. 300 is the Pro-plan ceiling.
+export const maxDuration = 300;
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";

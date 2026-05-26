@@ -154,10 +154,18 @@ export default function GeneratePage() {
           if (ev.done) return;
           if (ev.error) throw new Error(ev.error);
         } catch (parseErr) {
-          if (parseErr instanceof Error && parseErr.message !== "Unexpected token") throw parseErr;
+          // JSON.parse on a partial/heartbeat chunk throws SyntaxError — ignore.
+          // A real error thrown above (ev.error) is not a SyntaxError — re-throw it.
+          if (parseErr instanceof SyntaxError) continue;
+          throw parseErr;
         }
       }
     }
+
+    // Stream closed without ever sending a done/[DONE] event — the server was
+    // killed mid-generation (timeout/crash) and never saved the chapter. Treat
+    // as a failure so the chapter isn't falsely marked generated.
+    throw new Error("Generation stopped before this chapter finished — retry to continue.");
   }
 
   async function generateAll() {
@@ -168,6 +176,7 @@ export default function GeneratePage() {
     setGenAllError(null);
     setGenAllResult(null);
 
+    const failed: string[] = [];
     try {
       const total = toGenerate.length;
 
@@ -175,34 +184,51 @@ export default function GeneratePage() {
         const ch = toGenerate[i];
         setGenAllProgress({ step: "generating", current: i + 1, total, message: `Writing chapter ${i + 1} of ${total}: ${ch.title}` });
 
-        await streamGenerate(ch.id);
-        setChapters(prev => prev.map(c => c.id === ch.id ? { ...c, status: "generated" as const } : c));
+        try {
+          await streamGenerate(ch.id);
+          setChapters(prev => prev.map(c => c.id === ch.id ? { ...c, status: "generated" as const } : c));
+        } catch (chErr) {
+          // Out of Ink: stop the whole batch (upgrade modal already surfaced).
+          if ((chErr as Error).message === "out_of_ink") throw chErr;
+          // Any other failure: record it and keep going so one bad chapter
+          // doesn't block the rest. Status stays un-generated → retryable.
+          failed.push(`Ch ${ch.chapter_number}`);
+        }
       }
 
-      // Coherence pass — direct call, synchronous
-      setGenAllProgress({ step: "coherence", current: total, total, message: "Smoothing transitions between chapters..." });
-      await fetch("/api/coherence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId }),
-      }).catch(() => {/* non-fatal: coherence is best-effort */});
-
-      // Foreword (optional) — direct call to /api/generate with type=foreword
-      if (includeForeword) {
-        setGenAllProgress({ step: "foreword", current: total, total, message: "Writing foreword..." });
-        await fetch("/api/generate", {
+      // If anything failed, skip the finishing passes and surface a retry prompt.
+      // Re-running "Generate All" only re-attempts chapters that aren't generated.
+      if (failed.length > 0) {
+        setGenAllError(`${failed.length} of ${total} chapters didn't finish (${failed.join(", ")}). Hit "Generate All" again to retry just those.`);
+      } else {
+        // Coherence pass — direct call, synchronous
+        setGenAllProgress({ step: "coherence", current: total, total, message: "Smoothing transitions between chapters..." });
+        await fetch("/api/coherence", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "foreword", project_id: projectId, creative_freedom: creativeFreedom, chapters: chapters.map(c => ({ title: c.title, summary: c.summary })) }),
-        }).catch(() => {});
+          body: JSON.stringify({ project_id: projectId }),
+        }).catch(() => {/* non-fatal: coherence is best-effort */});
+
+        // Foreword (optional) — direct call to /api/generate with type=foreword
+        if (includeForeword) {
+          setGenAllProgress({ step: "foreword", current: total, total, message: "Writing foreword..." });
+          await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "foreword", project_id: projectId, creative_freedom: creativeFreedom, chapters: chapters.map(c => ({ title: c.title, summary: c.summary })) }),
+          }).catch(() => {});
+        }
+
+        setGenAllResult({ chapters_generated: toGenerate.length });
+        setShowCelebration(true);
       }
 
-      setGenAllResult({ chapters_generated: toGenerate.length });
-      setShowCelebration(true);
       const fresh = await fetch(`/api/project/${projectId}`);
       if (fresh.ok) { const d = await fresh.json(); setChapters(d.chapters || []); }
     } catch (err) {
-      setGenAllError(err instanceof Error ? err.message : "Generation failed");
+      if ((err as Error).message !== "out_of_ink") {
+        setGenAllError(err instanceof Error ? err.message : "Generation failed");
+      }
     } finally {
       setGenAllRunning(false);
       setGenAllProgress(null);

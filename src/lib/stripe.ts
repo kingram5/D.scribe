@@ -18,7 +18,7 @@ let _client: Stripe | undefined;
 function getClient(): Stripe {
   if (!_client) {
     _client = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: "2024-12-18.acacia" as const,
+      apiVersion: "2026-04-22.dahlia" as const,
     });
   }
   return _client;

@@ -13,8 +13,11 @@ async function activateSubscription(
   customerId: string
 ) {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const periodStart = new Date(subscription.current_period_start * 1000).toISOString();
-  const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  // dahlia (2026-04-22): billing-period fields moved off the subscription onto its items.
+  const item = subscription.items.data[0];
+  if (!item) throw new Error(`Subscription ${subscriptionId} has no items`);
+  const periodStart = new Date(item.current_period_start * 1000).toISOString();
+  const periodEnd = new Date(item.current_period_end * 1000).toISOString();
 
   const supabase = createServerClient();
 

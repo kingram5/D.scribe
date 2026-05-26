@@ -32,58 +32,56 @@ const orgSchema = {
   url: "https://d-scribe.app",
 };
 
+// Every tier includes the full toolkit — plans differ only on capacity (Ink),
+// voice (Pro+), and value (Ink per dollar scales up with tier).
 const TIERS = [
   {
     name: "Starter",
     price: 25,
     ink: 300,
     books: "~3 books",
-    ttsChars: "8,000",
+    voice: null, // no voice playback on Starter
+    tagline: "Test the waters — write your first book or two.",
     badge: null,
     highlight: false,
-    features: [
-      "AI transcription",
-      "Voice profile",
-      "Chapter generation",
-      "PDF / DOCX export",
-    ],
   },
   {
     name: "Pro",
     price: 50,
     ink: 660,
     books: "~6 books",
-    ttsChars: "20,000",
-    badge: "Most Popular",
+    voice: "20,000 voice chars / mo",
+    tagline: "For the regular author who writes consistently.",
+    badge: "Best Value",
     highlight: true,
-    features: [
-      "AI transcription",
-      "Voice profile",
-      "Chapter generation",
-      "PDF / DOCX export",
-      "AI coherence pass",
-      "Enrichment quotes",
-    ],
   },
   {
     name: "Premium",
     price: 100,
     ink: 1500,
     books: "~14 books",
-    ttsChars: "60,000",
+    voice: "60,000 voice chars / mo",
+    tagline: "High-volume authors, coaches, and teams.",
     badge: null,
     highlight: false,
-    features: [
-      "AI transcription",
-      "Voice profile",
-      "Chapter generation",
-      "PDF / DOCX export",
-      "AI coherence pass",
-      "Enrichment quotes",
-      "Priority generation",
-    ],
   },
 ];
+
+// All AI capabilities are included on every plan — shown once, not gated per tier.
+const INCLUDED_FEATURES = [
+  "AI transcription",
+  "Voice profile",
+  "Chapter generation",
+  "AI coherence pass",
+  "Enrichment quotes",
+  "Priority generation",
+  "PDF / DOCX export",
+];
+
+function inkPerDollar(ink: number, price: number): string {
+  const v = ink / price;
+  return v % 1 === 0 ? String(v) : v.toFixed(1);
+}
 
 export default function PricingPage() {
   return (
@@ -377,7 +375,7 @@ export default function PricingPage() {
                   fontFamily: "var(--font-geist-mono), monospace",
                   fontSize: 13,
                   color: "#A89F94",
-                  marginBottom: 4,
+                  marginBottom: 6,
                   marginTop: 8,
                 }}
               >
@@ -387,41 +385,61 @@ export default function PricingPage() {
                 style={{
                   fontFamily: "var(--font-geist-mono), monospace",
                   fontSize: 12,
-                  color: "#7A7358",
-                  marginBottom: 28,
+                  fontWeight: 700,
+                  color: tier.highlight ? "#C17A47" : "#A89F94",
+                  marginBottom: 6,
                 }}
               >
-                {tier.ttsChars} voice chars / mo
+                {inkPerDollar(tier.ink, tier.price)} Ink per $1
               </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-geist-mono), monospace",
+                  fontSize: 12,
+                  color: tier.voice ? "#7A7358" : "#5C5249",
+                  marginBottom: 20,
+                }}
+              >
+                {tier.voice ?? "No voice playback"}
+              </div>
+
+              <p
+                style={{
+                  fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                  fontSize: 14,
+                  color: "#C8C0B4",
+                  lineHeight: 1.6,
+                  margin: "0 0 24px",
+                  minHeight: 44,
+                }}
+              >
+                {tier.tagline}
+              </p>
 
               <div
                 style={{
                   height: 1,
                   background: "rgba(249,247,242,0.08)",
-                  marginBottom: 24,
+                  marginBottom: 20,
                 }}
               />
 
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", display: "flex", flexDirection: "column", gap: 12 }}>
-                {tier.features.map(f => (
-                  <li
-                    key={f}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
-                      fontSize: 14,
-                      color: "#C8C0B4",
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17A47" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                  fontSize: 13,
+                  color: "#A89F94",
+                  marginBottom: 32,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17A47" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Full D.scribe toolkit included
+              </div>
 
               <Link
                 href="/login"
@@ -445,7 +463,25 @@ export default function PricingPage() {
           ))}
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 64 }}>
+        {/* Everything included — shown once, not gated per tier */}
+        <div style={{ maxWidth: 760, margin: "56px auto 0", textAlign: "center" }}>
+          <p style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C17A47", marginBottom: 20 }}>
+            Every plan includes
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px 24px" }}>
+            {INCLUDED_FEATURES.map((f) => (
+              <span key={f} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 14, color: "#C8C0B4" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C17A47" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                {f}
+              </span>
+            ))}
+          </div>
+          <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 13, color: "#7A7358", marginTop: 20 }}>
+            Voice playback (text-to-speech) is available on Pro &amp; Premium.
+          </p>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 48 }}>
           <p
             style={{
               fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
@@ -471,10 +507,6 @@ export default function PricingPage() {
               {
                 title: "One book ≈ 100 Ink",
                 body: "A standard 40,000-word book runs roughly 100 Ink end to end. The Starter plan (300 Ink) covers about 3 full books. Pro (660 Ink) handles 6. Premium (1,500 Ink) is built for high-volume authors, coaches, or teams producing content consistently.",
-              },
-              {
-                title: "Unused Ink rolls over",
-                body: "Ink you don't use in a billing period carries forward as long as your subscription is active. You're never paying for something you won't use.",
               },
               {
                 title: "No surprise overages",

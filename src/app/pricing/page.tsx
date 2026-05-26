@@ -509,10 +509,6 @@ export default function PricingPage() {
                 body: "A standard 40,000-word book runs roughly 100 Ink end to end. The Starter plan (300 Ink) covers about 3 full books. Pro (660 Ink) handles 6. Premium (1,500 Ink) is built for high-volume authors, coaches, or teams producing content consistently.",
               },
               {
-                title: "Ink resets each billing cycle",
-                body: "Your Ink refills to your plan's full amount at the start of every billing cycle. Unused Ink doesn't roll over — each cycle is a fresh allotment.",
-              },
-              {
                 title: "No surprise overages",
                 body: "D.scribe shows you an Ink estimate before every major action. If you're running low, you'll see a warning — you'll never hit a wall mid-chapter without knowing it's coming.",
               },

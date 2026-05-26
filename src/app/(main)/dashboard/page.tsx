@@ -128,22 +128,22 @@ export default function Dashboard() {
 
   // Paper-theme overrides for cards floating on dark video bg
   const paperCard: React.CSSProperties & Record<string, string> = {
-    background: "rgba(255,255,255,0.6)",
+    background: "rgba(28,22,16,0.4)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    border: "1px solid rgba(44,36,25,0.08)",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-    color: "#2C2419",
-    "--text-primary": "#2C2419",
-    "--text-secondary": "#7A7358",
-    "--text-tertiary": "#7A7358",
-    "--glass-bg": "rgba(255,255,255,0.6)",
-    "--glass-border": "rgba(44,36,25,0.08)",
-    "--glass-highlight": "rgba(44,36,25,0.03)",
-    "--ds-card-hover": "rgba(44,36,25,0.04)",
-    "--shadow-glass": "0 4px 20px rgba(0,0,0,0.04)",
-    "--menu-hover": "rgba(44,36,25,0.05)",
-    "--menu-active": "rgba(44,36,25,0.08)",
+    border: "1px solid rgba(249,247,242,0.12)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+    color: "#F9F7F2",
+    "--text-primary": "#F9F7F2",
+    "--text-secondary": "#C8C0B4",
+    "--text-tertiary": "#A89F94",
+    "--glass-bg": "rgba(28,22,16,0.4)",
+    "--glass-border": "rgba(249,247,242,0.12)",
+    "--glass-highlight": "rgba(249,247,242,0.06)",
+    "--ds-card-hover": "rgba(249,247,242,0.06)",
+    "--shadow-glass": "0 4px 20px rgba(0,0,0,0.2)",
+    "--menu-hover": "rgba(249,247,242,0.08)",
+    "--menu-active": "rgba(249,247,242,0.12)",
   };
 
   return (
@@ -298,10 +298,10 @@ export default function Dashboard() {
               {filter === "all" && projects.length === 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   <div>
-                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#2C2419", marginBottom: 8 }}>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#F9F7F2", marginBottom: 8 }}>
                       Your book starts here.
                     </h2>
-                    <p style={{ fontSize: 14, color: "#7A7358", lineHeight: 1.6 }}>
+                    <p style={{ fontSize: 14, color: "#C8C0B4", lineHeight: 1.6 }}>
                       Three steps to turn your spoken words into a manuscript:
                     </p>
                   </div>
@@ -324,8 +324,8 @@ export default function Dashboard() {
                           {step.num}
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "#2C2419" }}>{step.title}</div>
-                          <div style={{ fontSize: 13, color: "#7A7358", marginTop: 2 }}>{step.desc}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#F9F7F2" }}>{step.title}</div>
+                          <div style={{ fontSize: 13, color: "#A89F94", marginTop: 2 }}>{step.desc}</div>
                         </div>
                       </div>
                     ))}
@@ -336,7 +336,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div style={{
-                  border: "1.5px dashed rgba(44,36,25,0.15)",
+                  border: "1.5px dashed rgba(249,247,242,0.2)",
                   borderRadius: "var(--radius-md)",
                   padding: 48,
                   display: "flex",
@@ -344,7 +344,7 @@ export default function Dashboard() {
                   alignItems: "center",
                   gap: 16,
                 }}>
-                  <p style={{ fontSize: 16, color: "#7A7358" }}>
+                  <p style={{ fontSize: 16, color: "#C8C0B4" }}>
                     No {filter.replace("_", " ")} projects
                   </p>
                 </div>

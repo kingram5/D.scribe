@@ -78,9 +78,10 @@ const INCLUDED_FEATURES = [
   "PDF / DOCX export",
 ];
 
-function inkPerDollar(ink: number, price: number): string {
-  const v = ink / price;
-  return v % 1 === 0 ? String(v) : v.toFixed(1);
+function valueNote(ink: number, price: number): string {
+  const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
+  const pct = Math.round(((ink / price) / base - 1) * 100);
+  return pct <= 0 ? "Base Ink rate" : `${pct}% more Ink per $ than Starter`;
 }
 
 export default function PricingPage() {
@@ -390,7 +391,7 @@ export default function PricingPage() {
                   marginBottom: 6,
                 }}
               >
-                {inkPerDollar(tier.ink, tier.price)} Ink per $1
+                {valueNote(tier.ink, tier.price)}
               </div>
               <div
                 style={{

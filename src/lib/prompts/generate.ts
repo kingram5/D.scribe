@@ -101,7 +101,7 @@ ${blended.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
   if (opts.enrichments && opts.enrichments.length > 0) {
     const included = opts.enrichments.filter((e) => e.included);
     if (included.length > 0) {
-      prompt += `\n\nEnrichment quotes to weave in naturally, with attribution:\n${included.map((e) => `- "${e.quote_text}" — ${e.source_author}, ${e.source_title}`).join("\n")}`;
+      prompt += `\n\nREQUIRED ENRICHMENT QUOTES — You MUST include every one of the following quotes in this chapter. Reproduce each quote VERBATIM inside quotation marks, with its attribution (author and source). Place each where it best supports the surrounding text and introduce it with a smooth lead-in. Do NOT paraphrase, summarize, merge, or omit any of them — all ${included.length} must appear:\n${included.map((e, i) => `${i + 1}. "${e.quote_text}" — ${e.source_author}, ${e.source_title}`).join("\n")}`;
     }
   }
 

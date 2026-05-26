@@ -302,16 +302,18 @@ export default function Dashboard() {
                       Your book starts here.
                     </h2>
                     <p style={{ fontSize: 14, color: "#C8C0B4", lineHeight: 1.6 }}>
-                      Three steps to turn your spoken words into a manuscript:
+                      Seven steps to turn your spoken words into a manuscript:
                     </p>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {[
-                      { num: "1", title: "Speak", desc: "Record live, upload an audio file, or paste a YouTube link." },
-                      { num: "2", title: "Transcribe", desc: "AI converts your words to text with speaker detection." },
-                      { num: "3", title: "Analyze", desc: "Key points extracted, voice profile built, chapter outline created." },
-                      { num: "4", title: "Edit", desc: "Refine your manuscript chapter by chapter in the editor." },
-                      { num: "5", title: "Export", desc: "Download your finished book as PDF or DOCX." },
+                      { num: "1", title: "Audio Upload", desc: "Upload your sermon, lecture, or recording — or record live." },
+                      { num: "2", title: "Transcription", desc: "Your words, captured by AI and ready to shape." },
+                      { num: "3", title: "Structure Setup", desc: "Set your chapters and word-count targets." },
+                      { num: "4", title: "Content Analysis", desc: "AI identifies key themes, your voice patterns, and the book's foundation." },
+                      { num: "5", title: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter." },
+                      { num: "6", title: "Manuscript Editor", desc: "Review, refine, and polish your manuscript." },
+                      { num: "7", title: "Export & Publish", desc: "Download your finished book in any format." },
                     ].map((step) => (
                       <div key={step.num} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                         <div style={{

@@ -131,30 +131,43 @@ export async function POST(req: NextRequest) {
   const targetWords = chapter.target_word_count || 1500;
   const recommendedQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
 
-  const result = await askClaudeWithUsage(
-    ENRICH_SYSTEM,
-    enrichPrompt(
-      chapter.title,
-      chapter.summary,
-      (keyPoints || []).map((kp) => kp.title),
-      chapter.projects.audience,
-      chapter.projects.scripture_translation,
-      excludeTexts
-    ),
-    { temperature: 0.4 }
+  const promptText = enrichPrompt(
+    chapter.title,
+    chapter.summary,
+    (keyPoints || []).map((kp) => kp.title),
+    chapter.projects.audience,
+    chapter.projects.scripture_translation,
+    excludeTexts
   );
-  const raw = result.text;
-  // Non-blocking — don't let Ink tracking failure abort the enrichment
-  recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", result.usage).catch(console.error);
+
+  // Responses sometimes include unescaped quotes inside string values, which break
+  // JSON.parse. Try once, then retry with a stricter, lower-temperature ask.
+  const parseItems = (text: string): Record<string, unknown>[] | null => {
+    try {
+      const parsed = JSON.parse(cleanJson(text));
+      return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : null;
+    } catch {
+      return null;
+    }
+  };
 
   try {
-    console.log("[enrich] Raw Claude response:", raw.slice(0, 500));
-    const cleaned = cleanJson(raw);
-    console.log("[enrich] Cleaned JSON:", cleaned.slice(0, 500));
-    const items = JSON.parse(cleaned);
+    const first = await askClaudeWithUsage(ENRICH_SYSTEM, promptText, { temperature: 0.4 });
+    recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", first.usage).catch(console.error);
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "No enrichment items found in response" }, { status: 500 });
+    let items = parseItems(first.text);
+    if (!items) {
+      const retry = await askClaudeWithUsage(
+        ENRICH_SYSTEM,
+        promptText + `\n\nYour previous response was not valid JSON. Return ONLY a valid JSON array, nothing else — escape every double quote inside a string value as \\", or use curly quotes “ ” for quotation marks inside quote_text.`,
+        { temperature: 0.2 }
+      );
+      recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", retry.usage).catch(console.error);
+      items = parseItems(retry.text);
+    }
+
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "Couldn't read the quote results — please try again." }, { status: 500 });
     }
 
     // Replace ONLY the un-selected quotes — the user's toggled-on favorites stay put.

@@ -36,7 +36,7 @@ For each item, provide:
 - source_type: book | article | scripture | speech | research
 - relevance_note: One sentence on why this connects to the chapter
 
-Return valid JSON array. No markdown fencing.
+Return ONLY a valid JSON array. No markdown fencing. CRITICAL for valid JSON: inside quote_text, use curly quotes “ ” for any quotation marks within the text — never raw straight double quotes inside a string value.
 
 IMPORTANT: Only provide quotes and references you are confident are accurately attributed. source_type MUST be exactly one of: book, article, scripture, speech, research. If you are paraphrasing rather than quoting verbatim, keep the correct source_type and add "(paraphrased)" to relevance_note. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}`;
 }

@@ -1,17 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { KeyPoint, MindMapNode, MindMapEdge, VoiceProfile, Chapter, Audience } from "@/types";
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  type Node,
-  type Edge,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
+import { KeyPoint, VoiceProfile, Chapter, Audience } from "@/types";
 import dynamic from "next/dynamic";
 import GlassCard from "@/components/ui/GlassCard";
 import PanelTitle from "@/components/ui/PanelTitle";
@@ -19,6 +10,7 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
+import AnalysisLoadingScreen from "@/components/analysis/AnalysisLoadingScreen";
 import { useJob } from "@/hooks/useJob";
 
 const OutlineEditor = dynamic(
@@ -30,29 +22,34 @@ interface AnalysisData {
   key_points: KeyPoint[];
   chapters: Chapter[];
   voice_profile: VoiceProfile | null;
-  mind_map_nodes: MindMapNode[];
-  mind_map_edges: MindMapEdge[];
 }
 
-const NODE_COLORS: Record<string, string> = {
-  topic: "#191816",
-  subtopic: "#7a7369",
-  quote: "#d4b895",
-  scripture: "#8b8276",
-  illustration: "#a0978a",
-};
+// Map a real voice profile to the 3 display traits shown during analysis.
+function deriveTraits(vp: VoiceProfile | null): string[] {
+  if (!vp) return [];
+  return [
+    vp.tone,
+    vp.vocabulary_level ? `${vp.vocabulary_level} vocabulary` : null,
+    vp.formality_score != null ? `Formality ${vp.formality_score}/5` : null,
+  ].filter(Boolean) as string[];
+}
 
 export default function AnalysisPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const [data, setData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"outline" | "voice" | "map">("outline");
+  const [tab, setTab] = useState<"outline" | "voice">("outline");
   const [audience, setAudience] = useState<Audience>("General");
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeJob = useJob();
+  // Live data surfaced into the analysis loading screen as each stage completes
+  const [liveKeyPoints, setLiveKeyPoints] = useState<string[]>([]);
+  const [liveTraits, setLiveTraits] = useState<string[]>([]);
+  const [liveChapters, setLiveChapters] = useState<string[]>([]);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
   const [numChapters, setNumChapters] = useState(5);
   const [targetWords, setTargetWords] = useState(3000);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -70,8 +67,6 @@ export default function AnalysisPage() {
           key_points: project.key_points || [],
           chapters: project.chapters || [],
           voice_profile: project.voice_profile,
-          mind_map_nodes: project.mind_map_nodes || [],
-          mind_map_edges: project.mind_map_edges || [],
         });
         if (project.audience) setAudience(project.audience);
         if (project.num_chapters) setNumChapters(project.num_chapters);
@@ -84,6 +79,10 @@ export default function AnalysisPage() {
   async function runAnalysis() {
     setAnalyzing(true);
     setAnalyzeError(null);
+    setLiveKeyPoints([]);
+    setLiveTraits([]);
+    setLiveChapters((data?.chapters ?? []).map((c) => c.title));
+    setAnalysisComplete(false);
 
     // Save audience to project before analyzing
     await fetch(`/api/project/${projectId}`, {
@@ -138,6 +137,7 @@ export default function AnalysisPage() {
         done = kpData.done;
         if (kpData.key_points) {
           allTitles.push(...kpData.key_points.map((kp: { title: string }) => kp.title));
+          setLiveKeyPoints([...allTitles]);
         }
         chunkIndex++;
       }
@@ -149,16 +149,10 @@ export default function AnalysisPage() {
         if (vpRes.status === 402) { setShowUpgrade(true); setAnalyzing(false); setAnalyzeStep(null); return; }
         const e = await vpRes.json().catch(() => ({ error: "Voice profile failed" })); throw new Error(e.error || "Voice profile failed");
       }
+      const vpData = await vpRes.json().catch(() => null);
+      if (vpData?.voice_profile) setLiveTraits(deriveTraits(vpData.voice_profile));
 
-      // Step 3: Mind map
-      setAnalyzeStep("Creating mind map...");
-      const mmRes = await fetch("/api/analyze/mind-map", { method: "POST", headers, body: JSON.stringify({ project_id: projectId }) });
-      if (!mmRes.ok) {
-        if (mmRes.status === 402) { setShowUpgrade(true); setAnalyzing(false); setAnalyzeStep(null); return; }
-        const e = await mmRes.json().catch(() => ({ error: "Mind map failed" })); throw new Error(e.error || "Mind map failed");
-      }
-
-      // Step 4: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
+      // Step 3: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
       const existingChapters = data?.chapters ?? [];
       if (existingChapters.length === 0) {
         setAnalyzeStep("Generating chapter outline...");
@@ -172,9 +166,14 @@ export default function AnalysisPage() {
         key_points: project.key_points || [],
         chapters: project.chapters || [],
         voice_profile: project.voice_profile,
-        mind_map_nodes: project.mind_map_nodes || [],
-        mind_map_edges: project.mind_map_edges || [],
       });
+      setLiveChapters((project.chapters || []).map((c: { title: string }) => c.title));
+      if (project.voice_profile) setLiveTraits(deriveTraits(project.voice_profile));
+
+      // Brief "complete" beat so the outline column fills before we transition.
+      setAnalyzeStep(null);
+      setAnalysisComplete(true);
+      await new Promise((r) => setTimeout(r, 1000));
       setTab("outline");
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
@@ -182,6 +181,7 @@ export default function AnalysisPage() {
 
     setAnalyzing(false);
     setAnalyzeStep(null);
+    setAnalysisComplete(false);
   }
 
   // Refresh data after analysis completes
@@ -194,8 +194,6 @@ export default function AnalysisPage() {
             key_points: project.key_points || [],
             chapters: project.chapters || [],
             voice_profile: project.voice_profile,
-            mind_map_nodes: project.mind_map_nodes || [],
-            mind_map_edges: project.mind_map_edges || [],
           });
           setTab("outline");
         });
@@ -251,8 +249,6 @@ export default function AnalysisPage() {
         key_points: project.key_points || [],
         chapters: project.chapters || [],
         voice_profile: project.voice_profile,
-        mind_map_nodes: project.mind_map_nodes || [],
-        mind_map_edges: project.mind_map_edges || [],
       });
       setExpandState("idle");
       setProposedChapters([]);
@@ -263,94 +259,25 @@ export default function AnalysisPage() {
     }
   }
 
-  // React Flow nodes/edges for concept mind map tab
-  const flowNodes: Node[] = useMemo(() => {
-    if (!data?.mind_map_nodes.length) return [];
-    const topicNodes = data.mind_map_nodes.filter((n) => n.node_type === "topic");
-    const childNodes = data.mind_map_nodes.filter((n) => n.node_type !== "topic");
-    const nodes: Node[] = [];
-    const TOPIC_SPACING_X = 350;
-    const CHILD_SPACING_Y = 80;
-
-    topicNodes.forEach((node, i) => {
-      nodes.push({
-        id: node.id,
-        position: { x: node.position_x || i * TOPIC_SPACING_X, y: node.position_y || 0 },
-        data: { label: node.label },
-        style: {
-          background: NODE_COLORS[node.node_type] || "#7a7369",
-          color: "#fff",
-          borderRadius: "12px",
-          padding: "12px 20px",
-          fontSize: "14px",
-          fontWeight: 600,
-          border: "none",
-          minWidth: "140px",
-          textAlign: "center" as const,
-        },
-      });
-    });
-
-    const childrenByParent: Record<string, MindMapNode[]> = {};
-    childNodes.forEach((n) => {
-      const parent = n.parent_id || "orphan";
-      if (!childrenByParent[parent]) childrenByParent[parent] = [];
-      childrenByParent[parent].push(n);
-    });
-
-    Object.entries(childrenByParent).forEach(([parentId, children]) => {
-      const parentNode = nodes.find((n) => n.id === parentId);
-      const baseX = parentNode ? parentNode.position.x : 0;
-      const baseY = parentNode ? parentNode.position.y + 120 : 200;
-
-      children.forEach((node, j) => {
-        nodes.push({
-          id: node.id,
-          position: {
-            x: node.position_x || baseX + (j - (children.length - 1) / 2) * 200,
-            y: node.position_y || baseY + j * CHILD_SPACING_Y,
-          },
-          data: { label: node.label },
-          style: {
-            background: NODE_COLORS[node.node_type] || "#a0978a",
-            color: "#fff",
-            borderRadius: "8px",
-            padding: "8px 14px",
-            fontSize: "12px",
-            border: "none",
-            minWidth: "100px",
-            textAlign: "center" as const,
-          },
-        });
-      });
-    });
-
-    return nodes;
-  }, [data?.mind_map_nodes]);
-
-  const flowEdges: Edge[] = useMemo(() => {
-    if (!data?.mind_map_edges.length) return [];
-    return data.mind_map_edges.map((e) => ({
-      id: e.id,
-      source: e.source_id,
-      target: e.target_id,
-      label: e.label || undefined,
-      animated: e.edge_type === "leads_to",
-      style: {
-        stroke: e.edge_type === "supports" ? "#059669" : e.edge_type === "contradicts" ? "#dc2626" : "#a0978a",
-        strokeWidth: 1.5,
-      },
-    }));
-  }, [data?.mind_map_edges]);
-
-  const miniMapNodeColor = useCallback((node: Node) => {
-    return (node.style as Record<string, string>)?.background || "#7a7369";
-  }, []);
-
   if (loading) {
     return (
       <PageShell projectId={projectId} currentStep="analysis">
         <Spinner />
+      </PageShell>
+    );
+  }
+
+  // Analysis running: full-area Neural loading screen, driven by real pipeline data
+  if (analyzing) {
+    return (
+      <PageShell projectId={projectId} currentStep="analysis" hideFooterNav>
+        <AnalysisLoadingScreen
+          step={analyzeStep}
+          complete={analysisComplete}
+          keyPoints={liveKeyPoints}
+          traits={liveTraits}
+          chapters={liveChapters}
+        />
       </PageShell>
     );
   }
@@ -454,7 +381,6 @@ export default function AnalysisPage() {
           {[
             { key: "outline" as const, label: `Outline (${data?.chapters?.length || 0} chapters)` },
             { key: "voice" as const, label: "Voice Profile" },
-            { key: "map" as const, label: "Concept Map" },
           ].map((t) => (
             <button
               key={t.key}
@@ -729,35 +655,6 @@ export default function AnalysisPage() {
               </div>
             ) : (
               <p style={{ color: "#a0978a", marginTop: 16 }}>No voice profile yet.</p>
-            )}
-          </GlassCard>
-        )}
-
-        {/* Concept Map tab (AI-generated, read-only) */}
-        {tab === "map" && (
-          <GlassCard style={{ padding: 0, overflow: "hidden" }}>
-            {flowNodes.length > 0 ? (
-              <div className="ds-mindmap-container" style={{ height: 500 }}>
-                <ReactFlow
-                  nodes={flowNodes}
-                  edges={flowEdges}
-                  fitView
-                  fitViewOptions={{ padding: 0.3 }}
-                  proOptions={{ hideAttribution: true }}
-                  style={{ background: "transparent" }}
-                >
-                  <Background color="rgba(0,0,0,0.03)" gap={20} />
-                  <Controls showInteractive={false} />
-                  <MiniMap
-                    nodeColor={miniMapNodeColor}
-                    style={{ background: "#191816", borderRadius: 8 }}
-                  />
-                </ReactFlow>
-              </div>
-            ) : (
-              <div style={{ padding: 60, textAlign: "center", color: "#a0978a" }}>
-                No concept map generated yet.
-              </div>
             )}
           </GlassCard>
         )}

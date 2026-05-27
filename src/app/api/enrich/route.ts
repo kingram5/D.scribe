@@ -105,10 +105,12 @@ export async function POST(req: NextRequest) {
     keyPoints = data;
   }
 
-  // #12 — scale the quote budget to chapter length (~1 per 750 words), capped 1-6,
-  // so a 1k-word chapter gets 1-2 and a 3k-word chapter gets ~4 instead of all cramming in.
+  // #12 — offer the FULL candidate set, but pre-select a sensible number scaled to
+  // chapter length (~1 per 750 words, capped 1-6) as a soft default. Every other
+  // candidate is still shown and toggleable — this just nudges the writer toward
+  // their favorite few instead of cramming all of them into a short chapter.
   const targetWords = chapter.target_word_count || 1500;
-  const maxQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
+  const recommendedQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
 
   const result = await askClaudeWithUsage(
     ENRICH_SYSTEM,
@@ -117,7 +119,6 @@ export async function POST(req: NextRequest) {
       chapter.summary,
       (keyPoints || []).map((kp) => kp.title),
       chapter.projects.audience,
-      maxQuotes,
       chapter.projects.scripture_translation
     ),
     { temperature: 0.4 }
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
           source_title: item.source_title || "",
           source_type: item.source_type || "book",
           relevance_note: item.relevance_note || "",
-          included: idx < maxQuotes,
+          included: idx < recommendedQuotes,
         }))
       )
       .select();

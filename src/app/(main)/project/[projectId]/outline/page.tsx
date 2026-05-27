@@ -135,6 +135,9 @@ export default function OutlinePage() {
 
   const chapters = data!.chapters;
   const activeChapterEnrichments = activeEnrichChapter ? enrichments[activeEnrichChapter] || [] : [];
+  const activeEnrichCh = activeEnrichChapter ? chapters.find((c) => c.id === activeEnrichChapter) : null;
+  const recommendedQuotes = activeEnrichCh ? Math.max(1, Math.min(6, Math.round((activeEnrichCh.target_word_count || 1500) / 750))) : 0;
+  const selectedQuoteCount = activeChapterEnrichments.filter((e) => e.included).length;
 
   // Has chapters — show the outline editor
   return (
@@ -220,6 +223,12 @@ export default function OutlinePage() {
               {/* Enrichment results */}
               {activeChapterEnrichments.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
+                    Suggested ~{recommendedQuotes} for a chapter this length — pick your favorites.{" "}
+                    <span style={{ color: selectedQuoteCount > recommendedQuotes ? "#E0A35D" : "rgba(255,255,255,0.4)" }}>
+                      {selectedQuoteCount} selected.
+                    </span>
+                  </p>
                   {activeChapterEnrichments.map((e) => (
                     <div
                       key={e.id}

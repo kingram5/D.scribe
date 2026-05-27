@@ -367,6 +367,9 @@ export default function GeneratePage() {
 
   const active = chapters.find((ch) => ch.id === activeChapter);
   const chapterEnrichments = activeChapter ? enrichments[activeChapter] || [] : [];
+  const activeGenCh = activeChapter ? chapters.find((c) => c.id === activeChapter) : null;
+  const recommendedQuotes = activeGenCh ? Math.max(1, Math.min(6, Math.round((activeGenCh.target_word_count || 1500) / 750))) : 0;
+  const selectedQuoteCount = chapterEnrichments.filter((e) => e.included).length;
   const isGenerating = genAllRunning || regenRunning;
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
@@ -676,6 +679,12 @@ export default function GeneratePage() {
                 </div>
                 {chapterEnrichments.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
+                      Suggested ~{recommendedQuotes} for a chapter this length — pick your favorites.{" "}
+                      <span style={{ color: selectedQuoteCount > recommendedQuotes ? "#E0A35D" : "var(--text-tertiary)" }}>
+                        {selectedQuoteCount} selected.
+                      </span>
+                    </p>
                     {chapterEnrichments.map((e) => (
                       <div
                         key={e.id}

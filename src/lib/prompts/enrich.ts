@@ -7,7 +7,6 @@ export function enrichPrompt(
   chapterSummary: string,
   keyPoints: string[],
   audience: Audience,
-  maxQuotes: number,
   translation?: string | null
 ): string {
   const aud = audience as string;
@@ -20,7 +19,7 @@ Summary: ${chapterSummary}
 Key Points: ${keyPoints.join("; ")}
 Audience: ${audience}
 
-Provide up to ${maxQuotes} of the MOST relevant items from your knowledge — fewer is better than padding. Quality over quantity. Draw from:
+Provide 6-10 relevant, high-quality options so the writer has a good range to choose their favorites from. Draw from:
 - Quotes from notable figures (with attribution)
 ${scriptureAudience ? `- Scripture references — ALWAYS include the exact book, chapter, and verse (e.g. "John 3:16").${transNote}\n` : ""}- Historical parallels or anecdotes
 - Research findings or statistics

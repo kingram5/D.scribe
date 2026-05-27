@@ -38,5 +38,5 @@ For each item, provide:
 
 Return valid JSON array. No markdown fencing.
 
-IMPORTANT: Only provide quotes and references you are confident are accurately attributed. If uncertain about exact wording, paraphrase and note "paraphrased" in the source_type. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}`;
+IMPORTANT: Only provide quotes and references you are confident are accurately attributed. source_type MUST be exactly one of: book, article, scripture, speech, research. If you are paraphrasing rather than quoting verbatim, keep the correct source_type and add "(paraphrased)" to relevance_note. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}`;
 }

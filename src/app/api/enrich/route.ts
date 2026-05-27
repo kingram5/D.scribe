@@ -110,7 +110,19 @@ export async function POST(req: NextRequest) {
   const { data: existingEnrichments } = await supabase
     .from("enrichments").select("*").eq("chapter_id", chapter_id);
   const kept = (existingEnrichments || []).filter((e) => e.included);
-  const keptTexts = kept.map((e) => e.quote_text).filter(Boolean) as string[];
+
+  // Exclude every quote already shown ANYWHERE in this project (this chapter's
+  // favorites + all other chapters' quotes) so quotes aren't recycled chapter-to-
+  // chapter and a refresh returns genuinely new material.
+  const { data: projectChapters } = await supabase
+    .from("chapters").select("id").eq("project_id", chapter.projects.id);
+  const chapterIds = (projectChapters || []).map((c) => c.id);
+  let excludeTexts = kept.map((e) => e.quote_text).filter(Boolean) as string[];
+  if (chapterIds.length > 0) {
+    const { data: allEnr } = await supabase
+      .from("enrichments").select("quote_text").in("chapter_id", chapterIds);
+    excludeTexts = Array.from(new Set([...excludeTexts, ...(allEnr || []).map((e) => e.quote_text).filter(Boolean)])) as string[];
+  }
 
   // #12 — offer the FULL candidate set, but pre-select a sensible number scaled to
   // chapter length (~1 per 750 words, capped 1-6) as a soft default. Every other
@@ -127,7 +139,7 @@ export async function POST(req: NextRequest) {
       (keyPoints || []).map((kp) => kp.title),
       chapter.projects.audience,
       chapter.projects.scripture_translation,
-      keptTexts
+      excludeTexts
     ),
     { temperature: 0.4 }
   );
@@ -151,6 +163,10 @@ export async function POST(req: NextRequest) {
     // Insert fresh candidates. Auto-select up to the recommended count, counting the
     // kept favorites first, so a refresh tops up toward the suggestion without
     // overriding the picks the user already made.
+    // DB CHECK constraint only allows these source_types — coerce anything else
+    // (e.g. a model returning "paraphrased" or "quote") to "book" so the insert
+    // doesn't fail the whole batch.
+    const ALLOWED_SOURCE_TYPES = ["book", "article", "scripture", "speech", "research"];
     const { data: inserted, error } = await supabase
       .from("enrichments")
       .insert(
@@ -159,7 +175,7 @@ export async function POST(req: NextRequest) {
           quote_text: item.quote_text || "",
           source_author: item.source_author || "Unknown",
           source_title: item.source_title || "",
-          source_type: item.source_type || "book",
+          source_type: ALLOWED_SOURCE_TYPES.includes(item.source_type as string) ? (item.source_type as string) : "book",
           relevance_note: item.relevance_note || "",
           included: (kept.length + idx) < recommendedQuotes,
         }))

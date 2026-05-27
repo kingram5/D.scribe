@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import * as THREE from "three";
 
 /**
  * Standalone preview of 3 candidate /analysis loading animations (items #2/#3).
@@ -75,7 +76,7 @@ function useSimulatedAnalysis() {
   const chaptersResolved = ["outline_resolve", "done"].includes(stage.phase);
   const keyPointsDone = voiceActive; // step 1 complete once we've moved past it
 
-  return { stage, tick, themesRevealed, voiceActive, outlineActive, chaptersResolved, keyPointsDone, done: stage.phase === "done", replay };
+  return { stage, tick, runId, themesRevealed, voiceActive, outlineActive, chaptersResolved, keyPointsDone, done: stage.phase === "done", replay };
 }
 
 type Sim = ReturnType<typeof useSimulatedAnalysis>;
@@ -396,16 +397,241 @@ function StatusBar({ label, dark }: { label: string; dark?: boolean }) {
   );
 }
 
+// ── Concept N — Neural Analysis (Three.js dither-wave bg + 3 columns) ─
+const NEURAL_VS = `
+  varying float vElevation;
+  uniform float uTime;
+  void main() {
+    vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+    float elevation = sin(modelPosition.x * 2.5 + uTime * 0.4) *
+                      sin(modelPosition.z * 1.5 + uTime * 0.3) * 0.5;
+    modelPosition.y += elevation;
+    vElevation = elevation;
+    gl_Position = projectionMatrix * viewMatrix * modelPosition;
+  }
+`;
+const NEURAL_FS = `
+  varying float vElevation;
+  float dither(vec2 position, float brightness) {
+    int x = int(mod(position.x, 4.0));
+    int y = int(mod(position.y, 4.0));
+    int index = x + y * 4;
+    float limit = 0.0;
+    if (index == 0) limit = 0.0625; if (index == 8) limit = 0.5625;
+    if (index == 2) limit = 0.1875; if (index == 10) limit = 0.6875;
+    if (index == 12) limit = 0.8125; if (index == 4) limit = 0.3125;
+    if (index == 14) limit = 0.9375; if (index == 6) limit = 0.4375;
+    if (index == 3) limit = 0.25; if (index == 11) limit = 0.75;
+    if (index == 1) limit = 0.125; if (index == 9) limit = 0.625;
+    if (index == 15) limit = 1.0; if (index == 7) limit = 0.5;
+    if (index == 13) limit = 0.875; if (index == 5) limit = 0.375;
+    return brightness < limit ? 0.0 : 1.0;
+  }
+  void main() {
+    float light = vElevation * 1.5 + 0.6;
+    vec2 screenPos = gl_FragCoord.xy / 2.5;
+    float d = dither(screenPos, light);
+    vec3 color = mix(vec3(0.75, 0.47, 0.28), vec3(0.98, 0.97, 0.95), d);
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function DitherWaveBackground() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const mount = ref.current;
+    if (!mount) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(2, 2, 2);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    mount.appendChild(renderer.domElement);
+
+    const geometry = new THREE.PlaneGeometry(6, 6, 128, 128);
+    geometry.rotateX(-Math.PI * 0.5);
+    const material = new THREE.ShaderMaterial({
+      vertexShader: NEURAL_VS,
+      fragmentShader: NEURAL_FS,
+      uniforms: { uTime: { value: 0 } },
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    const clock = new THREE.Clock();
+    let raf = 0;
+    const loop = () => {
+      material.uniforms.uTime.value = clock.getElapsedTime();
+      renderer.render(scene, camera);
+      raf = requestAnimationFrame(loop);
+    };
+    if (reduce) {
+      renderer.render(scene, camera); // single static frame
+    } else {
+      loop();
+    }
+
+    const onResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+      const c = renderer.domElement;
+      if (c.parentNode) c.parentNode.removeChild(c);
+    };
+  }, []);
+  return <div ref={ref} aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.4, pointerEvents: "none" }} />;
+}
+
+const NEURAL_DATA = {
+  themes: ["Childhood memories", "Overcoming fear", "Family bonds", "Spiritual awakening", "Career milestones", "Finding purpose"],
+  traits: ["Conversational", "Narrative-driven", "Scripture-anchored"],
+  chapters: ["The Early Years in Ohio", "A Shift in Perspective", "Building the Foundation", "Trials in the Wilderness", "The Turning Point", "Looking Ahead"],
+};
+const COPPER = "#C17A47";
+const SURFACE_BORDER = "#E8E2D4";
+const TEXT_PRIMARY = "#2C2419";
+const TEXT_MUTED = "#7A7358";
+const glassPanel: React.CSSProperties = { background: "rgba(255,255,255,0.4)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(232,226,212,0.6)" };
+const colHeadLabel: React.CSSProperties = { fontFamily: "var(--font-manrope), sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: TEXT_PRIMARY };
+const colCount: React.CSSProperties = { fontSize: 10, fontFamily: "ui-monospace, monospace", color: COPPER };
+
+function NeuralAnalysis() {
+  const [stage, setStage] = useState(1);
+  const [counts, setCounts] = useState({ themes: 0, traits: 0, chapters: 0 });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCounts((prev) => {
+        if (stage === 1 && prev.themes < NEURAL_DATA.themes.length) return { ...prev, themes: prev.themes + 1 };
+        if (stage === 2 && prev.traits < NEURAL_DATA.traits.length) return { ...prev, traits: prev.traits + 1 };
+        if (stage === 3 && prev.chapters < NEURAL_DATA.chapters.length) return { ...prev, chapters: prev.chapters + 1 };
+        return prev;
+      });
+    }, 400);
+    let advance: ReturnType<typeof setTimeout> | undefined;
+    if (stage === 1 && counts.themes === NEURAL_DATA.themes.length) advance = setTimeout(() => setStage(2), 800);
+    if (stage === 2 && counts.traits === NEURAL_DATA.traits.length) advance = setTimeout(() => setStage(3), 800);
+    if (stage === 3 && counts.chapters === NEURAL_DATA.chapters.length) advance = setTimeout(() => setStage(4), 1000);
+    return () => { clearInterval(timer); if (advance) clearTimeout(advance); };
+  }, [stage, counts]);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "#FAF8F3", overflow: "hidden" }}>
+      <DitherWaveBackground />
+      <div style={{ position: "relative", zIndex: 10, height: "100%", overflowY: "auto", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)", padding: "80px 48px 128px" }}>
+        {/* Header */}
+        <header style={{ maxWidth: 1024, margin: "0 auto 64px", textAlign: "center" }}>
+          <span className="lp-slideup" style={{ display: "block", fontFamily: "var(--font-manrope), sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.3em", color: COPPER, marginBottom: 16 }}>
+            Phase {Math.min(stage, 3)} of 3 • Analysis Engine
+          </span>
+          <h1 className="lp-slideup" style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 48, color: TEXT_PRIMARY, margin: "0 0 24px", animationDelay: "0.1s" }}>
+            {stage === 4 ? "Synthesis Complete" : "Mapping your story…"}
+          </h1>
+          <p className="lp-slideup" style={{ fontFamily: "var(--font-manrope), sans-serif", color: TEXT_MUTED, fontSize: 14, maxWidth: 512, margin: "0 auto", lineHeight: 1.7, animationDelay: "0.2s" }}>
+            Our neural engine is deconstructing your vocal narrative into thematic pillars, tonal traits, and a structured chronological framework.
+          </p>
+        </header>
+
+        {/* 3 columns */}
+        <div className="lp-neural-grid" style={{ maxWidth: 1152, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 48 }}>
+          {/* Themes */}
+          <div style={{ opacity: stage >= 1 ? 1 : 0.2, transition: "opacity 0.7s" }}>
+            <div style={{ borderBottom: `1px solid ${SURFACE_BORDER}`, paddingBottom: 16, marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <h3 style={colHeadLabel}>Themes</h3>
+              <span style={colCount}>{counts.themes}/{NEURAL_DATA.themes.length}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {NEURAL_DATA.themes.map((t, i) => (
+                <div key={i} style={{ ...glassPanel, height: 48, borderRadius: 8, padding: "0 16px", display: "flex", alignItems: "center", gap: 12, opacity: i < counts.themes ? 1 : 0, transform: i < counts.themes ? "translateX(0)" : "translateX(-16px)", transition: "all 0.5s" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: COPPER, flexShrink: 0 }} />
+                  <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 14, fontWeight: 500, color: TEXT_PRIMARY }}>{t}</span>
+                </div>
+              ))}
+              {stage === 1 && counts.themes < NEURAL_DATA.themes.length && (
+                <div className="lp-neural-shimmer" style={{ height: 48, borderRadius: 8, opacity: 0.4 }} />
+              )}
+            </div>
+          </div>
+
+          {/* Voice Traits */}
+          <div style={{ opacity: stage >= 2 ? 1 : 0.2, transition: "opacity 0.7s" }}>
+            <div style={{ borderBottom: `1px solid ${SURFACE_BORDER}`, paddingBottom: 16, marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <h3 style={colHeadLabel}>Voice Traits</h3>
+              <span style={colCount}>{counts.traits}/{NEURAL_DATA.traits.length}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {NEURAL_DATA.traits.map((trait, i) => (
+                <div key={i} style={{ paddingLeft: 16, borderLeft: `2px solid ${COPPER}`, opacity: i < counts.traits ? 1 : 0, transform: i < counts.traits ? "translateY(0)" : "translateY(16px)", transition: "all 0.7s" }}>
+                  <div style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 20, color: TEXT_PRIMARY }}>{trait}</div>
+                  <div style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 10, textTransform: "uppercase", letterSpacing: "-0.02em", color: TEXT_MUTED, marginTop: 4 }}>Linguistic marker verified</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Outline */}
+          <div style={{ opacity: stage >= 3 ? 1 : 0.2, transition: "opacity 0.7s" }}>
+            <div style={{ borderBottom: `1px solid ${SURFACE_BORDER}`, paddingBottom: 16, marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <h3 style={colHeadLabel}>Outline</h3>
+              <span style={colCount}>{counts.chapters}/{NEURAL_DATA.chapters.length}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {NEURAL_DATA.chapters.map((ch, i) => (
+                <div key={i} style={{ display: "flex", gap: 16, alignItems: "baseline", opacity: i < counts.chapters ? 1 : 0, transition: "all 0.5s" }}>
+                  <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", color: COPPER, fontSize: 18 }}>0{i + 1}</span>
+                  <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 600, lineHeight: 1.3, color: TEXT_PRIMARY }}>{ch}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom status pill */}
+        <div style={{ ...glassPanel, position: "fixed", bottom: 48, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, padding: "16px 32px", borderRadius: 9999, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.4)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className={stage < 4 ? "lp-pulse" : undefined} style={{ width: 8, height: 8, borderRadius: "50%", background: stage < 4 ? COPPER : "#16a34a" }} />
+            <span style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT_PRIMARY }}>
+              {stage === 4 ? "Analysis Optimized" : "Processing Signal…"}
+            </span>
+          </div>
+          {stage === 4 && (
+            <>
+              <div style={{ width: 1, height: 16, background: SURFACE_BORDER }} />
+              <button style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 12, fontWeight: 700, color: COPPER, textTransform: "uppercase", letterSpacing: "0.1em", background: "none", border: "none", cursor: "pointer" }}>
+                Generate Manuscript →
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page shell + switcher ────────────────────────────────────────────
 const VARIANTS = [
-  { key: "2b", label: "2B · Book Spine" },
+  { key: "neural", label: "Neural ✨" },
+  { key: "3b", label: "3B · Timeline" },
   { key: "3a", label: "3A · Chip Cascade" },
-  { key: "3b", label: "3B · Timeline ⭐" },
+  { key: "2b", label: "2B · Book Spine" },
 ] as const;
 type VariantKey = (typeof VARIANTS)[number]["key"];
 
 export default function LoadingPreviewPage() {
-  const [variant, setVariant] = useState<VariantKey>("3b");
+  const [variant, setVariant] = useState<VariantKey>("neural");
   const sim = useSimulatedAnalysis();
 
   // Replay automatically when switching variants so each starts fresh.
@@ -413,6 +639,7 @@ export default function LoadingPreviewPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, overflow: "hidden", fontFamily: "var(--font-manrope), sans-serif" }}>
+      {variant === "neural" && <NeuralAnalysis key={sim.runId} />}
       {variant === "2b" && <BookSpineBuild sim={sim} />}
       {variant === "3a" && <ChipCascade sim={sim} />}
       {variant === "3b" && <VerticalTimeline sim={sim} />}
@@ -464,8 +691,14 @@ export default function LoadingPreviewPage() {
         .lp-glyph { animation: lp-drift ease-in-out infinite; }
         @keyframes lp-stream { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
         .lp-stream { animation: lp-stream 36s linear infinite; }
+        @keyframes lp-slideup { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+        .lp-slideup { animation: lp-slideup 0.6s cubic-bezier(0.16,1,0.3,1) forwards; opacity: 0; }
+        @keyframes lp-nshimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .lp-neural-shimmer { background: linear-gradient(90deg, rgba(193,122,71,0.05) 25%, rgba(193,122,71,0.1) 50%, rgba(193,122,71,0.05) 75%); background-size: 200% 100%; animation: lp-nshimmer 2s infinite linear; }
+        @media (max-width: 860px) { .lp-neural-grid { grid-template-columns: 1fr !important; } }
         @media (prefers-reduced-motion: reduce) {
-          .lp-chip, .lp-pageline, .lp-pagecard, .lp-glow, .lp-glow2, .lp-glyph, .lp-stream { animation: none !important; }
+          .lp-chip, .lp-pageline, .lp-pagecard, .lp-glow, .lp-glow2, .lp-glyph, .lp-stream, .lp-neural-shimmer { animation: none !important; }
+          .lp-slideup { animation: none !important; opacity: 1 !important; }
           .lp-pulse { animation: none !important; box-shadow: 0 0 0 4px rgba(193,122,71,0.2) !important; }
           .lp-scanline { display: none !important; }
           .lp-shimmer { animation: none !important; }

@@ -70,6 +70,14 @@ function replaceAIPhrases(text: string): string {
   return result.replace(/  +/g, " ").replace(/ ([.,;])/g, "$1");
 }
 
+// Third-person self-reference slips → first person.
+// Only the possessive form is rewritten ("the author's voice" -> "my voice") because
+// it maps cleanly to "my" without breaking verb agreement. Subject/object forms
+// ("the author believes") are left to the first-person POV prompt rule to avoid mangling.
+function fixSelfReference(text: string): string {
+  return text.replace(/\bthe (?:author|speaker|writer|narrator)['’]s\b/gi, "my");
+}
+
 /**
  * Sanitize generated chapter content.
  * Call this between Claude output and database save.
@@ -78,5 +86,6 @@ export function sanitizeGenerated(text: string): string {
   let result = text;
   result = replaceEmDashes(result);
   result = replaceAIPhrases(result);
+  result = fixSelfReference(result);
   return result.trim();
 }

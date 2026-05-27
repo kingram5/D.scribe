@@ -17,6 +17,7 @@ export async function runGenerateJob(
     generate_type?: string;
     creative_freedom?: number;
     chapters?: { title: string; summary: string }[];
+    regenerate?: boolean;
   }
 ) {
   const supabase = createServerClient();
@@ -33,6 +34,20 @@ export async function runGenerateJob(
         .from("projects").select("*").eq("id", input.project_id).single();
       if (!project) throw new Error("Project not found");
 
+      // #15 — never overwrite an existing foreword unless the user explicitly regenerates.
+      if (!input.regenerate) {
+        const { data: existingFw } = await supabase
+          .from("chapters").select("id").eq("project_id", input.project_id).eq("chapter_number", 0).maybeSingle();
+        if (existingFw) {
+          const { data: existingContent } = await supabase
+            .from("chapter_contents").select("id").eq("chapter_id", existingFw.id).limit(1).maybeSingle();
+          if (existingContent) {
+            await updateJob(jobId, { status: "completed", result: { foreword: true, skipped: true } });
+            return;
+          }
+        }
+      }
+
       const chaptersInfo = (input.chapters || [])
         .map((ch, i) => `Chapter ${i + 1}: ${ch.title}\n${ch.summary}`)
         .join("\n\n");
@@ -43,7 +58,7 @@ export async function runGenerateJob(
         : "";
 
       const rawContent = await askClaude(
-        `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}\n${HUMANIZER_RULES}`,
+        `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter in FIRST PERSON as the author (never refer to "the author" or "the speaker" in third person). ${voiceNote}\n${HUMANIZER_RULES}`,
         `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.
 
 The book contains these chapters:
@@ -51,14 +66,14 @@ ${chaptersInfo}
 
 The foreword should:
 - Welcome the reader and set the tone
-- Preview the journey ahead without spoiling key moments
+- Preview what's ahead without spoiling key moments
 - Establish why these topics matter
 - Create anticipation for what's to come
-- Be warm, inviting, and authentic to the speaker's voice
+- Be warm, inviting, and written in my own authentic voice (first person)
 
-Target: ~1500 words. Write the full foreword now.
+Keep it tight: 500-700 words total. Write the full foreword now.
 
-REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write like a human.`,
+REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write in first person. Write like a human.`,
         { temperature, maxTokens: 8192 }
       );
       const content = sanitizeGenerated(rawContent);
@@ -71,9 +86,9 @@ REMINDER: Absolutely NO em dashes (—), NO AI clichés. Write like a human.`,
         project_id: input.project_id,
         chapter_number: 0,
         title: "Foreword",
-        summary: "An introduction to the themes and journey ahead.",
+        summary: "A short introduction to the themes ahead.",
         key_point_ids: [],
-        target_word_count: 1500,
+        target_word_count: 600,
         sort_order: -1,
         status: "generated",
       }).select().single();

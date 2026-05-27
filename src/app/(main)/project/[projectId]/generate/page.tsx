@@ -26,6 +26,7 @@ export default function GeneratePage() {
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
   const [enriching, setEnriching] = useState<string | null>(null);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
   // Client-orchestrated generate-all state (replaces single long-running job)
   const [genAllRunning, setGenAllRunning] = useState(false);
   const [genAllError, setGenAllError] = useState<string | null>(null);
@@ -55,6 +56,8 @@ export default function GeneratePage() {
         const chs = data.chapters || [];
         setChapters(chs);
         if (chs.length > 0) setActiveChapter(chs[0].id);
+        // #14 — restore the persisted Creative Freedom for this project (cross-device)
+        if (typeof data.creative_freedom === "number") setCreativeFreedom(data.creative_freedom);
         setLoading(false);
         const hasUngenerated = chs.some((ch: { status: string }) => ch.status !== "generated");
         if (hasUngenerated) {
@@ -85,6 +88,7 @@ export default function GeneratePage() {
 
   async function fetchEnrichments(chapterId: string) {
     setEnriching(chapterId);
+    setEnrichError(null);
     try {
       const res = await guardedFetch("/api/enrich", {
         method: "POST",
@@ -96,10 +100,12 @@ export default function GeneratePage() {
         setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
       } else if (res.status !== 402) {
         // 402 is handled by the upgrade modal via guardedFetch — skip it here
-        console.error("Enrichment failed:", res.status);
+        const e = await res.json().catch(() => ({}));
+        setEnrichError(e.error || `Couldn't find quotes (error ${res.status}). Try again.`);
       }
     } catch (err) {
       console.error("Enrichment error:", err);
+      setEnrichError("Couldn't reach the server. Check your connection and try again.");
     }
     setEnriching(null);
   }
@@ -119,6 +125,17 @@ export default function GeneratePage() {
       }
       return updated;
     });
+  }
+
+  // #14 — persist Creative Freedom on the project so it survives reloads / other
+  // devices. Best-effort: if the column isn't migrated yet, this silently no-ops
+  // and the slider falls back to its in-session value.
+  function persistCreativeFreedom(value: number) {
+    fetch(`/api/project/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ creative_freedom: value }),
+    }).catch(() => {});
   }
 
   // Consume a streaming /api/generate SSE response and wait for done/error event
@@ -236,11 +253,26 @@ export default function GeneratePage() {
   }
 
   async function regenerateChapter(chapterId: string) {
+    // #15 — never overwrite existing content without an explicit confirmation.
+    const ch = chapters.find((c) => c.id === chapterId);
+    if (
+      ch?.status === "generated" &&
+      typeof window !== "undefined" &&
+      !window.confirm(`"${ch.title || "This chapter"}" already has content. Regenerate and replace it? The current version is saved in history.`)
+    ) {
+      return;
+    }
     setRegenRunning(true);
     setRegenError(null);
     try {
       await streamGenerate(chapterId);
       setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, status: "generated" as const } : c));
+      // #15 — re-run the coherence pass so transitions stay smooth after a regenerate
+      await fetch("/api/coherence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId }),
+      }).catch(() => {});
     } catch (err) {
       if ((err as Error).message !== "out_of_ink") {
         setRegenError(err instanceof Error ? err.message : "Generation failed");
@@ -256,11 +288,18 @@ export default function GeneratePage() {
   // But if chapters are already generated, allow standalone foreword generation
   const forewordJob = useJob();
   async function generateForewordOnly() {
+    // #15 — if a foreword already exists, confirm before replacing it.
+    const hasForeword = chapters.some((c) => c.chapter_number === 0);
+    if (hasForeword && typeof window !== "undefined" &&
+        !window.confirm("A foreword already exists. Regenerate and replace it?")) {
+      return;
+    }
     await forewordJob.start({
       type: "generate",
       project_id: projectId,
       generate_type: "foreword",
       creative_freedom: creativeFreedom,
+      regenerate: hasForeword,
       chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
     });
   }
@@ -544,6 +583,9 @@ export default function GeneratePage() {
                     max={100}
                     value={creativeFreedom}
                     onChange={(e) => setCreativeFreedom(parseInt(e.target.value))}
+                    onMouseUp={(e) => persistCreativeFreedom(parseInt((e.target as HTMLInputElement).value))}
+                    onTouchEnd={(e) => persistCreativeFreedom(parseInt((e.target as HTMLInputElement).value))}
+                    onKeyUp={(e) => persistCreativeFreedom(parseInt((e.target as HTMLInputElement).value))}
                     className="ds-freedom-slider"
                   />
                   {/* Quill/pen icon */}
@@ -726,6 +768,9 @@ export default function GeneratePage() {
                     )}
                   </button>
                   </InkTooltip>
+                )}
+                {enrichError && (
+                  <p style={{ fontSize: 12, color: "#dc2626", marginTop: 10, textAlign: "center" }}>{enrichError}</p>
                 )}
               </div>
 

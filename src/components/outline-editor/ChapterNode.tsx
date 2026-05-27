@@ -36,6 +36,7 @@ function ChapterNoteComponent({
 }: ChapterNoteProps) {
   const [hovered, setHovered] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
     if (titleRef.current) {
@@ -43,6 +44,13 @@ function ChapterNoteComponent({
       if (val !== chapter.title) onEdit("title", val);
     }
   }, [chapter.title, onEdit]);
+
+  const handleSummaryBlur = useCallback(() => {
+    if (summaryRef.current) {
+      const val = summaryRef.current.textContent || "";
+      if (val !== (chapter.summary || "")) onEdit("summary", val);
+    }
+  }, [chapter.summary, onEdit]);
 
   const borderColor = getBorderColor(color);
 
@@ -52,12 +60,9 @@ function ChapterNoteComponent({
       onMouseLeave={() => setHovered(false)}
       style={{
         width: 320,
-        background: color,
-        border: `3px solid ${borderColor}`,
         borderRadius: 4,
         padding: "20px 18px 14px",
         cursor: isDragging ? "grabbing" : "grab",
-        filter: "url(#rough-edge)",
         boxShadow: isDragging
           ? "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)"
           : "0 4px 6px rgba(0,0,0,0.05), 2px 2px 0 rgba(0,0,0,0.02)",
@@ -68,12 +73,25 @@ function ChapterNoteComponent({
         userSelect: "none",
       }}
     >
+      {/* Torn-paper background layer — the #rough-edge SVG filter lives here only,
+          so the text rendered above stays crisp instead of being rasterized blurry (#4) */}
+      <div aria-hidden style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        background: color,
+        border: `3px solid ${borderColor}`,
+        borderRadius: 4,
+        filter: "url(#rough-edge)",
+      }} />
+
       {/* Emoji badge */}
       <div style={{
         position: "absolute",
         top: -16,
         left: 14,
         fontSize: 28,
+        zIndex: 2,
         filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.1))",
       }}>
         📖
@@ -108,6 +126,8 @@ function ChapterNoteComponent({
         </button>
       )}
 
+      {/* Content layer — sits above the filtered background so it renders sharp */}
+      <div style={{ position: "relative", zIndex: 1 }}>
       {/* Chapter number */}
       <div style={{
         fontSize: 11,
@@ -140,6 +160,26 @@ function ChapterNoteComponent({
         }}
       >
         {chapter.title || "Untitled"}
+      </div>
+
+      {/* Chapter blurb — a glimpse of what this chapter is about (#5) */}
+      <div
+        ref={summaryRef}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={handleSummaryBlur}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          fontSize: 13,
+          color: "rgba(0,0,0,0.55)",
+          lineHeight: 1.45,
+          marginTop: 6,
+          outline: "none",
+          cursor: "text",
+          minHeight: 18,
+        }}
+      >
+        {chapter.summary || ""}
       </div>
 
       {/* Footer: key point count + add button */}
@@ -175,6 +215,7 @@ function ChapterNoteComponent({
             + key point
           </button>
         )}
+      </div>
       </div>
     </div>
   );

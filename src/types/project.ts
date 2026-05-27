@@ -7,6 +7,8 @@ export interface Project {
   status: "draft" | "in_progress" | "complete" | "erased";
   voice_profile: VoiceProfile | null;
   narrative_tracker: NarrativeTracker | null;
+  creative_freedom?: number;
+  scripture_translation?: string | null;
   created_at: string;
   updated_at: string;
 }

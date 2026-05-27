@@ -28,17 +28,26 @@ export default function OutlinePage() {
   const [enrichments, setEnrichments] = useState<Record<string, Enrichment[]>>({});
   const [enriching, setEnriching] = useState<string | null>(null);
   const [activeEnrichChapter, setActiveEnrichChapter] = useState<string | null>(null);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
 
   async function fetchEnrichments(chapterId: string) {
     setEnriching(chapterId);
-    const res = await fetch("/api/enrich", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chapter_id: chapterId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+    setEnrichError(null);
+    try {
+      const res = await fetch("/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: chapterId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+      } else {
+        const e = await res.json().catch(() => ({}));
+        setEnrichError(e.error || `Couldn't find quotes (error ${res.status}). Try again.`);
+      }
+    } catch {
+      setEnrichError("Couldn't reach the server. Check your connection and try again.");
     }
     setEnriching(null);
   }
@@ -203,6 +212,10 @@ export default function OutlinePage() {
                     ? "Refresh Quotes"
                     : "Find Enrichment Quotes"}
               </button>
+
+              {enrichError && (
+                <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 16 }}>{enrichError}</p>
+              )}
 
               {/* Enrichment results */}
               {activeChapterEnrichments.length > 0 && (

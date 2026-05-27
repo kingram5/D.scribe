@@ -28,8 +28,8 @@ Book Title: ${projectTitle}`;
   prompt += `
 
 For each chapter, provide:
-- title: Compelling chapter title that fits the speaker's voice
-- summary: 2-3 sentences describing what this chapter covers
+- title: Compelling chapter title that fits the author's voice
+- summary: 1-2 punchy, reader-facing sentences that capture what the reader gets from this chapter and why it matters — written to make them want to read it, not a dry table-of-contents line
 - key_point_ids: Which key points (by number) belong in this chapter
 - narrative_arc: How this chapter connects to the previous and next
 

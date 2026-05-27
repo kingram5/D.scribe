@@ -123,6 +123,13 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
       if (content === prevContentRef.current) return;
       prevContentRef.current = content;
 
+      // If the incoming content is just the echo of the user's own typing
+      // (it already matches what the editor holds), do NOT call setContent —
+      // setContent rebuilds the doc and yanks the caret to the end + scrolls,
+      // which is the "backspace jumps to the bottom" bug. Only sync genuine
+      // external changes (chapter switch, rewrite-stream injection).
+      if (htmlToText(editor) === content) return;
+
       // Avoid triggering onChange when we're setting content programmatically
       skipNextUpdate.current = true;
       editor.commands.setContent(textToHtml(content));

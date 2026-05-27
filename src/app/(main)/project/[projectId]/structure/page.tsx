@@ -37,8 +37,12 @@ export default function StructurePage() {
   const [numChapters, setNumChapters] = useState(8);
   const [wordsPerChapter, setWordsPerChapter] = useState(2500);
   const [audience, setAudience] = useState("General");
+  const [translation, setTranslation] = useState("");
   const [saving, setSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  const SCRIPTURE_AUDIENCES = ["Christian Living", "Faith Community"];
+  const TRANSLATIONS = ["KJV", "NIV", "ESV", "NLT", "NKJV", "NASB", "CSB", "The Message"];
 
   const AUDIENCES = [
     "General",
@@ -66,6 +70,7 @@ export default function StructurePage() {
         if (p.num_chapters) setNumChapters(p.num_chapters);
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         if (p.audience) setAudience(p.audience);
+        if (p.scripture_translation) setTranslation(p.scripture_translation);
         if (p.num_chapters) setHasSaved(true);
         setLoading(false);
       })
@@ -81,6 +86,7 @@ export default function StructurePage() {
         num_chapters: numChapters,
         target_words_per_chapter: wordsPerChapter,
         audience,
+        scripture_translation: SCRIPTURE_AUDIENCES.includes(audience) ? (translation || null) : null,
       }),
     }).catch(() => {});
 
@@ -127,9 +133,10 @@ export default function StructurePage() {
       <div className="ds-structure-wrap" style={{
         flex: 1,
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        overflow: "hidden",
+        overflowY: "auto",
+        padding: "32px 24px 48px",
       }}>
         {/* Centered card */}
         <div className="ds-structure-card" style={{
@@ -385,6 +392,62 @@ export default function StructurePage() {
               ))}
             </div>
           </div>
+
+          {/* Scripture translation — only for faith audiences (#11) */}
+          {SCRIPTURE_AUDIENCES.includes(audience) && (
+            <div style={{
+              borderBottom: "1px solid var(--ds-card-border)",
+              paddingBottom: 24,
+              marginBottom: 32,
+            }}>
+              <div style={{
+                fontSize: 10,
+                fontFamily: "var(--font-manrope), sans-serif",
+                fontWeight: 700,
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.15em",
+                color: "#C17A47",
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}>
+                <span>04</span>
+                <span style={{ width: 16, height: 1, background: "#C17A47" }} />
+                <span>Scripture</span>
+              </div>
+              <h2 style={{
+                fontFamily: "var(--font-playfair), serif",
+                fontSize: 24,
+                fontWeight: 400,
+                color: "var(--text-primary)",
+                margin: 0,
+                marginBottom: 16,
+              }}>Bible Translation</h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {TRANSLATIONS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTranslation(t)}
+                    style={{
+                      padding: "8px 16px",
+                      fontSize: 13,
+                      fontFamily: "var(--font-manrope), sans-serif",
+                      fontWeight: translation === t ? 600 : 400,
+                      background: translation === t ? "#C17A47" : "transparent",
+                      color: translation === t ? "#fff" : "var(--text-secondary)",
+                      border: translation === t ? "1px solid #C17A47" : "1px solid var(--ds-card-border)",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Total estimate */}
           <div style={{

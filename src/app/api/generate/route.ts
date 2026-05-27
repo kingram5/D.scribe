@@ -50,6 +50,19 @@ export async function POST(req: NextRequest) {
       .from("projects").select("*").eq("id", body.project_id).eq("user_id", user.id).single();
     if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
+    // #15 — never overwrite an existing foreword unless the user explicitly regenerates.
+    if (!body.regenerate) {
+      const { data: existingFw } = await supabase
+        .from("chapters").select("id").eq("project_id", body.project_id).eq("chapter_number", 0).maybeSingle();
+      if (existingFw) {
+        const { data: existingContent } = await supabase
+          .from("chapter_contents").select("id").eq("chapter_id", existingFw.id).limit(1).maybeSingle();
+        if (existingContent) {
+          return NextResponse.json({ foreword: true, skipped: true }, { status: 200 });
+        }
+      }
+    }
+
     const chaptersInfo = (body.chapters || [])
       .map((ch: { title: string; summary: string }, i: number) => `Chapter ${i + 1}: ${ch.title}\n${ch.summary}`)
       .join("\n\n");
@@ -60,8 +73,8 @@ export async function POST(req: NextRequest) {
       : "";
 
     const content = await askClaude(
-      `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter. ${voiceNote}\n${HUMANIZER_RULES}`,
-      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview the journey ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and authentic to the speaker's voice\n\nTarget: ~1500 words. Write the full foreword now.`,
+      `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter in FIRST PERSON as the author (never refer to "the author" or "the speaker" in third person). ${voiceNote}\n${HUMANIZER_RULES}`,
+      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.`,
       { temperature, maxTokens: 8192 }
     );
 
@@ -72,9 +85,9 @@ export async function POST(req: NextRequest) {
       project_id: body.project_id,
       chapter_number: 0,
       title: "Foreword",
-      summary: "An introduction to the themes and journey ahead.",
+      summary: "A short introduction to the themes ahead.",
       key_point_ids: [],
-      target_word_count: 1500,
+      target_word_count: 600,
       sort_order: -1,
       status: "generated",
     }).select().single();

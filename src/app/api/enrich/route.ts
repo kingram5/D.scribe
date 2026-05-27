@@ -105,13 +105,20 @@ export async function POST(req: NextRequest) {
     keyPoints = data;
   }
 
+  // #12 — scale the quote budget to chapter length (~1 per 750 words), capped 1-6,
+  // so a 1k-word chapter gets 1-2 and a 3k-word chapter gets ~4 instead of all cramming in.
+  const targetWords = chapter.target_word_count || 1500;
+  const maxQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
+
   const result = await askClaudeWithUsage(
     ENRICH_SYSTEM,
     enrichPrompt(
       chapter.title,
       chapter.summary,
       (keyPoints || []).map((kp) => kp.title),
-      chapter.projects.audience
+      chapter.projects.audience,
+      maxQuotes,
+      chapter.projects.scripture_translation
     ),
     { temperature: 0.4 }
   );
@@ -136,14 +143,14 @@ export async function POST(req: NextRequest) {
     const { data: enrichments, error } = await supabase
       .from("enrichments")
       .insert(
-        items.map((item: Record<string, unknown>) => ({
+        items.map((item: Record<string, unknown>, idx: number) => ({
           chapter_id,
           quote_text: item.quote_text || "",
           source_author: item.source_author || "Unknown",
           source_title: item.source_title || "",
           source_type: item.source_type || "book",
           relevance_note: item.relevance_note || "",
-          included: true,
+          included: idx < maxQuotes,
         }))
       )
       .select();

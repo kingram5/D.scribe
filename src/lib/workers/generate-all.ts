@@ -20,15 +20,20 @@ export async function runGenerateAllJob(
     });
 
     // Get all chapters ordered by sort_order
-    const { data: chapters } = await supabase
+    const { data: allChapters } = await supabase
       .from("chapters")
       .select("id, chapter_number, title, status")
       .eq("project_id", input.project_id)
       .gt("chapter_number", 0) // skip foreword
       .order("sort_order");
 
-    if (!chapters?.length) throw new Error("No chapters found");
+    if (!allChapters?.length) throw new Error("No chapters found");
 
+    // #15 — only generate chapters that don't already have content. Never
+    // overwrite an already-generated chapter from a bulk run (regenerate is
+    // an explicit, per-chapter action). If everything is already generated,
+    // this loop is a no-op and we fall through to the finishing passes.
+    const chapters = allChapters.filter((c) => c.status !== "generated");
     const total = chapters.length;
 
     // Generate each chapter sequentially
@@ -107,7 +112,7 @@ export async function runGenerateAllJob(
             project_id: input.project_id,
             generate_type: "foreword",
             creative_freedom: input.creative_freedom ?? 50,
-            chapters: chapters.map(ch => ({ title: ch.title, summary: "" })),
+            chapters: allChapters.map(ch => ({ title: ch.title, summary: "" })),
           },
         })
         .select()
@@ -118,7 +123,7 @@ export async function runGenerateAllJob(
           project_id: input.project_id,
           generate_type: "foreword",
           creative_freedom: input.creative_freedom ?? 50,
-          chapters: chapters.map(ch => ({ title: ch.title, summary: "" })),
+          chapters: allChapters.map(ch => ({ title: ch.title, summary: "" })),
         });
       }
     }

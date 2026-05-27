@@ -32,7 +32,7 @@ Banned phrases and clichés (never use these or close variants):
 Sentence patterns to avoid:
 - Don't start 3+ sentences in a row with the same word.
 - Don't open paragraphs with "So," or "Now," as transitions.
-- Avoid the "Not X. Rather, Y." inversion pattern — it's an AI tell.
+- Avoid the negation-flip / antithesis cliché in EVERY form — it is the #1 AI tell. Banned: "Not X. Rather, Y.", "It's not X, it's Y.", "That's not X — that's Y.", "This isn't about X, it's about Y.", "Not just X, but Y.", "X isn't Y; it's Z." Never set up a point by negating one thing to elevate another. State the point directly.
 - Don't use rhetorical questions as transitions between sections.
 - Avoid triple-stacked adjective lists ("bold, brave, and transformative").
 
@@ -49,7 +49,9 @@ Tone:
 `;
 
 export function generateSystem(voiceProfile: VoiceProfile | null): string {
-  let system = `You are a ghostwriter who transforms spoken content into polished book chapters. You write in the author's authentic voice — you are not writing your own book, you are helping them write theirs.`;
+  let system = `You are a ghostwriter who transforms spoken content into polished book chapters. You write in the author's authentic voice — you are not writing your own book, you are helping them write theirs.
+
+POINT OF VIEW — CRITICAL: Write the entire chapter in FIRST PERSON as the author ("I", "me", "my", "we"). This is the author speaking directly to the reader in their own words. NEVER refer to "the author", "the speaker", "the writer", or "the narrator" in the third person, and never narrate what they think/say/believe from the outside. There is no separate narrator — the author IS the voice on the page.`;
 
   if (voiceProfile) {
     system += `\nVoice Profile:\n${JSON.stringify(voiceProfile, null, 2)}\n\nIMPORTANT: Match the author's tone, sentence patterns, vocabulary level, and rhetorical devices. Use their signature phrases naturally. This should read like THEY wrote it.`;
@@ -101,7 +103,10 @@ ${blended.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
   if (opts.enrichments && opts.enrichments.length > 0) {
     const included = opts.enrichments.filter((e) => e.included);
     if (included.length > 0) {
-      prompt += `\n\nREQUIRED ENRICHMENT QUOTES — You MUST include every one of the following quotes in this chapter. Reproduce each quote VERBATIM inside quotation marks, with its attribution (author and source). Place each where it best supports the surrounding text and introduce it with a smooth lead-in. Do NOT paraphrase, summarize, merge, or omit any of them — all ${included.length} must appear:\n${included.map((e, i) => `${i + 1}. "${e.quote_text}" — ${e.source_author}, ${e.source_title}`).join("\n")}`;
+      prompt += `\n\nENRICHMENT QUOTES (optional — use with restraint): These quotes are available to deepen the chapter. Weave one in ONLY where it genuinely fits the surrounding point. It is fine to use just some of them, or to skip any that would feel forced — do not cram them in.
+SPACING IS CRITICAL: spread whatever quotes you use EVENLY across the whole chapter. Never put two quotes in consecutive paragraphs, never cluster several near the end, and use at most one quote per section — most paragraphs should have no quote at all.
+When you do use one, reproduce it VERBATIM inside quotation marks with its attribution (author and source), and lead into it naturally (avoid the "[Author] once said" formula). For scripture, include the book, chapter, and verse (e.g. John 3:16).
+Available quotes:\n${included.map((e, i) => `${i + 1}. "${e.quote_text}" — ${e.source_author}, ${e.source_title}`).join("\n")}`;
     }
   }
 

@@ -6,8 +6,13 @@ export function enrichPrompt(
   chapterTitle: string,
   chapterSummary: string,
   keyPoints: string[],
-  audience: Audience
+  audience: Audience,
+  maxQuotes: number,
+  translation?: string | null
 ): string {
+  const aud = audience as string;
+  const scriptureAudience = aud === "Faith Community" || aud === "Christian Living";
+  const transNote = scriptureAudience && translation ? ` Use the ${translation} translation for all scripture.` : "";
   return `Find enrichment material for this chapter.
 
 Chapter: "${chapterTitle}"
@@ -15,20 +20,20 @@ Summary: ${chapterSummary}
 Key Points: ${keyPoints.join("; ")}
 Audience: ${audience}
 
-Provide 5-8 relevant items from your knowledge, categorized as:
+Provide up to ${maxQuotes} of the MOST relevant items from your knowledge — fewer is better than padding. Quality over quantity. Draw from:
 - Quotes from notable figures (with attribution)
-${audience === "Faith Community" ? "- Scripture or sacred text references\n" : ""}- Historical parallels or anecdotes
+${scriptureAudience ? `- Scripture references — ALWAYS include the exact book, chapter, and verse (e.g. "John 3:16").${transNote}\n` : ""}- Historical parallels or anecdotes
 - Research findings or statistics
-- Complementary perspectives from other authors/speakers
+- Complementary perspectives from other authors
 
 For each item, provide:
 - quote_text: The exact quote or reference
-- source_author: Who said/wrote it
-- source_title: Book, speech, article, etc.
+- source_author: Who said/wrote it${scriptureAudience ? " (for scripture, the translation, or \"Scripture\")" : ""}
+- source_title: Book, speech, article, etc.${scriptureAudience ? " — for scripture this MUST be the book + chapter:verse, e.g. \"John 3:16\"" : ""}
 - source_type: book | article | scripture | speech | research
 - relevance_note: One sentence on why this connects to the chapter
 
 Return valid JSON array. No markdown fencing.
 
-IMPORTANT: Only provide quotes and references you are confident are accurately attributed. If uncertain about exact wording, paraphrase and note "paraphrased" in the source_type.`;
+IMPORTANT: Only provide quotes and references you are confident are accurately attributed. If uncertain about exact wording, paraphrase and note "paraphrased" in the source_type. Any scripture reference MUST carry an exact book, chapter, and verse.`;
 }

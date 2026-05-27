@@ -151,7 +151,7 @@ export async function PATCH(
   }
 
   // Allowlist: only permit safe fields for project updates
-  const ALLOWED_FIELDS = ["title", "description", "audience", "num_chapters", "target_words_per_chapter", "status", "is_public", "published_excerpt", "published_author"];
+  const ALLOWED_FIELDS = ["title", "description", "audience", "num_chapters", "target_words_per_chapter", "status", "is_public", "published_excerpt", "published_author", "creative_freedom", "scripture_translation"];
   const filteredBody: Record<string, unknown> = {};
   for (const key of ALLOWED_FIELDS) {
     if (key in body) filteredBody[key] = body[key];

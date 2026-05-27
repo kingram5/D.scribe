@@ -127,18 +127,24 @@ export async function askClaudeWithUsage(
 export { askClaudeLite as askClaude };
 export { cleanJsonLite as cleanJson };
 
-// Map creative freedom slider (0-100) to temperature (0.3-0.9)
+// Map creative freedom slider (0-100) to temperature.
+// Ratio 1:0.75 — temp rises 0.0075 per 1% (0% -> 0.0, 50% -> 0.375, 100% -> 0.75).
 export function creativeFreedomToTemp(freedom: number): number {
-  return 0.3 + (freedom / 100) * 0.6;
+  return Math.round(freedom * 0.0075 * 1000) / 1000;
 }
 
-// Map creative freedom to prompt instruction
+// Map creative freedom to a prompt instruction. Granular across the 5 UI tiers
+// so moving the slider actually changes behavior — temperature alone is a weak lever.
 export function creativeFreedomToInstruction(freedom: number): string {
-  if (freedom <= 30) {
-    return "Stay very close to the transcript language and structure. Preserve the speaker's exact phrasing where possible.";
-  } else if (freedom <= 70) {
-    return "Expand and restructure while keeping the core message. Smooth transitions, develop ideas further, but maintain the speaker's voice.";
+  if (freedom <= 20) {
+    return "Stay extremely close to the transcript. Preserve the original wording and order; only clean up false starts, filler, and grammar. Add almost nothing of your own.";
+  } else if (freedom <= 40) {
+    return "Follow the transcript closely with light editorial polish. Smooth transitions and tighten phrasing, but keep the original ideas, order, and wording largely intact.";
+  } else if (freedom <= 60) {
+    return "Balance fidelity with readability. Restructure for flow, develop ideas a little further, and add connective tissue, while keeping every core point and the author's voice.";
+  } else if (freedom <= 80) {
+    return "Take real editorial liberties. Reorganize freely, expand thin points, add illustrations and transitions, and sharpen the argument, while preserving the author's message and voice.";
   } else {
-    return "Freely interpret, add transitions, expand illustrations, develop new analogies. The transcript is a starting point, not a constraint.";
+    return "Treat the transcript as raw source, not a script. Freely reinterpret, expand, restructure, and develop fresh analogies and examples to make it book-quality, staying true only to the core message and the author's voice.";
   }
 }

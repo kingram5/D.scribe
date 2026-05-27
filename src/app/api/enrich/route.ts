@@ -105,6 +105,13 @@ export async function POST(req: NextRequest) {
     keyPoints = data;
   }
 
+  // Refresh keeps the quotes the user has toggled ON and only replaces the rest.
+  // On first generation nothing is included yet, so this is a no-op.
+  const { data: existingEnrichments } = await supabase
+    .from("enrichments").select("*").eq("chapter_id", chapter_id);
+  const kept = (existingEnrichments || []).filter((e) => e.included);
+  const keptTexts = kept.map((e) => e.quote_text).filter(Boolean) as string[];
+
   // #12 — offer the FULL candidate set, but pre-select a sensible number scaled to
   // chapter length (~1 per 750 words, capped 1-6) as a soft default. Every other
   // candidate is still shown and toggleable — this just nudges the writer toward
@@ -119,7 +126,8 @@ export async function POST(req: NextRequest) {
       chapter.summary,
       (keyPoints || []).map((kp) => kp.title),
       chapter.projects.audience,
-      chapter.projects.scripture_translation
+      chapter.projects.scripture_translation,
+      keptTexts
     ),
     { temperature: 0.4 }
   );
@@ -137,11 +145,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No enrichment items found in response" }, { status: 500 });
     }
 
-    // Delete existing enrichments for this chapter
-    await supabase.from("enrichments").delete().eq("chapter_id", chapter_id);
+    // Replace ONLY the un-selected quotes — the user's toggled-on favorites stay put.
+    await supabase.from("enrichments").delete().eq("chapter_id", chapter_id).eq("included", false);
 
-    // Insert new ones
-    const { data: enrichments, error } = await supabase
+    // Insert fresh candidates. Auto-select up to the recommended count, counting the
+    // kept favorites first, so a refresh tops up toward the suggestion without
+    // overriding the picks the user already made.
+    const { data: inserted, error } = await supabase
       .from("enrichments")
       .insert(
         items.map((item: Record<string, unknown>, idx: number) => ({
@@ -151,7 +161,7 @@ export async function POST(req: NextRequest) {
           source_title: item.source_title || "",
           source_type: item.source_type || "book",
           relevance_note: item.relevance_note || "",
-          included: idx < recommendedQuotes,
+          included: (kept.length + idx) < recommendedQuotes,
         }))
       )
       .select();
@@ -165,7 +175,8 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({ error: `DB error: ${error.message}` }, { status: 500 });
     }
-    return NextResponse.json(enrichments);
+    // Return the kept favorites plus the freshly generated candidates.
+    return NextResponse.json([...kept, ...(inserted || [])]);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Enrichment failed";
     logger.error(message, {

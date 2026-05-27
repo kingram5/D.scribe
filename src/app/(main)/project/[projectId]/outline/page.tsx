@@ -203,6 +203,14 @@ export default function OutlinePage() {
           {/* Find quotes button + results for active chapter */}
           {activeEnrichChapter && (
             <div>
+              {activeChapterEnrichments.length > 0 && (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 12 }}>
+                  Suggested <strong>~{recommendedQuotes}</strong> for a chapter this length — pick your favorites.{" "}
+                  <span style={{ color: selectedQuoteCount > recommendedQuotes ? "#E0A35D" : "rgba(255,255,255,0.45)" }}>
+                    {selectedQuoteCount} selected{selectedQuoteCount > recommendedQuotes ? " (a few more than suggested)" : ""}.
+                  </span>
+                </p>
+              )}
               <button
                 onClick={() => fetchEnrichments(activeEnrichChapter)}
                 disabled={enriching === activeEnrichChapter}
@@ -223,12 +231,6 @@ export default function OutlinePage() {
               {/* Enrichment results */}
               {activeChapterEnrichments.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
-                    Suggested ~{recommendedQuotes} for a chapter this length — pick your favorites.{" "}
-                    <span style={{ color: selectedQuoteCount > recommendedQuotes ? "#E0A35D" : "rgba(255,255,255,0.4)" }}>
-                      {selectedQuoteCount} selected.
-                    </span>
-                  </p>
                   {activeChapterEnrichments.map((e) => (
                     <div
                       key={e.id}

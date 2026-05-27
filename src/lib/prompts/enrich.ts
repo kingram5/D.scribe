@@ -7,11 +7,15 @@ export function enrichPrompt(
   chapterSummary: string,
   keyPoints: string[],
   audience: Audience,
-  translation?: string | null
+  translation?: string | null,
+  excludeQuotes?: string[]
 ): string {
   const aud = audience as string;
   const scriptureAudience = aud === "Faith Community" || aud === "Christian Living";
   const transNote = scriptureAudience && translation ? ` Use the ${translation} translation for all scripture.` : "";
+  const excludeNote = excludeQuotes && excludeQuotes.length > 0
+    ? `\n\nThe writer has ALREADY chosen these quotes — do NOT repeat or closely duplicate them; find genuinely different material:\n${excludeQuotes.map((q) => `- "${q}"`).join("\n")}`
+    : "";
   return `Find enrichment material for this chapter.
 
 Chapter: "${chapterTitle}"
@@ -34,5 +38,5 @@ For each item, provide:
 
 Return valid JSON array. No markdown fencing.
 
-IMPORTANT: Only provide quotes and references you are confident are accurately attributed. If uncertain about exact wording, paraphrase and note "paraphrased" in the source_type. Any scripture reference MUST carry an exact book, chapter, and verse.`;
+IMPORTANT: Only provide quotes and references you are confident are accurately attributed. If uncertain about exact wording, paraphrase and note "paraphrased" in the source_type. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}`;
 }

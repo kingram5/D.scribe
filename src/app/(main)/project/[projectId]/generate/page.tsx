@@ -679,10 +679,10 @@ export default function GeneratePage() {
                 </div>
                 {chapterEnrichments.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
-                      Suggested ~{recommendedQuotes} for a chapter this length — pick your favorites.{" "}
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+                      Suggested <strong>~{recommendedQuotes}</strong> for a chapter this length — pick your favorites.{" "}
                       <span style={{ color: selectedQuoteCount > recommendedQuotes ? "#E0A35D" : "var(--text-tertiary)" }}>
-                        {selectedQuoteCount} selected.
+                        {selectedQuoteCount} selected{selectedQuoteCount > recommendedQuotes ? " (a few more than suggested)" : ""}.
                       </span>
                     </p>
                     {chapterEnrichments.map((e) => (

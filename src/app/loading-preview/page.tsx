@@ -293,10 +293,12 @@ function VerticalTimeline({ sim }: { sim: Sim }) {
 
 // ── Ambient backdrop for 3B (source → output story in the margins) ───
 const GLYPHS = [
-  { ch: "“", left: "7%", top: "10%", size: 200, dur: 26, delay: 0 },
-  { ch: "&", left: "85%", top: "16%", size: 150, dur: 32, delay: 4 },
-  { ch: "”", left: "80%", top: "66%", size: 220, dur: 28, delay: 8 },
-  { ch: "¶", left: "12%", top: "72%", size: 130, dur: 30, delay: 2 },
+  { ch: "“", left: "5%", top: "6%", size: 300, dur: 26, delay: 0 },
+  { ch: "&", left: "86%", top: "12%", size: 220, dur: 32, delay: 4 },
+  { ch: "”", left: "79%", top: "60%", size: 320, dur: 28, delay: 8 },
+  { ch: "¶", left: "10%", top: "68%", size: 200, dur: 30, delay: 2 },
+  { ch: "§", left: "45%", top: "2%", size: 150, dur: 34, delay: 6 },
+  { ch: "&", left: "92%", top: "78%", size: 170, dur: 24, delay: 1 },
 ];
 
 function AmbientBackdrop({ sim }: { sim: Sim }) {
@@ -304,42 +306,47 @@ function AmbientBackdrop({ sim }: { sim: Sim }) {
   const pageLines = Math.min(themesRevealed.length + (outlineActive ? 2 : 0), 9);
   return (
     <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {/* warm copper glow */}
+      {/* warm copper glow + secondary accent glow for depth */}
       <div className="lp-glow" style={{
-        position: "absolute", top: "50%", left: "50%", width: 900, height: 900, transform: "translate(-50%,-50%)",
-        background: "radial-gradient(circle, rgba(193,122,71,0.10), rgba(193,122,71,0) 60%)",
+        position: "absolute", top: "50%", left: "50%", width: 1100, height: 1100, transform: "translate(-50%,-50%)",
+        background: "radial-gradient(circle, rgba(193,122,71,0.20), rgba(193,122,71,0) 62%)",
+      }} />
+      <div className="lp-glow2" style={{
+        position: "absolute", top: "28%", left: "72%", width: 620, height: 620, transform: "translate(-50%,-50%)",
+        background: "radial-gradient(circle, rgba(224,93,58,0.12), rgba(224,93,58,0) 60%)",
       }} />
       {/* drifting serif glyphs */}
       {GLYPHS.map((g, i) => (
         <span key={i} className="lp-glyph" style={{
           position: "absolute", left: g.left, top: g.top, fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
-          fontSize: g.size, lineHeight: 1, color: "rgba(193,122,71,0.06)", animationDuration: `${g.dur}s`, animationDelay: `${g.delay}s`,
+          fontSize: g.size, lineHeight: 1, color: "rgba(193,122,71,0.12)", animationDuration: `${g.dur}s`, animationDelay: `${g.delay}s`,
         }}>{g.ch}</span>
       ))}
       {/* LEFT: the source — slowly scrolling raw transcript */}
       <div style={{
-        position: "absolute", left: 0, top: 0, bottom: 0, width: "26%",
-        WebkitMaskImage: "linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent)",
-        maskImage: "linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent)",
-        opacity: voiceActive ? 0.95 : 0.6, transition: "opacity 1.2s ease",
+        position: "absolute", left: 0, top: 0, bottom: 0, width: "30%",
+        WebkitMaskImage: "linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent)",
+        maskImage: "linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent)",
+        opacity: voiceActive ? 1 : 0.85, transition: "opacity 1.2s ease",
       }}>
-        <div className="lp-stream" style={{ padding: "0 24px" }}>
+        <div className="lp-stream" style={{ padding: "0 26px" }}>
           {[...FAUX_LINES, ...FAUX_LINES].map((l, i) => (
-            <p key={i} style={{ fontFamily: "var(--font-lora), serif", fontSize: 12, lineHeight: 2.0, color: "rgba(44,36,25,0.07)", margin: 0 }}>{l}</p>
+            <p key={i} style={{ fontFamily: "var(--font-lora), serif", fontSize: 13, lineHeight: 2.0, color: "rgba(44,36,25,0.16)", margin: 0 }}>{l}</p>
           ))}
         </div>
       </div>
       {/* RIGHT: the output — ghosted book gaining pages */}
-      <div style={{ position: "absolute", right: "3%", top: "50%", transform: "translateY(-50%)", width: 124, height: 184, opacity: 0.55 }}>
+      <div style={{ position: "absolute", right: "3%", top: "50%", transform: "translateY(-50%)", width: 158, height: 224, opacity: 0.9 }}>
         <div style={{
-          position: "relative", width: "100%", height: "100%", borderRadius: "3px 11px 11px 3px",
-          border: "1px solid rgba(193,122,71,0.18)", background: "rgba(193,122,71,0.05)",
-          display: "flex", flexDirection: "column", justifyContent: "center", gap: 9, padding: "0 16px",
-          transform: outlineActive ? "scale(1.04)" : "scale(1)", transition: "transform 0.6s ease",
+          position: "relative", width: "100%", height: "100%", borderRadius: "3px 13px 13px 3px",
+          border: "1px solid rgba(193,122,71,0.35)", background: "rgba(193,122,71,0.08)",
+          boxShadow: "0 18px 40px rgba(44,36,25,0.10)",
+          display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, padding: "0 18px",
+          transform: outlineActive ? "scale(1.05)" : "scale(1)", transition: "transform 0.6s ease",
         }}>
-          <div style={{ position: "absolute", top: 12, left: 0, right: 0, textAlign: "center", fontFamily: "var(--font-manrope), sans-serif", fontSize: 8, letterSpacing: "0.22em", color: "rgba(44,36,25,0.18)" }}>D.SCRIBE</div>
+          <div style={{ position: "absolute", top: 14, left: 0, right: 0, textAlign: "center", fontFamily: "var(--font-manrope), sans-serif", fontSize: 9, letterSpacing: "0.24em", color: "rgba(44,36,25,0.32)" }}>D.SCRIBE</div>
           {Array.from({ length: pageLines }).map((_, i) => (
-            <div key={i} className="lp-pageline" style={{ height: 1, background: "rgba(44,36,25,0.10)", animationDelay: `${i * 70}ms` }} />
+            <div key={i} className="lp-pageline" style={{ height: 1.5, background: "rgba(44,36,25,0.20)", animationDelay: `${i * 70}ms` }} />
           ))}
         </div>
       </div>
@@ -449,14 +456,16 @@ export default function LoadingPreviewPage() {
         .lp-pagecard { animation: lp-cardReveal 0.45s ease-out both; }
         @keyframes lp-scan { 0% { transform: translateY(-110%); } 100% { transform: translateY(110%); } }
         .lp-scanline { position: absolute; left: 0; right: 0; height: 2px; z-index: 2; background: linear-gradient(90deg, transparent, #C17A47, transparent); animation: lp-scan 1.4s ease-in-out infinite; }
-        @keyframes lp-glow { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.75; } 50% { transform: translate(-50%,-53%) scale(1.14); opacity: 1; } }
+        @keyframes lp-glow { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.8; } 50% { transform: translate(-50%,-53%) scale(1.14); opacity: 1; } }
         .lp-glow { animation: lp-glow 16s ease-in-out infinite; }
+        @keyframes lp-glow2 { 0%,100% { transform: translate(-50%,-50%) scale(1.05); opacity: 0.7; } 50% { transform: translate(-46%,-44%) scale(1.2); opacity: 1; } }
+        .lp-glow2 { animation: lp-glow2 13s ease-in-out infinite; }
         @keyframes lp-drift { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-26px) rotate(3deg); } 100% { transform: translateY(0) rotate(0deg); } }
         .lp-glyph { animation: lp-drift ease-in-out infinite; }
         @keyframes lp-stream { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
-        .lp-stream { animation: lp-stream 44s linear infinite; }
+        .lp-stream { animation: lp-stream 36s linear infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .lp-chip, .lp-pageline, .lp-pagecard, .lp-glow, .lp-glyph, .lp-stream { animation: none !important; }
+          .lp-chip, .lp-pageline, .lp-pagecard, .lp-glow, .lp-glow2, .lp-glyph, .lp-stream { animation: none !important; }
           .lp-pulse { animation: none !important; box-shadow: 0 0 0 4px rgba(193,122,71,0.2) !important; }
           .lp-scanline { display: none !important; }
           .lp-shimmer { animation: none !important; }

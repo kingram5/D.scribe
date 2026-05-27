@@ -10,7 +10,7 @@ function isAllowedEmail(email: string | undefined | null): boolean {
   return allowed.has(email.toLowerCase());
 }
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/cinematic", "/landing-classic", "/landing-v2"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/cinematic", "/landing-classic", "/landing-v2", "/loading-preview"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

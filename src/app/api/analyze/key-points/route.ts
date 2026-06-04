@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -55,7 +55,10 @@ export async function POST(req: NextRequest) {
 
   let raw: string;
   try {
-    raw = await askClaudeLite(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+    const result = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+    raw = result.text;
+    // Meter the call — key-points was gate-only (checked balance > 0 but never deducted).
+    await recordInkUsage(user.id, project_id, "analyze", "fast", result.usage);
   } catch (apiErr) {
     const msg = apiErr instanceof Error ? apiErr.message : String(apiErr);
     console.error("Claude API error for key points:", msg);

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, expandOutlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 // POST /api/outline/expand
 // Body { project_id, dry_run: true }     → Claude proposes new chapters, no DB writes
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
 
   const numNewChapters = Math.max(1, Math.ceil(unassigned.length / 3));
 
-  const raw = await askClaude(
+  const { text: raw, usage } = await askClaudeWithUsage(
     OUTLINE_SYSTEM,
     expandOutlinePrompt(
       unassigned.map((kp) => ({ title: kp.title, summary: kp.summary })),
@@ -127,6 +127,9 @@ export async function POST(req: NextRequest) {
     ),
     { temperature: 0.5 }
   );
+
+  // Meter the call — outline/expand dry-run was gate-only (checked balance > 0 but never deducted).
+  await recordInkUsage(user.id, project_id, "outline", "quality", usage);
 
   try {
     const proposed = JSON.parse(cleanJson(raw));

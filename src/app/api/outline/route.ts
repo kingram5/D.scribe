@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 // POST /api/outline — generate chapter outline from key points
 export async function POST(req: NextRequest) {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const chapterCount = num_chapters || project.num_chapters || Math.max(3, Math.ceil(keyPoints.length / 3));
   const targetWordsPerChapter = project.target_words_per_chapter || 2500;
 
-  const raw = await askClaude(
+  const { text: raw, usage } = await askClaudeWithUsage(
     OUTLINE_SYSTEM,
     outlinePrompt(
       keyPoints.map((kp) => ({ title: kp.title, summary: kp.summary })),
@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
     ),
     { temperature: 0.5 }
   );
+
+  // Meter the call against Ink — outline was gate-only (checked balance > 0 but never deducted).
+  // TODO(phase1-#4): make checkInk cost-aware so this deduct can't throw "insufficient" post-work.
+  await recordInkUsage(user.id, project_id, "outline", "quality", usage);
 
   try {
     const chapters = JSON.parse(cleanJson(raw));

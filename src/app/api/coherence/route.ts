@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
 import { HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
     : "";
 
-  const raw = await askClaude(
+  const { text: raw, usage } = await askClaudeWithUsage(
     `You are a book editor specializing in narrative coherence and chapter transitions. ${voiceNote} Maintain the author's authentic voice while improving flow.\n${HUMANIZER_RULES}`,
     `Review the transitions between chapters in this book. For each chapter boundary, provide revised closing and opening paragraphs that create smooth, natural transitions.
 
@@ -128,6 +128,9 @@ Only include transitions that need changes. If a transition is already smooth, s
 Return ONLY valid JSON.`,
     { maxTokens: 8192, model: "quality" }
   );
+
+  // Meter the call — coherence was gate-only (checked balance > 0 but never deducted).
+  await recordInkUsage(user.id, project_id, "coherence", "quality", usage);
 
   let transitions: {
     transition_index: number;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaude, cleanJson } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJson, type ClaudeUsage } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
@@ -11,6 +11,7 @@ import {
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -28,6 +29,12 @@ export async function POST(req: NextRequest) {
         headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
       }
     );
+  }
+
+  // Pre-flight Ink check — /api/analyze was entirely unmetered before.
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
   }
 
   const { project_id, transcript_id } = await req.json();
@@ -79,6 +86,8 @@ export async function POST(req: NextRequest) {
     supporting_quotes: string[];
     tags: string[];
   }[] = [];
+  let kpInputTokens = 0;
+  let kpOutputTokens = 0;
 
   for (const chunk of chunks) {
     const previousTitles = allKeyPoints.map((kp) => kp.title);
@@ -89,7 +98,9 @@ export async function POST(req: NextRequest) {
       previousTitles
     );
 
-    const raw = await askClaude(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+    const { text: raw, usage } = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
+    kpInputTokens += usage.input_tokens;
+    kpOutputTokens += usage.output_tokens;
     try {
       const parsed = JSON.parse(cleanJson(raw));
       allKeyPoints.push(...parsed);
@@ -101,6 +112,14 @@ export async function POST(req: NextRequest) {
         meta: { chunkIndex: chunk.index, project_id },
       });
     }
+  }
+
+  // Meter the key-points extraction (all chunks). Voice + mind-map metered in their promises below.
+  if (chunks.length > 0) {
+    await recordInkUsage(user.id, project_id, "analyze", "fast", {
+      input_tokens: kpInputTokens,
+      output_tokens: kpOutputTokens,
+    });
   }
 
   // Save key points to DB
@@ -118,6 +137,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Voice + mind-map usage is captured here and charged AFTER Promise.all (sequentially),
+  // so a failure in one parallel branch can't mask or race the other's charge.
+  let voiceUsage: ClaudeUsage | null = null;
+  let mindMapUsage: ClaudeUsage | null = null;
+
   // Step 2: Voice profile (run in parallel with mind map)
   const voicePromise = (async () => {
     // Take 3 samples from the transcript (~1000 words each)
@@ -129,11 +153,12 @@ export async function POST(req: NextRequest) {
       words.slice(-sampleSize).join(" "),
     ];
 
-    const raw = await askClaude(
+    const { text: raw, usage } = await askClaudeWithUsage(
       VOICE_PROFILE_SYSTEM,
       voiceProfilePrompt(samples, project?.voice_profile),
       { model: "fast", maxTokens: 2048 }
     );
+    voiceUsage = usage;
     try {
       const profile = JSON.parse(cleanJson(raw));
       await supabase
@@ -150,7 +175,7 @@ export async function POST(req: NextRequest) {
   const mindMapPromise = (async () => {
     if (allKeyPoints.length === 0) return null;
 
-    const raw = await askClaude(
+    const { text: raw, usage } = await askClaudeWithUsage(
       MIND_MAP_SYSTEM,
       mindMapPrompt(
         allKeyPoints.map((kp) => ({
@@ -161,6 +186,7 @@ export async function POST(req: NextRequest) {
       ),
       { model: "fast", maxTokens: 4096 }
     );
+    mindMapUsage = usage;
     try {
       const { nodes, edges } = JSON.parse(cleanJson(raw));
 
@@ -200,7 +226,20 @@ export async function POST(req: NextRequest) {
     }
   })();
 
-  const [voiceProfile, mindMap] = await Promise.all([voicePromise, mindMapPromise]);
+  // allSettled (not all) so a rejection in one branch can't short-circuit and skip the billing
+  // block below — which would ship the OTHER branch's completed, DB-written work unbilled.
+  const [voiceResult, mindMapResult] = await Promise.allSettled([voicePromise, mindMapPromise]);
+
+  // Bill every branch that completed its Claude call (usage captured), even if its sibling failed.
+  if (voiceUsage) await recordInkUsage(user.id, project_id, "voice_profile", "fast", voiceUsage);
+  if (mindMapUsage) await recordInkUsage(user.id, project_id, "mind_map", "fast", mindMapUsage);
+
+  // Surface a branch failure (e.g. a Claude API error) as a request error — AFTER billing.
+  if (voiceResult.status === "rejected") throw voiceResult.reason;
+  if (mindMapResult.status === "rejected") throw mindMapResult.reason;
+
+  const voiceProfile = voiceResult.value;
+  const mindMap = mindMapResult.value;
 
   // Update project status
   await supabase

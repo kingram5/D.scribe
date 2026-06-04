@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -41,11 +41,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ mind_map: null, reason: "No key points to map" });
   }
 
-  const raw = await askClaudeLite(
+  const { text: raw, usage } = await askClaudeWithUsage(
     MIND_MAP_SYSTEM,
     mindMapPrompt(keyPoints),
     { model: "fast", maxTokens: 4096 }
   );
+
+  // Meter the call — mind-map was gate-only (checked balance > 0 but never deducted).
+  await recordInkUsage(user.id, project_id, "mind_map", "fast", usage);
 
   try {
     const { nodes, edges } = JSON.parse(cleanJsonLite(raw));

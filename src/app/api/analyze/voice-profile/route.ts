@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { askClaudeLite, cleanJsonLite } from "@/lib/claude-lite";
+import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { VOICE_PROFILE_SYSTEM, voiceProfilePrompt } from "@/lib/prompts/voice-profile";
 import { requireAuth } from "@/lib/auth";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordInkUsage } from "@/lib/ink";
 
 export const maxDuration = 60;
 
@@ -48,11 +48,14 @@ export async function POST(req: NextRequest) {
     words.slice(-sampleSize).join(" "),
   ];
 
-  const raw = await askClaudeLite(
+  const { text: raw, usage } = await askClaudeWithUsage(
     VOICE_PROFILE_SYSTEM,
     voiceProfilePrompt(samples, projectOwner.voice_profile),
     { model: "fast", maxTokens: 2048 }
   );
+
+  // Meter the call — voice-profile was gate-only (checked balance > 0 but never deducted).
+  await recordInkUsage(user.id, project_id, "voice_profile", "fast", usage);
 
   try {
     const profile = JSON.parse(cleanJsonLite(raw));

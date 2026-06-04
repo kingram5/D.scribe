@@ -11,7 +11,6 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import AnalysisLoadingScreen from "@/components/analysis/AnalysisLoadingScreen";
-import { useJob } from "@/hooks/useJob";
 
 const OutlineEditor = dynamic(
   () => import("@/components/outline-editor/OutlineEditor"),
@@ -44,7 +43,6 @@ export default function AnalysisPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-  const analyzeJob = useJob();
   // Live data surfaced into the analysis loading screen as each stage completes
   const [liveKeyPoints, setLiveKeyPoints] = useState<string[]>([]);
   const [liveTraits, setLiveTraits] = useState<string[]>([]);
@@ -183,24 +181,6 @@ export default function AnalysisPage() {
     setAnalyzeStep(null);
     setAnalysisComplete(false);
   }
-
-  // Refresh data after analysis completes
-  useEffect(() => {
-    if (analyzeJob.status === "completed") {
-      fetch(`/api/project/${projectId}`)
-        .then((r) => r.json())
-        .then((project) => {
-          setData({
-            key_points: project.key_points || [],
-            chapters: project.chapters || [],
-            voice_profile: project.voice_profile,
-          });
-          setTab("outline");
-        });
-      analyzeJob.reset();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyzeJob.status]);
 
   const unassignedKeyPoints = useMemo(() => {
     const assignedIds = new Set((data?.chapters ?? []).flatMap((c) => c.key_point_ids ?? []));

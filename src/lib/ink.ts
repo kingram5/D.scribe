@@ -11,6 +11,7 @@ export type InkOperation =
   | "mind_map"
   | "outline"
   | "generate"
+  | "foreword"
   | "rewrite"
   | "coherence"
   | "enrich";

@@ -9,7 +9,6 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import JobProgress from "@/components/ui/JobProgress";
-import { useJob } from "@/hooks/useJob";
 import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
@@ -284,9 +283,10 @@ export default function GeneratePage() {
 
 
 
-  // Foreword toggle is just a flag — generation happens in "Generate All"
-  // But if chapters are already generated, allow standalone foreword generation
-  const forewordJob = useJob();
+  // Foreword toggle is just a flag — generation happens in "Generate All".
+  // When all chapters are already generated, allow standalone foreword generation
+  // via a direct metered call to /api/generate (mirrors the inline path above).
+  const [forewordRunning, setForewordRunning] = useState(false);
   async function generateForewordOnly() {
     // #15 — if a foreword already exists, confirm before replacing it.
     const hasForeword = chapters.some((c) => c.chapter_number === 0);
@@ -294,14 +294,33 @@ export default function GeneratePage() {
         !window.confirm("A foreword already exists. Regenerate and replace it?")) {
       return;
     }
-    await forewordJob.start({
-      type: "generate",
-      project_id: projectId,
-      generate_type: "foreword",
-      creative_freedom: creativeFreedom,
-      regenerate: hasForeword,
-      chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
-    });
+    setForewordRunning(true);
+    setGenAllError(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "foreword",
+          project_id: projectId,
+          creative_freedom: creativeFreedom,
+          regenerate: hasForeword,
+          chapters: chapters.map((ch) => ({ title: ch.title, summary: ch.summary })),
+        }),
+      });
+      if (res.status === 402) { setShowUpgrade(true); return; }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: "Foreword generation failed" }));
+        throw new Error((e as { error?: string }).error || "Foreword generation failed");
+      }
+      // Refresh so the new foreword (chapter_number 0) shows up in the list.
+      const fresh = await fetch(`/api/project/${projectId}`);
+      if (fresh.ok) { const d = await fresh.json(); setChapters(d.chapters || []); }
+    } catch (err) {
+      setGenAllError(err instanceof Error ? err.message : "Foreword generation failed");
+    } finally {
+      setForewordRunning(false);
+    }
   }
 
   // Generation progress derived values
@@ -464,7 +483,7 @@ export default function GeneratePage() {
                   {allGenerated && includeForeword && (
                     <button
                       onClick={generateForewordOnly}
-                      disabled={forewordJob.isRunning}
+                      disabled={forewordRunning}
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
@@ -473,12 +492,12 @@ export default function GeneratePage() {
                         border: "none",
                         background: "var(--ds-accent-500, #C17A47)",
                         color: "#fff",
-                        cursor: forewordJob.isRunning ? "wait" : "pointer",
+                        cursor: forewordRunning ? "wait" : "pointer",
                         fontFamily: "var(--font-manrope), sans-serif",
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {forewordJob.isRunning ? "Writing..." : "Generate Foreword"}
+                      {forewordRunning ? "Writing..." : "Generate Foreword"}
                     </button>
                   )}
                   <button
@@ -487,13 +506,13 @@ export default function GeneratePage() {
                       setIncludeForeword(next);
                       localStorage.setItem(`dscribe_foreword_${projectId}`, String(next));
                     }}
-                    disabled={forewordJob.isRunning}
+                    disabled={forewordRunning}
                     style={{
                       width: 44,
                       height: 24,
                       borderRadius: 12,
                       border: "none",
-                      cursor: forewordJob.isRunning ? "wait" : "pointer",
+                      cursor: forewordRunning ? "wait" : "pointer",
                       background: includeForeword ? "#C17A47" : "var(--ds-input-border)",
                       position: "relative",
                       transition: "background 0.2s",

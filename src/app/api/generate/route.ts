@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import {
-  askClaude,
+  askClaudeWithUsage,
   creativeFreedomToTemp,
   creativeFreedomToInstruction,
 } from "@/lib/claude-lite";
@@ -72,11 +72,15 @@ export async function POST(req: NextRequest) {
       ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
       : "";
 
-    const content = await askClaude(
+    const { text: content, usage } = await askClaudeWithUsage(
       `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter in FIRST PERSON as the author (never refer to "the author" or "the speaker" in third person). ${voiceNote}\n${HUMANIZER_RULES}`,
       `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.`,
       { temperature, maxTokens: 8192 }
     );
+
+    // Meter the foreword against Ink — this path was gate-only (checkInk above
+    // verifies balance > 0 but never deducted). Mirrors the chapter path's metering.
+    await recordInkUsage(user.id, body.project_id, "foreword", "quality", usage);
 
     await supabase.from("chapters").delete()
       .eq("project_id", body.project_id).eq("chapter_number", 0);

@@ -6,6 +6,7 @@ import { creativeFreedomToTemp } from "@/lib/claude-lite";
 import { streamClaude } from "@/lib/claude-stream";
 import { rewriteChapterSystem, rewriteChapterPrompt } from "@/lib/prompts/rewrite";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { logger } from "@/lib/logger";
 
 // POST /api/rewrite/chapter — streaming full chapter rewrite
 export async function POST(req: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Pre-flight Ink check
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "rewrite");
   if (!inkCheck.allowed) {
     return new Response(
       JSON.stringify({ error: "out_of_ink", message: inkCheck.reason }),
@@ -152,7 +153,7 @@ export async function POST(req: NextRequest) {
     maxTokens: 16384,
     temperature,
     onUsage: (usage) => {
-      recordInkUsage(user.id, chapter.project_id, "rewrite", "quality", usage).catch(console.error);
+      recordInkUsage(user.id, chapter.project_id, "rewrite", "quality", usage).catch((err) => logger.error("recordInkUsage failed", { route: "/api/rewrite/chapter", userId: user.id, error: err }));
     },
   });
 

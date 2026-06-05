@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master, staging]
+  pull_request:
+    branches: [master, staging]
+
+jobs:
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # TODO: make this blocking once the latent type errors suppressed by
+      # next.config.ts `typescript: { ignoreBuildErrors: true }` are fixed.
+      # TODO: re-enable lint once zod/eslint-config-next is pinned
+      - name: Type-check (non-blocking)
+        run: bunx tsc --noEmit
+        continue-on-error: true
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+        env:
+          # Supabase public vars are embedded in the client bundle at build time.
+          # Placeholder values keep the /blog static prerender from crashing on
+          # missing env — they are never used at runtime in CI.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          # Stripe lazy client (getClient()) is never called during build, but
+          # Next.js may inspect the env at module-graph evaluation time.
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          STRIPE_PRICE_STARTER: price_placeholder_starter
+          STRIPE_PRICE_PRO: price_placeholder_pro
+          STRIPE_PRICE_PREMIUM: price_placeholder_premium
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key

@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
 
   // Pre-flight Ink check
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "brainstorm");
   if (!inkCheck.allowed) {
     return new Response(
       JSON.stringify({ error: "out_of_ink", message: inkCheck.reason }),
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
         }
         // Record Ink usage
         if (inputTokens > 0 || outputTokens > 0) {
-          recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch(console.error);
+          recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();

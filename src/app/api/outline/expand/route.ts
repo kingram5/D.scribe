@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 
   // ── Dry-run mode: call Claude, return proposal ──────────────────────────────
   // Pre-flight Ink check (only dry-run calls Claude; confirm is a DB insert)
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "outline");
   if (!inkCheck.allowed) {
     return NextResponse.json(
       { error: "out_of_ink", message: inkCheck.reason },

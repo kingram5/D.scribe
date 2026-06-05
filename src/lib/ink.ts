@@ -16,6 +16,29 @@ export type InkOperation =
   | "coherence"
   | "enrich";
 
+// Conservative per-operation Ink floors for the PRE-flight cost check — lower
+// bounds on what an op typically costs, so a near-empty wallet can't kick off an
+// expensive call whose content streams back before the deduct settles. Real
+// billing still uses actual token usage via deduct_ink.
+const ESTIMATED_COST: Record<InkOperation, number> = {
+  brainstorm: 2,
+  brainstorm_summarize: 1,
+  analyze: 3,
+  voice_profile: 1,
+  mind_map: 1,
+  outline: 2,
+  generate: 6,
+  foreword: 2,
+  rewrite: 2,
+  coherence: 2,
+  enrich: 1,
+};
+
+/** Estimated minimum Ink cost for an operation (used by the pre-flight gate). */
+export function estimateInkCost(operation: InkOperation): number {
+  return ESTIMATED_COST[operation] ?? 0;
+}
+
 export interface InkBalance {
   ink_balance: number;
   lifetime_used: number;
@@ -50,14 +73,21 @@ async function ensureBalance(userId: string): Promise<InkBalance> {
   return created || { ink_balance: FREE_TRIAL_INK, lifetime_used: 0, tier: "free" };
 }
 
-/** Check if a user has enough Ink to proceed */
-export async function checkInk(userId: string): Promise<InkCheck> {
+/**
+ * Check a user can afford an operation. With `operation`, requires
+ * balance >= that operation's estimated floor (cost-aware pre-flight). Without
+ * it, falls back to a presence check (balance > 0).
+ */
+export async function checkInk(userId: string, operation?: InkOperation): Promise<InkCheck> {
   const balance = await ensureBalance(userId);
+  const required = operation ? estimateInkCost(operation) : 0;
 
-  if (balance.ink_balance <= 0) {
+  if (balance.ink_balance <= 0 || balance.ink_balance < required) {
     return {
       allowed: false,
-      reason: "No Ink remaining. Upgrade your plan to continue.",
+      reason: required > 0
+        ? `This needs about ${required} Ink and you have ${Number(balance.ink_balance.toFixed(2))}. Top up to continue.`
+        : "No Ink remaining. Upgrade your plan to continue.",
       balance: balance.ink_balance,
       tier: balance.tier,
     };

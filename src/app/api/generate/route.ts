@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "generate");
   if (!inkCheck.allowed) {
     return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
   }
@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
           recordInkUsage(user.id, chapter.project_id, "generate", "quality", {
             input_tokens: inputTokens,
             output_tokens: outputTokens,
-          }).catch(console.error);
+          }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/generate", userId: user.id, error: err }));
         }
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, chapter_id, word_count: wordCount })}\n\n`));
@@ -299,7 +299,7 @@ export async function POST(req: NextRequest) {
         controller.close();
 
       } catch (err) {
-        await supabase.from("chapters").update({ status: "outlined" }).eq("id", chapter_id).catch(() => {});
+        try { await supabase.from("chapters").update({ status: "outlined" }).eq("id", chapter_id); } catch {}
         const message = err instanceof Error ? err.message : "Generation failed";
         logger.error(message, { route: "/api/generate", userId: user.id, error: err, meta: { chapter_id } });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`));

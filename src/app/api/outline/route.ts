@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
 
   // Pre-flight Ink check
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "outline");
   if (!inkCheck.allowed) {
     return NextResponse.json(
       { error: "out_of_ink", message: inkCheck.reason },

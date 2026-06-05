@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  // Type errors now FAIL the build (the tree is tsc-clean as of the launch-hardening
+  // pass). ESLint stays suppressed until the zod / eslint-config-next toolchain
+  // crash is resolved — see the lint TODO in .github/workflows/ci.yml.
   eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
   env: {
     ALLOWED_EMAILS: process.env.ALLOWED_EMAILS ?? "",
   },
@@ -37,4 +40,16 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default nextConfig;
+// Source-map upload + release tracking via the Sentry build plugin. Uploads only
+// when SENTRY_AUTH_TOKEN is present (set it in Vercel env) — no-ops gracefully
+// otherwise — so prod stack traces stop showing as minified gibberish. The
+// tunnelRoute proxies Sentry through our own domain so ad-blockers don't eat events.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  tunnelRoute: "/monitoring",
+  widenClientFileUpload: true,
+  disableLogger: true,
+});

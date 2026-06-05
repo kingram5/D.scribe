@@ -37,6 +37,29 @@ async function activateSubscription(
     });
 }
 
+// Zero spendable Ink but keep the tier — used when a payment fails and the
+// subscription enters dunning. A later successful charge refills via
+// invoice.payment_succeeded, so the tier stays the source of truth.
+async function freezeInk(customerId: string) {
+  const supabase = createServerClient();
+  const { data: balance } = await supabase
+    .from("ink_balances").select("user_id").eq("stripe_customer_id", customerId).single();
+  if (!balance) return;
+  await supabase.from("ink_balances").update({ ink_balance: 0 }).eq("user_id", balance.user_id);
+}
+
+// Fully revoke paid entitlement (refund or chargeback): drop to free, zero Ink,
+// unlink the subscription.
+async function revokeEntitlement(customerId: string) {
+  const supabase = createServerClient();
+  const { data: balance } = await supabase
+    .from("ink_balances").select("user_id").eq("stripe_customer_id", customerId).single();
+  if (!balance) return;
+  await supabase.from("ink_balances")
+    .update({ tier: "free", ink_balance: 0, stripe_subscription_id: null })
+    .eq("user_id", balance.user_id);
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -68,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (insertError.code === "23505") {
       return NextResponse.json({ received: true });
     }
-    logger.error("Failed to log Stripe event", { event_id: event.id, error: insertError });
+    logger.error("Failed to log Stripe event", { route: "/api/stripe/webhook", meta: { event_id: event.id }, error: insertError });
     return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
   }
 
@@ -90,29 +113,41 @@ export async function POST(req: NextRequest) {
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
+    const goodStanding =
+      subscription.status === "active" || subscription.status === "trialing";
 
-    const priceId = subscription.items.data[0]?.price.id;
-    const PRICE_TO_TIER: Record<string, string> = {
-      [process.env.STRIPE_PRICE_STARTER!]: "starter",
-      [process.env.STRIPE_PRICE_PRO!]: "pro",
-      [process.env.STRIPE_PRICE_PREMIUM!]: "premium",
-    };
-    const newTier = PRICE_TO_TIER[priceId];
+    if (!goodStanding) {
+      // past_due / unpaid / canceled / incomplete_expired — freeze spendable Ink
+      // so a lapsed subscriber can't keep burning AI spend during dunning.
+      await freezeInk(customerId);
+      logger.warn("Subscription not in good standing — froze Ink", {
+        route: "/api/stripe/webhook",
+        meta: { customer: customerId, status: subscription.status },
+      });
+    } else {
+      const priceId = subscription.items.data[0]?.price.id;
+      const PRICE_TO_TIER: Record<string, string> = {
+        [process.env.STRIPE_PRICE_STARTER!]: "starter",
+        [process.env.STRIPE_PRICE_PRO!]: "pro",
+        [process.env.STRIPE_PRICE_PREMIUM!]: "premium",
+      };
+      const newTier = priceId ? PRICE_TO_TIER[priceId] : undefined;
 
-    if (newTier) {
-      const { data: balance } = await supabase
-        .from("ink_balances")
-        .select("user_id")
-        .eq("stripe_customer_id", customerId)
-        .single();
+      if (newTier) {
+        const { data: balance } = await supabase
+          .from("ink_balances")
+          .select("user_id")
+          .eq("stripe_customer_id", customerId)
+          .single();
 
-      if (balance) {
-        await activateSubscription(
-          balance.user_id,
-          newTier,
-          subscription.id,
-          customerId
-        );
+        if (balance) {
+          await activateSubscription(
+            balance.user_id,
+            newTier,
+            subscription.id,
+            customerId
+          );
+        }
       }
     }
   }
@@ -170,6 +205,44 @@ export async function POST(req: NextRequest) {
           })
           .eq("user_id", balance.user_id);
       }
+    }
+  }
+
+  // Failed renewal/charge — the subscription is now past_due and Stripe is in its
+  // dunning retry window. Freeze spendable Ink so a non-paying account can't keep
+  // burning AI spend; the tier is retained so a successful retry refills cleanly
+  // via invoice.payment_succeeded.
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = invoice.customer as string | null;
+    if (customerId) {
+      await freezeInk(customerId);
+      logger.warn("Invoice payment failed — froze Ink", {
+        route: "/api/stripe/webhook",
+        meta: { customer: customerId, invoice: invoice.id },
+      });
+    }
+  }
+
+  // Refund or chargeback — revoke paid access entirely.
+  if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
+    let customerId: string | null = null;
+    if (event.type === "charge.refunded") {
+      customerId = (event.data.object as Stripe.Charge).customer as string | null;
+    } else {
+      const dispute = event.data.object as Stripe.Dispute;
+      const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId);
+        customerId = charge.customer as string | null;
+      }
+    }
+    if (customerId) {
+      await revokeEntitlement(customerId);
+      logger.warn("Charge refunded/disputed — revoked entitlement", {
+        route: "/api/stripe/webhook",
+        meta: { customer: customerId, type: event.type },
+      });
     }
   }
 

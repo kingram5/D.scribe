@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Pre-flight Ink check
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "enrich");
   if (!inkCheck.allowed) {
     return NextResponse.json(
       { error: "out_of_ink", message: inkCheck.reason },
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const first = await askClaudeWithUsage(ENRICH_SYSTEM, promptText, { temperature: 0.4 });
-    recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", first.usage).catch(console.error);
+    recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", first.usage).catch((err) => logger.error("recordInkUsage failed", { route: "/api/enrich", userId: user.id, error: err }));
 
     let items = parseItems(first.text);
     if (!items) {
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
         promptText + `\n\nYour previous response was not valid JSON. Return ONLY a valid JSON array, nothing else — escape every double quote inside a string value as \\", or use curly quotes “ ” for quotation marks inside quote_text.`,
         { temperature: 0.2 }
       );
-      recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", retry.usage).catch(console.error);
+      recordInkUsage(user.id, chapter.projects.id, "enrich", "quality", retry.usage).catch((err) => logger.error("recordInkUsage failed", { route: "/api/enrich", userId: user.id, error: err }));
       items = parseItems(retry.text);
     }
 

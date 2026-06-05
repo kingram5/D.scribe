@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const inkCheck = await checkInk(user.id);
+  const inkCheck = await checkInk(user.id, "brainstorm_summarize");
   if (!inkCheck.allowed) {
     return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
   }

@@ -329,6 +329,14 @@ export default function DiscoverPage() {
             ))}
           </div>
         )}
+
+        <div style={{ textAlign: "center", marginTop: 72, fontSize: 12, color: "#6B6358", fontFamily: "var(--font-manrope), sans-serif" }}>
+          See content that infringes your copyright?{" "}
+          <Link href="/legal/dmca" style={{ color: "#A89F94", textDecoration: "underline" }}>
+            Report it
+          </Link>
+          .
+        </div>
       </main>
     </div>
   );

@@ -74,6 +74,22 @@ export default function UserMenu() {
           </div>
           <InkMeter />
           <TtsMeter />
+          <a
+            href="/settings"
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "8px 12px",
+              fontSize: 13,
+              color: "#191816",
+              borderRadius: 8,
+              textAlign: "left",
+              textDecoration: "none",
+              boxSizing: "border-box",
+            }}
+          >
+            Settings &amp; billing
+          </a>
           <button
             onClick={signOut}
             style={{

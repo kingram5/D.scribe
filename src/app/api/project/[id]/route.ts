@@ -1,6 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
+import { deleteAudioForProjects } from "@/lib/storage-cleanup";
+
+// ── Mass-assignment allowlists ───────────────────────────────────────────────
+// Only these columns may be set from a client-supplied PATCH body. Anything else
+// (id, user_id, project_id, created_at, etc.) is dropped silently so a caller
+// can't write arbitrary columns via the raw `updates` object.
+const PROJECT_FIELDS = [
+  "title",
+  "description",
+  "audience",
+  "num_chapters",
+  "target_words_per_chapter",
+  "status",
+  "is_public",
+  "published_excerpt",
+  "published_author",
+  "creative_freedom",
+  "scripture_translation",
+  "narrative_tracker",
+  "voice_profile",
+] as const;
+
+const CHAPTER_FIELDS = [
+  "title",
+  "summary",
+  "key_point_ids",
+  "blended_key_point_ids",
+  "target_word_count",
+  "status",
+  "sort_order",
+  "chapter_number",
+] as const;
+
+const KEY_POINT_FIELDS = [
+  "title",
+  "summary",
+  "supporting_quotes",
+  "tags",
+  "relevance_score",
+  "covered_in_chapter",
+] as const;
+
+const TRANSCRIPT_FIELDS = [
+  "full_text",
+  "segments",
+  "word_count",
+  "speaker_count",
+] as const;
+
+/** Build an object containing only allowlisted keys present in `body`. */
+function pickAllowed(
+  body: Record<string, unknown>,
+  allowed: readonly string[]
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in body) out[key] = body[key];
+  }
+  return out;
+}
 
 // GET /api/project/[id] — get single project with all related data
 export async function GET(
@@ -69,7 +129,8 @@ export async function PATCH(
 
   // If chapter_id is provided, update the chapter
   if (body.chapter_id) {
-    const { chapter_id, ...updates } = body;
+    const { chapter_id } = body;
+    const updates = pickAllowed(body, CHAPTER_FIELDS);
     const { data, error } = await supabase
       .from("chapters")
       .update(updates)
@@ -83,7 +144,8 @@ export async function PATCH(
 
   // If key_point_id is provided, update the key point
   if (body.key_point_id) {
-    const { key_point_id, ...updates } = body;
+    const { key_point_id } = body;
+    const updates = pickAllowed(body, KEY_POINT_FIELDS);
     const { data, error } = await supabase
       .from("key_points")
       .update(updates)
@@ -138,7 +200,8 @@ export async function PATCH(
 
   // If transcript_id is provided, update the transcript
   if (body.transcript_id) {
-    const { transcript_id, ...updates } = body;
+    const { transcript_id } = body;
+    const updates = pickAllowed(body, TRANSCRIPT_FIELDS);
     const { data, error } = await supabase
       .from("transcripts")
       .update(updates)
@@ -151,11 +214,7 @@ export async function PATCH(
   }
 
   // Allowlist: only permit safe fields for project updates
-  const ALLOWED_FIELDS = ["title", "description", "audience", "num_chapters", "target_words_per_chapter", "status", "is_public", "published_excerpt", "published_author", "creative_freedom", "scripture_translation"];
-  const filteredBody: Record<string, unknown> = {};
-  for (const key of ALLOWED_FIELDS) {
-    if (key in body) filteredBody[key] = body[key];
-  }
+  const filteredBody = pickAllowed(body, PROJECT_FIELDS);
 
   const { data, error } = await supabase
     .from("projects")
@@ -190,6 +249,9 @@ export async function DELETE(
   if (!projectOwner) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+
+  // Clean up R2 audio objects before the DB cascade orphans their keys.
+  await deleteAudioForProjects([id]);
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

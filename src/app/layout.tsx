@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Inter, Kalam, Manrope, Lora, Instrument_Serif, Playfair_Display } from "next/font/google";
 import { MarketingPixels } from "@/components/analytics/MarketingPixels";
+import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -78,6 +79,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} ${manrope.variable} ${lora.variable} ${instrumentSerif.variable} ${playfair.variable} antialiased`}>
         <MarketingPixels />
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );

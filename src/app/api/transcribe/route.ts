@@ -4,11 +4,26 @@ import { transcribeAudio } from "@/lib/deepgram";
 import { requireAuth } from "@/lib/auth";
 import { getDownloadUrl } from "@/lib/r2";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { checkInk } from "@/lib/ink";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "transcribe");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
+
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
 
   const { audio_upload_id } = await req.json();
   if (!audio_upload_id) {

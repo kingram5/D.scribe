@@ -35,5 +35,12 @@ export async function requireAuth(): Promise<
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
+  // Require a confirmed email — an unconfirmed Supabase session still returns a user.
+  if (!user.email_confirmed_at) {
+    return {
+      user: null,
+      error: NextResponse.json({ error: "Email not confirmed" }, { status: 403 }),
+    };
+  }
   return { user, error: null };
 }

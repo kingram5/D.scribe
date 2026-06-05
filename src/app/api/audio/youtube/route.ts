@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { checkInk } from "@/lib/ink";
 
 export const maxDuration = 300;
 
@@ -70,6 +72,19 @@ async function pollJob(
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "youtube");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
+
+  const inkCheck = await checkInk(user.id);
+  if (!inkCheck.allowed) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
 
   const { youtube_url, project_id } = await req.json();
 

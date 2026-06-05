@@ -36,6 +36,9 @@ export async function transcribeAudio(
       paragraphs: true,
       utterances: true,
       punctuate: true,
+      // Opt out of Deepgram's Model Improvement Program so submitted audio isn't
+      // retained for training — required before we can claim "we don't retain your audio".
+      mip_opt_out: true,
     }
   );
 

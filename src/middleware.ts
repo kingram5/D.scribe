@@ -10,13 +10,13 @@ function isAllowedEmail(email: string | undefined | null): boolean {
   return allowed.has(email.toLowerCase());
 }
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/cinematic", "/landing-classic", "/landing-v2"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths and API routes
-  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/api/")) {
+  // Allow public paths, API routes, and the public legal pages
+  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/api/") || pathname.startsWith("/legal/")) {
     // For root path, check if user is authenticated → redirect to dashboard
     if (pathname === "/") {
       let response = NextResponse.next({ request: { headers: request.headers } });
@@ -77,6 +77,14 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Require a confirmed email — an unconfirmed Supabase session otherwise passes here.
+  if (!user.email_confirmed_at) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("error", "confirm_email");
     return NextResponse.redirect(url);
   }
 

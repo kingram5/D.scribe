@@ -1,23 +1,37 @@
+"use client";
+
 import Script from "next/script";
+import { useEffect, useState } from "react";
+import { readConsent, CONSENT_EVENT } from "@/lib/consent";
 
 /**
- * Marketing pixels for paid attribution.
+ * Marketing pixels for paid attribution (TikTok Pixel + LinkedIn Insight Tag).
  *
- * Loads TikTok Pixel + LinkedIn Insight Tag when env vars are present.
- * Renders nothing in environments where the pixel IDs aren't set (dev, preview, etc.).
+ * Loads ONLY after the visitor grants marketing consent via the ConsentBanner,
+ * and only when the pixel IDs are configured. Reacts to consent changes live
+ * (CONSENT_EVENT) so it lights up the moment the user clicks "Accept" — no reload.
  *
- * Pixel IDs are public — they identify which ad account receives the events,
- * not how to authenticate to it. Safe to ship via NEXT_PUBLIC_* env vars.
+ * Pixel IDs are public (they name the ad account, not credentials) — shipped via
+ * NEXT_PUBLIC_* env vars, available client-side.
  *
  * Wired into src/app/layout.tsx via <MarketingPixels />.
  */
 export function MarketingPixels() {
   const tiktokPixelId = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID;
   const linkedinPartnerId = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID;
+  const [marketingOk, setMarketingOk] = useState(false);
 
-  if (!tiktokPixelId && !linkedinPartnerId) {
-    return null;
-  }
+  useEffect(() => {
+    const sync = () => setMarketingOk(readConsent()?.marketing === true);
+    sync();
+    window.addEventListener(CONSENT_EVENT, sync);
+    return () => window.removeEventListener(CONSENT_EVENT, sync);
+  }, []);
+
+  // Dormant until marketing consent is granted (SSR + first client render both
+  // produce null → no hydration mismatch).
+  if (!marketingOk) return null;
+  if (!tiktokPixelId && !linkedinPartnerId) return null;
 
   return (
     <>

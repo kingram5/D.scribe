@@ -45,6 +45,12 @@ export function CinematicMurmurWaveform() {
     }
 
     createWaveform();
+    // Re-run once web fonts finish loading — the SVG clipPath text is measured
+    // against the font at build time, so a cold load (Playfair not yet ready)
+    // would clip the bars to fallback-serif metrics and never correct itself.
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      document.fonts.ready.then(() => createWaveform());
+    }
     window.addEventListener("resize", createWaveform);
     return () => window.removeEventListener("resize", createWaveform);
   }, []);

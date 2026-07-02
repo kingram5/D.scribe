@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { createServerClient } from "@/lib/supabase";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 
@@ -64,13 +65,32 @@ async function ensureBalance(userId: string): Promise<InkBalance> {
 
   if (data) return data;
 
+  // First wallet for this user — grant the free trial UNLESS this email
+  // previously deleted an account (anti-farming: delete + re-signup used to
+  // mint a fresh 10 Ink every time). Best-effort: any lookup failure falls
+  // back to granting the trial, so a missing table can't lock out real users.
+  let trialInk = FREE_TRIAL_INK;
+  try {
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    const email = authUser?.user?.email;
+    if (email) {
+      const emailHash = createHash("sha256").update(email.toLowerCase()).digest("hex");
+      const { data: prior } = await supabase
+        .from("deleted_account_emails")
+        .select("email_hash")
+        .eq("email_hash", emailHash)
+        .maybeSingle();
+      if (prior) trialInk = 0;
+    }
+  } catch { /* grant trial on any failure */ }
+
   const { data: created } = await supabase
     .from("ink_balances")
-    .insert({ user_id: userId, ink_balance: FREE_TRIAL_INK })
+    .insert({ user_id: userId, ink_balance: trialInk })
     .select("ink_balance, lifetime_used, tier")
     .single();
 
-  return created || { ink_balance: FREE_TRIAL_INK, lifetime_used: 0, tier: "free" };
+  return created || { ink_balance: trialInk, lifetime_used: 0, tier: "free" };
 }
 
 /**

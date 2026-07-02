@@ -37,18 +37,22 @@ function LoginContent() {
     setEmailSuccess("");
     setLoading(true);
 
-    const supabase = createBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-      },
-    });
-    setLoading(false);
-    if (error) {
-      setEmailError(error.message);
-    } else {
-      setEmailSuccess("Check your email for a sign-in link.");
+    try {
+      const res = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setLoading(false);
+      if (!res.ok) {
+        setEmailError(data.error || "Could not send sign-in link. Please try again.");
+      } else {
+        setEmailSuccess("Check your email for a sign-in link.");
+      }
+    } catch {
+      setLoading(false);
+      setEmailError("Could not send sign-in link. Please try again.");
     }
   }
 

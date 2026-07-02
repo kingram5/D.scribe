@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
@@ -46,6 +47,17 @@ export async function POST() {
   } catch (err) {
     logger.error("Account deletion: DB delete failed", { route: "/api/account/delete", userId, error: err });
     return NextResponse.json({ error: "Failed to delete account data" }, { status: 500 });
+  }
+
+  // 3.5 Record the email hash so a re-signup doesn't re-grant the free trial
+  // (best-effort — the table ships in migration 015; skip quietly if absent).
+  try {
+    if (user.email) {
+      const emailHash = createHash("sha256").update(user.email.toLowerCase()).digest("hex");
+      await supabase.from("deleted_account_emails").upsert({ email_hash: emailHash });
+    }
+  } catch (err) {
+    logger.error("Account deletion: deleted-email record failed", { route: "/api/account/delete", userId, error: err });
   }
 
   // 4. Finally remove the auth user (irreversible) via the service-role admin API.

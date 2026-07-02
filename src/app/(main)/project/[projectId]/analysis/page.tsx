@@ -279,7 +279,20 @@ export default function AnalysisPage() {
             </p>
 
             {analyzeError && (
-              <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 16 }}>{analyzeError}</p>
+              <div
+                style={{
+                  padding: "12px 16px",
+                  background: "rgba(193,122,71,0.1)",
+                  border: "1px solid rgba(193,122,71,0.25)",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                }}
+              >
+                <p style={{ fontSize: 13, color: "#C17A47", fontWeight: 600, margin: 0 }}>
+                  Still working on it — that step didn&apos;t finish. Your words are safe; give it another try.
+                </p>
+                <p style={{ fontSize: 11, color: "#A98F6B", margin: "4px 0 0" }}>{analyzeError}</p>
+              </div>
             )}
 
             {analyzing && (

@@ -97,7 +97,7 @@ function LoginContent() {
           lineHeight: 1.6,
           marginBottom: 32,
         }}>
-          Upload sermons, keynotes, or podcast episodes — and let AI ghostwrite your manuscript in your voice.
+          Upload sermons, keynotes, or podcast episodes — your words, your voice, edited into a finished manuscript.
         </p>
 
         {(authError || emailError) && (

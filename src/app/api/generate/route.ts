@@ -243,13 +243,27 @@ export async function POST(req: NextRequest) {
               if (event.type === "message_delta" && event.usage) {
                 outputTokens = event.usage.output_tokens || 0;
               }
-            } catch { /* skip malformed */ }
+              // Anthropic emits error events mid-stream (overloaded_error etc.) —
+              // swallowing them was how blank chapters got saved as "generated".
+              if (event.type === "error") {
+                throw new Error(`Claude stream error: ${event.error?.type || "unknown"} — ${event.error?.message || ""}`);
+              }
+            } catch (err) {
+              if (err instanceof Error && err.message.startsWith("Claude stream error")) throw err;
+              /* skip malformed JSON lines */
+            }
           }
         }
 
-        // Save the generated content
+        // Save the generated content — but never save emptiness as success.
+        // (An error event or early stream end used to produce a blank chapter
+        // marked "generated" with word_count 1 — the exact failure the
+        // maxDuration comment describes.)
         const content = sanitizeGenerated(fullContent);
-        const wordCount = content.split(/\s+/).length;
+        if (!content.trim()) {
+          throw new Error("Generation produced no content — chapter not saved. Try again.");
+        }
+        const wordCount = content.trim().split(/\s+/).length;
 
         const { data: existing } = await supabase.from("chapter_contents").select("version")
           .eq("chapter_id", chapter_id).order("version", { ascending: false }).limit(1);
@@ -306,6 +320,13 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       }
+    },
+    // Client disconnected mid-generation (tab closed, navigation away).
+    // Without this the chapter stayed "generating" forever and the UI blocked.
+    async cancel() {
+      try { await reader.cancel(); } catch {}
+      try { await supabase.from("chapters").update({ status: "outlined" }).eq("id", chapter_id); } catch {}
+      logger.warn("generate stream cancelled by client", { route: "/api/generate", userId: user.id, meta: { chapter_id } });
     },
   });
 

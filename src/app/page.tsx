@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "D.scribe — Turn Your Voice Into a Published Book with AI",
-    description: "Upload any audio, set your structure, and watch AI write your manuscript chapter by chapter — in your voice.",
+    description: "Upload any audio, set your structure, and shape your spoken words into a manuscript chapter by chapter — in your voice, with AI as your editor.",
     url: "https://d-scribe.app",
     siteName: "D.scribe",
     type: "website",

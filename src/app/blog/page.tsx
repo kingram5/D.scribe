@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
-  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
+  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to turn your voice recordings into a manuscript faster — with AI as your editor.",
   alternates: {
     canonical: "https://d-scribe.app/blog",
   },

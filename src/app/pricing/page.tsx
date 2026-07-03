@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Pricing — AI Book Writing Plans Starting at $25",
+  title: "Pricing — AI-Assisted Book Writing Plans Starting at $25",
   description: "D.scribe pricing starts at $25/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.",
   alternates: {
     canonical: "https://d-scribe.app/pricing",
   },
   openGraph: {
-    title: "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+    title: "D.scribe Pricing — AI-Assisted Book Writing Plans Starting at $25",
     description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
     url: "https://d-scribe.app/pricing",
     siteName: "D.scribe",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const pricingSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  name: "D.scribe Pricing — AI Book Writing Plans",
+  name: "D.scribe Pricing — AI-Assisted Book Writing Plans",
   url: "https://d-scribe.app/pricing",
   description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
   isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },

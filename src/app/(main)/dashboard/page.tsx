@@ -311,7 +311,7 @@ export default function Dashboard() {
                       { num: "2", title: "Transcription", desc: "Your words, captured by AI and ready to shape." },
                       { num: "3", title: "Structure Setup", desc: "Set your chapters and word-count targets." },
                       { num: "4", title: "Content Analysis", desc: "AI identifies key themes, your voice patterns, and the book's foundation." },
-                      { num: "5", title: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter." },
+                      { num: "5", title: "Chapter Generation", desc: "Each chapter drafted in your voice — you're the author." },
                       { num: "6", title: "Manuscript Editor", desc: "Review, refine, and polish your manuscript." },
                       { num: "7", title: "Export & Publish", desc: "Download your finished book in any format." },
                     ].map((step) => (

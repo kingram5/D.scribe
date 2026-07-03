@@ -19,7 +19,7 @@ const PIPELINE = [
   { key: "transcribe", label: "Transcription", desc: "Your words, captured and ready to shape" },
   { key: "structure", label: "Structure Setup", desc: "Set chapters and word targets for your manuscript" },
   { key: "analyze", label: "Content Analysis", desc: "AI is identifying key themes, voice patterns, and building the structural foundation for your book." },
-  { key: "generate", label: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter" },
+  { key: "generate", label: "Chapter Generation", desc: "Each chapter drafted in your voice" },
   { key: "editor", label: "Manuscript Editor", desc: "Review, refine, and polish your manuscript" },
   { key: "export", label: "Export & Publish", desc: "Download your finished book in any format" },
 ];

@@ -20,7 +20,7 @@ const PIPELINE = [
   { num: "02", title: "Transcribe", desc: "AI captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
   { num: "03", title: "Structure", desc: "Set your chapter count, word targets, and tone. The blueprint for your book, built before a word is written." },
   { num: "04", title: "Analyze", desc: "Key themes extracted, voice profile built, narrative arcs identified. Your ideas, mapped." },
-  { num: "05", title: "Generate", desc: "AI writes your manuscript chapter by chapter — in your voice, not a robot's." },
+  { num: "05", title: "Generate", desc: "Each chapter drafted from your own spoken words — in your voice, not a robot's." },
   { num: "06", title: "Edit", desc: "Review every sentence in a full manuscript editor. Refine, rewrite, and make it yours." },
   { num: "07", title: "Export", desc: "Download your finished book as PDF or DOCX. Print-ready. Publisher-ready. Yours." },
 ];
@@ -57,7 +57,7 @@ const DASH_PIPELINE = [
   { key: "transcribe", label: "Transcription",      desc: "Your words, captured and ready to shape" },
   { key: "structure",  label: "Structure Setup",    desc: "Set chapters and word targets" },
   { key: "analyze",    label: "Content Analysis",   desc: "AI identifies themes, voice patterns, and narrative arcs" },
-  { key: "generate",   label: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter" },
+  { key: "generate",   label: "Chapter Generation", desc: "Each chapter drafted in your voice" },
   { key: "editor",     label: "Manuscript Editor",  desc: "Review, refine, and polish your manuscript" },
   { key: "export",     label: "Export & Publish",   desc: "Download your finished book in any format" },
 ];
@@ -1053,7 +1053,7 @@ export default function LandingV2() {
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Your voice</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>AI writes in your style, not its own</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Your words, your style — AI is just the editor</div>
           </div>
         </div>
 

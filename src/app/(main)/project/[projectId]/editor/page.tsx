@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import TipTapEditor, { TipTapSelection, TipTapEditorHandle } from "@/components/editor/TipTapEditor";
 import MagicEditBubble from "@/components/editor/MagicEditBubble";
 import RewritePromptBar from "@/components/editor/RewritePromptBar";
+import VoiceMatchBadge from "@/components/editor/VoiceMatchBadge";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -611,6 +612,12 @@ export default function EditorPage() {
                 }}>
                   v{activeChapter.latest_content.version}
                 </span>
+                <div style={{ width: 1, height: 14, background: "var(--ds-card-border)" }} />
+                <VoiceMatchBadge
+                  chapterId={activeChapter.id}
+                  contentVersion={activeChapter.latest_content.version}
+                  cachedScores={activeChapter.latest_content.generation_params?.scores ?? null}
+                />
               </>
             )}
           </div>

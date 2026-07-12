@@ -15,7 +15,8 @@ export type InkOperation =
   | "foreword"
   | "rewrite"
   | "coherence"
-  | "enrich";
+  | "enrich"
+  | "style_distill";
 
 // Conservative per-operation Ink floors for the PRE-flight cost check — lower
 // bounds on what an op typically costs, so a near-empty wallet can't kick off an
@@ -33,6 +34,7 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   rewrite: 2,
   coherence: 2,
   enrich: 1,
+  style_distill: 1,
 };
 
 /** Estimated minimum Ink cost for an operation (used by the pre-flight gate). */

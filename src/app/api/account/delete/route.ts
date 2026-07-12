@@ -40,10 +40,12 @@ export async function POST() {
     logger.error("Account deletion: R2 cleanup failed", { route: "/api/account/delete", userId, error: err });
   }
 
-  // 3. Delete the user's DB rows. Projects cascade their children; drop the wallet too.
+  // 3. Delete the user's DB rows. Projects cascade their children (incl.
+  // edit_events + style_deltas); drop the wallet and style memory too.
   try {
     await supabase.from("projects").delete().eq("user_id", userId);
     await supabase.from("ink_balances").delete().eq("user_id", userId);
+    await supabase.from("user_style_memory").delete().eq("user_id", userId);
   } catch (err) {
     logger.error("Account deletion: DB delete failed", { route: "/api/account/delete", userId, error: err });
     return NextResponse.json({ error: "Failed to delete account data" }, { status: 500 });

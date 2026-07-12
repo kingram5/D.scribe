@@ -106,6 +106,12 @@ export default function EditorPage() {
         )
       );
       setSaved(true);
+
+      // Enough edits accumulated — refresh the style memory in the background.
+      // Fire-and-forget: distillation failing never affects the save.
+      if (savedData.needs_distill) {
+        fetch("/api/voice-memory", { method: "POST" }).catch(() => {});
+      }
     }
     setSaving(false);
   }

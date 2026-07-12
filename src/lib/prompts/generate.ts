@@ -48,13 +48,21 @@ Tone:
 - Show, don't announce. Don't write "This is important" or "This matters." Make it land through the writing itself.
 `;
 
-export function generateSystem(voiceProfile: VoiceProfile | null): string {
+export function generateSystem(
+  voiceProfile: VoiceProfile | null,
+  styleMemoryBlock?: string
+): string {
   let system = `You are a ghostwriter who transforms spoken content into polished book chapters. You write in the author's authentic voice — you are not writing your own book, you are helping them write theirs.
 
 POINT OF VIEW — CRITICAL: Write the entire chapter in FIRST PERSON as the author ("I", "me", "my", "we"). This is the author speaking directly to the reader in their own words. NEVER refer to "the author", "the speaker", "the writer", or "the narrator" in the third person, and never narrate what they think/say/believe from the outside. There is no separate narrator — the author IS the voice on the page.`;
 
   if (voiceProfile) {
     system += `\nVoice Profile:\n${JSON.stringify(voiceProfile, null, 2)}\n\nIMPORTANT: Match the author's tone, sentence patterns, vocabulary level, and rhetorical devices. Use their signature phrases naturally. This should read like THEY wrote it.`;
+  }
+
+  // Editorial memory: patterns learned from how this author edits drafts
+  if (styleMemoryBlock) {
+    system += styleMemoryBlock;
   }
 
   // Humanizer rules go LAST in system prompt — closest to output = highest compliance

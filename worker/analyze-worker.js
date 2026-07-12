@@ -127,6 +127,7 @@ function chunkTranscript(text, chunkSize = 3000, overlap = 200) {
       wordCount: chunkWords.length,
       index: chunks.length,
       totalChunks: 0,
+      startWord: start,
     });
 
     start = start + chunkWords.length - overlap;
@@ -137,12 +138,139 @@ function chunkTranscript(text, chunkSize = 3000, overlap = 200) {
   return chunks;
 }
 
+// ─── Prosody (CJS mirror of src/lib/prosody.ts — keep the math in sync) ──────
+const PROSODY = {
+  MIN_WORDS_FOR_PACE: 4, MIN_DURATION_SEC: 0.8,
+  PAUSE_FLOOR_SEC: 0.35, PAUSE_SATURATION_SEC: 2.5,
+  NGRAM_SIZE: 4, W_SLOW: 0.5, W_PAUSE: 0.3, W_REP: 0.2,
+  TOP_MIN_EMPHASIS: 0.5, TOP_MIN_WORDS: 5,
+};
+
+function tokenizeWords(text) { return text.split(/\s+/).filter(Boolean); }
+function clamp01(n) { return Math.max(0, Math.min(1, n)); }
+function median(values) {
+  if (values.length === 0) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+}
+function normalizeForMatch(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function computeRepetition(segments) {
+  const owners = new Map();
+  segments.forEach((seg, i) => {
+    const words = tokenizeWords(normalizeForMatch(seg.text));
+    for (let w = 0; w + PROSODY.NGRAM_SIZE <= words.length; w++) {
+      const gram = words.slice(w, w + PROSODY.NGRAM_SIZE).join(' ');
+      if (!owners.has(gram)) owners.set(gram, new Set());
+      owners.get(gram).add(i);
+    }
+  });
+  const scores = new Array(segments.length).fill(0);
+  for (const set of owners.values()) {
+    if (set.size >= 2) for (const i of set) scores[i] = 1;
+  }
+  return scores;
+}
+
+function computeUtteranceEmphasis(segments) {
+  const repetition = computeRepetition(segments);
+  const paceSamples = new Map();
+  const paces = segments.map((seg) => {
+    const words = tokenizeWords(seg.text).length;
+    const duration = seg.end - seg.start;
+    if (words < PROSODY.MIN_WORDS_FOR_PACE || duration < PROSODY.MIN_DURATION_SEC) return 0;
+    const pace = words / duration;
+    if (!paceSamples.has(seg.speaker)) paceSamples.set(seg.speaker, []);
+    paceSamples.get(seg.speaker).push(pace);
+    return pace;
+  });
+  const medians = new Map();
+  for (const [speaker, samples] of paceSamples) medians.set(speaker, median(samples));
+
+  let wordCursor = 0;
+  return segments.map((seg, i) => {
+    const wordCount = tokenizeWords(seg.text).length;
+    const wordStart = wordCursor;
+    wordCursor += wordCount;
+    const pace = paces[i];
+    const med = medians.get(seg.speaker) || 0;
+    const slowness = pace > 0 && med > 0 ? clamp01(med / pace - 1) : 0;
+    const prev = segments[i - 1];
+    const pauseBefore = prev ? Math.max(0, seg.start - prev.end) : 0;
+    const pauseWeight = clamp01(
+      (pauseBefore - PROSODY.PAUSE_FLOOR_SEC) / (PROSODY.PAUSE_SATURATION_SEC - PROSODY.PAUSE_FLOOR_SEC)
+    );
+    const emphasis = clamp01(
+      PROSODY.W_SLOW * slowness + PROSODY.W_PAUSE * pauseWeight + PROSODY.W_REP * repetition[i]
+    );
+    return {
+      index: i, start: seg.start, end: seg.end, wordStart, wordEnd: wordCursor,
+      pace, pauseBefore, slowness, pauseWeight, repetition: repetition[i], emphasis,
+      text: seg.text, speaker: seg.speaker,
+    };
+  });
+}
+
+function chunkEmphasisFor(emphases, startWord, endWord) {
+  let weightedSum = 0, overlapTotal = 0, max = 0;
+  const inChunk = [];
+  for (const u of emphases) {
+    const overlap = Math.min(u.wordEnd, endWord) - Math.max(u.wordStart, startWord);
+    if (overlap <= 0) continue;
+    weightedSum += u.emphasis * overlap;
+    overlapTotal += overlap;
+    if (u.emphasis > max) max = u.emphasis;
+    inChunk.push(u);
+  }
+  const topUtterances = inChunk
+    .filter((u) => u.emphasis >= PROSODY.TOP_MIN_EMPHASIS && u.wordEnd - u.wordStart >= PROSODY.TOP_MIN_WORDS)
+    .sort((a, b) => b.emphasis - a.emphasis)
+    .slice(0, 3);
+  return { mean: overlapTotal > 0 ? weightedSum / overlapTotal : 0, max, topUtterances };
+}
+
+function quoteMatchesEmphasis(quote, topUtterances) {
+  const normQuote = normalizeForMatch(quote);
+  if (normQuote.length < 20) return false;
+  return topUtterances.some((u) => {
+    const normUtt = normalizeForMatch(u.text);
+    if (normUtt.length < 20) return false;
+    return normUtt.includes(normQuote) || normQuote.includes(normUtt);
+  });
+}
+
+function relevanceFromDelivery(supportingQuotes, chunk) {
+  const backed = supportingQuotes.some((q) => quoteMatchesEmphasis(q, chunk.topUtterances));
+  if (backed) return 0.95;
+  if (chunk.mean < 0.1 && chunk.max < 0.3) return 0.7;
+  return 0.8;
+}
+
+function deliveryPromptBlock(chunk) {
+  if (chunk.topUtterances.length === 0) return '';
+  const moments = chunk.topUtterances
+    .map((u, i) => {
+      const signals = [];
+      if (u.slowness > 0.3) signals.push('slowed down');
+      if (u.pauseWeight > 0.3) signals.push(`paused ${u.pauseBefore.toFixed(1)}s before it`);
+      if (u.repetition > 0) signals.push('repeated this phrasing elsewhere');
+      return `${i + 1}. "${u.text.trim()}" (speaker ${signals.join(', ') || 'emphasized this'})`;
+    })
+    .join('\n');
+  return `\n\nDELIVERY ANALYSIS (from the speaker's actual audio delivery — pace, pauses, repetition):
+The speaker gave extra weight to these moments. Treat content overlapping them as high-priority key points:
+${moments}`;
+}
+
 // ─── Prompts ──────────────────────────────────────────────────
 const KEY_POINTS_SYSTEM = `You are an expert content analyst specializing in extracting key points from spoken content (sermons, lectures, keynotes, podcasts). Extract the most important, substantive points that would form the backbone of a book chapter. Focus on arguments, insights, stories, and teachings — not filler or transitions.
 
 Return ONLY a JSON array of key point objects. No markdown, no explanation.`;
 
-function keyPointsPrompt(chunkText, chunkIndex, totalChunks, previousTitles) {
+function keyPointsPrompt(chunkText, chunkIndex, totalChunks, previousTitles, deliveryBlock) {
   let prompt = `Extract key points from this transcript segment (chunk ${chunkIndex + 1} of ${totalChunks}).
 
 Each key point should have:
@@ -152,6 +280,8 @@ Each key point should have:
 - "tags": Array of 2-4 topic tags
 
 Return a JSON array of key point objects. Extract 3-8 key points per chunk.`;
+
+  if (deliveryBlock) prompt += deliveryBlock;
 
   if (previousTitles.length > 0) {
     prompt += `\n\nKey points already extracted from previous chunks (avoid duplicates):\n${previousTitles.map(t => `- ${t}`).join('\n')}`;
@@ -172,7 +302,7 @@ async function handleKeyPoints(body) {
   // Load transcript
   const { data: transcript, error: txErr } = await supabase
     .from('transcripts')
-    .select('id, full_text')
+    .select('id, full_text, segments')
     .eq('id', transcript_id)
     .eq('project_id', project_id)
     .single();
@@ -189,7 +319,14 @@ async function handleKeyPoints(body) {
   }
 
   const chunk = chunks[chunk_index];
-  const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previous_titles || []);
+
+  // Delivery analysis (degrades to flat when segments are missing/empty)
+  const emphases = computeUtteranceEmphasis(transcript.segments || []);
+  const delivery = chunkEmphasisFor(emphases, chunk.startWord, chunk.startWord + chunk.wordCount);
+
+  const prompt = keyPointsPrompt(
+    chunk.text, chunk.index, chunk.totalChunks, previous_titles || [], deliveryPromptBlock(delivery)
+  );
 
   console.log(`[worker] Processing chunk ${chunk_index + 1}/${totalChunks} (${chunk.wordCount} words)`);
 
@@ -219,7 +356,7 @@ async function handleKeyPoints(body) {
         summary: kp.summary,
         supporting_quotes: kp.supporting_quotes || [],
         tags: kp.tags || [],
-        relevance_score: 0.8,
+        relevance_score: relevanceFromDelivery(kp.supporting_quotes || [], delivery),
       }))
     );
     if (insertErr) {

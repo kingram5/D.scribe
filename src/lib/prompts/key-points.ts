@@ -4,7 +4,8 @@ export function keyPointsPrompt(
   transcriptChunk: string,
   chunkIndex: number,
   totalChunks: number,
-  previousPointTitles?: string[]
+  previousPointTitles?: string[],
+  deliveryBlock?: string
 ): string {
   let prompt = `Extract the key points from this transcript segment. For each key point, provide:
 - title: A concise 5-10 word title
@@ -16,6 +17,10 @@ Transcript (segment ${chunkIndex + 1} of ${totalChunks}):
 ---
 ${transcriptChunk}
 ---`;
+
+  if (deliveryBlock) {
+    prompt += deliveryBlock;
+  }
 
   if (previousPointTitles && previousPointTitles.length > 0) {
     prompt += `\n\nKey points already extracted from previous segments:\n${previousPointTitles.map((t) => `- ${t}`).join("\n")}\nAvoid duplicating these. Only extract NEW points from this segment.`;

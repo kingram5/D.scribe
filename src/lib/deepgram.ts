@@ -43,13 +43,31 @@ export async function transcribeAudio(
   );
 
   // Cast to sync response type (we don't use callback URLs)
-  const result = response as { metadata?: { duration?: number }; results?: { utterances?: Array<{ start?: number; end?: number; transcript?: string; speaker?: number }> } };
+  const result = response as {
+    metadata?: { duration?: number };
+    results?: {
+      utterances?: Array<{
+        start?: number;
+        end?: number;
+        transcript?: string;
+        speaker?: number;
+        words?: Array<{ word?: string; punctuated_word?: string; start?: number; end?: number }>;
+      }>;
+    };
+  };
   const utterances = result?.results?.utterances ?? [];
   const segments: TranscriptSegment[] = utterances.map((u) => ({
     start: u.start ?? 0,
     end: u.end ?? 0,
     text: u.transcript ?? "",
     speaker: `Speaker ${u.speaker ?? 0}`,
+    // Word-level timings feed the prosody engine (within-utterance emphasis).
+    // Compact keys keep the jsonb column lean at scale.
+    words: (u.words ?? []).map((w) => ({
+      w: w.punctuated_word ?? w.word ?? "",
+      s: w.start ?? 0,
+      e: w.end ?? 0,
+    })),
   }));
 
   const full_text = segments.map((s) => s.text).join("\n\n");

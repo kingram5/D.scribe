@@ -11,6 +11,8 @@ export interface Chunk {
   wordCount: number;
   index: number;
   totalChunks: number;
+  /** Index of this chunk's first word within the full-text word array (prosody alignment) */
+  startWord: number;
 }
 
 export function chunkTranscript(
@@ -20,7 +22,7 @@ export function chunkTranscript(
 ): Chunk[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= chunkSize) {
-    return [{ text, wordCount: words.length, index: 0, totalChunks: 1 }];
+    return [{ text, wordCount: words.length, index: 0, totalChunks: 1, startWord: 0 }];
   }
 
   const chunks: Chunk[] = [];
@@ -48,6 +50,7 @@ export function chunkTranscript(
       wordCount: chunkWords.length,
       index: chunks.length,
       totalChunks: 0, // filled in below
+      startWord: start,
     });
 
     const advance = chunkWords.length - overlap;

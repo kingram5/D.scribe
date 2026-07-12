@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { chunkTranscript } from "@/lib/chunker";
+import {
+  computeUtteranceEmphasis,
+  chunkEmphasis,
+  deliveryPromptBlock,
+  relevanceFromDelivery,
+} from "@/lib/prosody";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   const { data: transcript } = await supabase
     .from("transcripts")
-    .select("id, full_text")
+    .select("id, full_text, segments")
     .eq("id", transcript_id)
     .eq("project_id", project_id)
     .single();
@@ -51,7 +57,19 @@ export async function POST(req: NextRequest) {
   }
 
   const chunk = chunks[chunk_index];
-  const prompt = keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previous_titles || []);
+
+  // Delivery analysis from the speaker's own pace/pauses/repetition.
+  // Segments can be empty on legacy rows or text-paste imports — degrades to flat.
+  const emphases = computeUtteranceEmphasis(transcript.segments || []);
+  const delivery = chunkEmphasis(emphases, chunk.startWord, chunk.startWord + chunk.wordCount);
+
+  const prompt = keyPointsPrompt(
+    chunk.text,
+    chunk.index,
+    chunk.totalChunks,
+    previous_titles || [],
+    deliveryPromptBlock(delivery)
+  );
 
   let raw: string;
   try {
@@ -85,7 +103,7 @@ export async function POST(req: NextRequest) {
         summary: kp.summary,
         supporting_quotes: kp.supporting_quotes || [],
         tags: kp.tags || [],
-        relevance_score: 0.8,
+        relevance_score: relevanceFromDelivery(kp.supporting_quotes || [], delivery),
       }))
     );
     if (insertError) {

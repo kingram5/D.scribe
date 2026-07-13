@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { creativeFreedomToTemp } from "@/lib/claude-lite";
 import { streamClaude } from "@/lib/claude-stream";
 import { rewriteChapterSystem, rewriteChapterPrompt } from "@/lib/prompts/rewrite";
+import { loadStyleMemory, styleMemoryPromptBlock } from "@/lib/style-memory";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { logger } from "@/lib/logger";
 
@@ -138,7 +139,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const system = rewriteChapterSystem(project.voice_profile);
+  const styleMemory = await loadStyleMemory(user.id);
+  const system = rewriteChapterSystem(project.voice_profile, styleMemoryPromptBlock(styleMemory));
   const prompt = rewriteChapterPrompt({
     currentContent: currentContent.content,
     feedback,
@@ -146,6 +148,21 @@ export async function POST(req: NextRequest) {
     previousChapterTail,
     nextChapterHead,
   });
+
+  // Editorial memory: capture the rewrite instruction (the result streams to
+  // the client; the net text change is captured by the manual-save diff).
+  const { error: eventErr } = await supabase.from("edit_events").insert({
+    user_id: user.id,
+    project_id: chapter.project_id,
+    chapter_id,
+    kind: "rewrite_bar",
+    instruction: String(feedback).slice(0, 1000),
+    before_text: currentContent.content.slice(0, 4000),
+    after_text: "",
+  });
+  if (eventErr) {
+    logger.error("edit_events insert failed", { route: "/api/rewrite/chapter", userId: user.id, error: eventErr });
+  }
 
   const temperature = creativeFreedomToTemp(creative_freedom);
 

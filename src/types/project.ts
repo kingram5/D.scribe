@@ -48,6 +48,17 @@ export interface TranscriptSegment {
   end: number;
   text: string;
   speaker: string;
+  /** Word-level timings (persisted for uploads transcribed after prosody launch) */
+  words?: WordTiming[];
+}
+
+export interface WordTiming {
+  /** The word as transcribed */
+  w: string;
+  /** Start time in seconds */
+  s: number;
+  /** End time in seconds */
+  e: number;
 }
 
 export interface VoiceProfile {

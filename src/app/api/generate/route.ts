@@ -7,6 +7,7 @@ import {
 } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { generateSystem, generatePrompt, HUMANIZER_RULES } from "@/lib/prompts/generate";
+import { loadStyleMemory, styleMemoryPromptBlock } from "@/lib/style-memory";
 import { extractExcerptsForChapter } from "@/lib/chunker";
 import { requireAuth } from "@/lib/auth";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
@@ -164,7 +165,8 @@ export async function POST(req: NextRequest) {
 
   const temperature = creativeFreedomToTemp(creative_freedom);
   const freedomInstruction = creativeFreedomToInstruction(creative_freedom);
-  const system = generateSystem(project.voice_profile);
+  const styleMemory = await loadStyleMemory(user.id);
+  const system = generateSystem(project.voice_profile, styleMemoryPromptBlock(styleMemory));
   const prompt = generatePrompt({
     chapterNumber: chapter.chapter_number,
     chapterTitle: chapter.title,

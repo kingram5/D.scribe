@@ -37,6 +37,13 @@ export interface GenerationParams {
   feedback?: string;
   source_version?: number;
   coherence_pass?: boolean;
+  /** Cached voice-match scores for this content version (set by /api/voice-match) */
+  scores?: {
+    reads_human: number;
+    voice_match: number;
+    version: number;
+    computed_at: string;
+  };
 }
 
 export interface Enrichment {

@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { askClaudeWithUsage, creativeFreedomToTemp } from "@/lib/claude-lite";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { selectionEditSystem, selectionEditPrompt } from "@/lib/prompts/rewrite";
+import { loadStyleMemory, styleMemoryPromptBlock } from "@/lib/style-memory";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 
 // POST /api/rewrite/selection — rewrite a selected text range
@@ -72,7 +73,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const system = selectionEditSystem(project.voice_profile);
+  const styleMemory = await loadStyleMemory(user.id);
+  const system = selectionEditSystem(project.voice_profile, styleMemoryPromptBlock(styleMemory));
   const prompt = selectionEditPrompt({
     selectedText: selected_text,
     contextBefore: context_before || "",
@@ -89,6 +91,23 @@ export async function POST(req: NextRequest) {
   await recordInkUsage(user.id, chapter.project_id, "rewrite", "quality", result.usage);
 
   const rewritten = sanitizeGenerated(result.text);
+
+  // Editorial memory: the user told us in their own words what was wrong with
+  // this passage — the highest-signal training pair we get. Capture failure
+  // never blocks the rewrite.
+  const CAP = 4000;
+  const { error: eventErr } = await supabase.from("edit_events").insert({
+    user_id: user.id,
+    project_id: chapter.project_id,
+    chapter_id,
+    kind: "magic_edit",
+    instruction: String(feedback).slice(0, 1000),
+    before_text: String(selected_text).slice(0, CAP),
+    after_text: rewritten.slice(0, CAP),
+  });
+  if (eventErr) {
+    console.error("edit_events insert failed:", eventErr.message);
+  }
 
   return NextResponse.json({ rewritten_text: rewritten });
 }

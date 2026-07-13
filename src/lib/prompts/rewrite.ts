@@ -5,8 +5,11 @@ import { generateSystem } from "./generate";
  * System prompt for full chapter rewrites.
  * Reuses generateSystem() so voice profile + HUMANIZER_RULES are inherited.
  */
-export function rewriteChapterSystem(voiceProfile: VoiceProfile | null): string {
-  return generateSystem(voiceProfile);
+export function rewriteChapterSystem(
+  voiceProfile: VoiceProfile | null,
+  styleMemoryBlock?: string
+): string {
+  return generateSystem(voiceProfile, styleMemoryBlock);
 }
 
 /**
@@ -53,8 +56,11 @@ REMINDER: NO em dashes (—), NO AI cliches, write like a human. Reread the huma
  * System prompt for selection-based magic edits.
  * Same voice/humanizer foundation as chapter rewrites.
  */
-export function selectionEditSystem(voiceProfile: VoiceProfile | null): string {
-  return generateSystem(voiceProfile);
+export function selectionEditSystem(
+  voiceProfile: VoiceProfile | null,
+  styleMemoryBlock?: string
+): string {
+  return generateSystem(voiceProfile, styleMemoryBlock);
 }
 
 /**

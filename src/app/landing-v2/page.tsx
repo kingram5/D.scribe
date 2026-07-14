@@ -40,6 +40,23 @@ function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
   return visible;
 }
 
+// Continuous visibility (does not latch) — used to pause animation loops off-screen
+function useOnScreen(ref: React.RefObject<HTMLElement | null>, threshold = 0.1) {
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [ref, threshold]);
+  return onScreen;
+}
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 // Paper-theme colors for the in-page app mocks.
 // Values mirror the REAL app tokens in globals.css (.paper-theme) so the
 // marketing depiction and the product stay in lockstep — update both together.
@@ -237,16 +254,20 @@ function DashStepAnim({ stepKey }: { stepKey: string }) {
 
 function PipelineDashboard() {
   const [active, setActive] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onScreen = useOnScreen(rootRef);
 
+  // Advance only while visible; static first step under reduced motion
   useEffect(() => {
+    if (!onScreen || prefersReducedMotion()) return;
     const t = setInterval(() => setActive(p => (p + 1) % DASH_PIPELINE.length), 2600);
     return () => clearInterval(t);
-  }, []);
+  }, [onScreen]);
 
   const step = DASH_PIPELINE[active];
 
   return (
-    <div className="lv2-pipeline-dash" aria-hidden="true" style={{
+    <div ref={rootRef} className="lv2-pipeline-dash" aria-hidden="true" style={{
       borderRadius: 20,
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",
@@ -489,8 +510,12 @@ function BrainstormMock() {
   const [fading, setFading] = useState(false);
   const scriptSetRef = useRef(0);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onScreen = useOnScreen(rootRef);
 
   useEffect(() => {
+    // Type-on loop runs only while the mock is on screen; static under reduced motion
+    if (!onScreen || prefersReducedMotion()) return;
     let cancelled = false;
 
     async function sleep(ms: number) {
@@ -542,7 +567,7 @@ function BrainstormMock() {
 
     run();
     return () => { cancelled = true; };
-  }, []);
+  }, [onScreen]);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -550,21 +575,21 @@ function BrainstormMock() {
     }
   }, [displayed, currentText, thinking]);
 
-  const accent = "#C17A47";
-  const paper  = "#FAF8F3";
-  const cardBg = "#F5F1EA";
-  const border = "rgba(0,0,0,0.07)";
-  const ink    = "#191816";
+  const accent = P.accent;
+  const paper  = P.paper;
+  const cardBg = P.cardBg;
+  const border = P.cardBorder;
+  const ink    = P.textPrimary;
 
   return (
-    <div className="lv2-brainstorm-inner" style={{
+    <div ref={rootRef} className="lv2-brainstorm-inner" style={{
       background: paper,
       borderRadius: 20,
       boxShadow: "0 32px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       height: 650,
-      width: 840,
+      width: "min(840px, 100%)",
       maxWidth: "100%",
       overflow: "hidden",
       opacity: fading ? 0 : 1,

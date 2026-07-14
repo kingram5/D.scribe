@@ -866,7 +866,7 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
   return (
     <div style={{ position: "relative", padding: "0 80px" }}>
       {/* 3D Stage */}
-      <div style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%" }}>
+      <div style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%", overflowX: "clip" }}>
         {books.map((book, i) => {
           const d = circularOffset(i);
           const isCenter = d === 0;
@@ -1168,7 +1168,7 @@ export default function LandingV2() {
         background: "linear-gradient(to bottom, rgba(193,122,71,0.04), transparent)",
         borderTop: "1px solid rgba(249,247,242,0.06)",
       }}>
-        <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: 80, alignItems: "center" }}>
+        <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 80, alignItems: "center" }}>
           {/* Left: text + pillars */}
           <FadeSection>
             <div>
@@ -1502,6 +1502,9 @@ export default function LandingV2() {
           .lv2-dashboard-wrap { transform: none !important; }
           .lv2-brainstorm-wrap { margin-left: 0 !important; }
           .lv2-pipeline-dash { height: 900px; }
+          .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 640px !important; margin: 0 auto; }
+          .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .lv2-brainstorm-wrap { display: flex; justify-content: center; }
         }
         @media (max-width: 1023px) {
           .lv2-pipeline-dash { height: auto; min-height: 560px; }

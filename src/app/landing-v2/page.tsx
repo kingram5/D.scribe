@@ -244,7 +244,7 @@ function PipelineDashboard() {
   const step = DASH_PIPELINE[active];
 
   return (
-    <div className="lv2-pipeline-dash" style={{
+    <div className="lv2-pipeline-dash" aria-hidden="true" style={{
       borderRadius: 20,
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",

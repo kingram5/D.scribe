@@ -74,8 +74,15 @@ export default function VoiceMatchBadge({
     const onClick = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   async function score() {
@@ -119,6 +126,9 @@ export default function VoiceMatchBadge({
         <button
           onClick={() => (breakdown ? setOpen((o) => !o) : score())}
           title="Voice-match breakdown"
+          aria-label={`Voice match ${scores.voice_match}, reads human ${scores.reads_human}. Show breakdown`}
+          aria-expanded={open}
+          aria-haspopup="dialog"
           style={chipStyle}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

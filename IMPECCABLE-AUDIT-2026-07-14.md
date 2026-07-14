@@ -1,5 +1,7 @@
 # D.Scribe Front-End Audit — /impeccable audit (2026-07-14)
 
+> **FIX PASS APPLIED same day** (branch `feature/impeccable-pass`, 6 commits): adapt, polish, harden, extract, optimize all executed. Post-fix self-score: **A11y 3 · Perf 3 · Responsive 3 · Theming 3 · Anti-patterns 3 = 15/20 (Good)**. Verified live on dev at 1022px: hero collision gone, `scrollWidth == clientWidth` (was 1628 vs 1007 — the humanai grid's 55%+45%+80px gap overflowed every viewport, including desktop prod). Remaining follow-ups: split the 1,443-line landing client component into server/client islands (deferred structural refactor); burn down remaining hard-coded hexes outside the shared palettes; real-device phone pass on the Vercel preview before merge.
+
 Scope: full front end — landing (landing-v2), editor + voice-match UI, dashboard, project pipeline, login, settings, pricing, ui components. Code-level audit per impeccable audit spec; landing claims live-verified against d-scribe.app at 1022px viewport.
 
 ## Audit Health Score

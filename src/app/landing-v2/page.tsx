@@ -249,10 +249,9 @@ function PipelineDashboard() {
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",
       display: "flex",
-      height: 1122,
     }}>
       {/* ── Left panel: timeline ── */}
-      <div style={{
+      <div className="lv2-pipeline-timeline" style={{
         width: "40%",
         background: P.paper,
         padding: "22px 20px",
@@ -877,18 +876,29 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
       </div>
 
       {/* Arrows */}
-      <button onClick={goPrev} style={{ ...arrowStyle, left: 16 }}>‹</button>
-      <button onClick={goNext} style={{ ...arrowStyle, right: 16 }}>›</button>
+      <button onClick={goPrev} aria-label="Previous book" style={{ ...arrowStyle, left: 16 }}>‹</button>
+      <button onClick={goNext} aria-label="Next book" style={{ ...arrowStyle, right: 16 }}>›</button>
 
       {/* Dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
         {books.map((_, i) => (
-          <button key={i} onClick={() => setCurrent(i)} style={{
-            width: i === current ? 24 : 8, height: 8, borderRadius: 4,
-            background: i === current ? "#C17A47" : "rgba(193,122,71,0.25)",
-            border: "none", cursor: "pointer", padding: 0,
-            transition: "all 0.3s ease",
-          }} />
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            aria-label={`Show book ${i + 1} of ${books.length}`}
+            aria-current={i === current}
+            style={{
+              minWidth: 32, height: 32, borderRadius: 16,
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <span style={{
+              width: i === current ? 24 : 8, height: 8, borderRadius: 4,
+              background: i === current ? "#C17A47" : "rgba(193,122,71,0.25)",
+              transition: "all 0.3s ease", display: "block",
+            }} />
+          </button>
         ))}
       </div>
 
@@ -981,7 +991,7 @@ export default function LandingV2() {
       </nav>
 
       {/* ─── Hero Section ─── */}
-      <section style={{ position: "relative", height: "100vh", zIndex: 1, overflow: "hidden" }}>
+      <section className="lv2-hero">
 
         {/* Video background */}
         <video
@@ -1001,39 +1011,40 @@ export default function LandingV2() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
-        <div className="lv2-hero-waveform" style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
+        <div className="lv2-hero-waveform">
           <CinematicMurmurWaveform />
         </div>
 
         {/* Sub-hero CTA */}
-        <div className="lv2-hero-subarrow" style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 46, color: "#ffffff", opacity: 0.9, marginLeft: -176, marginRight: -7, marginTop: 2 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
+        <div className="lv2-hero-subarrow">
+          <span className="lv2-subarrow-script" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "#ffffff", opacity: 0.9 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
           <Link
             href="/login"
-            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", marginLeft: 0, marginTop: 10, display: "inline-flex", alignItems: "center" }}
+            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", display: "inline-flex", alignItems: "center", minHeight: 48 }}
           >
             HERE
           </Link>
         </div>
 
         {/* Center Tagline */}
-        <div className="lv2-hero-tagline" style={{ position: "absolute", top: "54%", left: "50%", transform: "translateX(-50%)", textAlign: "center", width: "100%", zIndex: 2 }}>
-          <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 57, color: "#F9F7F2", fontWeight: 400, marginBottom: 12, marginTop: -30 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
-          <div style={{ fontSize: 25, color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em", marginLeft: -1, marginTop: -15 }}>Stop waiting to write your book...</div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
+        <div className="lv2-hero-tagline">
+          <div className="lv2-tagline-main" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", color: "#F9F7F2", fontWeight: 400, marginBottom: 12 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
+          <div className="lv2-tagline-sub" style={{ color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em" }}>Stop waiting to write your book...</div>
+          <div className="lv2-tagline-kick" style={{ fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
         </div>
 
         {/* Left Side Author Content */}
-        <div className="lv2-hero-author" style={{ position: "absolute", top: "47%", left: 80, maxWidth: 420, zIndex: 2 }}>
-          <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
+        <div className="lv2-hero-author">
+          <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", margin: 0, textWrap: "balance" }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
           </h1>
-          <p style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.5)", marginBottom: 20, maxWidth: 320, marginLeft: -50, marginTop: 10, paddingLeft: 0, paddingTop: 0, paddingRight: 0, paddingBottom: 0, marginRight: 0, width: 500 }}>
+          <p className="lv2-author-copy" style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
             Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
           </p>
           <Link
             href="/login"
-            style={{ display: "inline-flex", alignItems: "center", padding: "8px 29px 10px 7px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", width: 217.844, height: 50, marginLeft: -50, marginRight: 0, marginTop: -57, marginBottom: 12 }}
+            className="lv2-author-cta"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", minHeight: 50 }}
           >
             Begin Your Book <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
           </Link>
@@ -1042,7 +1053,7 @@ export default function LandingV2() {
       </section>
 
         {/* Bottom Stats Footer */}
-        <div className="lv2-hero-stats" style={{ display: "flex", justifyContent: "space-around", padding: "40px 80px", background: "rgba(26, 20, 14, 0.95)", backdropFilter: "blur(4px)" }}>
+        <div className="lv2-hero-stats" style={{ display: "flex", flexWrap: "wrap", gap: 24, justifyContent: "space-around", background: "rgba(26, 20, 14, 0.95)", backdropFilter: "blur(4px)" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2 }}>{"< 10 min"}</div>
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Audio to first chapter</div>
@@ -1421,12 +1432,63 @@ export default function LandingV2() {
         .lbook-static:hover .lbook-cover { transform: none !important; }
         .lbook-static:hover .lbook-glow { opacity: 0 !important; }
 
+        /* ── Hero layout system ──
+           Desktop (≥1280px): layered art direction, absolutely positioned.
+           Below 1280px: single-column flow — the layers stack, nothing collides. */
+        .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
+        .lv2-hero-waveform { pointer-events: none; text-align: center; }
+        .lv2-hero-author h1 { font-size: clamp(44px, 6vw, 92px); }
+        .lv2-author-copy { max-width: 42ch; margin: 12px 0 20px; }
+        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
+        .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
+        .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
+        .lv2-tagline-kick { font-size: clamp(16px, 1.8vw, 24px); }
+
+        @media (min-width: 1280px) {
+          .lv2-hero { height: 100vh; }
+          .lv2-hero-waveform { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: 100%; height: 30vh; z-index: 2; }
+          .lv2-hero-subarrow { position: absolute; top: 45%; left: 52%; transform: translateX(-50%); display: flex; align-items: center; gap: 24px; z-index: 2; }
+          .lv2-hero-tagline { position: absolute; top: 53%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; }
+          .lv2-hero-author { position: absolute; top: 47%; left: 33px; max-width: 480px; z-index: 2; }
+          .lv2-hero-author h1 { margin-top: 75px; }
+        }
+
+        @media (max-width: 1279px) {
+          .lv2-hero {
+            min-height: 100svh; height: auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 110px 24px 56px; gap: 28px;
+          }
+          .lv2-hero-waveform { position: relative; width: 100%; height: 22vh; min-height: 140px; order: 0; z-index: 2; }
+          .lv2-hero-author { position: relative; order: 1; z-index: 2; display: flex; flex-direction: column; align-items: center; max-width: 560px; }
+          .lv2-author-copy { margin: 12px auto 20px; }
+          .lv2-hero-tagline { position: relative; order: 2; z-index: 2; }
+          .lv2-hero-subarrow { position: relative; order: 3; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 24px; }
+        }
+
+        /* Stats band */
+        .lv2-hero-stats { padding: clamp(24px, 5vw, 40px) clamp(16px, 6vw, 80px); }
+
+        /* Pipeline showcase: full two-pane mock on desktop, detail card only below 1024px */
+        .lv2-pipeline-dash { height: 1122px; }
+        @media (max-width: 1279px) {
+          .lv2-dashboard-wrap { transform: none !important; }
+          .lv2-brainstorm-wrap { margin-left: 0 !important; }
+          .lv2-pipeline-dash { height: 900px; }
+        }
+        @media (max-width: 1023px) {
+          .lv2-pipeline-dash { height: auto; min-height: 560px; }
+          .lv2-pipeline-timeline { display: none !important; }
+        }
+
         /* Mobile */
         @media (max-width: 768px) {
           .landing-v2 nav { padding: 0 20px !important; }
           .lv2-pillars { grid-template-columns: 1fr !important; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .lv2-pipeline-dash { min-height: 480px; }
+          .lv2-hero-stats { gap: 16px; }
         }
 
         @media (prefers-reduced-motion: reduce) {

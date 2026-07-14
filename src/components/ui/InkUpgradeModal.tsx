@@ -178,7 +178,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
                 marginBottom: 4,
               }}>
                 ${tier.price}
-                <span style={{ fontSize: 13, fontWeight: 500, color: "#a0978a" }}>/mo</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#78705F" }}>/mo</span>
               </div>
               <div style={{
                 fontSize: 12,
@@ -190,7 +190,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
               </div>
               <div style={{
                 fontSize: 11,
-                color: "#a0978a",
+                color: "#78705F",
                 fontFamily: "var(--font-geist-mono), monospace",
                 marginBottom: 16,
               }}>
@@ -228,7 +228,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
             background: "none",
             border: "none",
             fontSize: 13,
-            color: "#a0978a",
+            color: "#78705F",
             cursor: "pointer",
             fontFamily: "var(--font-manrope), sans-serif",
           }}

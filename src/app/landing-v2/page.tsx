@@ -40,16 +40,18 @@ function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
   return visible;
 }
 
-// Paper-theme colors — matches the actual D.scribe app
+// Paper-theme colors for the in-page app mocks.
+// Values mirror the REAL app tokens in globals.css (.paper-theme) so the
+// marketing depiction and the product stay in lockstep — update both together.
 const P = {
-  paper:       "#FAF8F3",
-  cardBg:      "#F5F1EA",
-  cardBorder:  "rgba(0,0,0,0.07)",
-  inputBg:     "#EFEBE4",
-  textPrimary: "#191816",
-  textSec:     "#7a7369",
-  textTert:    "rgba(0,0,0,0.28)",
-  accent:      "#C17A47",
+  paper:       "#F4F1E8",   // --env-bg / --ds-paper (paper-theme)
+  cardBg:      "#FFFFFF",   // --ds-card-bg
+  cardBorder:  "rgba(44,36,25,0.08)", // --ds-card-border
+  inputBg:     "#EAE6DF",   // --ds-surface
+  textPrimary: "#2C2419",   // --text-primary
+  textSec:     "#6B644F",   // --text-secondary (AA on paper)
+  textTert:    "#716A53",   // --text-tertiary (AA on paper)
+  accent:      "#C17A47",   // --ds-accent-400
 };
 
 const DASH_PIPELINE = [

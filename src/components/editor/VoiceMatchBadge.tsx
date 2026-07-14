@@ -33,9 +33,9 @@ interface Breakdown {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 85) return "#34d399";
-  if (score >= 70) return "#fbbf24";
-  return "#f87171";
+  if (score >= 85) return "var(--ds-score-good)";
+  if (score >= 70) return "var(--ds-score-warn)";
+  return "var(--ds-score-bad)";
 }
 
 /**
@@ -152,7 +152,7 @@ export default function VoiceMatchBadge({
             position: "absolute",
             top: "calc(100% + 12px)",
             right: 0,
-            zIndex: 30,
+            zIndex: "var(--z-dropdown)",
             width: 260,
             padding: "12px 14px",
             borderRadius: 12,
@@ -197,7 +197,7 @@ export default function VoiceMatchBadge({
             </div>
           )}
           {breakdown.voice_match.signature_hits.length > 0 && (
-            <div style={{ color: "#34d399" }}>
+            <div style={{ color: "var(--ds-score-good)" }}>
               ✓ your phrases: {breakdown.voice_match.signature_hits.slice(0, 3).map((p) => `"${p}"`).join(", ")}
             </div>
           )}

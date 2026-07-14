@@ -1196,7 +1196,7 @@ export default function LandingV2() {
 
       {/* ─── Written by real people ─── */}
       <FadeSection>
-        <section className="py-32 relative z-20" style={{ color: "#7b651a", backgroundColor: "#312109" }}>
+        <section className="py-32 relative z-20" style={{ color: "#CBB68A", backgroundColor: "#312109" }}>
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#1E1810]/60 to-transparent pointer-events-none" />
           <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
             <div className="text-center max-w-3xl mx-auto mb-24">

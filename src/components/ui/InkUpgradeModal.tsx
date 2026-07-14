@@ -50,7 +50,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999,
+        zIndex: "var(--z-modal)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

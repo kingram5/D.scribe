@@ -80,6 +80,19 @@
   --ds-device-base: #3D3428;
   --ds-device-dark: #1A1610;
   --ds-device-trim: #4D4438;
+
+  /* Score / state text tokens (theme-aware; dark defaults) */
+  --ds-score-good: #34d399;
+  --ds-score-warn: #fbbf24;
+  --ds-score-bad: #f87171;
+
+  /* Semantic z-index scale */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
 }
 
 @keyframes float {
@@ -129,8 +142,15 @@ body {
 .paper-theme {
   --env-bg: #F4F1E8;
   --text-primary: #2C2419;
-  --text-secondary: #7A7358;
-  --text-tertiary: #A39B7D;
+  /* Ramp darkened 2026-07-14: #7A7358 was 4.21:1 and #A39B7D was 2.47:1 on
+     this bg — both under WCAG AA. Current values: 5.22:1 / 4.78:1. */
+  --text-secondary: #6B644F;
+  --text-tertiary: #716A53;
+  --ds-score-good: #047857;
+  --ds-score-warn: #8A5B0B;
+  --ds-score-bad: #B3352C;
+  --ds-success: #047857;
+  --ds-error: #A05526;
   --glass-bg: rgba(255,255,255,0.85);
   --glass-border: rgba(44,36,25,0.08);
   --float-card-bg: #FFFFFF;

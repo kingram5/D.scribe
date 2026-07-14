@@ -506,7 +506,7 @@ export default function Dashboard() {
         <div style={{
           position: "fixed",
           inset: 0,
-          zIndex: 100,
+          zIndex: "var(--z-modal)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

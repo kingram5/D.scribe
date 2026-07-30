@@ -705,7 +705,7 @@ input[type=range] {
   }
 
   /* Hero — switch from absolute to stacked flex */
-  .landing-v2 section:first-of-type {
+  .landing-v2 .lv2-hero {
     height: auto !important;
     min-height: 100svh !important;
     display: flex !important;

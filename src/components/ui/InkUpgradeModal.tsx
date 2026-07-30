@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface InkUpgradeModalProps {
   onClose: () => void;
@@ -27,6 +27,21 @@ function getSubtitle(reason: "ink" | "tts" | "tts_locked") {
 
 export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeModalProps) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Dialog semantics: focus moves in on open, Escape closes
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, [onClose]);
 
   async function handleChoose(tierName: string) {
     setLoadingTier(tierName);
@@ -50,7 +65,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999,
+        zIndex: "var(--z-modal)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -60,6 +75,11 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ink-upgrade-title"
+        tabIndex={-1}
         style={{
           background: "#fff",
           borderRadius: 20,
@@ -67,6 +87,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
           maxWidth: 580,
           width: "90%",
           boxShadow: "0 24px 80px rgba(0,0,0,0.2)",
+          outline: "none",
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -87,7 +108,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
               <circle cx="12" cy="12" r="10" />
             </svg>
           </div>
-          <h2 style={{
+          <h2 id="ink-upgrade-title" style={{
             fontSize: 20,
             fontWeight: 700,
             color: "#191816",
@@ -157,7 +178,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
                 marginBottom: 4,
               }}>
                 ${tier.price}
-                <span style={{ fontSize: 13, fontWeight: 500, color: "#a0978a" }}>/mo</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#78705F" }}>/mo</span>
               </div>
               <div style={{
                 fontSize: 12,
@@ -169,7 +190,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
               </div>
               <div style={{
                 fontSize: 11,
-                color: "#a0978a",
+                color: "#78705F",
                 fontFamily: "var(--font-geist-mono), monospace",
                 marginBottom: 16,
               }}>
@@ -207,7 +228,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
             background: "none",
             border: "none",
             fontSize: 13,
-            color: "#a0978a",
+            color: "#78705F",
             cursor: "pointer",
             fontFamily: "var(--font-manrope), sans-serif",
           }}

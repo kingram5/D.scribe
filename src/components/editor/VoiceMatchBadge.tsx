@@ -33,9 +33,9 @@ interface Breakdown {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 85) return "#34d399";
-  if (score >= 70) return "#fbbf24";
-  return "#f87171";
+  if (score >= 85) return "var(--ds-score-good)";
+  if (score >= 70) return "var(--ds-score-warn)";
+  return "var(--ds-score-bad)";
 }
 
 /**
@@ -74,8 +74,15 @@ export default function VoiceMatchBadge({
     const onClick = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   async function score() {
@@ -119,6 +126,9 @@ export default function VoiceMatchBadge({
         <button
           onClick={() => (breakdown ? setOpen((o) => !o) : score())}
           title="Voice-match breakdown"
+          aria-label={`Voice match ${scores.voice_match}, reads human ${scores.reads_human}. Show breakdown`}
+          aria-expanded={open}
+          aria-haspopup="dialog"
           style={chipStyle}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +162,7 @@ export default function VoiceMatchBadge({
             position: "absolute",
             top: "calc(100% + 12px)",
             right: 0,
-            zIndex: 30,
+            zIndex: "var(--z-dropdown)",
             width: 260,
             padding: "12px 14px",
             borderRadius: 12,
@@ -197,7 +207,7 @@ export default function VoiceMatchBadge({
             </div>
           )}
           {breakdown.voice_match.signature_hits.length > 0 && (
-            <div style={{ color: "#34d399" }}>
+            <div style={{ color: "var(--ds-score-good)" }}>
               ✓ your phrases: {breakdown.voice_match.signature_hits.slice(0, 3).map((p) => `"${p}"`).join(", ")}
             </div>
           )}

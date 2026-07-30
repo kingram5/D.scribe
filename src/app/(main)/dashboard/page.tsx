@@ -506,7 +506,7 @@ export default function Dashboard() {
         <div style={{
           position: "fixed",
           inset: 0,
-          zIndex: 100,
+          zIndex: "var(--z-modal)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -514,9 +514,13 @@ export default function Dashboard() {
           backdropFilter: "blur(4px)",
         }}
           onClick={() => setConfirmEraseProject(null)}
+          onKeyDown={(e) => { if (e.key === "Escape") setConfirmEraseProject(null); }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="erase-project-title"
             style={{
               background: "#fff",
               borderRadius: 16,
@@ -527,8 +531,8 @@ export default function Dashboard() {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: 32, marginBottom: 12 }}>⌫</div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#2C2419", marginBottom: 8 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }} aria-hidden="true">⌫</div>
+            <h2 id="erase-project-title" style={{ fontSize: 18, fontWeight: 700, color: "#2C2419", marginBottom: 8 }}>
               Erase this project?
             </h2>
             <p style={{ fontSize: 14, color: "#7A7358", lineHeight: 1.6, marginBottom: 24 }}>

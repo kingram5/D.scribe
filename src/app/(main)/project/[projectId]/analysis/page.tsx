@@ -10,7 +10,15 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
-import AnalysisLoadingScreen from "@/components/analysis/AnalysisLoadingScreen";
+
+// Code-split: the loading screen imports three.js at module scope (as a
+// namespace import, which defeats tree-shaking), so a static import shipped
+// the library in the page bundle to decorate the one screen where the user is
+// already waiting. Same treatment OutlineEditor already gets below.
+const AnalysisLoadingScreen = dynamic(
+  () => import("@/components/analysis/AnalysisLoadingScreen"),
+  { ssr: false }
+);
 
 const OutlineEditor = dynamic(
   () => import("@/components/outline-editor/OutlineEditor"),
@@ -503,7 +511,7 @@ export default function AnalysisPage() {
                       )}
                       style={{
                         width: "100%",
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: 600,
                         color: "#191816",
                         border: "none",
@@ -521,7 +529,7 @@ export default function AnalysisPage() {
                       rows={2}
                       style={{
                         width: "100%",
-                        fontSize: 12,
+                        fontSize: 16,
                         color: "#7a7369",
                         border: "none",
                         background: "transparent",

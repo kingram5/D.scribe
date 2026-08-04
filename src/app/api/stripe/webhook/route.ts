@@ -21,7 +21,7 @@ async function activateSubscription(
 
   const supabase = createServerClient();
 
-  await supabase
+  const { error } = await supabase
     .from("ink_balances")
     .upsert({
       user_id: userId,
@@ -35,12 +35,29 @@ async function activateSubscription(
       tts_period_start: new Date().toISOString(),
       ink_period_start: new Date().toISOString(),
     });
+  if (error) throw new Error(`activateSubscription upsert failed: ${error.message}`);
 }
 
 // Zero spendable Ink but keep the tier — used when a payment fails and the
 // subscription enters dunning. A later successful charge refills via
 // invoice.payment_succeeded, so the tier stays the source of truth.
-async function freezeInk(customerId: string) {
+//
+// Stripe does not guarantee delivery order: a stale past_due event can arrive
+// after the payment that cured it. When the subscription is known, check its
+// LIVE status and skip the freeze if it has since recovered.
+async function freezeInk(customerId: string, subscriptionId?: string | null) {
+  if (subscriptionId) {
+    try {
+      const live = await stripe.subscriptions.retrieve(subscriptionId);
+      if (live.status === "active" || live.status === "trialing") {
+        logger.warn("Skipping Ink freeze — subscription has recovered", {
+          route: "/api/stripe/webhook",
+          meta: { customer: customerId, subscription: subscriptionId },
+        });
+        return;
+      }
+    } catch { /* can't confirm recovery — freeze as before */ }
+  }
   const supabase = createServerClient();
   const { data: balance } = await supabase
     .from("ink_balances").select("user_id").eq("stripe_customer_id", customerId).single();
@@ -60,53 +77,28 @@ async function revokeEntitlement(customerId: string) {
     .eq("user_id", balance.user_id);
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const sig = req.headers.get("stripe-signature");
-
-  if (!sig) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
-  }
-
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    logger.error("Stripe webhook signature verification failed", {
-      route: "/api/stripe/webhook",
-      error: err,
-    });
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-  }
-
+async function handleStripeEvent(event: Stripe.Event) {
   const supabase = createServerClient();
-
-  // Idempotency: ignore events already processed
-  const { error: insertError } = await supabase
-    .from("stripe_events")
-    .insert({ id: event.id, type: event.type });
-
-  if (insertError) {
-    // PK conflict = duplicate delivery; treat as success
-    if (insertError.code === "23505") {
-      return NextResponse.json({ received: true });
-    }
-    logger.error("Failed to log Stripe event", { route: "/api/stripe/webhook", meta: { event_id: event.id }, error: insertError });
-    return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
-  }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
     const tier = session.metadata?.tier;
 
-    if (userId && tier) {
+    if (userId && tier && TIER_INK[tier] != null) {
       await activateSubscription(
         userId,
         tier,
         session.subscription as string,
         session.customer as string
       );
+    } else {
+      // Missing or unrecognised metadata can't heal on retry — do NOT write a
+      // paid tier with 0 Ink; scream instead so the session can be repaired.
+      logger.error("checkout.session.completed with unusable metadata — subscription NOT activated", {
+        route: "/api/stripe/webhook",
+        meta: { event_id: event.id, session: session.id, user_id: userId ?? "(missing)", tier: tier ?? "(missing)" },
+      });
     }
   }
 
@@ -119,7 +111,7 @@ export async function POST(req: NextRequest) {
     if (!goodStanding) {
       // past_due / unpaid / canceled / incomplete_expired — freeze spendable Ink
       // so a lapsed subscriber can't keep burning AI spend during dunning.
-      await freezeInk(customerId);
+      await freezeInk(customerId, subscription.id);
       logger.warn("Subscription not in good standing — froze Ink", {
         route: "/api/stripe/webhook",
         meta: { customer: customerId, status: subscription.status },
@@ -163,7 +155,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (balance) {
-      await supabase
+      const { error } = await supabase
         .from("ink_balances")
         .update({
           tier: "free",
@@ -173,6 +165,7 @@ export async function POST(req: NextRequest) {
           tts_period_start: new Date().toISOString(),
         })
         .eq("user_id", balance.user_id);
+      if (error) throw new Error(`subscription.deleted downgrade failed: ${error.message}`);
     }
   }
 
@@ -197,13 +190,14 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (balance && TIER_INK[balance.tier] != null) {
-        await supabase
+        const { error } = await supabase
           .from("ink_balances")
           .update({
             ink_balance: TIER_INK[balance.tier],
             ink_period_start: new Date().toISOString(),
           })
           .eq("user_id", balance.user_id);
+        if (error) throw new Error(`invoice refill failed: ${error.message}`);
       }
     }
   }
@@ -216,7 +210,9 @@ export async function POST(req: NextRequest) {
     const invoice = event.data.object as Stripe.Invoice;
     const customerId = invoice.customer as string | null;
     if (customerId) {
-      await freezeInk(customerId);
+      const rawSub = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription;
+      const subscriptionId = typeof rawSub === "string" ? rawSub : rawSub?.id ?? null;
+      await freezeInk(customerId, subscriptionId);
       logger.warn("Invoice payment failed — froze Ink", {
         route: "/api/stripe/webhook",
         meta: { customer: customerId, invoice: invoice.id },
@@ -228,7 +224,19 @@ export async function POST(req: NextRequest) {
   if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
     let customerId: string | null = null;
     if (event.type === "charge.refunded") {
-      customerId = (event.data.object as Stripe.Charge).customer as string | null;
+      const charge = event.data.object as Stripe.Charge;
+      // charge.refunded fires for PARTIAL refunds too. The boolean on the
+      // object is only true for a full refund — a $5 goodwill credit on a $99
+      // charge must not zero a paying customer's account.
+      const fullyRefunded = charge.refunded === true || charge.amount_refunded >= charge.amount;
+      if (!fullyRefunded) {
+        logger.warn("Partial refund — entitlement retained", {
+          route: "/api/stripe/webhook",
+          meta: { charge: charge.id, refunded: charge.amount_refunded, total: charge.amount },
+        });
+        return;
+      }
+      customerId = charge.customer as string | null;
     } else {
       const dispute = event.data.object as Stripe.Dispute;
       const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
@@ -244,6 +252,79 @@ export async function POST(req: NextRequest) {
         meta: { customer: customerId, type: event.type },
       });
     }
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.text();
+  const sig = req.headers.get("stripe-signature");
+
+  if (!sig) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+  } catch (err) {
+    logger.error("Stripe webhook signature verification failed", {
+      route: "/api/stripe/webhook",
+      error: err,
+    });
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  const supabase = createServerClient();
+
+  // Idempotency, two-phase: claim the event first (so concurrent deliveries
+  // can't double-process), but only mark it processed AFTER the handler
+  // succeeds. A handler failure leaves processed=false, so Stripe's retry
+  // re-runs the work instead of short-circuiting into a no-op — the old
+  // single-phase check permanently lost a paid upgrade on one transient error.
+  const { error: insertError } = await supabase
+    .from("stripe_events")
+    .insert({ id: event.id, type: event.type });
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      // Duplicate delivery. Only a no-op if the original attempt FINISHED.
+      const { data: existing } = await supabase
+        .from("stripe_events")
+        .select("processed")
+        .eq("id", event.id)
+        .single();
+      if (existing?.processed) {
+        return NextResponse.json({ received: true });
+      }
+      // fall through: previous attempt died mid-handler — re-run it
+    } else {
+      logger.error("Failed to log Stripe event", { route: "/api/stripe/webhook", meta: { event_id: event.id }, error: insertError });
+      return NextResponse.json({ error: "Event logging failed" }, { status: 500 });
+    }
+  }
+
+  try {
+    await handleStripeEvent(event);
+  } catch (err) {
+    logger.error("Stripe event handler failed — leaving event unprocessed for retry", {
+      route: "/api/stripe/webhook",
+      meta: { event_id: event.id, type: event.type },
+      error: err,
+    });
+    return NextResponse.json({ error: "Event handling failed" }, { status: 500 });
+  }
+
+  const { error: markError } = await supabase
+    .from("stripe_events")
+    .update({ processed: true })
+    .eq("id", event.id);
+  if (markError) {
+    // Worst case here is a re-run of an idempotent handler, not lost work.
+    logger.error("Failed to mark Stripe event processed", {
+      route: "/api/stripe/webhook",
+      meta: { event_id: event.id },
+      error: markError,
+    });
   }
 
   return NextResponse.json({ received: true });

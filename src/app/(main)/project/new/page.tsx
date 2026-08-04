@@ -12,7 +12,7 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid var(--ds-input-border)",
   borderRadius: "var(--radius-sm)",
   padding: "12px 16px",
-  fontSize: 15,
+  fontSize: 16,
   color: "var(--text-primary)",
   outline: "none",
 };

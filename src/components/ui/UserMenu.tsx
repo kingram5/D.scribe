@@ -16,8 +16,10 @@ export default function UserMenu() {
         setOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    // pointerdown: synthesised mouse events on touch are unreliable (delayed,
+    // suppressed when the tap becomes a scroll) — the menu could refuse to close.
+    document.addEventListener("pointerdown", handleClick);
+    return () => document.removeEventListener("pointerdown", handleClick);
   }, []);
 
   if (loading || !user) return null;

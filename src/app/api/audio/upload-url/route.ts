@@ -65,8 +65,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Generate R2 key and presigned URL
-  const r2Key = `${project_id}/${Date.now()}-${file_name}`;
+  // Generate R2 key and presigned URL. file_name is client input — slugify it
+  // for the key (".." segments collapse during URL normalisation and NUL bytes
+  // survive, landing the object at a different key than the file_path row and
+  // orphaning it for transcription AND deletion). The display name keeps its
+  // original form in the file_name column.
+  const safeName =
+    file_name
+      .replace(/[^A-Za-z0-9._-]/g, "_")
+      .replace(/\.{2,}/g, ".")
+      .replace(/^[._-]+/, "")
+      .slice(-100) || "audio";
+  const r2Key = `${project_id}/${Date.now()}-${safeName}`;
 
   try {
     const uploadUrl = await getUploadUrl(r2Key, content_type, file_size);
@@ -90,6 +100,11 @@ export async function POST(req: NextRequest) {
       upload_url: uploadUrl,
       r2_key: r2Key,
       upload_id: data.id,
+      // Content-Type is now part of the presigned signature: the client MUST
+      // PUT with exactly this value or R2 rejects the signature. Mobile
+      // browsers often report file.type as "" — echoing the validated value
+      // back keeps the client and the signature in agreement.
+      content_type,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

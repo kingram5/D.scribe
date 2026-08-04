@@ -54,12 +54,14 @@ export async function POST(req: NextRequest) {
     { model: "fast", maxTokens: 2048 }
   );
 
-  // Meter the call — voice-profile was gate-only (checked balance > 0 but never deducted).
-  await recordInkUsage(user.id, project_id, "voice_profile", "fast", usage);
-
+  // Parse BEFORE billing (edge-test 19/50) — a truncated response used to be
+  // deducted and then return nothing.
   try {
     const profile = JSON.parse(cleanJsonLite(raw));
     await supabase.from("projects").update({ voice_profile: profile }).eq("id", project_id);
+    await recordInkUsage(user.id, project_id, "voice_profile", "fast", usage).catch((billErr) =>
+      console.error("voice-profile: Ink settle failed after successful parse:", billErr)
+    );
     return NextResponse.json({ voice_profile: profile });
   } catch {
     return NextResponse.json({ voice_profile: null });

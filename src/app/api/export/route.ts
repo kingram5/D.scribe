@@ -5,6 +5,10 @@ import { generateDOCX } from "@/lib/export/docx";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+// A full-length manuscript is the expected input; without this the function
+// inherits the default duration and the biggest books are the ones that fail.
+export const maxDuration = 300;
+
 // POST /api/export — export manuscript as PDF or DOCX
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
@@ -51,20 +55,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No chapters found" }, { status: 400 });
   }
 
-  // Get latest content for each chapter
-  const chaptersWithContent = await Promise.all(
-    chapters.map(async (ch) => {
-      const { data: content } = await supabase
-        .from("chapter_contents")
-        .select("*")
-        .eq("chapter_id", ch.id)
-        .order("version", { ascending: false })
-        .limit(1)
-        .single();
+  // Get latest content for each chapter — batched so a 60-chapter book fires
+  // at most 8 concurrent queries instead of 60 at once.
+  type ChapterWithContent = (typeof chapters)[number] & { content: { content: string; word_count: number } };
+  const chaptersWithContent: ChapterWithContent[] = [];
+  const BATCH = 8;
+  for (let i = 0; i < chapters.length; i += BATCH) {
+    const batch = await Promise.all(
+      chapters.slice(i, i + BATCH).map(async (ch) => {
+        const { data: content } = await supabase
+          .from("chapter_contents")
+          .select("*")
+          .eq("chapter_id", ch.id)
+          .order("version", { ascending: false })
+          .limit(1)
+          .single();
 
-      return { ...ch, content: content || { content: "", word_count: 0 } };
-    })
-  );
+        return { ...ch, content: content || { content: "", word_count: 0 } };
+      })
+    );
+    chaptersWithContent.push(...batch);
+  }
 
   // Filter out chapters with no content
   const ready = chaptersWithContent.filter((ch) => ch.content.content);
@@ -95,12 +106,20 @@ export async function POST(req: NextRequest) {
     ext = "pdf";
   }
 
-  const filename = `${project.title.replace(/[^a-zA-Z0-9]/g, "_")}.${ext}`;
+  // ASCII fallback for the plain filename param (header-injection-safe), plus
+  // RFC 5987 filename* so a title in Arabic, Chinese or Cyrillic downloads
+  // under its real name instead of "_________.pdf".
+  const asciiBase = project.title
+    .replace(/[^a-zA-Z0-9]/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const fallback = `${asciiBase || "manuscript"}.${ext}`;
+  const utf8Name = encodeURIComponent(`${project.title}.${ext}`);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${fallback}"; filename*=UTF-8''${utf8Name}`,
     },
   });
 }

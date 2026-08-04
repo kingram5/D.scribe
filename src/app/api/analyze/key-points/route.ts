@@ -72,25 +72,37 @@ export async function POST(req: NextRequest) {
   );
 
   let raw: string;
+  let usage: { input_tokens: number; output_tokens: number };
   try {
     const result = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
     raw = result.text;
-    // Meter the call — key-points was gate-only (checked balance > 0 but never deducted).
-    await recordInkUsage(user.id, project_id, "analyze", "fast", result.usage);
+    usage = result.usage;
   } catch (apiErr) {
     const msg = apiErr instanceof Error ? apiErr.message : String(apiErr);
     console.error("Claude API error for key points:", msg);
     return NextResponse.json({ error: "Key points extraction failed: " + msg }, { status: 500 });
   }
 
+  // Parse BEFORE billing (edge-test 19/50). The old order deducted inside the
+  // same try as the API call, so a BILLING failure was reported to the
+  // customer as "Key points extraction failed" — and a truncated response was
+  // billed before the parse threw.
   let keyPoints: { title: string; summary: string; supporting_quotes: string[]; tags: string[] }[] = [];
+  let parseFailed = false;
   try {
     const cleaned = cleanJsonLite(raw);
     keyPoints = JSON.parse(cleaned);
   } catch (parseErr) {
+    parseFailed = true;
     console.error("Failed to parse key points chunk:", chunk_index);
     console.error("Raw response (first 500 chars):", raw.slice(0, 500));
     console.error("Parse error:", parseErr instanceof Error ? parseErr.message : parseErr);
+  }
+
+  if (!parseFailed) {
+    await recordInkUsage(user.id, project_id, "analyze", "fast", usage).catch((billErr) =>
+      console.error("key-points: Ink settle failed after successful parse:", billErr)
+    );
   }
 
   // Save this chunk's key points to DB
@@ -116,6 +128,8 @@ export async function POST(req: NextRequest) {
     key_points: keyPoints,
     total_chunks: totalChunks,
     chunk_index,
+    // Surfaced so the client can retry the chunk instead of silently losing it.
+    parse_failed: parseFailed || undefined,
     done: chunk_index >= totalChunks - 1,
   });
 }

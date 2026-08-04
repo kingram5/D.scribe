@@ -133,6 +133,24 @@ function buildBindings(opts: LogOptions): Record<string, unknown> {
     if (opts.error instanceof Error) {
       bindings.error = opts.error.message;
       if (opts.error.stack) bindings.stack = opts.error.stack;
+    } else if (typeof opts.error === "object") {
+      // supabase-js never throws — it returns plain { message, details, hint,
+      // code } objects. String() rendered every one as "[object Object]",
+      // which blanked the exact failures most worth reading (webhook logging,
+      // account deletion, edit-event capture). Unwrap the useful fields.
+      const e = opts.error as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+      if (typeof e.message === "string" && e.message) {
+        bindings.error = e.message;
+        if (e.code != null) bindings.errorCode = e.code;
+        if (typeof e.details === "string" && e.details) bindings.errorDetails = e.details;
+        if (typeof e.hint === "string" && e.hint) bindings.errorHint = e.hint;
+      } else {
+        try {
+          bindings.error = JSON.stringify(opts.error).slice(0, 2000);
+        } catch {
+          bindings.error = String(opts.error);
+        }
+      }
     } else {
       bindings.error = String(opts.error);
     }

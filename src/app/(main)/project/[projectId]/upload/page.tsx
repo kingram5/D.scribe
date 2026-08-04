@@ -138,6 +138,7 @@ export default function UploadPage() {
         ) : (
           <LeftPanel
             isRecording={engine.isRecording}
+            recordingError={engine.recordingError}
             seconds={engine.seconds}
             onToggleRecording={engine.toggleRecording}
             onStopRecording={engine.stopRecording}
@@ -166,6 +167,8 @@ export default function UploadPage() {
             files={engine.files}
             uploading={engine.uploading}
             progress={engine.progress}
+            uploadPercent={engine.uploadPercent}
+            uploadError={engine.uploadError}
             progressEntries={engine.progressEntries}
             dragging={engine.dragging}
             setDragging={engine.setDragging}

@@ -30,9 +30,15 @@ async function getS3Client() {
 }
 
 /**
- * Generate a presigned URL for direct client upload to R2
+ * Generate a presigned URL for direct client upload to R2.
+ *
+ * sizeBytes is an EXACT match, not a maximum — ContentLength is signed, so the
+ * PUT body must be exactly this size. Content-Type is also forced into the
+ * signature (by default the presigner signed only content-length + host,
+ * which left the MIME allowlist purely advisory): the client must PUT with
+ * exactly the contentType declared here.
  */
-export async function getUploadUrl(key: string, contentType: string, maxSizeBytes: number = 500 * 1024 * 1024) {
+export async function getUploadUrl(key: string, contentType: string, sizeBytes: number = 500 * 1024 * 1024) {
   const { PutObjectCommand } = await import("@aws-sdk/client-s3");
   const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
   const s3 = await getS3Client();
@@ -41,11 +47,33 @@ export async function getUploadUrl(key: string, contentType: string, maxSizeByte
     Bucket: R2_BUCKET_NAME,
     Key: key,
     ContentType: contentType,
-    ContentLength: maxSizeBytes,
+    ContentLength: sizeBytes,
   });
 
-  const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+  const url = await getSignedUrl(s3, command, {
+    expiresIn: 3600,
+    signableHeaders: new Set(["content-type", "content-length", "host"]),
+  });
   return url;
+}
+
+/**
+ * HEAD an object — lets confirm-upload verify the file actually landed
+ * instead of recording the client's claim as fact.
+ */
+export async function headObject(key: string): Promise<{ exists: boolean; sizeBytes: number | null; contentType: string | null }> {
+  const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+  const s3 = await getS3Client();
+  try {
+    const res = await s3.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+    return { exists: true, sizeBytes: res.ContentLength ?? null, contentType: res.ContentType ?? null };
+  } catch (err) {
+    const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (e?.name === "NotFound" || e?.name === "NoSuchKey" || e?.$metadata?.httpStatusCode === 404) {
+      return { exists: false, sizeBytes: null, contentType: null };
+    }
+    throw err;
+  }
 }
 
 /**

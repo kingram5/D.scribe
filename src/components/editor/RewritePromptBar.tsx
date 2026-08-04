@@ -156,7 +156,7 @@ export default function RewritePromptBar({
           padding: "8px 0",
           border: "none",
           background: "transparent",
-          fontSize: 14,
+          fontSize: 16,
           fontFamily: "var(--font-manrope), sans-serif",
           outline: "none",
           color: "var(--text-primary)",

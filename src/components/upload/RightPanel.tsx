@@ -7,6 +7,8 @@ interface RightPanelProps {
   files: File[];
   uploading: boolean;
   progress: Record<string, string>;
+  uploadPercent?: Record<string, number>;
+  uploadError?: Record<string, string>;
   progressEntries: [string, string][];
   dragging: boolean;
   setDragging: (v: boolean) => void;
@@ -26,6 +28,8 @@ export default function RightPanel({
   files,
   uploading,
   progress,
+  uploadPercent,
+  uploadError,
   progressEntries,
   dragging,
   setDragging,
@@ -327,7 +331,7 @@ export default function RightPanel({
               style={{
                 width: "100%",
                 padding: "10px 14px",
-                fontSize: 13,
+                fontSize: 16,
                 border: "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 8,
                 background: "rgba(255,255,255,0.6)",
@@ -350,7 +354,7 @@ export default function RightPanel({
                 style={{
                   width: "100%",
                   padding: "10px 14px",
-                  fontSize: 13,
+                  fontSize: 16,
                   border: "1px solid rgba(0,0,0,0.1)",
                   borderRadius: 8,
                   background: "rgba(255,255,255,0.6)",
@@ -448,63 +452,104 @@ export default function RightPanel({
               <div
                 key={key}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
                   background: "rgba(255,255,255,0.6)",
                   border: "1px solid rgba(255,255,255,0.8)",
                   borderRadius: 10,
                   padding: "8px 16px",
                 }}
               >
-                <div>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--ds-ink)",
-                    }}
-                  >
-                    {key}
-                  </p>
-                  {!files.some((f) => f.name === key) && (
-                    <p
-                      style={{
-                        fontSize: 10,
-                        color: "var(--text-tertiary)",
-                      }}
-                    >
-                      YouTube
-                    </p>
-                  )}
-                </div>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    justifyContent: "space-between",
                   }}
                 >
+                  <div>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: "var(--ds-ink)",
+                      }}
+                    >
+                      {key}
+                    </p>
+                    {!files.some((f) => f.name === key) && (
+                      <p
+                        style={{
+                          fontSize: 10,
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        YouTube
+                      </p>
+                    )}
+                  </div>
                   <div
                     style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background:
-                        STATUS_COLORS[status] || "#a0978a",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color:
-                        STATUS_COLORS[status] || "#a0978a",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
                     }}
                   >
-                    {STATUS_LABELS[status] || status}
-                  </span>
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background:
+                          STATUS_COLORS[status] || "#a0978a",
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color:
+                          STATUS_COLORS[status] || "#a0978a",
+                      }}
+                    >
+                      {STATUS_LABELS[status] || status}
+                      {status === "uploading" && uploadPercent?.[key] != null
+                        ? ` ${uploadPercent[key]}%`
+                        : ""}
+                    </span>
+                  </div>
                 </div>
+                {status === "uploading" && uploadPercent?.[key] != null && (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      height: 3,
+                      borderRadius: 2,
+                      background: "rgba(0,0,0,0.08)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "100%",
+                        transform: `scaleX(${uploadPercent[key] / 100})`,
+                        transformOrigin: "left",
+                        background: STATUS_COLORS[status] || "#a0978a",
+                        transition: "transform 0.3s ease",
+                      }}
+                    />
+                  </div>
+                )}
+                {status === "failed" && uploadError?.[key] && (
+                  <p
+                    style={{
+                      marginTop: 4,
+                      fontSize: 10,
+                      color: "#b3462e",
+                    }}
+                  >
+                    {uploadError[key]}
+                  </p>
+                )}
               </div>
             ))}
           </div>

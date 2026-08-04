@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isDisposableEmail } from "@/lib/disposable-domains";
+import { canonicalizeEmail } from "@/lib/email";
+import { clientIp } from "@/lib/client-ip";
 import { logger } from "@/lib/logger";
 
 // POST /api/auth/magic-link — gated server-side OTP sender.
@@ -12,11 +14,6 @@ import { logger } from "@/lib/logger";
 // (no user enumeration, no distinguishing block reasons).
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-function clientIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  return (fwd ? fwd.split(",")[0] : "").trim() || "unknown";
-}
 
 export async function POST(req: NextRequest) {
   let email = "";
@@ -36,11 +33,18 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = clientIp(req);
-  const [ipLimit, emailLimit] = await Promise.all([
-    checkRateLimit(`ip:${ip}`, "magic-link", 6, 60 * 60_000),   // 6/hour per IP
-    checkRateLimit(`em:${email}`, "magic-link", 3, 15 * 60_000), // 3/15min per email
-  ]);
-  if (!ipLimit.allowed || !emailLimit.allowed) {
+  // IP gate first, sequentially — a blocked IP must not burn the per-email
+  // counter, or three requests naming a victim's address lock them out of
+  // email sign-in from anywhere.
+  const ipLimit = await checkRateLimit(`ip:${ip}`, "magic-link", 6, 60 * 60_000); // 6/hour per IP
+  if (!ipLimit.allowed) {
+    logger.warn("magic-link rate limited", { route: "/api/auth/magic-link", meta: { ip } });
+    return NextResponse.json({ error: "Too many requests — try again later" }, { status: 429 });
+  }
+  // Key on the canonical form (dots/+tags stripped) so aliasing can't mint
+  // fresh keys — but keep sending to the address exactly as typed.
+  const emailLimit = await checkRateLimit(`em:${canonicalizeEmail(email)}`, "magic-link", 3, 15 * 60_000); // 3/15min per email
+  if (!emailLimit.allowed) {
     logger.warn("magic-link rate limited", { route: "/api/auth/magic-link", meta: { ip } });
     return NextResponse.json({ error: "Too many requests — try again later" }, { status: 429 });
   }

@@ -10,9 +10,15 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+// preload: false on the decorative/rarely-painted faces — next/font preloads
+// every face by default, and 11 of 16 declared families never paint on the
+// homepage. Fonts block text rendering; ~344 KB of them stood between a
+// mobile visitor and readable words. The face still loads on demand wherever
+// it is actually used.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 const inter = Inter({
@@ -25,6 +31,7 @@ const kalam = Kalam({
   variable: "--font-kalam",
   subsets: ["latin"],
   weight: ["300", "400", "700"],
+  preload: false,
 });
 
 const manrope = Manrope({
@@ -43,6 +50,7 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
+  preload: false,
 });
 
 const playfair = Playfair_Display({
@@ -63,10 +71,18 @@ export const metadata: Metadata = {
   },
 };
 
+// The max-scale viewport cap was removed on purpose — DO NOT put it back to
+// "fix" iOS focus-zoom. iOS Safari has IGNORED that directive since iOS 10
+// (so it never suppressed the zoom it was added for), while Android Chrome
+// honoured it and lost pinch-zoom entirely: a WCAG 1.4.4 failure on a product
+// whose whole job is reading text. iOS focus-zoom is fixed the right way:
+// 16px inputs.
+// viewportFit: "cover" makes env(safe-area-inset-*) resolve to real values so
+// the fixed bottom nav can pad for the iPhone home indicator.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

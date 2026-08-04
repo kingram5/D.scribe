@@ -1,8 +1,7 @@
 import { createHash } from "crypto";
 import { createServerClient } from "@/lib/supabase";
+import { canonicalizeEmail } from "@/lib/email";
 import type { ClaudeUsage } from "@/lib/claude-lite";
-
-const FREE_TRIAL_INK = 10.0;
 
 export type InkOperation =
   | "brainstorm"
@@ -16,7 +15,15 @@ export type InkOperation =
   | "rewrite"
   | "coherence"
   | "enrich"
-  | "style_distill";
+  | "style_distill"
+  | "transcribe"
+  | "youtube_import";
+
+// Flat vendor-cost rates for the non-token operations. Rough cost parity with
+// the 1-Ink-per-1000-token convention (1 Ink ≈ $0.006-0.009 of vendor spend):
+// Deepgram ≈ $0.0043/audio-minute, Supadata a few cents per video.
+export const INK_PER_AUDIO_MINUTE = 0.5;
+export const INK_PER_YOUTUBE_IMPORT = 2;
 
 // Conservative per-operation Ink floors for the PRE-flight cost check — lower
 // bounds on what an op typically costs, so a near-empty wallet can't kick off an
@@ -35,6 +42,8 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   coherence: 2,
   enrich: 1,
   style_distill: 1,
+  transcribe: 2,
+  youtube_import: 2,
 };
 
 /** Estimated minimum Ink cost for an operation (used by the pre-flight gate). */
@@ -55,44 +64,50 @@ export interface InkCheck {
   tier: string;
 }
 
-/** Ensure an ink_balances row exists, creating one with free trial if needed */
+/** sha256 hex of an email string. */
+function hashEmail(email: string): string {
+  return createHash("sha256").update(email).digest("hex");
+}
+
+/**
+ * Ensure an ink_balances row exists (creating one with the free trial behind
+ * the anti-farming check) and apply the lazy period refill for paid tiers.
+ * All policy lives in the ensure_ink_balance RPC so the SQL and TS paths can't
+ * disagree. Throws on failure — a fabricated in-memory wallet here used to let
+ * checkInk approve work that deduct_ink could never settle.
+ */
 async function ensureBalance(userId: string): Promise<InkBalance> {
   const supabase = createServerClient();
 
-  const { data } = await supabase
-    .from("ink_balances")
-    .select("ink_balance, lifetime_used, tier")
-    .eq("user_id", userId)
-    .single();
-
-  if (data) return data;
-
-  // First wallet for this user — grant the free trial UNLESS this email
-  // previously deleted an account (anti-farming: delete + re-signup used to
-  // mint a fresh 10 Ink every time). Best-effort: any lookup failure falls
-  // back to granting the trial, so a missing table can't lock out real users.
-  let trialInk = FREE_TRIAL_INK;
+  // Hash both the raw-lowercase and canonical forms: the ledger holds legacy
+  // raw hashes, and canonicalisation is what stops kyle+1@ minting a trial
+  // kyle@ already burned.
+  let emailHashes: string[] | null = null;
   try {
     const { data: authUser } = await supabase.auth.admin.getUserById(userId);
     const email = authUser?.user?.email;
     if (email) {
-      const emailHash = createHash("sha256").update(email.toLowerCase()).digest("hex");
-      const { data: prior } = await supabase
-        .from("deleted_account_emails")
-        .select("email_hash")
-        .eq("email_hash", emailHash)
-        .maybeSingle();
-      if (prior) trialInk = 0;
+      emailHashes = [...new Set([hashEmail(email.toLowerCase()), hashEmail(canonicalizeEmail(email))])];
     }
-  } catch { /* grant trial on any failure */ }
+  } catch { /* hash lookup is best-effort; the RPC grants the trial without it */ }
 
-  const { data: created } = await supabase
-    .from("ink_balances")
-    .insert({ user_id: userId, ink_balance: trialInk })
-    .select("ink_balance, lifetime_used, tier")
-    .single();
+  const { data, error } = await supabase.rpc("ensure_ink_balance", {
+    p_user_id: userId,
+    p_email_hashes: emailHashes,
+  });
 
-  return created || { ink_balance: trialInk, lifetime_used: 0, tier: "free" };
+  if (error) {
+    throw new Error(`ensure_ink_balance failed: ${error.message}`);
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    throw new Error("ensure_ink_balance returned no row");
+  }
+  return {
+    ink_balance: Number(row.ink_balance),
+    lifetime_used: Number(row.lifetime_used),
+    tier: row.tier,
+  };
 }
 
 /**
@@ -108,7 +123,7 @@ export async function checkInk(userId: string, operation?: InkOperation): Promis
     return {
       allowed: false,
       reason: required > 0
-        ? `This needs about ${required} Ink and you have ${Number(balance.ink_balance.toFixed(2))}. Top up to continue.`
+        ? `This needs about ${required} Ink and you have ${Number(Number(balance.ink_balance).toFixed(2))}. Top up to continue.`
         : "No Ink remaining. Upgrade your plan to continue.",
       balance: balance.ink_balance,
       tier: balance.tier,
@@ -170,6 +185,39 @@ export async function recordInkUsage(
     p_model: modelName,
     p_input_tokens: usage.input_tokens,
     p_output_tokens: usage.output_tokens,
+  });
+
+  if (error) {
+    if (error.message.includes("Insufficient Ink")) {
+      throw new Error("Insufficient Ink balance");
+    }
+    throw error;
+  }
+
+  return Number(data);
+}
+
+/**
+ * Deduct a flat Ink amount for non-token vendor costs (Deepgram audio-minutes,
+ * Supadata video imports). Settles through the same locked SQL path as token
+ * usage so it shows up in ink_usage and can't race the balance.
+ */
+export async function recordFlatInkUsage(
+  userId: string,
+  projectId: string | null,
+  operation: InkOperation,
+  vendor: string,
+  inkCost: number
+): Promise<number> {
+  const supabase = createServerClient();
+  await ensureBalance(userId);
+
+  const { data, error } = await supabase.rpc("deduct_ink_flat", {
+    p_user_id: userId,
+    p_project_id: projectId,
+    p_operation: operation,
+    p_model: vendor,
+    p_ink_cost: Math.max(0, Number(inkCost.toFixed(4))),
   });
 
   if (error) {

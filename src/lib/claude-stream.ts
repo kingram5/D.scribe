@@ -7,15 +7,17 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
 import type { ModelTier, ClaudeUsage } from "./claude-lite";
-
-const MODELS: Record<ModelTier, string> = {
-  fast: "claude-haiku-4-5-20251001",
-  quality: "claude-sonnet-4-20250514",
-};
+import { MODELS } from "./claude-lite";
 
 /**
  * Stream a Claude response as a ReadableStream of text chunks.
  * Use this for long-form generation where the user shouldn't stare at a blank screen.
+ *
+ * Usage accounting: the Messages streaming API puts input_tokens in
+ * message_start and output_tokens in message_delta — reading only the delta
+ * billed every rewrite/chapter call's input (the larger half) as zero.
+ * onUsage fires exactly once, including on error and client cancel, so
+ * whatever DID stream gets billed.
  */
 export function streamClaude(
   system: string,
@@ -23,12 +25,26 @@ export function streamClaude(
   options?: { model?: ModelTier; maxTokens?: number; temperature?: number; onUsage?: (usage: ClaudeUsage) => void }
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
+  const upstreamAbort = new AbortController();
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let usageEmitted = false;
+  const emitUsage = () => {
+    if (usageEmitted) return;
+    usageEmitted = true;
+    if (options?.onUsage && (inputTokens > 0 || outputTokens > 0)) {
+      options.onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
+    }
+  };
 
   return new ReadableStream({
     async start(controller) {
       try {
         const res = await fetch(API_URL, {
           method: "POST",
+          signal: upstreamAbort.signal,
           headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.ANTHROPIC_API_KEY!,
@@ -54,7 +70,7 @@ export function streamClaude(
           return;
         }
 
-        const reader = res.body!.getReader();
+        reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
 
@@ -81,8 +97,10 @@ export function streamClaude(
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
                 );
-              } else if (event.type === "message_delta" && event.usage && options?.onUsage) {
-                options.onUsage({ input_tokens: event.usage.input_tokens ?? 0, output_tokens: event.usage.output_tokens ?? 0 });
+              } else if (event.type === "message_start" && event.message?.usage) {
+                inputTokens = event.message.usage.input_tokens ?? 0;
+              } else if (event.type === "message_delta" && event.usage) {
+                outputTokens = event.usage.output_tokens ?? outputTokens;
               }
             } catch {
               // Skip malformed JSON lines
@@ -90,15 +108,31 @@ export function streamClaude(
           }
         }
 
+        emitUsage();
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)
-        );
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
+        // Bill whatever streamed before the failure — a dead client controller
+        // used to skip onUsage entirely, making an abandoned generation both
+        // fully paid to the vendor and never billed to the user.
+        emitUsage();
+        try {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch {
+          // Controller already dead (client gone) — nothing left to tell it.
+        }
       }
+    },
+    cancel() {
+      // Client walked away: abort upstream so Anthropic stops generating
+      // tokens nobody will read, then settle usage for what already streamed.
+      upstreamAbort.abort();
+      reader?.cancel().catch(() => {});
+      emitUsage();
     },
   });
 }

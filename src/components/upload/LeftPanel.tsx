@@ -4,6 +4,7 @@ import CassetteTape from "./CassetteTape";
 
 interface LeftPanelProps {
   isRecording: boolean;
+  recordingError?: string;
   seconds: number;
   onToggleRecording: () => void;
   onStopRecording: () => void;
@@ -11,6 +12,7 @@ interface LeftPanelProps {
 
 export default function LeftPanel({
   isRecording,
+  recordingError,
   seconds,
   onToggleRecording,
   onStopRecording,
@@ -157,6 +159,22 @@ export default function LeftPanel({
               Recording in progress — speak naturally
             </div>
           ) : null}
+          {recordingError && (
+            <p
+              role="alert"
+              style={{
+                marginTop: 12,
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#b3462e",
+                maxWidth: 420,
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              {recordingError}
+            </p>
+          )}
         </div>
 
         <style>{`

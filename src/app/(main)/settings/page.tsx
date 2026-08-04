@@ -99,7 +99,7 @@ export default function SettingsPage() {
             style={{
               width: "100%",
               padding: "10px 12px",
-              fontSize: 14,
+              fontSize: 16,
               border: "1px solid rgba(249,247,242,0.18)",
               borderRadius: 8,
               background: "rgba(0,0,0,0.2)",

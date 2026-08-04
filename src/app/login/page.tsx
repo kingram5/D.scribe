@@ -142,6 +142,8 @@ function LoginContent() {
             name="email"
             type="email"
             autoComplete="email"
+            enterKeyHint="go"
+            spellCheck={false}
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -149,7 +151,7 @@ function LoginContent() {
             style={{
               width: "100%",
               padding: "12px 14px",
-              fontSize: 15,
+              fontSize: 16,
               border: "1px solid rgba(44,36,25,0.12)",
               borderRadius: 10,
               background: "rgba(44,36,25,0.02)",

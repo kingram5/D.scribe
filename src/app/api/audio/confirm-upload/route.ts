@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
+import { headObject } from "@/lib/r2";
+import { logger } from "@/lib/logger";
 
 // POST /api/audio/confirm-upload — mark an upload as completed after direct R2 upload
 export async function POST(req: NextRequest) {
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest) {
   // Verify the upload belongs to a project owned by this user
   const { data: upload, error: fetchError } = await supabase
     .from("audio_uploads")
-    .select("id, project_id, status")
+    .select("id, project_id, status, file_path, file_size_bytes")
     .eq("id", upload_id)
     .single();
 
@@ -35,6 +37,34 @@ export async function POST(req: NextRequest) {
 
   if (!project) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  // Ask R2 whether the object actually exists before recording "uploaded" —
+  // the row used to be a record of the client's intentions, not of facts.
+  try {
+    const head = await headObject(upload.file_path);
+    if (!head.exists) {
+      return NextResponse.json(
+        { error: "Upload not found in storage — the transfer may not have completed" },
+        { status: 400 }
+      );
+    }
+    // Reconcile the size the client claimed at presign time with reality.
+    if (head.sizeBytes != null && head.sizeBytes !== upload.file_size_bytes) {
+      await supabase
+        .from("audio_uploads")
+        .update({ file_size_bytes: head.sizeBytes })
+        .eq("id", upload_id);
+    }
+  } catch (err) {
+    // R2 unreachable — confirm anyway (the old behaviour) rather than strand
+    // a real upload, but say so in the logs.
+    logger.error("confirm-upload: HEAD check failed — confirming unverified", {
+      route: "/api/audio/confirm-upload",
+      userId: user.id,
+      meta: { upload_id },
+      error: err,
+    });
   }
 
   // Update status to uploaded

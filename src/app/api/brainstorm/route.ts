@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { logger } from "@/lib/logger";
-import { sanitizeGenerated } from "@/lib/sanitize-output";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -83,8 +82,13 @@ export async function POST(req: NextRequest) {
       `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
     : SYSTEM_PROMPT;
 
+  // Abort the upstream call if the client walks away — otherwise Anthropic
+  // keeps generating to completion and we pay for tokens nobody will read.
+  const upstreamAbort = new AbortController();
+
   const res = await fetch(API_URL, {
     method: "POST",
+    signal: upstreamAbort.signal,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": process.env.ANTHROPIC_API_KEY!,
@@ -118,11 +122,20 @@ export async function POST(req: NextRequest) {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
 
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let usageSettled = false;
+  const settleUsage = () => {
+    if (usageSettled) return;
+    usageSettled = true;
+    if (inputTokens > 0 || outputTokens > 0) {
+      recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
+    }
+  };
+
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = "";
-      let inputTokens = 0;
-      let outputTokens = 0;
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -140,8 +153,12 @@ export async function POST(req: NextRequest) {
             try {
               const event = JSON.parse(data);
               if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-                const cleanText = sanitizeGenerated(event.delta.text);
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: cleanText })}\n\n`));
+                // Deltas stream RAW. Sanitizing per-delta trimmed the leading
+                // space off every token boundary — word-fused text client-side
+                // and killed the TTS sentence splitter with it. The system
+                // prompt is the tell-guard for chat; the output sanitizer is
+                // for assembled chapter prose only.
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
               }
               if (event.type === "message_start" && event.message?.usage) {
                 inputTokens = event.message.usage.input_tokens || 0;
@@ -154,10 +171,7 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-        // Record Ink usage
-        if (inputTokens > 0 || outputTokens > 0) {
-          recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
-        }
+        settleUsage();
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
@@ -166,10 +180,18 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           error: err,
         });
+        settleUsage();
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       }
+    },
+    cancel() {
+      // Client walked away — stop paying for tokens nobody will read, and
+      // settle whatever usage already streamed.
+      upstreamAbort.abort();
+      reader.cancel().catch(() => {});
+      settleUsage();
     },
   });
 

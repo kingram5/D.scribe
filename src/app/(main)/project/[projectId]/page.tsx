@@ -2,48 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Project, AudioUpload, Transcript, KeyPoint, Chapter } from "@/types";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { PIPELINE, getActiveStep, isStepNavigable } from "@/lib/pipeline-step";
 
 interface ProjectDetail extends Project {
   audio_uploads: AudioUpload[];
   transcripts: Transcript[];
   key_points: KeyPoint[];
   chapters: Chapter[];
-}
-
-const PIPELINE = [
-  { key: "upload", label: "Audio Upload", desc: "Upload your sermon, lecture, or recording" },
-  { key: "transcribe", label: "Transcription", desc: "Your words, captured and ready to shape" },
-  { key: "structure", label: "Structure Setup", desc: "Set chapters and word targets for your manuscript" },
-  { key: "analyze", label: "Content Analysis", desc: "AI is identifying key themes, voice patterns, and building the structural foundation for your book." },
-  { key: "generate", label: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter" },
-  { key: "editor", label: "Manuscript Editor", desc: "Review, refine, and polish your manuscript" },
-  { key: "export", label: "Export & Publish", desc: "Download your finished book in any format" },
-];
-
-const STEP_LINKS: Record<string, string> = {
-  upload: "upload",
-  transcribe: "transcript",
-  structure: "structure",
-  analyze: "analysis",
-  generate: "generate",
-  editor: "editor",
-  export: "export",
-};
-
-function getActiveStep(p: ProjectDetail): number {
-  if (p.chapters.some((c) => c.status === "edited")) return 6;
-  // If all chapters are generated, user can edit and export
-  if (p.chapters.length > 0 && p.chapters.every((c) => c.status === "generated" || c.status === "edited")) return 5;
-  if (p.chapters.some((c) => c.status === "generated")) return 5;
-  if (p.chapters.length > 0) return 4;
-  if (p.key_points.length > 0) return 4;
-  if (p.transcripts.length > 0) return 2;
-  if (p.audio_uploads.length > 0) return 1;
-  return 0;
 }
 
 function CheckIcon() {
@@ -469,6 +439,39 @@ export default function ProjectPage() {
           .ds-project-split > div:first-child { width: 100% !important; padding: 24px 16px !important; }
           .ds-project-split > div:last-child { padding: 16px !important; }
         }
+
+        /* Reachable steps had a click handler but no feedback, so nothing on
+           this page looked navigable. Hover + focus make that legible. */
+        .ds-step-row { transition: background 0.15s, transform 0.15s; }
+        .ds-step-row:hover { background: var(--ds-card-bg); transform: translateX(2px); }
+        .ds-step-row:focus-visible,
+        .ds-step-dot:focus-visible,
+        .ds-step-stage:focus-visible {
+          outline: 2px solid #C17A47;
+          outline-offset: 3px;
+        }
+
+        /* The dot itself stays 8px; the link around it is padded out to a 44px
+           touch target and pulled back with negative margin so the row does
+           not move. Hit area grows, layout does not. */
+        .ds-step-dot {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 18px 8px;
+          margin: -18px -8px;
+          border-radius: 8px;
+          transition: transform 0.15s;
+        }
+        .ds-step-dot[data-navigable="true"]:hover { transform: scale(1.35); }
+
+        .ds-step-stage { display: block; transition: transform 0.2s, box-shadow 0.2s; }
+        .ds-step-stage:hover { transform: translateY(-2px); }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ds-step-row, .ds-step-dot, .ds-step-stage { transition: none; }
+          .ds-step-row:hover, .ds-step-dot:hover, .ds-step-stage:hover { transform: none; }
+        }
       `}</style>
       <div className="paper-theme ds-project-split" style={{
         display: "flex",
@@ -553,21 +556,27 @@ export default function ProjectPage() {
             {PIPELINE.map((step, i) => {
               const isComplete = i < activeStep;
               const isActive = i === activeStep;
-              const isLocked = i > activeStep;
+              const isNavigable = isStepNavigable(i, activeStep);
               const isLast = i === PIPELINE.length - 1;
-              const stepPath = `/project/${projectId}/${STEP_LINKS[step.key]}`;
+              const stepPath = `/project/${projectId}/${step.path}`;
 
-              return (
-                <div
-                  key={step.key}
-                  style={{
-                    position: "relative",
-                    paddingLeft: 48,
-                    marginBottom: isLast ? 0 : 40,
-                    cursor: !isLocked ? "pointer" : "default",
-                  }}
-                  onClick={() => !isLocked && router.push(stepPath)}
-                >
+              const rowStyle: React.CSSProperties = {
+                position: "relative",
+                display: "block",
+                paddingLeft: 48,
+                marginBottom: isLast ? 0 : 40,
+                cursor: isNavigable ? "pointer" : "default",
+                textDecoration: "none",
+                color: "inherit",
+                borderRadius: 12,
+              };
+
+              // Reachable steps render as real links: keyboard focus,
+              // cmd/middle-click and open-in-new-tab all work, none of which a
+              // div with an onClick ever did. Locked steps stay inert markup
+              // rather than a disabled link.
+              const rowInner = (
+                <>
                   {/* Vertical line */}
                   {!isLast && (
                     <div style={{
@@ -646,6 +655,22 @@ export default function ProjectPage() {
                       )}
                     </div>
                   )}
+                </>
+              );
+
+              return isNavigable ? (
+                <Link
+                  key={step.key}
+                  href={stepPath}
+                  className="ds-step-row"
+                  aria-label={`Go to ${step.label}`}
+                  style={rowStyle}
+                >
+                  {rowInner}
+                </Link>
+              ) : (
+                <div key={step.key} aria-disabled style={rowStyle} title={`${step.label} — not ready yet`}>
+                  {rowInner}
                 </div>
               );
             })}
@@ -699,16 +724,41 @@ export default function ProjectPage() {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ display: "flex", gap: 6 }}>
-                  {PIPELINE.map((_, i) => (
-                    <div key={i} style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: i < activeStep ? "#C17A47" : i === activeStep ? "#C17A47" : "transparent",
-                      border: i <= activeStep ? "none" : "1px solid var(--ds-input-border)",
-                      opacity: i < activeStep ? 1 : i === activeStep ? 1 : 0.4,
-                    }} />
-                  ))}
+                  {PIPELINE.map((step, i) => {
+                    const navigable = isStepNavigable(i, activeStep);
+                    const dot = (
+                      <span style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        display: "block",
+                        background: i <= activeStep ? "#C17A47" : "transparent",
+                        border: i <= activeStep ? "none" : "1px solid var(--ds-input-border)",
+                        opacity: i <= activeStep ? 1 : 0.4,
+                      }} />
+                    );
+                    return navigable ? (
+                      <Link
+                        key={step.key}
+                        href={`/project/${projectId}/${step.path}`}
+                        className="ds-step-dot"
+                        data-navigable="true"
+                        aria-label={`Go to step ${i + 1}: ${step.label}`}
+                        title={step.label}
+                      >
+                        {dot}
+                      </Link>
+                    ) : (
+                      <span
+                        key={step.key}
+                        className="ds-step-dot"
+                        aria-disabled
+                        title={`${step.label} — not ready yet`}
+                      >
+                        {dot}
+                      </span>
+                    );
+                  })}
                 </div>
                 <span style={{
                   fontSize: 11,
@@ -738,10 +788,19 @@ export default function ProjectPage() {
               }}>{currentPipeline.desc}</p>
             </div>
 
-            {/* Animation area */}
-            <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
-              <StepAnimation stepKey={currentPipeline.key} />
-            </div>
+            {/* Animation area — the whole stage is a link to the current step.
+                aria-hidden on the artwork so a screen reader gets the one
+                label instead of a stream of decorative animation nodes. */}
+            <Link
+              href={`/project/${projectId}/${currentPipeline.path}`}
+              className="ds-step-stage"
+              aria-label={`Go to ${currentPipeline.label}`}
+              style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}
+            >
+              <div aria-hidden style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <StepAnimation stepKey={currentPipeline.key} />
+              </div>
+            </Link>
 
             {/* Footer metadata */}
             <div style={{
@@ -799,7 +858,7 @@ export default function ProjectPage() {
               </div>
 
               <button
-                onClick={() => router.push(`/project/${projectId}/${STEP_LINKS[currentPipeline.key]}`)}
+                onClick={() => router.push(`/project/${projectId}/${currentPipeline.path}`)}
                 style={{
                   background: "#C17A47",
                   color: "#F9F7F2",

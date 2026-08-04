@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isDisposableEmail } from "@/lib/disposable-domains";
 import { canonicalizeEmail } from "@/lib/email";
+import { clientIp } from "@/lib/client-ip";
 import { logger } from "@/lib/logger";
 
 // POST /api/auth/magic-link — gated server-side OTP sender.
@@ -13,22 +14,6 @@ import { logger } from "@/lib/logger";
 // (no user enumeration, no distinguishing block reasons).
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-function clientIp(req: NextRequest): string {
-  // Platform-set header first (Vercel writes x-real-ip itself, clients can't).
-  // The LEFTMOST x-forwarded-for entry is the attacker-controlled position —
-  // anything the client sends lands there and proxies append after it. Take
-  // the rightmost, the hop closest to our edge.
-  const real = req.headers.get("x-real-ip");
-  if (real?.trim()) return real.trim();
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) {
-    const parts = fwd.split(",");
-    const last = parts[parts.length - 1].trim();
-    if (last) return last;
-  }
-  return "unknown";
-}
 
 export async function POST(req: NextRequest) {
   let email = "";

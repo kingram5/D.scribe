@@ -5,6 +5,7 @@ import { HUMANIZER_RULES } from "@/lib/prompts/generate";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -129,9 +130,9 @@ Return ONLY valid JSON.`,
     { maxTokens: 8192, model: "quality" }
   );
 
-  // Meter the call — coherence was gate-only (checked balance > 0 but never deducted).
-  await recordInkUsage(user.id, project_id, "coherence", "quality", usage);
-
+  // Parse BEFORE billing (edge-test 19/50): a max_tokens-truncated response
+  // used to deduct Ink at this point and THEN fail the parse — the user paid
+  // and received an error.
   let transitions: {
     transition_index: number;
     revised_closing: string | null;
@@ -141,9 +142,23 @@ Return ONLY valid JSON.`,
 
   try {
     transitions = JSON.parse(cleanJson(raw));
-  } catch {
-    return NextResponse.json({ error: "Failed to parse coherence results" }, { status: 500 });
+  } catch (parseErr) {
+    logger.error("coherence: unparseable model output — not billed", {
+      route: "/api/coherence", userId: user.id, error: parseErr,
+    });
+    return NextResponse.json(
+      { error: "The model returned an incomplete result — please try again" },
+      { status: 502 }
+    );
   }
+
+  // Bill once the output is known-good. The result ships either way — a
+  // billing failure is a loud log line, not a customer-facing error.
+  await recordInkUsage(user.id, project_id, "coherence", "quality", usage).catch((billErr) =>
+    logger.error("coherence: Ink settle failed after successful parse", {
+      route: "/api/coherence", userId: user.id, error: billErr,
+    })
+  );
 
   // Apply the transitions
   let appliedCount = 0;

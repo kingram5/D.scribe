@@ -1,4 +1,5 @@
 import { createAuthClient } from "@/lib/supabase-auth";
+import { isAllowedEmail } from "@/lib/allowlist";
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
@@ -40,6 +41,15 @@ export async function requireAuth(): Promise<
     return {
       user: null,
       error: NextResponse.json({ error: "Email not confirmed" }, { status: 403 }),
+    };
+  }
+  // Re-check the beta allowlist on every request, not just at login — a
+  // session minted before an email was removed from ALLOWED_EMAILS used to
+  // keep working until it expired naturally. Cheap: it's an env-var lookup.
+  if (!isAllowedEmail(user.email)) {
+    return {
+      user: null,
+      error: NextResponse.json({ error: "Access revoked" }, { status: 403 }),
     };
   }
   return { user, error: null };

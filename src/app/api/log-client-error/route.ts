@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/client-ip";
 
 // POST /api/log-client-error — receives unhandled errors from client-side error boundaries.
 // Deliberately unauthenticated; it only writes to the server log + Sentry.
 //
 // Hardened: rejects oversized payloads and truncates every field so this open endpoint
-// can't be used to flood logs/Sentry or inject newlines into log lines.
-// TODO(launch): add a per-IP rate limit (needs the limiter keyed by IP for anon routes).
+// can't be used to flood logs/Sentry or inject newlines into log lines, plus a
+// per-IP rate limit (the limiter always took arbitrary keys — the TODO that sat
+// here claimed a blocker that magic-link had already disproven).
+
+const RATE_LIMIT_PER_HOUR = 30; // a real error storm from one client is bursty but small
 
 const MAX_BODY_BYTES = 16 * 1024; // error reports are tiny; anything larger is abuse
 const MAX_MESSAGE = 1000;
@@ -25,6 +30,13 @@ function oneLine(v: unknown, max: number): string | undefined {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate-limit first — an unauthenticated endpoint that forwards to Sentry
+    // is otherwise a free lever on the Sentry quota and the Axiom bill.
+    const { allowed } = await checkRateLimit(`ip:${clientIp(req)}`, "log-client-error", RATE_LIMIT_PER_HOUR, 60 * 60_000);
+    if (!allowed) {
+      return NextResponse.json({ ok: false }, { status: 429 });
+    }
+
     // Reject before buffering when Content-Length is present...
     const declared = Number(req.headers.get("content-length") ?? 0);
     if (declared > MAX_BODY_BYTES) {

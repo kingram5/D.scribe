@@ -182,7 +182,7 @@ describe("sentry-scrub: what still leaves the building", () => {
 
   // DEFECT 43 — the extra filter tests `typeof v === "string"`. Manuscript content
   // wrapped in an object or array sails straight through the content guard.
-  it.fails("drops long content nested in an object in extra", () => {
+  it("drops long content nested in an object in extra", () => {
     const ev = scrubEvent({ extra: { payload: { content: "x".repeat(5000) } } });
     expect(ev.extra?.payload).toBeUndefined();
   });
@@ -190,7 +190,7 @@ describe("sentry-scrub: what still leaves the building", () => {
   // DEFECT 44 — request.data and cookies are removed but the URL is not, and
   // /auth/confirm carries `token_hash`, a single-use auth credential, in its
   // query string. An error on that route ships the credential to Sentry.
-  it.fails("strips the query string from request.url", () => {
+  it("strips the query string from request.url", () => {
     const ev = scrubEvent({
       request: { url: "https://d-scribe.app/auth/confirm?token_hash=pkce_abc123&type=email" },
     } as Parameters<typeof scrubEvent>[0] & { request: { url: string } });
@@ -199,7 +199,7 @@ describe("sentry-scrub: what still leaves the building", () => {
 
   // DEFECT 45 — breadcrumbs are Sentry's other big leak channel (console calls,
   // fetch/XHR bodies) and scrubEvent never touches them.
-  it.fails("scrubs breadcrumbs", () => {
+  it("scrubs breadcrumbs", () => {
     const ev = scrubEvent({
       breadcrumbs: [{ category: "console", message: "chapter: " + "x".repeat(5000) }],
     } as unknown as Parameters<typeof scrubEvent>[0]);

@@ -63,6 +63,11 @@ export async function PATCH(
 
   const { chapterId } = await params;
   const { content } = await req.json();
+  // A missing or non-string body used to reach content.split() and 500 where
+  // a 400 belongs.
+  if (typeof content !== "string" || content.length === 0) {
+    return NextResponse.json({ error: "content (string) is required" }, { status: 400 });
+  }
   const supabase = createServerClient();
 
   // Verify the chapter's project belongs to this user
@@ -87,28 +92,41 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get current latest version (content included for the editorial-memory diff)
-  const { data: existing } = await supabase
-    .from("chapter_contents")
-    .select("version, content, generation_params")
-    .eq("chapter_id", chapterId)
-    .order("version", { ascending: false })
-    .limit(1);
-
-  const nextVersion = (existing?.[0]?.version || 0) + 1;
+  // Get the latest version and insert the next one. Two concurrent saves can
+  // read the same latest version — on a unique-constraint collision, re-read
+  // and retry instead of returning a 500 for a losing race.
   const wordCount = content.split(/\s+/).filter(Boolean).length;
 
-  const { data, error } = await supabase
-    .from("chapter_contents")
-    .insert({
-      chapter_id: chapterId,
-      content,
-      word_count: wordCount,
-      generation_params: { manual_edit: true },
-      version: nextVersion,
-    })
-    .select()
-    .single();
+  let existing: { version: number; content: string; generation_params: { manual_edit?: boolean } | null }[] | null = null;
+  let nextVersion = 1;
+  let data: Record<string, unknown> | null = null;
+  let error: { code?: string; message: string } | null = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: latest } = await supabase
+      .from("chapter_contents")
+      .select("version, content, generation_params")
+      .eq("chapter_id", chapterId)
+      .order("version", { ascending: false })
+      .limit(1);
+    existing = latest;
+    nextVersion = (latest?.[0]?.version || 0) + 1;
+
+    const res = await supabase
+      .from("chapter_contents")
+      .insert({
+        chapter_id: chapterId,
+        content,
+        word_count: wordCount,
+        generation_params: { manual_edit: true },
+        version: nextVersion,
+      })
+      .select()
+      .single();
+    data = res.data;
+    error = res.error;
+    if (!error || error.code !== "23505") break;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -13,6 +13,7 @@ import { requireAuth } from "@/lib/auth";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { MODELS } from "@/lib/claude-lite";
 
 // Full chapters can take 60-180s to stream from Claude. On the 60s cap the
 // Vercel function was killed before the save block ran, leaving blank chapters
@@ -183,16 +184,19 @@ export async function POST(req: NextRequest) {
     freedomInstruction,
   });
 
-  // Stream from Anthropic API
+  // Stream from Anthropic API. Abortable: when the client walks away we stop
+  // paying for tokens nobody will read (see the ReadableStream cancel below).
+  const upstreamAbort = new AbortController();
   const anthropicRes = await fetch(API_URL, {
     method: "POST",
+    signal: upstreamAbort.signal,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": process.env.ANTHROPIC_API_KEY!,
       "anthropic-version": API_VERSION,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: MODELS.quality,
       max_tokens: 8192,
       temperature,
       stream: true,
@@ -211,12 +215,24 @@ export async function POST(req: NextRequest) {
   const reader = anthropicRes.body!.getReader();
   const decoder = new TextDecoder();
 
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let usageSettled = false;
+  const settleUsage = () => {
+    if (usageSettled) return;
+    usageSettled = true;
+    if (inputTokens > 0 || outputTokens > 0) {
+      recordInkUsage(user.id, chapter.project_id, "generate", "quality", {
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+      }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/generate", userId: user.id, error: err }));
+    }
+  };
+
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = "";
       let fullContent = "";
-      let inputTokens = 0;
-      let outputTokens = 0;
 
       try {
         while (true) {
@@ -303,30 +319,37 @@ export async function POST(req: NextRequest) {
         }).eq("id", chapter.project_id);
 
         // Record ink usage
-        if (inputTokens > 0 || outputTokens > 0) {
-          recordInkUsage(user.id, chapter.project_id, "generate", "quality", {
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-          }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/generate", userId: user.id, error: err }));
-        }
+        settleUsage();
 
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, chapter_id, word_count: wordCount })}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
 
       } catch (err) {
+        // Bill whatever streamed before the failure — a dead client controller
+        // used to skip usage recording entirely, so an abandoned generation was
+        // fully paid to the vendor and never billed.
+        settleUsage();
         try { await supabase.from("chapters").update({ status: "outlined" }).eq("id", chapter_id); } catch {}
         const message = err instanceof Error ? err.message : "Generation failed";
         logger.error(message, { route: "/api/generate", userId: user.id, error: err, meta: { chapter_id } });
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`));
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch {
+          // Controller already dead (client gone) — nothing left to tell it.
+        }
       }
     },
     // Client disconnected mid-generation (tab closed, navigation away).
-    // Without this the chapter stayed "generating" forever and the UI blocked.
+    // Without this the chapter stayed "generating" forever, the upstream call
+    // kept generating tokens to completion at our expense, and the tokens that
+    // DID stream were never billed.
     async cancel() {
+      upstreamAbort.abort();
       try { await reader.cancel(); } catch {}
+      settleUsage();
       try { await supabase.from("chapters").update({ status: "outlined" }).eq("id", chapter_id); } catch {}
       logger.warn("generate stream cancelled by client", { route: "/api/generate", userId: user.id, meta: { chapter_id } });
     },

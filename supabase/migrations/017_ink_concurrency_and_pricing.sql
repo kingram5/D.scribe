@@ -188,7 +188,26 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- ── 5. Stripe event retry support ───────────────────────────────────────────
+-- ── 5. Atomic edit-counter bump (style memory) ──────────────────────────────
+-- The TS read-then-upsert lost increments when two saves landed together.
+create or replace function bump_edit_counter(
+  p_user_id uuid,
+  p_threshold integer
+) returns boolean as $$
+declare
+  v_count integer;
+begin
+  insert into user_style_memory (user_id, edits_since_distill, updated_at)
+  values (p_user_id, 1, now())
+  on conflict (user_id) do update
+    set edits_since_distill = user_style_memory.edits_since_distill + 1,
+        updated_at = now()
+  returning edits_since_distill into v_count;
+  return v_count >= p_threshold;
+end;
+$$ language plpgsql security definer;
+
+-- ── 6. Stripe event retry support ───────────────────────────────────────────
 alter table stripe_events add column if not exists processed boolean not null default false;
 -- Existing rows predate the flag and were handled under the old code path.
 update stripe_events set processed = true where processed = false;

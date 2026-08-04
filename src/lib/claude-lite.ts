@@ -15,7 +15,10 @@ export interface ClaudeUsage {
   output_tokens: number;
 }
 
-const MODELS: Record<ModelTier, string> = {
+// Single source of truth for tier → model. claude-stream.ts imports this —
+// the two clients once disagreed on what "quality" meant, so the same feature
+// ran on different models depending on which entry point served it.
+export const MODELS: Record<ModelTier, string> = {
   fast: "claude-haiku-4-5-20251001",
   quality: "claude-sonnet-4-6",
 };
@@ -55,8 +58,18 @@ export async function askClaudeLite(
   }
 
   const data = await res.json();
-  const block = data.content?.[0];
-  return block?.type === "text" ? block.text : "";
+  // The first block is not guaranteed to be text (e.g. a thinking block) —
+  // find the text rather than assuming position.
+  const block = Array.isArray(data.content) ? data.content.find((b: { type?: string }) => b?.type === "text") : undefined;
+  return block?.text ?? "";
+}
+
+/** Thrown when a JSON response was cut off mid-object (max_tokens truncation). */
+export class TruncatedJsonError extends Error {
+  constructor() {
+    super("Model response truncated mid-JSON (likely max_tokens) — retry with a larger budget");
+    this.name = "TruncatedJsonError";
+  }
 }
 
 /** Strip markdown fences from JSON responses and extract only the JSON portion */
@@ -69,7 +82,6 @@ export function cleanJsonLite(raw: string): string {
   // Extract just the JSON object/array, ignoring trailing commentary
   const start = s[0];
   if (start === "[" || start === "{") {
-    const close = start === "[" ? "]" : "}";
     let depth = 0;
     let inStr = false;
     let esc = false;
@@ -83,6 +95,10 @@ export function cleanJsonLite(raw: string): string {
       else if (c === "]" || c === "}") depth--;
       if (depth === 0) return s.slice(0, i + 1);
     }
+    // Depth never returned to zero: max_tokens cut the object mid-stream.
+    // Returning the broken string just moves the failure to JSON.parse with
+    // no signal of WHY — name it so callers can retry instead of billing a 500.
+    throw new TruncatedJsonError();
   }
   return s;
 }
@@ -116,9 +132,9 @@ export async function askClaudeWithUsage(
   }
 
   const data = await res.json();
-  const block = data.content?.[0];
+  const block = Array.isArray(data.content) ? data.content.find((b: { type?: string }) => b?.type === "text") : undefined;
   return {
-    text: block?.type === "text" ? block.text : "",
+    text: block?.text ?? "",
     usage: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
   };
 }

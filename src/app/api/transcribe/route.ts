@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { getDownloadUrl } from "@/lib/r2";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordFlatInkUsage, INK_PER_AUDIO_MINUTE } from "@/lib/ink";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const inkCheck = await checkInk(user.id);
+  // Cost-aware gate: without the operation argument this degraded to
+  // balance > 0, and Deepgram minutes were never billed at all.
+  const inkCheck = await checkInk(user.id, "transcribe");
   if (!inkCheck.allowed) {
     return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
   }
@@ -53,6 +55,15 @@ export async function POST(req: NextRequest) {
 
   if (!projectOwner) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // file_path is client-writable under the audio_uploads RLS policy, so a row
+  // inserted directly via PostgREST can name ANY object key and this route
+  // would presign a read for it. Server-written keys are always prefixed with
+  // the project id — enforce that shape so the row can only point inside the
+  // caller's own project.
+  if (typeof upload.file_path !== "string" || !upload.file_path.startsWith(`${upload.project_id}/`)) {
+    return NextResponse.json({ error: "Invalid audio reference" }, { status: 400 });
   }
 
   // Mark as transcribing
@@ -102,6 +113,19 @@ export async function POST(req: NextRequest) {
         duration_seconds: result.duration_seconds,
       })
       .eq("id", audio_upload_id);
+
+    // Bill the Deepgram minutes. The work is done and returned either way —
+    // a billing failure is a loud log line, not a customer-facing error.
+    const minutes = Math.max(1, Math.ceil((result.duration_seconds ?? 0) / 60));
+    await recordFlatInkUsage(user.id, upload.project_id, "transcribe", "deepgram", minutes * INK_PER_AUDIO_MINUTE).catch(
+      (billErr) =>
+        logger.error("transcribe: Ink settle failed after successful transcription", {
+          route: "/api/transcribe",
+          userId: user.id,
+          meta: { audio_upload_id, minutes },
+          error: billErr,
+        })
+    );
 
     return NextResponse.json(transcript, { status: 201 });
   } catch (err) {

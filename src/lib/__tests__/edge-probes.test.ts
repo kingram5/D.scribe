@@ -117,22 +117,25 @@ describe("chunker: boundary conditions", () => {
 });
 
 describe("claude clients: the two of them must agree on what a tier means", () => {
-  function modelMap(file: string): Record<string, string> {
-    const src = fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
-    const block = src.slice(src.indexOf("const MODELS"), src.indexOf("};", src.indexOf("const MODELS")));
-    return Object.fromEntries([...block.matchAll(/(\w+):\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]));
-  }
+  // FIXED (defect 49): the tiers once drifted apart because each client owned
+  // its own map. claude-lite.ts is now the single source of truth and
+  // claude-stream.ts imports it — agreement is structural, not coincidental.
+  // These probes fail if anyone reintroduces a second MODELS map.
+  const streamSrc = () => fs.readFileSync(path.resolve(__dirname, "..", "claude-stream.ts"), "utf8");
+  const liteSrc = () => fs.readFileSync(path.resolve(__dirname, "..", "claude-lite.ts"), "utf8");
 
-  it("both clients agree on the fast tier", () => {
-    expect(modelMap("claude-lite.ts").fast).toBe(modelMap("claude-stream.ts").fast);
+  it("claude-lite defines exactly one MODELS map with both tiers", () => {
+    const src = liteSrc();
+    const block = src.slice(src.indexOf("MODELS"), src.indexOf("};", src.indexOf("MODELS")));
+    const map = Object.fromEntries([...block.matchAll(/(\w+):\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]));
+    expect(map.fast).toBeTruthy();
+    expect(map.quality).toBeTruthy();
   });
 
-  // DEFECT 49 — claude-lite.ts says quality = "claude-sonnet-4-6"; claude-stream.ts
-  // says "claude-sonnet-4-20250514". Same logical tier, two different models, picked
-  // by which client a route happens to import. Different capability and different
-  // price, on a product that (finding 12) does not price by model at all.
-  it.fails("both clients agree on the quality tier", () => {
-    expect(modelMap("claude-lite.ts").quality).toBe(modelMap("claude-stream.ts").quality);
+  it("claude-stream imports the shared map and defines none of its own", () => {
+    const src = streamSrc();
+    expect(src).toMatch(/import\s*\{\s*MODELS\s*\}\s*from\s*["']\.\/claude-lite["']/);
+    expect(src.includes("const MODELS")).toBe(false);
   });
 });
 
@@ -298,7 +301,7 @@ describe("claude-stream: usage accounting on the streaming path", () => {
   // so every rewrite/chapter call bills its input as ZERO. The input is the whole
   // current chapter plus adjacent chapter tails plus style memory, i.e. usually
   // the larger half of the call.
-  it.fails("reports input tokens", async () => {
+  it("reports input tokens", async () => {
     expect((await captureUsage(5000, 900))?.input_tokens).toBe(5000);
   });
 });
@@ -325,7 +328,7 @@ describe("r2 presigned uploads: what the signature actually binds", () => {
   // sending a different Content-Type on the actual PUT. The allowlist is
   // advisory. Matters most if R2_PUBLIC_DOMAIN is ever set, which would turn the
   // bucket into a file host serving attacker-chosen content types on our domain.
-  it.fails("binds content-type, so the MIME allowlist is enforced", async () => {
+  it("binds content-type, so the MIME allowlist is enforced", async () => {
     expect(await signedHeaders()).toContain("content-type");
   });
 });
@@ -356,14 +359,14 @@ describe("sanitize-output: what it does to a real author's prose", () => {
   // DEFECT 26 — phrase replacement runs over the whole chapter with no awareness
   // of quotation marks, so it silently rewrites what a real person was quoted
   // saying. On a product whose pitch is "your voice, your book".
-  it.fails("leaves text inside quotation marks alone", () => {
+  it("leaves text inside quotation marks alone", () => {
     const input = 'He told me: "At the end of the day, we tried."';
     expect(sanitizeGenerated(input)).toBe(input);
   });
 
   // DEFECT 27 — em dash as an interruption is standard dialogue punctuation.
   // /\s*—\s*/g turns it into ", ".
-  it.fails("preserves an em dash used as a dialogue interruption", () => {
+  it("preserves an em dash used as a dialogue interruption", () => {
     expect(sanitizeGenerated('"I was going to—" she stopped.')).toContain("—");
   });
 
@@ -371,7 +374,7 @@ describe("sanitize-output: what it does to a real author's prose", () => {
   // leverage / robust are legitimate in literal use, and the linter weights them
   // down. sanitize-output.ts never consults that set and rewrites unconditionally,
   // so domain vocabulary is destroyed: "3x leverage" (a noun) becomes "3x use".
-  it.fails("does not rewrite domain vocabulary used literally", () => {
+  it("does not rewrite domain vocabulary used literally", () => {
     expect(sanitizeGenerated("The fund used 3x leverage.")).toContain("leverage");
   });
 });

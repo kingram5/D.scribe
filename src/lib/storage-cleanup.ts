@@ -20,9 +20,13 @@ export async function deleteAudioForProjects(projectIds: string[]): Promise<Audi
   if (projectIds.length === 0) return result;
   const supabase = createServerClient();
 
+  // NOTE: the R2 key lives in audio_uploads.file_path (there is no r2_key
+  // column). This function used to select "r2_key", swallow the resulting
+  // PostgREST error, and iterate an empty list — cleanup was a silent no-op
+  // from the day it was written.
   const { data: uploads, error } = await supabase
     .from("audio_uploads")
-    .select("r2_key")
+    .select("file_path")
     .in("project_id", projectIds);
   if (error) {
     // Can't enumerate the keys — the caller must not go on to delete the rows
@@ -31,15 +35,15 @@ export async function deleteAudioForProjects(projectIds: string[]): Promise<Audi
   }
 
   for (const u of uploads ?? []) {
-    if (!u.r2_key) continue;
+    if (!u.file_path) continue;
     result.attempted++;
     try {
-      await deleteFile(u.r2_key);
+      await deleteFile(u.file_path);
     } catch (err) {
       result.failed++;
-      result.failedKeys.push(u.r2_key);
+      result.failedKeys.push(u.file_path);
       logger.error("Failed to delete R2 audio file", {
-        meta: { r2_key: u.r2_key },
+        meta: { r2_key: u.file_path },
         error: err,
       });
     }

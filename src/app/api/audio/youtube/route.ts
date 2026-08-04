@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkInk } from "@/lib/ink";
+import { checkInk, recordFlatInkUsage, INK_PER_YOUTUBE_IMPORT } from "@/lib/ink";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 300;
 
@@ -81,7 +82,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const inkCheck = await checkInk(user.id);
+  // Cost-aware gate: without the operation argument this degraded to
+  // balance > 0, and Supadata videos were never billed at all.
+  const inkCheck = await checkInk(user.id, "youtube_import");
   if (!inkCheck.allowed) {
     return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
   }
@@ -166,6 +169,18 @@ export async function POST(req: NextRequest) {
       .from("audio_uploads")
       .update({ status: "transcribed" })
       .eq("id", upload.id);
+
+    // Bill the Supadata import. Work is done and returned either way — a
+    // billing failure is a loud log line, not a customer-facing error.
+    await recordFlatInkUsage(user.id, project_id, "youtube_import", "supadata", INK_PER_YOUTUBE_IMPORT).catch(
+      (billErr) =>
+        logger.error("youtube: Ink settle failed after successful import", {
+          route: "/api/audio/youtube",
+          userId: user.id,
+          meta: { upload_id: upload.id },
+          error: billErr,
+        })
+    );
 
     return NextResponse.json(
       { id: upload.id, transcribed: true, transcript_id: transcript.id },

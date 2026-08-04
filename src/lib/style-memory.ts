@@ -62,10 +62,26 @@ No markdown fencing.`;
   return prompt;
 }
 
+// Every string here is spliced into future system prompts on EVERY generate
+// and rewrite, forever. Cap entry LENGTH (not just count) so one pathological
+// distillation can't permanently bloat the user's prompts, and collapse
+// newlines so an entry can't fake its own prompt sections.
+const MEMORY_ENTRY_MAX_CHARS = 300;
+
+function cleanMemoryString(s: string): string {
+  return s.replace(/\s+/g, " ").trim().slice(0, MEMORY_ENTRY_MAX_CHARS);
+}
+
 function sanitizeMemory(raw: unknown): StyleMemory {
   const m = (raw ?? {}) as Partial<StyleMemory>;
   const strList = (v: unknown, cap: number): string[] =>
-    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, cap) : [];
+    Array.isArray(v)
+      ? v
+          .filter((x): x is string => typeof x === "string")
+          .map(cleanMemoryString)
+          .filter((x) => x.length > 0)
+          .slice(0, cap)
+      : [];
   return {
     avoid: strList(m.avoid, MEMORY_LIST_CAP),
     prefer: strList(m.prefer, MEMORY_LIST_CAP),
@@ -75,6 +91,8 @@ function sanitizeMemory(raw: unknown): StyleMemory {
             (s): s is { from: string; to: string } =>
               !!s && typeof s.from === "string" && typeof s.to === "string"
           )
+          .map((s) => ({ from: cleanMemoryString(s.from), to: cleanMemoryString(s.to) }))
+          .filter((s) => s.from.length > 0)
           .slice(0, MEMORY_LIST_CAP)
       : [],
     notes: strList(m.notes, 5),
@@ -125,6 +143,17 @@ export async function loadStyleMemory(userId: string): Promise<StyleMemory | nul
  */
 export async function bumpEditCounter(userId: string): Promise<boolean> {
   const supabase = createServerClient();
+
+  // Atomic increment via RPC — the old read-then-upsert lost increments when
+  // two saves landed together. Falls back to the racy path if the migration
+  // hasn't been applied yet (worst case: a delayed distill, as before).
+  const { data, error } = await supabase.rpc("bump_edit_counter", {
+    p_user_id: userId,
+    p_threshold: DISTILL_THRESHOLD,
+  });
+  if (!error) return data === true;
+
+  logger.warn("bump_edit_counter RPC unavailable — using non-atomic fallback", { userId });
   const { data: existing } = await supabase
     .from("user_style_memory")
     .select("edits_since_distill")
@@ -178,23 +207,35 @@ export async function distillStyleMemory(userId: string): Promise<StyleMemory | 
     maxTokens: 2048,
     temperature: 0.2,
   });
-  await recordInkUsage(userId, null, "style_distill", "fast", result.usage);
 
   let memory: StyleMemory;
   try {
     memory = sanitizeMemory(JSON.parse(cleanJsonLite(result.text)));
   } catch (err) {
     logger.error("Style memory distill: parse failed", { userId, error: err });
+    // Bill the attempt anyway — the vendor call happened.
+    await recordInkUsage(userId, null, "style_distill", "fast", result.usage).catch((billErr) =>
+      logger.error("Style memory distill: billing failed after parse failure", { userId, error: billErr })
+    );
     return null;
   }
 
-  await supabase.from("user_style_memory").upsert({
+  // Save FIRST, bill second. The old order threw the distillation away when
+  // the deduct failed — work we had already paid Anthropic for.
+  const { error: saveErr } = await supabase.from("user_style_memory").upsert({
     user_id: userId,
     memory,
     edits_since_distill: 0,
     distill_count: (memRow?.distill_count ?? 0) + 1,
     updated_at: new Date().toISOString(),
   });
+  if (saveErr) {
+    logger.error("Style memory distill: save failed", { userId, error: saveErr });
+  }
+
+  await recordInkUsage(userId, null, "style_distill", "fast", result.usage).catch((billErr) =>
+    logger.error("Style memory distill: billing failed after save", { userId, error: billErr })
+  );
 
   return memory;
 }

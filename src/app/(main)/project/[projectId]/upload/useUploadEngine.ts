@@ -4,10 +4,68 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 type InputMode = "file" | "youtube";
 
+// MediaRecorder container support differs per engine: iOS/iPadOS Safari
+// records audio/mp4 and supports NEITHER webm variant — a webm-only list
+// left the record button silently dead on every iPhone. First supported
+// candidate wins; the backend allowlist already accepts all of these.
+const RECORDER_MIME_CANDIDATES = [
+  "audio/mp4",
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+];
+
+function extForMime(mimeType: string): string {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("webm")) return "webm";
+  return "ogg";
+}
+
+// fetch() cannot report upload progress; only XHR exposes upload.onprogress.
+// A 30-90 minute talk over cellular is minutes of transfer — without progress
+// the screen reads as frozen and users kill the tab, losing the whole upload.
+function putWithProgress(
+  url: string,
+  file: File,
+  contentType: string,
+  onPercent: (pct: number) => void
+): Promise<{ ok: boolean; status: number }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.timeout = 30 * 60_000; // a stalled connection must not hang forever
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onPercent(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+    xhr.onerror = () => resolve({ ok: false, status: 0 });
+    xhr.ontimeout = () => resolve({ ok: false, status: 0 });
+    xhr.onabort = () => resolve({ ok: false, status: -1 });
+    xhr.send(file);
+  });
+}
+
+async function readServerError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    return body?.error || body?.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function useUploadEngine(projectId: string) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<Record<string, string>>({});
+  // Per-file transfer percentage (only meaningful while status is "uploading")
+  const [uploadPercent, setUploadPercent] = useState<Record<string, number>>({});
+  // Per-file server error messages — the server writes genuinely useful ones
+  // ("File too large…", "Unsupported file type…", "out_of_ink") and they used
+  // to die in a console that doesn't exist on a phone.
+  const [uploadError, setUploadError] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("file");
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -15,6 +73,7 @@ export function useUploadEngine(projectId: string) {
 
   // Recording state with real MediaRecorder
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingError, setRecordingError] = useState("");
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -30,6 +89,13 @@ export function useUploadEngine(projectId: string) {
     };
   }, []);
 
+  const releaseMicrophone = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
   const toggleRecording = useCallback(async () => {
     if (isRecording) {
       // Pause — stop the MediaRecorder and timer
@@ -43,14 +109,20 @@ export function useUploadEngine(projectId: string) {
       setIsRecording(false);
     } else {
       // Start recording
+      setRecordingError("");
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
         chunksRef.current = [];
 
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
+        const mimeType = RECORDER_MIME_CANDIDATES.find((c) => MediaRecorder.isTypeSupported(c));
+        if (!mimeType) {
+          // Never leave the mic open on a failure path — the OS shows its
+          // recording indicator while nothing records, which reads as spyware.
+          releaseMicrophone();
+          setRecordingError("This browser can't record audio. You can upload an audio file instead.");
+          return;
+        }
         const recorder = new MediaRecorder(stream, { mimeType });
 
         recorder.ondataavailable = (e) => {
@@ -64,17 +136,12 @@ export function useUploadEngine(projectId: string) {
           if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mimeType });
             const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-            const ext = mimeType.includes("webm") ? "webm" : "ogg";
-            const file = new File([blob], `recording-${timestamp}.${ext}`, {
+            const file = new File([blob], `recording-${timestamp}.${extForMime(mimeType)}`, {
               type: mimeType,
             });
             setFiles((prev) => [...prev, file]);
           }
-          // Stop all tracks
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
-            streamRef.current = null;
-          }
+          releaseMicrophone();
         };
 
         mediaRecorderRef.current = recorder;
@@ -85,10 +152,21 @@ export function useUploadEngine(projectId: string) {
           setSeconds((s) => s + 1);
         }, 1000);
       } catch (err) {
-        console.error("Microphone access denied:", err);
+        // Reaching here with a live stream means the RECORDER failed, not the
+        // permission (NotSupportedError on an unsupported container, etc.) —
+        // release the mic and tell the user the truth instead of logging
+        // "access denied" for something that was granted.
+        releaseMicrophone();
+        const denied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "SecurityError");
+        setRecordingError(
+          denied
+            ? "Microphone access was denied. Allow it in your browser settings to record."
+            : "Recording couldn't start on this browser. You can upload an audio file instead."
+        );
+        console.error("Recording failed to start:", err);
       }
     }
-  }, [isRecording]);
+  }, [isRecording, releaseMicrophone]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -125,9 +203,17 @@ export function useUploadEngine(projectId: string) {
 
     for (const file of files) {
       try {
-        // Step 1: Get presigned R2 URL
+        // Step 1: Get presigned R2 URL. Mobile browsers frequently report
+        // file.type as "" for picker files — fall back to octet-stream, which
+        // the server allowlist accepts.
         setProgress((p) => ({ ...p, [file.name]: "preparing" }));
+        setUploadError((p) => {
+          const next = { ...p };
+          delete next[file.name];
+          return next;
+        });
 
+        const declaredType = file.type || "application/octet-stream";
         const urlRes = await fetch("/api/audio/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -135,29 +221,45 @@ export function useUploadEngine(projectId: string) {
             project_id: projectId,
             file_name: file.name,
             file_size: file.size,
-            content_type: file.type,
+            content_type: declaredType,
           }),
         });
 
         if (!urlRes.ok) {
-          const err = await urlRes.json();
-          console.error("Upload URL error:", err);
+          const message = await readServerError(urlRes, "Couldn't prepare the upload");
+          setUploadError((p) => ({ ...p, [file.name]: message }));
           setProgress((p) => ({ ...p, [file.name]: "failed" }));
           continue;
         }
 
-        const { upload_url, upload_id } = await urlRes.json();
+        const { upload_url, upload_id, content_type: signedType } = await urlRes.json();
 
-        // Step 2: Upload directly to R2
+        // Step 2: Upload directly to R2 — XHR for progress, one automatic
+        // retry (tower handoffs and wifi→cellular transitions are the
+        // EXPECTED case on mobile, not the exception). The Content-Type must
+        // be exactly the value the server signed, never file.type.
         setProgress((p) => ({ ...p, [file.name]: "uploading" }));
+        setUploadPercent((p) => ({ ...p, [file.name]: 0 }));
 
-        const r2Res = await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+        const putOnce = () =>
+          putWithProgress(upload_url, file, signedType || declaredType, (pct) =>
+            setUploadPercent((p) => ({ ...p, [file.name]: pct }))
+          );
+
+        let r2Res = await putOnce();
+        if (!r2Res.ok) {
+          setUploadPercent((p) => ({ ...p, [file.name]: 0 }));
+          r2Res = await putOnce();
+        }
 
         if (!r2Res.ok) {
+          setUploadError((p) => ({
+            ...p,
+            [file.name]:
+              r2Res.status > 0
+                ? `Storage rejected the upload (HTTP ${r2Res.status})`
+                : "Connection dropped during upload — check your network and try again",
+          }));
           setProgress((p) => ({ ...p, [file.name]: "failed" }));
           continue;
         }
@@ -171,12 +273,17 @@ export function useUploadEngine(projectId: string) {
           body: JSON.stringify({ audio_upload_id: upload_id }),
         });
 
+        if (!txRes.ok) {
+          const message = await readServerError(txRes, "Transcription failed");
+          setUploadError((p) => ({ ...p, [file.name]: message }));
+        }
         setProgress((p) => ({
           ...p,
           [file.name]: txRes.ok ? "done" : "failed",
         }));
       } catch (err) {
         console.error("Upload error:", err);
+        setUploadError((p) => ({ ...p, [file.name]: "Something went wrong — try again" }));
         setProgress((p) => ({ ...p, [file.name]: "failed" }));
       }
     }
@@ -231,6 +338,8 @@ export function useUploadEngine(projectId: string) {
     files,
     uploading,
     progress,
+    uploadPercent,
+    uploadError,
     dragging,
     setDragging,
     inputMode,
@@ -242,6 +351,7 @@ export function useUploadEngine(projectId: string) {
 
     // Recording state
     isRecording,
+    recordingError,
     seconds,
     toggleRecording,
     stopRecording,

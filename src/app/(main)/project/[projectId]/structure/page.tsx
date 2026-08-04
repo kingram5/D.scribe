@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
@@ -39,7 +39,15 @@ export default function StructurePage() {
   const [audience, setAudience] = useState("General");
   const [translation, setTranslation] = useState("");
   const [saving, setSaving] = useState(false);
+  /* Drives the "Saved" indicator only. It used to gate the Next button, set
+     from the loaded chapter count — but that column is NOT NULL with a default
+     of 8, so the flag was already true on first render of every new project.
+     The gate therefore never fired, Next stayed a live link, and a changed
+     chapter count could be abandoned by navigating away, unwritten. */
   const [hasSaved, setHasSaved] = useState(false);
+  /* True once the user actually touches a control — distinguishes "8 because
+     they chose 8" from "8 because that's the column default". */
+  const dirtyRef = useRef(false);
 
   const SCRIPTURE_AUDIENCES = ["Christian Living", "Faith Community"];
   const TRANSLATIONS = ["KJV", "NIV", "ESV", "NLT", "NKJV", "NASB", "CSB", "The Message"];
@@ -71,28 +79,67 @@ export default function StructurePage() {
         if (p.target_words_per_chapter) setWordsPerChapter(p.target_words_per_chapter);
         if (p.audience) setAudience(p.audience);
         if (p.scripture_translation) setTranslation(p.scripture_translation);
-        if (p.num_chapters) setHasSaved(true);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [projectId]);
 
+  /** Write the four settings. Returns false on failure so callers can decide
+   *  whether it's safe to navigate. */
+  const saveSettings = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/project/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          num_chapters: numChapters,
+          target_words_per_chapter: wordsPerChapter,
+          audience,
+          scripture_translation: SCRIPTURE_AUDIENCES.includes(audience) ? (translation || null) : null,
+        }),
+      });
+      if (!res.ok) return false;
+      dirtyRef.current = false;
+      setHasSaved(true);
+      return true;
+    } catch {
+      return false;
+    }
+    // SCRIPTURE_AUDIENCES is a module-level constant in practice; the settings
+    // are the real dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, numChapters, wordsPerChapter, audience, translation]);
+
+  /* Auto-save settings shortly after any change. This is what actually closes
+     the bug: previously only the "Commence Mapping" button persisted, so
+     adjusting the chapter count and then leaving by ANY other route (footer
+     Next, a step dot, the back link) silently discarded it and analysis ran on
+     the stale value. */
+  useEffect(() => {
+    if (loading || !dirtyRef.current) return;
+    const t = setTimeout(() => { void saveSettings(); }, 500);
+    return () => clearTimeout(t);
+  }, [loading, saveSettings]);
+
+  /** Mark the form dirty — call from every control's change handler. */
+  function touch() {
+    dirtyRef.current = true;
+  }
+
   async function commenceMapping() {
     setSaving(true);
-    await fetch(`/api/project/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        num_chapters: numChapters,
-        target_words_per_chapter: wordsPerChapter,
-        audience,
-        scripture_translation: SCRIPTURE_AUDIENCES.includes(audience) ? (translation || null) : null,
-      }),
-    }).catch(() => {});
+    // Await the write before navigating so analysis can never read a stale
+    // chapter count, even if the debounce hasn't fired yet.
+    const ok = await saveSettings();
+    if (!ok) {
+      setSaving(false);
+      alert("Couldn't save your structure settings. Check your connection and try again.");
+      return;
+    }
 
     // After saving project settings, update existing chapters' target_word_count
-    const projectData = await fetch(`/api/project/${projectId}`).then(r => r.json());
-    const existingChapters = projectData.chapters || [];
+    const projectData = await fetch(`/api/project/${projectId}`).then(r => r.json()).catch(() => null);
+    const existingChapters = projectData?.chapters || [];
     if (existingChapters.length > 0) {
       await Promise.all(existingChapters.map((ch: { id: string }) =>
         fetch(`/api/project/${projectId}`, {
@@ -103,14 +150,13 @@ export default function StructurePage() {
       ));
     }
 
-    setHasSaved(true);
     setSaving(false);
     router.push(`/project/${projectId}/analysis`);
   }
 
   if (loading) {
     return (
-      <PageShell projectId={projectId} currentStep="structure" disableNextStep={!hasSaved}>
+      <PageShell projectId={projectId} currentStep="structure">
         <Spinner />
       </PageShell>
     );
@@ -122,8 +168,17 @@ export default function StructurePage() {
     totalWords < 50000 ? "short book" :
     totalWords < 80000 ? "standard book" : "long book";
 
+  /* The footer Next runs the same save-then-navigate as Commence Mapping. It
+     used to be a bare link, which made it the fastest way to lose a setting.
+     Nothing gates it now: every project has valid defaults, so there is no
+     "unconfigured" state to protect against, which is why the old gate keyed
+     off the column default and was therefore never actually on. */
   return (
-    <PageShell projectId={projectId} currentStep="structure" disableNextStep={!hasSaved}>
+    <PageShell
+      projectId={projectId}
+      currentStep="structure"
+      onNextClick={() => { void commenceMapping(); }}
+    >
       <style>{`
         @media (max-width: 768px) {
           .ds-structure-wrap { overflow-y: auto !important; padding: 16px !important; align-items: flex-start !important; }
@@ -226,7 +281,7 @@ export default function StructurePage() {
               }}>{numChapters}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button
-                  onClick={() => setNumChapters(Math.min(30, numChapters + 1))}
+                  onClick={() => { touch(); setNumChapters(Math.min(30, numChapters + 1)); }}
                   style={{
                     width: 40, height: 32,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -241,7 +296,7 @@ export default function StructurePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 ><ChevronUp /></button>
                 <button
-                  onClick={() => setNumChapters(Math.max(1, numChapters - 1))}
+                  onClick={() => { touch(); setNumChapters(Math.max(1, numChapters - 1)); }}
                   style={{
                     width: 40, height: 32,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -306,7 +361,7 @@ export default function StructurePage() {
               }}>{wordsPerChapter.toLocaleString()}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button
-                  onClick={() => setWordsPerChapter(Math.min(10000, wordsPerChapter + 250))}
+                  onClick={() => { touch(); setWordsPerChapter(Math.min(10000, wordsPerChapter + 250)); }}
                   style={{
                     width: 40, height: 32,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -321,7 +376,7 @@ export default function StructurePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 ><ChevronUp /></button>
                 <button
-                  onClick={() => setWordsPerChapter(Math.max(500, wordsPerChapter - 250))}
+                  onClick={() => { touch(); setWordsPerChapter(Math.max(500, wordsPerChapter - 250)); }}
                   style={{
                     width: 40, height: 32,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -373,7 +428,7 @@ export default function StructurePage() {
               {AUDIENCES.map((a) => (
                 <button
                   key={a}
-                  onClick={() => setAudience(a)}
+                  onClick={() => { touch(); setAudience(a); }}
                   style={{
                     padding: "8px 16px",
                     fontSize: 13,
@@ -428,7 +483,7 @@ export default function StructurePage() {
                 {TRANSLATIONS.map((t) => (
                   <button
                     key={t}
-                    onClick={() => setTranslation(t)}
+                    onClick={() => { touch(); setTranslation(t); }}
                     style={{
                       padding: "8px 16px",
                       fontSize: 13,
@@ -455,9 +510,24 @@ export default function StructurePage() {
             fontSize: 13,
             color: "var(--text-tertiary)",
             fontFamily: "var(--font-manrope), sans-serif",
-            marginBottom: 40,
+            marginBottom: 8,
           }}>
             ~{totalWords.toLocaleString()} words total ({bookSize})
+          </div>
+
+          {/* Autosave confirmation — settings persist on change now, so say so
+              rather than leaving the user to guess whether it took. */}
+          <div style={{
+            textAlign: "center",
+            fontSize: 12,
+            height: 18,
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-manrope), sans-serif",
+            marginBottom: 22,
+            opacity: hasSaved ? 1 : 0,
+            transition: "opacity 0.2s",
+          }}>
+            Settings saved
           </div>
 
           {/* Commence Mapping button */}

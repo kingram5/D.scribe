@@ -13,7 +13,7 @@ export function outlinePrompt(
     .map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`)
     .join("\n");
 
-  let prompt = `Create a ${numChapters}-chapter book outline from these key points.
+  let prompt = `Create a book outline with EXACTLY ${numChapters} chapters from these key points.
 
 Key Points:
 ${pointsList}
@@ -34,6 +34,7 @@ For each chapter, provide:
 - narrative_arc: How this chapter connects to the previous and next
 
 Guidelines:
+- CRITICAL: Return EXACTLY ${numChapters} chapters. Not ${numChapters - 1}, not ${numChapters + 1}. The author chose this number; group the key points to fit it.
 - CRITICAL: Each key point number must appear in exactly ONE chapter's key_point_ids array. Never repeat a key point number across multiple chapters.
 - Every key point must be assigned to some chapter — do not leave any unassigned.
 - Chapters should have roughly equal weight
@@ -41,9 +42,9 @@ Guidelines:
 - The first chapter should hook the reader
 - The last chapter should close with a call to action or reflection
 
-Return valid JSON array: [{title, summary, key_point_ids: number[], narrative_arc}]
+Return valid JSON array of EXACTLY ${numChapters} objects: [{title, summary, key_point_ids: number[], narrative_arc}]
 No markdown fencing.
-Double-check your output: ensure no key_point_id number appears in more than one chapter's array.`;
+Double-check your output before returning: count your chapters (must be ${numChapters}) and ensure no key_point_id number appears in more than one chapter's array.`;
 
   return prompt;
 }

@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { reconcileOutline, type DraftChapter } from "@/lib/outline-reconcile";
 
 // POST /api/outline — generate chapter outline from key points
 export async function POST(req: NextRequest) {
@@ -50,24 +51,67 @@ export async function POST(req: NextRequest) {
   const chapterCount = num_chapters || project.num_chapters || Math.max(3, Math.ceil(keyPoints.length / 3));
   const targetWordsPerChapter = project.target_words_per_chapter || 2500;
 
-  const { text: raw, usage } = await askClaudeWithUsage(
-    OUTLINE_SYSTEM,
-    outlinePrompt(
-      keyPoints.map((kp) => ({ title: kp.title, summary: kp.summary })),
-      chapterCount,
-      project.audience,
-      project.title,
-      project.voice_profile
-    ),
-    { temperature: 0.5 }
+  const basePrompt = outlinePrompt(
+    keyPoints.map((kp) => ({ title: kp.title, summary: kp.summary })),
+    chapterCount,
+    project.audience,
+    project.title,
+    project.voice_profile
   );
 
-  // Meter the call against Ink — outline was gate-only (checked balance > 0 but never deducted).
-  // TODO(phase1-#4): make checkInk cost-aware so this deduct can't throw "insufficient" post-work.
-  await recordInkUsage(user.id, project_id, "outline", "quality", usage);
+  const parseChapters = (raw: string): DraftChapter[] => {
+    const parsed = JSON.parse(cleanJson(raw));
+    if (!Array.isArray(parsed)) throw new Error("Outline was not a JSON array");
+    return parsed as DraftChapter[];
+  };
+
+  let totalUsage = { input_tokens: 0, output_tokens: 0 };
+  const addUsage = (u: { input_tokens: number; output_tokens: number }) => {
+    totalUsage = {
+      input_tokens: totalUsage.input_tokens + u.input_tokens,
+      output_tokens: totalUsage.output_tokens + u.output_tokens,
+    };
+  };
 
   try {
-    const chapters = JSON.parse(cleanJson(raw));
+    const first = await askClaudeWithUsage(OUTLINE_SYSTEM, basePrompt, { temperature: 0.5 });
+    addUsage(first.usage);
+    let chapters = parseChapters(first.text);
+
+    // One corrective retry when the model ignores the requested count. Cheaper
+    // and far better quality than mechanically reshaping a wrong-sized outline.
+    if (chapters.length !== chapterCount) {
+      logger.warn("Outline returned the wrong chapter count — retrying once", {
+        route: "/api/outline",
+        userId: user.id,
+        meta: { project_id, requested: chapterCount, received: chapters.length },
+      });
+      const retry = await askClaudeWithUsage(
+        OUTLINE_SYSTEM,
+        `${basePrompt}\n\nYour previous attempt returned ${chapters.length} chapters. That is wrong. Return EXACTLY ${chapterCount} chapters this time, still covering every key point exactly once.`,
+        { temperature: 0.3 }
+      );
+      addUsage(retry.usage);
+      try {
+        const retried = parseChapters(retry.text);
+        // Keep the retry only if it is no worse than the first attempt.
+        if (Math.abs(retried.length - chapterCount) < Math.abs(chapters.length - chapterCount)) {
+          chapters = retried;
+        }
+      } catch {
+        // Malformed retry — keep the first attempt and let reconcile fix it.
+      }
+    }
+
+    // Structural guarantee: exact count, every key point homed exactly once.
+    const { chapters: finalChapters, adjusted } = reconcileOutline(chapters, chapterCount, keyPoints.length);
+    if (adjusted) {
+      logger.warn("Outline reconciled to the requested shape", {
+        route: "/api/outline",
+        userId: user.id,
+        meta: { project_id, requested: chapterCount, final: finalChapters.length },
+      });
+    }
 
     // Delete existing chapters for this project
     await supabase.from("chapters").delete().eq("project_id", project_id);
@@ -76,28 +120,41 @@ export async function POST(req: NextRequest) {
     const { data: inserted, error } = await supabase
       .from("chapters")
       .insert(
-        chapters.map(
-          (
-            ch: { title: string; summary: string; key_point_ids: number[] },
-            i: number
-          ) => ({
-            project_id,
-            chapter_number: i + 1,
-            title: ch.title,
-            summary: ch.summary,
-            key_point_ids: ch.key_point_ids.map(
-              (idx: number) => keyPoints[idx - 1]?.id
-            ).filter(Boolean),
-            target_word_count: targetWordsPerChapter,
-            sort_order: i,
-          })
-        )
+        finalChapters.map((ch, i) => ({
+          project_id,
+          chapter_number: i + 1,
+          title: ch.title,
+          summary: ch.summary,
+          key_point_ids: ch.key_point_ids
+            .map((idx: number) => keyPoints[idx - 1]?.id)
+            .filter(Boolean),
+          target_word_count: targetWordsPerChapter,
+          sort_order: i,
+        }))
       )
       .select();
 
     if (error) throw error;
+
+    // Bill after the outline is known-good (parse-before-bill). Covers both the
+    // first attempt and the corrective retry. A settle failure is a loud log
+    // line, never a customer-facing error on work already delivered.
+    await recordInkUsage(user.id, project_id, "outline", "quality", totalUsage).catch((billErr) =>
+      logger.error("outline: Ink settle failed after successful generation", {
+        route: "/api/outline",
+        userId: user.id,
+        error: billErr,
+        meta: { project_id },
+      })
+    );
+
     return NextResponse.json(inserted);
   } catch (err) {
+    // The vendor calls happened even if parsing or insertion did not — bill for
+    // what was actually consumed rather than eating it.
+    if (totalUsage.input_tokens > 0 || totalUsage.output_tokens > 0) {
+      await recordInkUsage(user.id, project_id, "outline", "quality", totalUsage).catch(() => {});
+    }
     const message = err instanceof Error ? err.message : "Failed to parse outline";
     logger.error(message, {
       route: "/api/outline",

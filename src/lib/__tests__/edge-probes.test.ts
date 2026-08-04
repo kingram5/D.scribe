@@ -63,6 +63,34 @@ describe("transcript editing: the two text copies must stay in sync", () => {
   });
 });
 
+describe("structure settings: the chapter count must actually persist", () => {
+  // FIELD REPORT 2026-08-04 (Kyle): a NEW project set to 5 chapters generated 8
+  // chapter notes. `projects.num_chapters` has a NOT NULL default of 8, and the
+  // page ran `if (p.num_chapters) setHasSaved(true)` — true on first render of
+  // every project. That flag gated the footer Next button, so the gate was
+  // never on, Next was a bare link, and changing the stepper then clicking it
+  // discarded the change silently.
+  const structure = () =>
+    fs.readFileSync(
+      path.resolve(__dirname, "..", "..", "app", "(main)", "project", "[projectId]", "structure", "page.tsx"),
+      "utf8"
+    );
+
+  it("does not infer 'saved' from a value that has a column default", () => {
+    expect(structure()).not.toMatch(/if\s*\(p\.num_chapters\)\s*setHasSaved/);
+  });
+
+  it("the footer Next saves instead of navigating away bare", () => {
+    expect(structure()).toMatch(/onNextClick=/);
+  });
+
+  it("settings auto-persist on change, so any exit route keeps them", () => {
+    const src = structure();
+    expect(src).toMatch(/saveSettings/);
+    expect(src).toMatch(/dirtyRef/);
+  });
+});
+
 describe("disposable-domains: bypass surface", () => {
   it("blocks the plain domain", () => {
     expect(isDisposableEmail("bot@mailinator.com")).toBe(true);

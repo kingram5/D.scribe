@@ -63,6 +63,46 @@ describe("transcript editing: the two text copies must stay in sync", () => {
   });
 });
 
+describe("project dashboard: step graphics are real navigation", () => {
+  // Kyle 2026-08-04: the step graphics should be clickable. The timeline rows
+  // already had click handlers but were plain divs, so keyboard users,
+  // middle-click and open-in-new-tab all got nothing, and there was no hover
+  // feedback to suggest they did anything at all.
+  const dash = () =>
+    fs.readFileSync(
+      path.resolve(__dirname, "..", "..", "app", "(main)", "project", "[projectId]", "page.tsx"),
+      "utf8"
+    );
+
+  it("uses next/link for navigable steps rather than click-only handlers", () => {
+    const src = dash();
+    expect(src).toMatch(/from "next\/link"/);
+    // All three surfaces carry their marker class.
+    expect(src).toMatch(/ds-step-row/);
+    expect(src).toMatch(/ds-step-dot/);
+    expect(src).toMatch(/ds-step-stage/);
+  });
+
+  it("locked steps are gated by the shared navigability rule", () => {
+    const src = dash();
+    expect(src).toMatch(/isStepNavigable/);
+    // The pipeline definition is imported, not duplicated inline.
+    expect(src).toMatch(/from "@\/lib\/pipeline-step"/);
+    expect(src).not.toMatch(/const PIPELINE\s*=/);
+  });
+
+  it("every clickable step graphic carries an accessible label", () => {
+    const src = dash();
+    const labels = [...src.matchAll(/aria-label=\{`Go to [^`]*`\}/g)];
+    // Timeline row, progress dot, and the animation stage.
+    expect(labels.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps a visible focus ring on each interactive surface", () => {
+    expect(dash()).toMatch(/:focus-visible/);
+  });
+});
+
 describe("structure settings: the chapter count must actually persist", () => {
   // FIELD REPORT 2026-08-04 (Kyle): a NEW project set to 5 chapters generated 8
   // chapter notes. `projects.num_chapters` has a NOT NULL default of 8, and the

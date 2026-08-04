@@ -122,10 +122,10 @@ export default function TranscriptPage() {
   const [paraDraft, setParaDraft] = useState("");
 
   const active = transcripts[activeIdx] ?? null;
-  const merged = useMemo(
-    () => (active?.segments ? mergeSegments(active.segments) : []),
-    [active?.segments]
-  );
+  // Plain computation, not useMemo: an optional-chained dependency defeats the
+  // React Compiler ("existing memoization could not be preserved") and it
+  // auto-memoizes this anyway.
+  const merged = active?.segments ? mergeSegments(active.segments) : [];
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);

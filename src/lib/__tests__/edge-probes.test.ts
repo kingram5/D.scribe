@@ -25,6 +25,44 @@ import { sanitizeGenerated } from "../sanitize-output";
 import { scrubEvent } from "../../../sentry-scrub";
 import { cleanJsonLite, TruncatedJsonError } from "../claude-lite";
 
+describe("transcript editing: the two text copies must stay in sync", () => {
+  // FIELD REPORT 2026-08-04 (Kyle): deleting sentences and saving appeared to do
+  // nothing. The save worked — it wrote full_text — but the view renders
+  // `segments`, which the save never touched. Two copies of the text, one
+  // updated, and the screen showed the stale one while the AI pipeline
+  // (chunkTranscript(full_text)) silently used the edited one.
+  const page = () =>
+    fs.readFileSync(
+      path.resolve(__dirname, "..", "..", "app", "(main)", "project", "[projectId]", "transcript", "page.tsx"),
+      "utf8"
+    );
+
+  it("every transcript PATCH writes segments alongside full_text", () => {
+    const src = page();
+    // Each PATCH body naming full_text must also name segments.
+    const bodies = [...src.matchAll(/JSON\.stringify\(\{[\s\S]{0,400}?\}\)/g)].map((m) => m[0]);
+    const textWrites = bodies.filter((b) => b.includes("full_text"));
+    expect(textWrites.length).toBeGreaterThan(0);
+    for (const body of textWrites) {
+      expect(body).toContain("segments");
+    }
+  });
+
+  it("full_text is derived from segments, never typed in independently", () => {
+    expect(page()).toMatch(/function fullTextFromSegments/);
+    expect(page()).toMatch(/fullTextFromSegments\(nextSegments\)/);
+  });
+
+  it("merged paragraphs carry the segment range they came from", () => {
+    // Without fromIdx/toIdx an edited paragraph cannot be written back, which
+    // is what made the reading view effectively read-only.
+    const src = page();
+    expect(src).toMatch(/fromIdx/);
+    expect(src).toMatch(/toIdx/);
+    expect(src).toMatch(/segments\.slice\(para\.fromIdx, para\.toIdx \+ 1\)/);
+  });
+});
+
 describe("disposable-domains: bypass surface", () => {
   it("blocks the plain domain", () => {
     expect(isDisposableEmail("bot@mailinator.com")).toBe(true);

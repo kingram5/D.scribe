@@ -25,13 +25,33 @@ const P = {
 };
 
 /* ── merge consecutive same-speaker segments ────────────────────── */
+/** A rendered paragraph, plus the raw-segment range it was built from.
+ *  fromIdx/toIdx are what make an edit writable back into `segments` — without
+ *  them the view was read-only in practice: edits went to full_text while the
+ *  screen kept rendering the untouched segments. */
+interface MergedParagraph {
+  speaker: string;
+  text: string;
+  start: number;
+  end: number;
+  fromIdx: number;
+  toIdx: number;
+}
+
 /** Merge consecutive same-speaker segments into paragraphs.
  *  Break on: speaker change, ">>" markers, or every ~30 seconds to keep timestamps visible. */
-function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: string; start: number }[] {
+function mergeSegments(segments: TranscriptSegment[]): MergedParagraph[] {
   if (!segments?.length) return [];
   const BREAK_INTERVAL = 30; // seconds — create a new paragraph every ~30s
-  const merged: { speaker: string; text: string; start: number }[] = [];
-  let current = { speaker: segments[0].speaker, text: segments[0].text, start: segments[0].start };
+  const merged: MergedParagraph[] = [];
+  let current: MergedParagraph = {
+    speaker: segments[0].speaker,
+    text: segments[0].text,
+    start: segments[0].start,
+    end: segments[0].end,
+    fromIdx: 0,
+    toIdx: 0,
+  };
 
   for (let i = 1; i < segments.length; i++) {
     const seg = segments[i];
@@ -42,9 +62,18 @@ function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: 
 
     if (speakerChanged || hasLineBreak || timeBreak) {
       merged.push({ ...current });
-      current = { speaker: seg.speaker, text: seg.text.replace(/^>>\s*/, ""), start: seg.start };
+      current = {
+        speaker: seg.speaker,
+        text: seg.text.replace(/^>>\s*/, ""),
+        start: seg.start,
+        end: seg.end,
+        fromIdx: i,
+        toIdx: i,
+      };
     } else {
       current.text += " " + seg.text;
+      current.end = seg.end;
+      current.toIdx = i;
     }
   }
   merged.push(current);
@@ -53,6 +82,11 @@ function mergeSegments(segments: TranscriptSegment[]): { speaker: string; text: 
     ...m,
     text: m.text.replace(/\s*>>\s*/g, "\n"),
   }));
+}
+
+/** Rebuild full_text from segments so the two copies can never disagree. */
+function fullTextFromSegments(segments: TranscriptSegment[]): string {
+  return segments.map((s) => s.text.trim()).filter(Boolean).join(" ");
 }
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -83,9 +117,15 @@ export default function TranscriptPage() {
   const [fullEditMode, setFullEditMode] = useState(false);
   const [fullEditText, setFullEditText] = useState("");
   const [isTranscribing, setIsTranscribing] = useState(false);
+  /* Per-paragraph editing: index into `merged`, plus the working text. */
+  const [editingPara, setEditingPara] = useState<number | null>(null);
+  const [paraDraft, setParaDraft] = useState("");
 
   const active = transcripts[activeIdx] ?? null;
-  const merged = active?.segments ? mergeSegments(active.segments) : [];
+  const merged = useMemo(
+    () => (active?.segments ? mergeSegments(active.segments) : []),
+    [active?.segments]
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -127,22 +167,84 @@ export default function TranscriptPage() {
     }));
   }, [merged]);
 
-  async function saveFullEdit() {
+  /** PATCH segments + full_text + word_count together, then refresh from the server.
+   *  Both text copies are always written from the SAME segment array, so the
+   *  rendered view and the AI pipeline can never diverge again. */
+  async function persistSegments(nextSegments: TranscriptSegment[]) {
     if (!active) return;
-    setSaving(true);
-    const newWordCount = fullEditText.split(/\s+/).filter(Boolean).length;
+    const nextFullText = fullTextFromSegments(nextSegments);
     await fetch(`/api/project/${projectId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         transcript_id: active.id,
-        full_text: fullEditText,
-        word_count: newWordCount,
+        segments: nextSegments,
+        full_text: nextFullText,
+        word_count: nextFullText.split(/\s+/).filter(Boolean).length,
       }),
     });
-    const refreshed = await fetch(`/api/project/${projectId}`).then(r => r.json());
-    const updatedTranscripts = refreshed.transcripts || [];
-    setTranscripts(updatedTranscripts);
+    const refreshed = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+    setTranscripts(refreshed.transcripts || []);
+  }
+
+  /** Save one edited paragraph back into the segments it was rendered from.
+   *  A paragraph is a contiguous run of same-speaker segments, so the run
+   *  collapses to a single segment spanning the same time window: the timeline
+   *  stays honest at paragraph granularity, and only the edited paragraph
+   *  loses its finer word timings. Empty text deletes the paragraph. */
+  async function saveParagraph(paraIdx: number) {
+    if (!active) return;
+    const para = merged[paraIdx];
+    if (!para) return;
+
+    setSaving(true);
+    const segments = active.segments || [];
+    const trimmed = paraDraft.trim();
+    const group = segments.slice(para.fromIdx, para.toIdx + 1);
+
+    const replacement: TranscriptSegment[] = trimmed
+      ? [{
+          start: para.start,
+          end: para.end,
+          speaker: para.speaker,
+          text: trimmed,
+          // Word timings describe the ORIGINAL wording. Keep them only when the
+          // text came back unchanged; a stale map is worse than none.
+          ...(trimmed === para.text && group.length === 1 && group[0].words
+            ? { words: group[0].words }
+            : {}),
+        }]
+      : [];
+
+    const nextSegments = [
+      ...segments.slice(0, para.fromIdx),
+      ...replacement,
+      ...segments.slice(para.toIdx + 1),
+    ];
+
+    await persistSegments(nextSegments);
+    setEditingPara(null);
+    setParaDraft("");
+    setSaving(false);
+  }
+
+  /** Whole-transcript editor. Rewrites segments as a single block so the two
+   *  copies stay in sync (the old version wrote full_text only, which is why
+   *  edits appeared to do nothing). */
+  async function saveFullEdit() {
+    if (!active) return;
+    setSaving(true);
+    const segments = active.segments || [];
+    const trimmed = fullEditText.trim();
+    const nextSegments: TranscriptSegment[] = trimmed
+      ? [{
+          start: segments[0]?.start ?? 0,
+          end: segments[segments.length - 1]?.end ?? 0,
+          speaker: segments[0]?.speaker ?? "Speaker 0",
+          text: trimmed,
+        }]
+      : [];
+    await persistSegments(nextSegments);
     setFullEditMode(false);
     setSaving(false);
   }
@@ -639,6 +741,23 @@ export default function TranscriptPage() {
           {/* scrollable transcript area */}
           {fullEditMode ? (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "32px 48px", overflow: "auto" }}>
+              {merged.length > 1 && (
+                <p style={{
+                  margin: "0 0 12px",
+                  padding: "10px 14px",
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  fontFamily: P.sans,
+                  color: P.muted,
+                  background: "rgba(193,122,71,0.08)",
+                  border: "1px solid rgba(193,122,71,0.25)",
+                  borderRadius: 8,
+                }}>
+                  Editing the whole transcript here replaces the speaker labels and
+                  timestamps with a single block. To keep them, close this and click
+                  any paragraph to edit it on its own.
+                </p>
+              )}
               <textarea
                 value={fullEditText}
                 onChange={(e) => setFullEditText(e.target.value)}
@@ -816,31 +935,101 @@ export default function TranscriptPage() {
                           )}
                         </div>
 
-                        {/* text content */}
+                        {/* text content — click to edit THIS paragraph */}
                         <div style={{
                           flex: 1,
                           paddingBottom: 24,
                           minWidth: 0,
                         }}>
-                          <p
-                            onClick={() => { setFullEditText(active?.full_text || ""); setFullEditMode(true); }}
-                            style={{
-                              fontSize: "1.15rem",
-                              lineHeight: 1.8,
-                              color: P.text,
-                              margin: 0,
-                              cursor: "text",
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              transition: "background 0.15s",
-                              whiteSpace: "pre-wrap",
-                              fontFamily: P.serif,
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = P.inputBg)}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                          >
-                            {para.text}
-                          </p>
+                          {editingPara === i ? (
+                            <div>
+                              <textarea
+                                value={paraDraft}
+                                onChange={(e) => setParaDraft(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") { setEditingPara(null); setParaDraft(""); }
+                                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveParagraph(i);
+                                }}
+                                rows={Math.max(3, Math.ceil(paraDraft.length / 80))}
+                                style={{
+                                  width: "100%",
+                                  fontSize: "1.15rem",
+                                  lineHeight: 1.8,
+                                  color: P.text,
+                                  fontFamily: P.serif,
+                                  background: P.inputBg,
+                                  border: `1px solid ${P.accent}`,
+                                  borderRadius: 6,
+                                  padding: "8px 10px",
+                                  outline: "none",
+                                  resize: "vertical",
+                                  boxSizing: "border-box",
+                                }}
+                              />
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                                <button
+                                  onClick={() => saveParagraph(i)}
+                                  disabled={saving}
+                                  style={{
+                                    padding: "8px 18px",
+                                    minHeight: 44,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    fontFamily: P.sans,
+                                    background: P.accent,
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 8,
+                                    cursor: saving ? "not-allowed" : "pointer",
+                                  }}
+                                >
+                                  {saving ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  onClick={() => { setEditingPara(null); setParaDraft(""); }}
+                                  disabled={saving}
+                                  style={{
+                                    padding: "8px 18px",
+                                    minHeight: 44,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    fontFamily: P.sans,
+                                    background: "transparent",
+                                    color: P.muted,
+                                    border: `1px solid ${P.border}`,
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <span style={{ fontSize: 11, color: P.light, fontFamily: P.sans }}>
+                                  Clear the text to delete this paragraph
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p
+                              onClick={() => { setEditingPara(i); setParaDraft(para.text); }}
+                              style={{
+                                fontSize: "1.15rem",
+                                lineHeight: 1.8,
+                                color: P.text,
+                                margin: 0,
+                                cursor: "text",
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                transition: "background 0.15s",
+                                whiteSpace: "pre-wrap",
+                                fontFamily: P.serif,
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = P.inputBg)}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                            >
+                              {para.text}
+                            </p>
+                          )}
                         </div>
                       </div>
                       </div>

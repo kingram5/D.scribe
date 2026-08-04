@@ -46,6 +46,9 @@ export const SOFT_TELLS = new Set([
   "comprehensive",
   "robust",
   "seamless",
+  // Noun use ("3x leverage") is legitimate domain vocabulary; only the verb is
+  // a tell. Soft so the sanitizer leaves it alone and the linter just flags it.
+  "leverage",
 ]);
 
 /**

@@ -12,12 +12,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // We expose a factory so each test can configure the returned row.
 // ---------------------------------------------------------------------------
 
-const mockSingle = vi.fn();
-const mockInsertSelect = vi.fn();
-const mockInsert = vi.fn(() => ({ select: () => ({ single: mockInsertSelect }) }));
-const mockSelect = vi.fn(() => ({ eq: () => ({ single: mockSingle }) }));
-const mockFrom = vi.fn(() => ({ select: mockSelect, insert: mockInsert }));
-const mockClient = { from: mockFrom };
+const mockRpc = vi.fn();
+const mockGetUserById = vi.fn(() => Promise.resolve({ data: { user: { email: "test@example.com" } } }));
+const mockClient = { rpc: mockRpc, auth: { admin: { getUserById: mockGetUserById } } };
 
 vi.mock("@/lib/supabase", () => ({
   createServerClient: vi.fn(() => mockClient),
@@ -30,9 +27,9 @@ import { estimateInkCost, checkInk } from "@/lib/ink";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Seed the mock so ensureBalance returns a pre-existing row. */
+/** Seed the mock so ensureBalance (the ensure_ink_balance RPC) returns a row. */
 function seedBalance(ink_balance: number, tier = "free", lifetime_used = 0) {
-  mockSingle.mockResolvedValue({ data: { ink_balance, tier, lifetime_used }, error: null });
+  mockRpc.mockResolvedValue({ data: [{ ink_balance, tier, lifetime_used }], error: null });
 }
 
 // ---------------------------------------------------------------------------

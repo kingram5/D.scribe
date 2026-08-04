@@ -16,8 +16,20 @@ import { createServerClient } from "@/lib/supabase";
 
 const _local = new Map<string, { count: number; expires: number }>();
 
+// Entries were only ever overwritten on key recurrence — a long-lived instance
+// accumulated one entry per unique key forever. Sweep expired entries once the
+// map gets large.
+const LOCAL_SWEEP_THRESHOLD = 5_000;
+
+function evictExpired(now: number): void {
+  for (const [k, v] of _local) {
+    if (v.expires <= now) _local.delete(k);
+  }
+}
+
 function localCheck(key: string, limit: number, windowMs: number): { allowed: boolean; retryAfterMs: number } {
   const now = Date.now();
+  if (_local.size >= LOCAL_SWEEP_THRESHOLD) evictExpired(now);
   const entry = _local.get(key);
 
   if (!entry || entry.expires <= now) {
@@ -55,8 +67,14 @@ export async function checkRateLimit(
     if (error) throw error;
 
     const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row.allowed !== "boolean") {
+      // A healthy-but-empty response is not a connectivity problem — name it
+      // instead of letting the null deref masquerade as one in the catch.
+      console.warn("[rate-limit] check_rate_limit returned no row — falling back to in-memory limiter");
+      return localCheck(key, limit, windowMs);
+    }
     return {
-      allowed: row.allowed as boolean,
+      allowed: row.allowed,
       retryAfterMs: Number(row.retry_after_ms ?? 0),
     };
   } catch (err) {

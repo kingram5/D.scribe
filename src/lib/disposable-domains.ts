@@ -46,6 +46,14 @@ const DISPOSABLE_DOMAINS = new Set([
 ]);
 
 export function isDisposableEmail(email: string): boolean {
-  const domain = email.toLowerCase().split("@")[1];
-  return !!domain && DISPOSABLE_DOMAINS.has(domain);
+  const raw = email.toLowerCase().split("@")[1];
+  if (!raw) return false;
+  // Trailing dot is the same host, and providers like mailinator serve every
+  // subdomain into the same public inboxes — match on any registrable suffix.
+  const domain = raw.replace(/\.+$/, "");
+  const parts = domain.split(".");
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (DISPOSABLE_DOMAINS.has(parts.slice(i).join("."))) return true;
+  }
+  return false;
 }

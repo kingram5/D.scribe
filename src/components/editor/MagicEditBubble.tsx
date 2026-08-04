@@ -51,19 +51,32 @@ export default function MagicEditBubble({
     try {
       const coords = editor.view.coordsAtPos(selection.from);
       const editorRect = editor.view.dom.getBoundingClientRect();
+      // Clamp to the viewport: raw selection coords pushed the panel off the
+      // right edge of a phone and above the editor on first-line selections.
+      // On small viewports anchor BELOW the selection — iOS/Android draw
+      // their own selection callout (Copy/Look Up/Share) directly above it,
+      // and the OS chrome always wins that spot.
+      const BUBBLE_ESTIMATED_WIDTH = 320;
+      const anchorBelow = typeof window !== "undefined" && window.innerWidth < 768;
+      const rawTop = anchorBelow
+        ? coords.bottom - editorRect.top + 12
+        : coords.top - editorRect.top - 48;
+      const maxLeft = Math.max(8, editorRect.width - BUBBLE_ESTIMATED_WIDTH - 8);
       setPosition({
-        top: coords.top - editorRect.top - 48,
-        left: coords.left - editorRect.left,
+        top: Math.max(8, rawTop),
+        left: Math.min(Math.max(8, coords.left - editorRect.left), maxLeft),
       });
     } catch {
       if (!expanded) setPosition(null);
     }
   }, [editor, selection, expanded]);
 
-  // Close bubble when clicking outside of it
+  // Close bubble when clicking outside of it. pointerdown, not mousedown:
+  // synthesised mouse events on touch are delayed and suppressed entirely
+  // when the tap becomes a scroll, leaving the panel stuck over the text.
   useEffect(() => {
     if (!position) return;
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: PointerEvent) {
       if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
         setExpanded(false);
         setFeedback("");
@@ -72,8 +85,8 @@ export default function MagicEditBubble({
         lastSelectionRef.current = null;
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, [position]);
 
   // Use the stored selection for rendering and submission
@@ -260,7 +273,7 @@ export default function MagicEditBubble({
                 borderRadius: 8,
                 border: "1px solid rgba(193,122,71,0.2)",
                 background: "white",
-                fontSize: 13,
+                fontSize: 16,
                 fontFamily: "var(--font-manrope), sans-serif",
                 outline: "none",
                 color: "var(--text-primary)",

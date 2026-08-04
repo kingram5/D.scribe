@@ -331,7 +331,7 @@ export default function RightPanel({
               style={{
                 width: "100%",
                 padding: "10px 14px",
-                fontSize: 13,
+                fontSize: 16,
                 border: "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 8,
                 background: "rgba(255,255,255,0.6)",
@@ -354,7 +354,7 @@ export default function RightPanel({
                 style={{
                   width: "100%",
                   padding: "10px 14px",
-                  fontSize: 13,
+                  fontSize: 16,
                   border: "1px solid rgba(0,0,0,0.1)",
                   borderRadius: 8,
                   background: "rgba(255,255,255,0.6)",

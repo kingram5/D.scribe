@@ -44,8 +44,12 @@ export function ConsentBanner() {
     fontSize: 13.5,
     lineHeight: 1.5,
   };
+  // 44px minimum height (Apple HIG): this banner is the first interactive
+  // element every new mobile visitor touches — 40px buttons here were the
+  // hardest-to-hit controls on the page.
   const btn = (primary?: boolean): React.CSSProperties => ({
     padding: "9px 16px",
+    minHeight: 44,
     fontSize: 13,
     fontWeight: 600,
     borderRadius: 9,
@@ -62,7 +66,14 @@ export function ConsentBanner() {
           <p style={{ margin: "0 0 14px" }}>
             We use cookies and similar technologies to keep D.scribe working, improve
             performance, and — if you allow — measure marketing. See our{" "}
-            <a href="/legal/privacy" style={{ color: "#C17A47", textDecoration: "underline" }}>
+            <a
+              href="/legal/privacy"
+              // A legal-disclosure link should be the EASIEST thing to hit
+              // with a thumb, not the hardest — 18px tall was the worst
+              // target on the page. Inline-block + padding grows the tap
+              // area without moving the text.
+              style={{ color: "#C17A47", textDecoration: "underline", display: "inline-block", padding: "12px 4px", margin: "-12px -4px" }}
+            >
               Privacy Policy
             </a>
             .

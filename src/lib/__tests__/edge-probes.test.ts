@@ -16,13 +16,14 @@ import fs from "fs";
 import path from "path";
 import { describe, it, expect } from "vitest";
 import { isDisposableEmail } from "../disposable-domains";
+import { canonicalizeEmail } from "../email";
 import { chunkTranscript, extractExcerptsForChapter } from "../chunker";
 import { rateLimit } from "../rate-limit";
 import { TIER_INK } from "../stripe";
 import { estimateInkCost } from "../ink";
 import { sanitizeGenerated } from "../sanitize-output";
 import { scrubEvent } from "../../../sentry-scrub";
-import { cleanJsonLite } from "../claude-lite";
+import { cleanJsonLite, TruncatedJsonError } from "../claude-lite";
 
 describe("disposable-domains: bypass surface", () => {
   it("blocks the plain domain", () => {
@@ -57,25 +58,23 @@ describe("rate-limit: keying assumptions the magic-link route depends on", () =>
     expect(results).toEqual([true, true, true, false, false]);
   });
 
-  // DEFECT 2 — /api/auth/magic-link keys on the raw address (`em:${email}`).
-  // Gmail ignores dots and everything after '+', so one inbox mints unlimited
-  // distinct keys and the 3-per-15-min cap becomes decorative.
-  it.fails("gives gmail dot/plus aliases ONE shared quota, not one each", () => {
+  // FIXED (defect 2): /api/auth/magic-link now keys the per-email limiter on
+  // canonicalizeEmail(email), so every dot/plus alias of one gmail inbox
+  // collapses to ONE limiter key and shares one quota. The limiter itself is
+  // key-agnostic — the guarantee lives in the canonicalisation, so that is
+  // what the probe pins.
+  it("gives gmail dot/plus aliases ONE shared quota, not one each", () => {
     const aliases = [
-      "em:trialfarm@gmail.com",
-      "em:trial.farm@gmail.com",
-      "em:t.r.i.a.l.f.a.r.m@gmail.com",
-      "em:trialfarm+1@gmail.com",
-      "em:trialfarm+2@gmail.com",
+      "trialfarm@gmail.com",
+      "trial.farm@gmail.com",
+      "t.r.i.a.l.f.a.r.m@gmail.com",
+      "trialfarm+1@gmail.com",
+      "trialfarm+2@gmail.com",
+      "TRIALFARM@GMAIL.COM",
+      "trialfarm@googlemail.com",
     ];
-    const limit = 3;
-    let allowedTotal = 0;
-    for (const key of aliases) {
-      for (let i = 0; i < limit; i++) {
-        if (rateLimit(key, limit, 15 * 60_000)) allowedTotal++;
-      }
-    }
-    expect(allowedTotal).toBeLessThanOrEqual(limit);
+    const keys = new Set(aliases.map((a) => canonicalizeEmail(a)));
+    expect([...keys]).toEqual(["trialfarm@gmail.com"]);
   });
 });
 
@@ -152,14 +151,14 @@ describe("cleanJsonLite: parsing model output", () => {
     expect(JSON.parse(cleanJsonLite('{"a":"} not the end {"}'))).toEqual({ a: "} not the end {" });
   });
 
-  // DEFECT 50 — when max_tokens truncates the response mid-object, depth never
-  // returns to 0 and the whole broken string is handed back for JSON.parse to
-  // choke on. Callers turn that into a 500 AFTER Ink has already been deducted
-  // (coherence/route.ts deducts at :133, parses at :143), so the user pays and
-  // receives an error. A truncation-aware return would let callers retry instead.
-  it.fails("signals truncated JSON rather than returning it as if it were valid", () => {
+  // FIXED (defect 50): when max_tokens truncates the response mid-object,
+  // cleanJsonLite now throws a NAMED TruncatedJsonError instead of returning
+  // the broken string for JSON.parse to choke on anonymously — so callers can
+  // retry with a larger budget, and (paired with parse-before-bill ordering)
+  // the user is no longer charged for an error.
+  it("signals truncated JSON rather than returning it as if it were valid", () => {
     const truncated = '{"chapters":[{"title":"One","summary":"a long sum';
-    expect(() => JSON.parse(cleanJsonLite(truncated))).not.toThrow();
+    expect(() => cleanJsonLite(truncated)).toThrow(TruncatedJsonError);
   });
 });
 
@@ -344,16 +343,27 @@ describe("sanitize-output: what it does to a real author's prose", () => {
   // leading-space tokens constantly. The client does `aiText += parsed.text`
   // with no reinsertion, so the user sees words fused together. Knock-on: the
   // TTS sentence splitter needs \s+ after [.!?] and stops firing.
-  it.fails("sanitising per-delta equals sanitising the assembled text", () => {
-    const deltas = ["Here", " are", " three", " ideas", " for", " today", "."];
-    const perDelta = deltas.map((d) => sanitizeGenerated(d)).join("");
-    expect(perDelta).toBe(sanitizeGenerated(deltas.join("")));
+  // FIXED (defect 24) — by removing the premise. Per-delta sanitisation can
+  // never equal whole-text sanitisation (the trailing trim eats the leading
+  // space of every delta), so the brainstorm route now streams deltas RAW and
+  // sanitizeGenerated is reserved for assembled chapter prose. This probe
+  // fails if per-delta sanitisation ever creeps back into the route.
+  it("brainstorm streams deltas raw — no per-delta sanitisation", () => {
+    const route = fs.readFileSync(
+      path.resolve(__dirname, "..", "..", "app", "api", "brainstorm", "route.ts"),
+      "utf8"
+    );
+    expect(route).not.toMatch(/sanitizeGenerated/);
   });
 
   // DEFECT 25 — /\bnavigate (?:the |this |these )/gi replaces with "work through ",
   // consuming the article and never restoring it. Saved straight to the chapter.
-  it.fails("does not eat the definite article after 'navigate'", () => {
-    expect(sanitizeGenerated("We navigate the rate cycle.")).toBe("We work through the rate cycle.");
+  // FIXED (defects 25 + 28 together): "navigate" is a SOFT_TELL — only a tell
+  // in figurative use — so the sanitizer now leaves it entirely alone rather
+  // than rewriting it (grammatically or otherwise). The linter still flags it
+  // at reduced weight; destructive rewriting of domain vocabulary is gone.
+  it("does not eat the definite article after 'navigate'", () => {
+    expect(sanitizeGenerated("We navigate the rate cycle.")).toBe("We navigate the rate cycle.");
   });
 
   // DEFECT 26 — phrase replacement runs over the whole chapter with no awareness
@@ -483,9 +493,13 @@ describe("extractExcerptsForChapter: LLM-supplied quote handling", () => {
 
   // DEFECT 5 — "".indexOf() returns 0 for any haystack, so an empty quote from
   // the model silently cites the first 200 characters of the transcript.
-  it.fails("ignores an empty-string quote instead of matching at index 0", () => {
-    const out = extractExcerptsForChapter(fullText, [[""]]);
-    expect(out).not.toContain("ALPHA");
+  // FIXED (defect 5): empty/whitespace quotes are filtered before matching, so
+  // an empty quote behaves exactly like no quotes at all — the honest fallback
+  // slice, not a fabricated "..."-wrapped excerpt citing the transcript's
+  // opening as if the model had quoted it.
+  it("ignores an empty-string quote instead of matching at index 0", () => {
+    expect(extractExcerptsForChapter(fullText, [[""]])).toBe(extractExcerptsForChapter(fullText, []));
+    expect(extractExcerptsForChapter(fullText, [["   "]])).toBe(extractExcerptsForChapter(fullText, []));
   });
 
   // DEFECT 5b — no dedup. The same quote cited by three key points ships three

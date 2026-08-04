@@ -298,8 +298,11 @@ function OutlineEditorInner({
     return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
   }, [columns]);
 
-  // Column drag handler
-  const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
+  // Column drag handler. Pointer Events, not mouse events: browsers synthesise
+  // mouse events for taps but NEVER for touch drags (a finger drag emits
+  // touchmove and scrolls the page), so a mousemove-driven drag simply does
+  // not exist on a phone — and this drag is how chapters get reordered.
+  const handleColumnPointerDown = useCallback((e: React.PointerEvent, chapterId: string) => {
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();
@@ -317,7 +320,7 @@ function OutlineEditorInner({
   }, []);
 
   // KP drag handler — starts independent KP drag
-  const handleKpMouseDown = useCallback((e: React.MouseEvent, kpId: string, chapterId: string, kpIndex: number, color: NoteColor) => {
+  const handleKpPointerDown = useCallback((e: React.PointerEvent, kpId: string, chapterId: string, kpIndex: number, color: NoteColor) => {
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();
@@ -345,7 +348,7 @@ function OutlineEditorInner({
   }, []);
 
   useEffect(() => {
-    function handleMouseMove(e: MouseEvent) {
+    function handleMouseMove(e: PointerEvent) {
       // Handle panning
       if (isPanningRef.current) {
         const dx = e.clientX - panStartRef.current.x;
@@ -468,11 +471,15 @@ function OutlineEditorInner({
       setRenderTick((t) => t + 1);
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handleMouseMove);
+    window.addEventListener("pointerup", handleMouseUp);
+    // pointercancel fires when the browser claims the gesture (scroll, zoom,
+    // OS interruption) — treat it as a drop or the drag wedges permanently.
+    window.addEventListener("pointercancel", handleMouseUp);
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handleMouseMove);
+      window.removeEventListener("pointerup", handleMouseUp);
+      window.removeEventListener("pointercancel", handleMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, findNearestColumn]);
@@ -505,7 +512,7 @@ function OutlineEditorInner({
   }
 
   // Canvas pan on background drag
-  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
     if (dragRef.current.noteId) return;
     if (kpDragRef.current) return;
     isPanningRef.current = true;
@@ -575,12 +582,15 @@ function OutlineEditorInner({
   return (
     <div
       ref={canvasRef}
-      onMouseDown={handleCanvasMouseDown}
+      onPointerDown={handleCanvasPointerDown}
       style={{
         position: "relative",
         width: "100%",
         height: "calc(100vh - 160px)",
         overflow: "hidden",
+        // The canvas pans and drags; without this the browser claims touch
+        // gestures for scrolling and pointermove never fires.
+        touchAction: "none",
         background: "#f4f1ea",
         backgroundImage: `
           linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
@@ -674,7 +684,7 @@ function OutlineEditorInner({
           return (
             <div
               key={col.chapterId}
-              onMouseDown={(e) => handleColumnMouseDown(e, col.chapterId)}
+              onPointerDown={(e) => handleColumnPointerDown(e, col.chapterId)}
               style={{
                 position: "absolute",
                 left: dragCol.x,
@@ -727,7 +737,7 @@ function OutlineEditorInner({
                   return (
                     <div
                       key={kpId}
-                      onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                      onPointerDown={(e) => handleKpPointerDown(e, kpId, col.chapterId, kpIndex, col.color)}
                       style={{
                         opacity: isBeingDragged ? 0.25 : 1,
                         transition: "opacity 0.15s",

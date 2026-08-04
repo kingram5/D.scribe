@@ -49,13 +49,13 @@ describe("mobile: viewport policy", () => {
   // text to scale to 200%. This is a manuscript reader/editor whose stated ICP
   // skews older. The usual motive (stop iOS zoom-on-input-focus) is better fixed
   // with font-size:16px on inputs.
-  it.fails("does not disable pinch-zoom", () => {
+  it("does not disable pinch-zoom", () => {
     expect(layout()).not.toMatch(/maximumScale/);
   });
 
   // DEFECT M3b — without viewportFit: "cover", env(safe-area-inset-*) resolves to
   // 0, so notch/home-indicator padding cannot work even once it is added.
-  it.fails("opts into the display cutout so safe-area insets resolve", () => {
+  it("opts into the display cutout so safe-area insets resolve", () => {
     expect(layout()).toMatch(/viewportFit:\s*["']cover["']/);
   });
 });
@@ -71,7 +71,7 @@ describe("mobile: viewport units", () => {
   // viewport height (address bar retracted). Every such container renders ~60-100px
   // taller than the visible area, producing phantom scroll on load. dvh is exactly
   // the fix, and the desktop rules above already use it.
-  it.fails("mobile block uses dvh, not the legacy vh", () => {
+  it("mobile block uses dvh, not the legacy vh", () => {
     expect(mobileBlock()).not.toMatch(/\d+vh/);
   });
 });
@@ -85,11 +85,11 @@ describe("mobile: safe area and the fixed footer nav", () => {
   // DEFECT M3 — safe-area-inset appears ZERO times in the whole of src/. A bar
   // bottomed at 0 with no inset padding sits inside the iPhone home-indicator
   // strip, and those are the Prev/Next controls the whole pipeline depends on.
-  it.fails("the fixed bottom nav pads for the home indicator", () => {
+  it("the fixed bottom nav pads for the home indicator", () => {
     expect(pageShell()).toMatch(/safe-area-inset-bottom/);
   });
 
-  it.fails("safe-area insets are used somewhere in the app", () => {
+  it("safe-area insets are used somewhere in the app", () => {
     const files: string[] = [];
     const walk = (d: string) => {
       for (const e of fs.readdirSync(d)) {
@@ -127,7 +127,7 @@ describe("mobile: pointer interaction must not be mouse-only", () => {
   // finger drag emits touchmove and the browser scrolls instead. OutlineEditor
   // uses this to drag-reorder chapters (REORDER_CHAPTERS), so chapter reordering
   // is unreachable on a phone. Pointer Events cover mouse, touch and pen.
-  it.fails("no component drives drag from mousemove/mouseup", () => {
+  it("no component drives drag from mousemove/mouseup", () => {
     const offenders = tsxFiles()
       .filter(([, src]) => /addEventListener\(\s*"(mousemove|mouseup)"/.test(src))
       .map(([f]) => f);
@@ -137,7 +137,7 @@ describe("mobile: pointer interaction must not be mouse-only", () => {
   // DEFECT M11 — outside-click dismissal bound to mousedown. Synthesised mouse
   // events on touch are unreliable (delayed, and suppressed when the tap becomes
   // a scroll or gesture), so these overlays can fail to dismiss on a phone.
-  it.fails("no overlay dismisses via a mousedown-only outside handler", () => {
+  it("no overlay dismisses via a mousedown-only outside handler", () => {
     const offenders = tsxFiles()
       .filter(([, src]) => /addEventListener\(\s*"mousedown"/.test(src))
       .map(([f]) => f);
@@ -151,7 +151,7 @@ describe("mobile: payload", () => {
   // decorative WebGL background on a LOADING screen, so the cost lands on the
   // exact screen the user is already waiting on. The same page file already uses
   // dynamic(..., { ssr: false }) for OutlineEditor two lines later.
-  it.fails("the three.js loading screen is code-split out of the page bundle", () => {
+  it("the three.js loading screen is code-split out of the page bundle", () => {
     const page = read("app/(main)/project/[projectId]/analysis/page.tsx");
     const staticImport = /^import AnalysisLoadingScreen from/m.test(page);
     expect(staticImport).toBe(false);
@@ -176,7 +176,7 @@ describe("mobile: overlay positioning within a narrow viewport", () => {
   // No Math.min/Math.max, no width measurement, no viewport bounds. On a 375px
   // phone a selection near the right edge renders the bubble off-screen, and a
   // selection on the first line gives a negative top.
-  it.fails("clamps the Magic Edit bubble inside the viewport", () => {
+  it("clamps the Magic Edit bubble inside the viewport", () => {
     const src = read("components/editor/MagicEditBubble.tsx");
     const block = /setPosition\(\{[\s\S]{0,220}?\}\)/.exec(src)?.[0] ?? "";
     expect(block).toMatch(/Math\.(min|max)/);
@@ -243,20 +243,27 @@ describe("mobile: in-browser recording on iOS", () => {
   // iPhone and iPad the constructor throws NotSupportedError, the catch logs
   // "Microphone access denied", and the user sees the mic prompt succeed and then
   // nothing at all. Recording is dead on iOS with no error shown.
-  it.fails("falls back to a format iOS Safari can actually record", () => {
+  // FIXED (M17): the recorder now picks the first supported entry from a
+  // candidate list that leads with audio/mp4 — the container iOS Safari
+  // actually records — instead of a webm-only ternary that left the record
+  // button silently dead on every iPhone.
+  it("falls back to a format iOS Safari can actually record", () => {
     const src = engine();
-    const ternary = /isTypeSupported\([\s\S]{0,160}?;/.exec(src)?.[0] ?? "";
-    expect(ternary).toMatch(/audio\/mp4|audio\/aac|audio\/mpeg/);
+    expect(src).toMatch(/RECORDER_MIME_CANDIDATES[\s\S]{0,200}audio\/mp4/);
+    expect(src).toMatch(/RECORDER_MIME_CANDIDATES\.find\(\(c\) => MediaRecorder\.isTypeSupported\(c\)\)/);
   });
 
   // DEFECT M18 — getUserMedia succeeds and assigns streamRef BEFORE the
   // MediaRecorder constructor can throw. The catch only console.errors; it never
   // stops the tracks. The mic stays open, so the phone keeps showing its
   // recording indicator while nothing is being recorded.
-  it.fails("releases the microphone when recorder setup fails", () => {
+  // FIXED (M18): every recorder failure path calls releaseMicrophone(), which
+  // stops all tracks — the phone no longer shows a live mic indicator while
+  // recording nothing.
+  it("releases the microphone when recorder setup fails", () => {
     const src = engine();
-    const catchBlock = /catch \(err\) \{[\s\S]{0,300}?\}/.exec(src)?.[0] ?? "";
-    expect(catchBlock).toMatch(/getTracks\(\)|\.stop\(\)/);
+    expect(src).toMatch(/releaseMicrophone[\s\S]{0,300}getTracks\(\)\.forEach\(\(t\) => t\.stop\(\)\)/);
+    expect(src).toMatch(/catch \(err\) \{[\s\S]{0,400}?releaseMicrophone\(\)/);
   });
 });
 
@@ -269,7 +276,7 @@ describe("mobile: iOS focus-zoom, the reason M1 exists", () => {
   //
   // ORDER OF OPERATIONS: bump the input to 16px FIRST, then remove maximumScale.
   // Removing maximumScale alone reintroduces the focus-zoom and someone reverts it.
-  it.fails("the login email input is at least 16px so iOS will not focus-zoom", () => {
+  it("the login email input is at least 16px so iOS will not focus-zoom", () => {
     const src = read("app/login/page.tsx");
     // NB: cannot match to the tag's closing '>' — arrow functions in onChange
     // contain '>' and truncate the match. Use a fixed window instead.
@@ -281,7 +288,11 @@ describe("mobile: iOS focus-zoom, the reason M1 exists", () => {
   // DEFECT M27 — this is systemic, not one file. 12 of 13 text-entry fields in
   // the app are under 16px, from an 11px project-title input upward. Only
   // BrainstormChat's textarea (16px) is safe.
-  it.fails("every text-entry field is at least 16px", () => {
+  // FIXED (M27): every explicit sub-16px text field was bumped to 16 so iOS
+  // stops focus-zooming. The scan window now ends at the tag's own "/>" —
+  // the old fixed 1400-char window read PAST the tag and attributed the next
+  // element's font size (a hint paragraph, a button) to the input.
+  it("every text-entry field is at least 16px", () => {
     const TWPX: Record<string, number> = { xs: 12, sm: 14, base: 16, lg: 18, xl: 20 };
     const offenders: string[] = [];
     const walk = (d: string) => {
@@ -293,7 +304,9 @@ describe("mobile: iOS focus-zoom, the reason M1 exists", () => {
         const re = /<(input|textarea)\b/g;
         let m;
         while ((m = re.exec(src))) {
-          const win = src.slice(m.index, m.index + 1400);
+          const rawWin = src.slice(m.index, m.index + 1400);
+          const tagEnd = rawWin.indexOf("/>");
+          const win = tagEnd === -1 ? rawWin : rawWin.slice(0, tagEnd);
           const type = m[1] === "textarea" ? "textarea" : (/type\s*=\s*["']?(\w+)/.exec(win)?.[1] ?? "text");
           if (["checkbox", "radio", "file", "range", "hidden", "submit", "button"].includes(type)) continue;
           const inline = /fontSize:\s*(\d+(?:\.\d+)?)/.exec(win);
@@ -315,7 +328,7 @@ describe("mobile: touch targets", () => {
   // DEFECT M4 — 13px text + 8px vertical padding is roughly a 32px tall target on
   // the app's most-pressed control. Apple HIG wants 44pt, Material 48dp. Clears
   // WCAG 2.5.8's 24px floor, so it is a guideline miss rather than a failure.
-  it.fails("step-nav links meet the 44px touch-target guideline", () => {
+  it("step-nav links meet the 44px touch-target guideline", () => {
     const rule = /nav\[aria-label="Step navigation"\] a \{([^}]*)\}/.exec(globalsCss())?.[1] ?? "";
     const padY = Number(/padding:\s*(\d+)px/.exec(rule)?.[1] ?? 0);
     const fontPx = Number(/font-size:\s*(\d+)px/.exec(rule)?.[1] ?? 0);

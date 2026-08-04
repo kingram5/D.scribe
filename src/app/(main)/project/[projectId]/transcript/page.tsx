@@ -183,13 +183,13 @@ export default function TranscriptPage() {
     let startY = 0;
     let startScrollTop = 0;
 
-    function onDown(e: MouseEvent) {
+    function onDown(e: PointerEvent) {
       dragging = true;
       startY = e.clientY;
       startScrollTop = el!.scrollTop;
       e.preventDefault();
     }
-    function onMove(e: MouseEvent) {
+    function onMove(e: PointerEvent) {
       if (!dragging) return;
       const dy = e.clientY - startY;
       const maxScroll = el!.scrollHeight - el!.clientHeight;
@@ -206,22 +206,27 @@ export default function TranscriptPage() {
     function onUp() { dragging = false; }
 
     // Mouse glow on hover (non-drag)
-    function onThumbMove(e: MouseEvent) {
+    function onThumbMove(e: PointerEvent) {
       if (dragging) return;
       const rect = thumb!.getBoundingClientRect();
       thumb!.style.setProperty("--mouse-x", String(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))));
       thumb!.style.setProperty("--mouse-y", String(Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))));
     }
 
-    thumb.addEventListener("mousedown", onDown);
-    thumb.addEventListener("mousemove", onThumbMove);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    // Pointer events so the custom scrollbar thumb also drags under touch;
+    // touch-action: none stops the browser claiming the gesture for scroll.
+    thumb.style.touchAction = "none";
+    thumb.addEventListener("pointerdown", onDown);
+    thumb.addEventListener("pointermove", onThumbMove);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      thumb.removeEventListener("mousedown", onDown);
-      thumb.removeEventListener("mousemove", onThumbMove);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      thumb.removeEventListener("pointerdown", onDown);
+      thumb.removeEventListener("pointermove", onThumbMove);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [merged]);
 
@@ -502,10 +507,12 @@ export default function TranscriptPage() {
                       }}>
                         <div style={{
                           height: "100%",
-                          width: `${s.pct}%`,
+                          width: "100%",
+                          transform: `scaleX(${s.pct / 100})`,
+                          transformOrigin: "left",
                           background: s.color,
                           borderRadius: 2,
-                          transition: "width 0.4s ease",
+                          transition: "transform 0.4s ease",
                         }} />
                       </div>
                     </div>

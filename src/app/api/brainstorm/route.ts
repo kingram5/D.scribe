@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
                 // Deltas stream RAW. Sanitizing per-delta trimmed the leading
                 // space off every token boundary — word-fused text client-side
                 // and killed the TTS sentence splitter with it. The system
-                // prompt is the tell-guard for chat; sanitizeGenerated is for
-                // assembled chapter prose only.
+                // prompt is the tell-guard for chat; the output sanitizer is
+                // for assembled chapter prose only.
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
               }
               if (event.type === "message_start" && event.message?.usage) {

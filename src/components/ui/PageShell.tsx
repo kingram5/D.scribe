@@ -139,11 +139,15 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             bottom: 0,
             left: 0,
             right: 0,
-            height: 80,
+            // Safe-area padding keeps the Prev/Next controls out of the iPhone
+            // home-indicator strip (requires viewportFit: "cover" in layout.tsx,
+            // without which the inset resolves to 0 and this is a no-op on
+            // desktop). Height grows by the same amount so content is unmoved.
+            height: "calc(80px + env(safe-area-inset-bottom))",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 48px",
+            padding: "0 48px env(safe-area-inset-bottom)",
             background: "var(--ds-card-bg, rgba(44,36,25,0.95))",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",

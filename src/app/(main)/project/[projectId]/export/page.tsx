@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
@@ -144,6 +144,42 @@ export default function ExportPage() {
   const [hardcoverState, setHardcoverState] = useState<
     "loading" | "idle" | "saving" | "joined"
   >("loading");
+
+  const [driveState, setDriveState] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [driveUrl, setDriveUrl] = useState("");
+
+  const exportToDrive = useCallback(async () => {
+    setDriveState("working");
+    try {
+      const res = await fetch("/api/export/drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      if (res.status === 428) {
+        // Not connected to Drive yet — run the OAuth flow; the callback bounces
+        // back here with ?drive=connected and the export resumes automatically.
+        window.location.href = `/api/google-drive/auth?project_id=${projectId}`;
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Drive export failed");
+      setDriveUrl(data.url);
+      setDriveState("done");
+      window.open(data.url, "_blank", "noopener");
+    } catch {
+      setDriveState("error");
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const drive = params.get("drive");
+    if (!drive) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    if (drive === "connected") exportToDrive();
+    else if (drive === "error") setDriveState("error");
+  }, [exportToDrive]);
 
   useEffect(() => {
     fetch("/api/feature-interest?feature=hardcover")
@@ -475,20 +511,33 @@ export default function ExportPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Export directly to Google Drive for real-time collaboration.
+                Lands in your Drive as a real Google Doc, ready to edit and share.
               </p>
+              {driveState === "error" && (
+                <p style={{ fontSize: 12, color: "#E07A5F", fontFamily: "var(--font-manrope), sans-serif", margin: "6px 0 0 0" }}>
+                  Drive export didn&apos;t go through. Try again.
+                </p>
+              )}
             </div>
             <button
-              disabled
+              onClick={() =>
+                driveState === "done" && driveUrl
+                  ? window.open(driveUrl, "_blank", "noopener")
+                  : exportToDrive()
+              }
+              disabled={driveState === "working"}
               style={{
                 ...btnBase,
-                opacity: 0.5,
-                cursor: "not-allowed",
+                opacity: driveState === "working" ? 0.6 : 1,
                 marginTop: "auto",
               }}
             >
               <ExternalLinkIcon />
-              Export to Drive
+              {driveState === "working"
+                ? "Sending to Drive..."
+                : driveState === "done"
+                  ? "Open in Google Docs"
+                  : "Export to Drive"}
             </button>
           </div>
         </div>

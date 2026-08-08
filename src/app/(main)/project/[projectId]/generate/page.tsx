@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { setGenerationBusy } from "@/lib/generation-guard";
 import { Chapter, Enrichment } from "@/types";
 import GlassCard from "@/components/ui/GlassCard";
 import PanelTitle from "@/components/ui/PanelTitle";
@@ -32,6 +33,16 @@ export default function GeneratePage() {
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
   const [regenRunning, setRegenRunning] = useState(false);
+
+  // Leave-guard: chapter generation is a long streaming run — losing the tab
+  // mid-stream wastes the Ink already spent. PageShell turns this into an info
+  // pill + a confirm on any step navigation; beforeunload covers tab close.
+  useEffect(() => {
+    setGenerationBusy(
+      genAllRunning || regenRunning ? "Chapters are still generating" : null
+    );
+    return () => setGenerationBusy(null);
+  }, [genAllRunning, regenRunning]);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);

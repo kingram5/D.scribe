@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { setGenerationBusy } from "@/lib/generation-guard";
 import { KeyPoint, VoiceProfile, Chapter, Audience } from "@/types";
 import dynamic from "next/dynamic";
 import GlassCard from "@/components/ui/GlassCard";
@@ -49,6 +50,13 @@ export default function AnalysisPage() {
   const [tab, setTab] = useState<"outline" | "voice">("outline");
   const [audience, setAudience] = useState<Audience>("General");
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Leave-guard: analysis is one long run (key points + voice profile + mind
+  // map); abandoning it mid-flight loses the whole pass. See generation-guard.
+  useEffect(() => {
+    setGenerationBusy(analyzing ? "Analysis is still running" : null);
+    return () => setGenerationBusy(null);
+  }, [analyzing]);
   const [analyzeStep, setAnalyzeStep] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   // Live data surfaced into the analysis loading screen as each stage completes

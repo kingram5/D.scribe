@@ -89,6 +89,26 @@ function GDocsPreview() {
   );
 }
 
+function HardcoverPreview() {
+  return (
+    <svg width="84" height="104" viewBox="0 0 84 104" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Back cover */}
+      <rect x="6" y="6" width="72" height="92" rx="5" fill="#8E5A34" />
+      {/* Page block */}
+      <rect x="12" y="10" width="64" height="84" rx="3" fill="var(--ds-input-bg)" />
+      {/* Front cover */}
+      <rect x="10" y="2" width="70" height="92" rx="5" fill="#C17A47" />
+      {/* Spine shade */}
+      <rect x="10" y="2" width="10" height="92" fill="#A9633A" />
+      {/* Cover title lines */}
+      <rect x="30" y="24" width="40" height="5" rx="2.5" fill="rgba(255,255,255,0.85)" />
+      <rect x="30" y="35" width="28" height="4" rx="2" fill="rgba(255,255,255,0.55)" />
+      {/* Author line */}
+      <rect x="30" y="78" width="24" height="3" rx="1.5" fill="rgba(255,255,255,0.45)" />
+    </svg>
+  );
+}
+
 /* ─── Icons ─── */
 
 function DownloadIcon() {
@@ -120,6 +140,32 @@ export default function ExportPage() {
   const [publishedAuthor, setPublishedAuthor] = useState("");
   const [publishSaving, setPublishSaving] = useState(false);
   const [publishSaved, setPublishSaved] = useState(false);
+
+  const [hardcoverState, setHardcoverState] = useState<
+    "loading" | "idle" | "saving" | "joined"
+  >("loading");
+
+  useEffect(() => {
+    fetch("/api/feature-interest?feature=hardcover")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setHardcoverState(data?.interested ? "joined" : "idle"))
+      .catch(() => setHardcoverState("idle"));
+  }, []);
+
+  async function notifyHardcover() {
+    if (hardcoverState !== "idle") return;
+    setHardcoverState("saving");
+    try {
+      const res = await fetch("/api/feature-interest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature: "hardcover", project_id: projectId }),
+      });
+      setHardcoverState(res.ok ? "joined" : "idle");
+    } catch {
+      setHardcoverState("idle");
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -276,6 +322,8 @@ export default function ExportPage() {
         <style>{`
           @media (max-width: 768px) {
             .ds-export-grid { grid-template-columns: 1fr !important; max-width: 400px !important; }
+            .ds-hardcover-teaser { flex-direction: column !important; text-align: center !important; }
+            .ds-hardcover-teaser .ds-hardcover-cta { width: 100% !important; }
           }
         `}</style>
         <div
@@ -461,6 +509,108 @@ export default function ExportPage() {
             Export complete — your manuscript is ready to share.
           </div>
         )}
+
+        {/* Hardcover coming-soon teaser */}
+        <div
+          className="ds-hardcover-teaser"
+          style={{
+            marginTop: 40,
+            maxWidth: 1000,
+            width: "100%",
+            background: "var(--ds-card-bg)",
+            border: "1px solid var(--ds-card-border)",
+            borderRadius: 24,
+            padding: 32,
+            display: "flex",
+            alignItems: "center",
+            gap: 28,
+            boxSizing: "border-box" as const,
+          }}
+        >
+          <HardcoverPreview />
+          <div style={{ flex: 1 }}>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "4px 12px",
+                borderRadius: 9999,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase" as const,
+                fontFamily: "var(--font-manrope), sans-serif",
+                background: "rgba(193,122,71,0.12)",
+                border: "1px solid rgba(193,122,71,0.3)",
+                color: "#C17A47",
+              }}
+            >
+              Coming soon
+            </span>
+            <h2
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                margin: "10px 0 0 0",
+              }}
+            >
+              Hardcover copies, printed and delivered
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text-secondary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                margin: "6px 0 0 0",
+                lineHeight: 1.5,
+              }}
+            >
+              Order bound copies of your finished book, shipped to your door or
+              sent as a gift. Tap notify and you&apos;ll be the first to know when
+              it opens.
+            </p>
+          </div>
+          <button
+            className="ds-hardcover-cta"
+            onClick={notifyHardcover}
+            disabled={hardcoverState !== "idle"}
+            style={{
+              padding: "14px 28px",
+              minHeight: 44,
+              borderRadius: 9999,
+              border:
+                hardcoverState === "joined"
+                  ? "1px solid rgba(52,211,153,0.3)"
+                  : "none",
+              background:
+                hardcoverState === "joined"
+                  ? "rgba(52,211,153,0.12)"
+                  : "#C17A47",
+              color:
+                hardcoverState === "joined" ? "#34d399" : "var(--text-primary)",
+              fontSize: 14,
+              fontWeight: 600,
+              fontFamily: "var(--font-manrope), sans-serif",
+              cursor:
+                hardcoverState === "idle"
+                  ? "pointer"
+                  : hardcoverState === "joined"
+                    ? "default"
+                    : "wait",
+              whiteSpace: "nowrap" as const,
+              flexShrink: 0,
+              transition: "opacity 0.2s",
+              opacity: hardcoverState === "loading" ? 0.6 : 1,
+            }}
+          >
+            {hardcoverState === "joined"
+              ? "You're on the list"
+              : hardcoverState === "saving"
+                ? "Saving..."
+                : "Notify me"}
+          </button>
+        </div>
 
         {/* Publish to Community */}
         <div

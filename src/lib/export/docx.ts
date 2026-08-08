@@ -1,4 +1,5 @@
 import { Chapter, ChapterContent } from "@/types";
+import { parseBlocks } from "./format-markers";
 
 interface ExportOptions {
   title: string;
@@ -63,13 +64,12 @@ export async function generateDOCX(options: ExportOptions): Promise<Buffer> {
       new Paragraph({ children: [new TextRun({ text: "" })] }) // spacer
     );
 
-    const paragraphs = chapter.content.content.split("\n\n");
-    for (const p of paragraphs) {
-      const trimmed = p.trim();
-      if (!trimmed) continue;
-
-      // Check for section breaks (lines starting with ---)
-      if (trimmed.startsWith("---")) {
+    // Chapter text carries formatting markers (headings, quotes, emphasis —
+    // src/lib/export/format-markers.ts). DOCX gets full fidelity: real heading
+    // sizes, indented italic quotes, and bold/italic runs.
+    const blocks = parseBlocks(chapter.content.content);
+    for (const block of blocks) {
+      if (block.kind === "break") {
         children.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -79,21 +79,58 @@ export async function generateDOCX(options: ExportOptions): Promise<Buffer> {
             ],
           })
         );
-        continue;
+      } else if (block.kind === "heading") {
+        children.push(
+          new Paragraph({
+            spacing: { before: 300, after: 200 },
+            children: block.runs.map(
+              (r) =>
+                new TextRun({
+                  text: r.text,
+                  bold: true,
+                  italics: r.italic,
+                  size: block.level === 2 ? 32 : 28,
+                  font: "Georgia",
+                })
+            ),
+          })
+        );
+      } else if (block.kind === "quote") {
+        for (const runs of block.paragraphs) {
+          children.push(
+            new Paragraph({
+              indent: { left: 720, right: 720 },
+              spacing: { after: 200 },
+              children: runs.map(
+                (r) =>
+                  new TextRun({
+                    text: r.text,
+                    bold: r.bold,
+                    italics: true,
+                    size: 24,
+                    font: "Georgia",
+                  })
+              ),
+            })
+          );
+        }
+      } else {
+        children.push(
+          new Paragraph({
+            spacing: { after: 200 },
+            children: block.runs.map(
+              (r) =>
+                new TextRun({
+                  text: r.text,
+                  bold: r.bold,
+                  italics: r.italic,
+                  size: 24,
+                  font: "Georgia",
+                })
+            ),
+          })
+        );
       }
-
-      children.push(
-        new Paragraph({
-          spacing: { after: 200 },
-          children: [
-            new TextRun({
-              text: trimmed,
-              size: 24,
-              font: "Georgia",
-            }),
-          ],
-        })
-      );
     }
   }
 

@@ -787,7 +787,42 @@ export default function EditorPage() {
               transition: "all 0.15s ease",
             }}
               title="Quote"
-              onClick={() => editorRef.current?.getEditor()?.chain().focus().toggleBlockquote().run()}
+              onClick={() => {
+                const editor = editorRef.current?.getEditor();
+                if (!editor) return;
+                const { state } = editor;
+                const { from, to, empty, $from, $to } = state.selection;
+                // Surgical quote: a selection inside ONE paragraph pulls just the
+                // highlighted text out into its own blockquote, leaving the rest
+                // of the paragraph in place. Cursor-only or multi-block
+                // selections keep the standard whole-block toggle.
+                if (empty || !$from.sameParent($to) || $from.parent.type.name !== "paragraph") {
+                  editor.chain().focus().toggleBlockquote().run();
+                  return;
+                }
+                const text = state.doc.textBetween(from, to, " ").replace(/\s+/g, " ").trim();
+                if (!text) {
+                  editor.chain().focus().toggleBlockquote().run();
+                  return;
+                }
+                const quoteNode = {
+                  type: "blockquote",
+                  content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+                };
+                editor.chain().focus().deleteRange({ from, to }).run();
+                const $pos = editor.state.selection.$from;
+                if ($pos.parent.content.size === 0) {
+                  // The selection WAS the whole paragraph: refill it and wrap.
+                  editor.chain().insertContent(text).selectParentNode().toggleBlockquote().run();
+                } else if ($pos.parentOffset === 0) {
+                  editor.chain().insertContentAt($pos.before(), quoteNode).run();
+                } else if ($pos.parentOffset === $pos.parent.content.size) {
+                  editor.chain().insertContentAt($pos.after(), quoteNode).run();
+                } else {
+                  editor.chain().splitBlock().run();
+                  editor.chain().insertContentAt(editor.state.selection.$from.before(), quoteNode).run();
+                }
+              }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             >

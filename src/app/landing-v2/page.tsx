@@ -995,6 +995,29 @@ export default function LandingV2() {
     }
   }, []);
 
+  // Perf: the hero is one viewport of a very long page. Once it scrolls away,
+  // stop paying for video decode and the waveform animation entirely.
+  useEffect(() => {
+    const video = videoRef.current;
+    const hero = video?.closest("section");
+    if (!video || !hero) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          hero.classList.remove("lv2-offscreen");
+          if (!mq.matches) video.play().catch(() => {});
+        } else {
+          hero.classList.add("lv2-offscreen");
+          video.pause();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(hero);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="landing-v2" style={{ background: "#2C2419", color: "#F9F7F2", minHeight: "100vh" }}>
 
@@ -1007,13 +1030,16 @@ export default function LandingV2() {
         background: scrolled ? "rgba(26,20,14,0.85)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 42, height: 42, background: "#C17A47", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 24, color: "#1A140E", marginLeft: 5 }}>D.</div>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#F9F7F2", letterSpacing: "0.05em" }}>scribe</span>
+        {/* Wordmark matches the actual logotype: Playfair Display italic 500, the
+            glowing D. from dscribe-d-logo — not a sans-serif box approximation. */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginLeft: 5 }}>
+          <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", fontWeight: 500, fontSize: 34, lineHeight: 1, color: "#F0A878", textShadow: "0 0 12px rgba(240,168,120,0.55), 0 0 28px rgba(193,122,71,0.35)" }}>D.</span>
+          <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", fontWeight: 500, fontSize: 23, color: "#F9F7F2", letterSpacing: "0.01em" }}>scribe</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
-          <Link href="/login" style={{ fontSize: 25, fontWeight: 600, color: "#F9F7F2", textDecoration: "none" }}>Sign in</Link>
-          <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 18 }}>→</span></Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <Link href="/pricing" className="lv2-nav-link">Pricing</Link>
+          <Link href="/login" className="lv2-nav-link">Sign in</Link>
+          <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 15 }}>→</span></Link>
         </div>
       </nav>
 
@@ -1029,6 +1055,7 @@ export default function LandingV2() {
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
           autoPlay loop muted playsInline preload="auto"
+          poster="/bg-video-poster.jpg"
           disablePictureInPicture disableRemotePlayback
         >
           <source src="/bg-video-desk.mp4" type="video/mp4" />
@@ -1039,6 +1066,7 @@ export default function LandingV2() {
 
         {/* Waveform Logo */}
         <div className="lv2-hero-waveform">
+          <div className="lv2-waveform-halo" />
           <CinematicMurmurWaveform />
         </div>
 
@@ -1056,8 +1084,8 @@ export default function LandingV2() {
         {/* Center Tagline */}
         <div className="lv2-hero-tagline">
           <div className="lv2-tagline-main" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", color: "#F9F7F2", fontWeight: 400, marginBottom: 12 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
-          <div className="lv2-tagline-sub" style={{ color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em" }}>Stop waiting to write your book...</div>
-          <div className="lv2-tagline-kick" style={{ fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
+          <div className="lv2-tagline-sub" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em" }}>Stop waiting to write your book...</div>
+          <div className="lv2-tagline-kick" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
         </div>
 
         {/* Left Side Author Content */}
@@ -1379,21 +1407,28 @@ export default function LandingV2() {
           transform-origin: 0 160px;
         }
 
-        /* Waveform — exact match to main landing cinematic-landing.css */
+        /* Waveform. PERF (2026-08-08): the old five stacked drop-shadows (kernels up
+           to 100px) plus contrast/saturate re-rasterized on every frame of the bar
+           animation, and each bar carried its OWN animated drop-shadow on top —
+           that filter storm ran at 60fps over the hero video and starved decode on
+           every machine. The letterform keeps two tight shadows; the wide halo is
+           now the static .lv2-waveform-halo layer behind it (zero per-frame cost). */
         .landing-v2 .murmur-svg {
           width: 100%;
           height: auto;
           max-height: 35vh;
           display: block;
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 1))
-                  drop-shadow(0 0 15px rgba(240, 168, 120, 0.85))
-                  drop-shadow(0 0 35px rgba(193, 122, 71, 0.7))
-                  drop-shadow(0 0 60px rgba(193, 122, 71, 0.5))
-                  drop-shadow(0 0 100px rgba(193, 122, 71, 0.3))
-                  contrast(1.3) saturate(1.2) brightness(1.1);
+          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 0.95))
+                  drop-shadow(0 0 18px rgba(240, 168, 120, 0.55));
           margin: 0 auto;
-          will-change: filter;
           transform: translateZ(0);
+        }
+        .landing-v2 .lv2-waveform-halo {
+          position: absolute;
+          inset: -35% -20%;
+          background: radial-gradient(ellipse 52% 48% at 50% 50%,
+            rgba(193, 122, 71, 0.40), rgba(193, 122, 71, 0.16) 45%, transparent 72%);
+          pointer-events: none;
         }
         .landing-v2 .bar {
           fill: #F0A878;
@@ -1402,23 +1437,34 @@ export default function LandingV2() {
           will-change: transform, opacity;
           animation: lv2-murmurWave var(--anim-duration, 2s) cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
           animation-delay: var(--anim-delay, 0s);
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 0.75)) brightness(1.15);
         }
+        .landing-v2 .lv2-hero.lv2-offscreen .bar { animation-play-state: paused; }
         @keyframes lv2-murmurWave {
           0%   { transform: scaleY(var(--scale-min, 0.2)); opacity: 0.95; }
           100% { transform: scaleY(var(--scale-max, 1));   opacity: 1; }
         }
 
-        /* Navbar Get Started pill */
+        /* Navbar links + Get Started pill — same serif voice as the logotype */
+        .lv2-nav-link {
+          font-family: var(--font-playfair), 'Playfair Display', serif;
+          font-size: 17px;
+          font-weight: 500;
+          color: #F9F7F2;
+          opacity: 0.85;
+          text-decoration: none;
+          transition: opacity 0.2s ease;
+        }
+        .lv2-nav-link:hover { opacity: 1; }
         .lv2-pill-cta {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 32px;
+          padding: 11px 26px;
           background: #C17A47;
           color: #1A140E;
-          font-size: 20px;
-          font-weight: 700;
+          font-family: var(--font-playfair), 'Playfair Display', serif;
+          font-size: 17px;
+          font-weight: 600;
           border-radius: 999px;
           cursor: pointer;
           text-decoration: none;
@@ -1463,7 +1509,7 @@ export default function LandingV2() {
            Desktop (≥1280px): layered art direction, absolutely positioned.
            Below 1280px: single-column flow — the layers stack, nothing collides. */
         .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
-        .lv2-hero-waveform { pointer-events: none; text-align: center; }
+        .lv2-hero-waveform { pointer-events: none; text-align: center; position: relative; }
         .lv2-hero-author h1 { font-size: clamp(44px, 6vw, 92px); }
         .lv2-author-copy { max-width: 42ch; margin: 12px 0 20px; }
         .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }

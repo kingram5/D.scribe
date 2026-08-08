@@ -279,15 +279,18 @@ export default function ExportPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="export">
+      {/* This page outgrew one viewport (export cards + hardcover teaser + publish
+          panel). center + overflow:hidden clipped BOTH ends with no scroll — the
+          "mangled" bug. Top-aligned and scrollable is the honest layout now. */}
       <div
         style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          padding: 24,
+          justifyContent: "flex-start",
+          overflowY: "auto",
+          padding: "40px 24px 48px",
         }}
       >
         {/* Header */}

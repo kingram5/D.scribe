@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
 import { generatePDF } from "@/lib/export/pdf";
 import { generateDOCX } from "@/lib/export/docx";
+import { loadProjectForExport } from "@/lib/export/load-chapters";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -30,55 +30,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "project_id required" }, { status: 400 });
   }
 
-  const supabase = createServerClient();
-
-  // Get project — verify ownership
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", project_id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!project) {
+  const loaded = await loadProjectForExport(project_id, user.id);
+  if (!loaded) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-
-  // Get chapters with latest content
-  const { data: chapters } = await supabase
-    .from("chapters")
-    .select("*")
-    .eq("project_id", project_id)
-    .order("sort_order");
-
-  if (!chapters?.length) {
-    return NextResponse.json({ error: "No chapters found" }, { status: 400 });
-  }
-
-  // Get latest content for each chapter — batched so a 60-chapter book fires
-  // at most 8 concurrent queries instead of 60 at once.
-  type ChapterWithContent = (typeof chapters)[number] & { content: { content: string; word_count: number } };
-  const chaptersWithContent: ChapterWithContent[] = [];
-  const BATCH = 8;
-  for (let i = 0; i < chapters.length; i += BATCH) {
-    const batch = await Promise.all(
-      chapters.slice(i, i + BATCH).map(async (ch) => {
-        const { data: content } = await supabase
-          .from("chapter_contents")
-          .select("*")
-          .eq("chapter_id", ch.id)
-          .order("version", { ascending: false })
-          .limit(1)
-          .single();
-
-        return { ...ch, content: content || { content: "", word_count: 0 } };
-      })
-    );
-    chaptersWithContent.push(...batch);
-  }
-
-  // Filter out chapters with no content
-  const ready = chaptersWithContent.filter((ch) => ch.content.content);
+  const { project, ready } = loaded;
   if (ready.length === 0) {
     return NextResponse.json(
       { error: "No generated content found" },

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GlassCard from "@/components/ui/GlassCard";
 import PageShell from "@/components/ui/PageShell";
+import { AUDIENCES } from "@/lib/audience-profiles";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -20,10 +21,12 @@ const inputStyle: React.CSSProperties = {
 export default function NewProject() {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [audience, setAudience] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!audience) return;
     setSubmitting(true);
 
     const res = await fetch("/api/project", {
@@ -32,7 +35,7 @@ export default function NewProject() {
       body: JSON.stringify({
         title: title || "Untitled Project",
         description: "",
-        audience: "General",
+        audience,
       }),
     });
 
@@ -66,18 +69,48 @@ export default function NewProject() {
                 style={inputStyle}
                 autoFocus
               />
-              <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6 }}>
-                Audience and details can be configured before analysis
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 }}>
+                Who is this book for?
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {AUDIENCES.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setAudience(a)}
+                    style={{
+                      padding: "8px 14px",
+                      minHeight: 36,
+                      borderRadius: 9999,
+                      fontSize: 13,
+                      fontFamily: "var(--font-manrope), sans-serif",
+                      fontWeight: audience === a ? 600 : 400,
+                      background: audience === a ? "#C17A47" : "transparent",
+                      color: audience === a ? "#fff" : "var(--text-secondary)",
+                      border: audience === a ? "1px solid #C17A47" : "1px solid var(--ds-input-border)",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
+                Your AI collaborator specializes the whole process around this reader, starting with the brainstorm. You can change it later on the Structure step.
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !audience}
               className="nodum-btn"
-              style={{ width: "100%", justifyContent: "center" }}
+              style={{ width: "100%", justifyContent: "center", opacity: submitting || !audience ? 0.5 : 1 }}
             >
-              {submitting ? "Creating..." : "Create & Upload Audio →"}
+              {submitting ? "Creating..." : audience ? "Create & Upload Audio →" : "Pick your reader to continue"}
             </button>
           </form>
         </GlassCard>

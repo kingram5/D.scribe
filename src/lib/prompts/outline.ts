@@ -1,4 +1,5 @@
 import { Audience, VoiceProfile, Chapter } from "@/types";
+import { outlineProfileBlock } from "@/lib/audience-profiles";
 
 export const OUTLINE_SYSTEM = `You are a book editor who transforms spoken content into well-structured book outlines. You understand narrative arc, chapter flow, and how to organize ideas for a reading audience.`;
 
@@ -45,6 +46,8 @@ Guidelines:
 Return valid JSON array of EXACTLY ${numChapters} objects: [{title, summary, key_point_ids: number[], narrative_arc}]
 No markdown fencing.
 Double-check your output before returning: count your chapters (must be ${numChapters}) and ensure no key_point_id number appears in more than one chapter's array.`;
+
+  prompt += outlineProfileBlock(audience);
 
   return prompt;
 }
@@ -93,6 +96,8 @@ Rules:
 Return valid JSON array: [{title, summary, key_point_ids: number[], narrative_arc}]
 No markdown fencing.
 Double-check: every number 1–${unassigned.length} must appear exactly once across all new chapters.`;
+
+  prompt += outlineProfileBlock(audience);
 
   return prompt;
 }

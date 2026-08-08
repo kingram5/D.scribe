@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { logger } from "@/lib/logger";
+import { createServerClient } from "@/lib/supabase";
+import { brainstormProfileBlock } from "@/lib/audience-profiles";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -57,13 +59,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages } = await req.json();
+  const { messages, project_id } = await req.json();
 
   if (!messages || !Array.isArray(messages)) {
     return new Response(JSON.stringify({ error: "messages array required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Audience specialization: load the project's audience server-side (never trust a
+  // client-supplied audience). Missing/foreign project_id degrades to the generic
+  // interviewer rather than erroring — older clients don't send project_id at all.
+  let verifiedProjectId: string | null = null;
+  let audienceBlock: string | null = null;
+  if (project_id) {
+    const supabase = createServerClient();
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id, audience, scripture_translation")
+      .eq("id", project_id)
+      .eq("user_id", user.id)
+      .single();
+    if (project) {
+      verifiedProjectId = project.id;
+      audienceBlock = brainstormProfileBlock(project.audience, project.scripture_translation);
+    }
   }
 
   // Build Claude messages from chat history
@@ -77,10 +98,11 @@ export async function POST(req: NextRequest) {
     (m: { role: string; content: string }) =>
       m.role === "user" && m.content.trim() !== "Start the brainstorm session."
   );
+  const baseSystem = audienceBlock ? SYSTEM_PROMPT + audienceBlock : SYSTEM_PROMPT;
   const dynamicSystem = firstRealUserMsg
-    ? SYSTEM_PROMPT +
+    ? baseSystem +
       `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
-    : SYSTEM_PROMPT;
+    : baseSystem;
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.
@@ -129,7 +151,7 @@ export async function POST(req: NextRequest) {
     if (usageSettled) return;
     usageSettled = true;
     if (inputTokens > 0 || outputTokens > 0) {
-      recordInkUsage(user.id, null, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
+      recordInkUsage(user.id, verifiedProjectId, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
     }
   };
 

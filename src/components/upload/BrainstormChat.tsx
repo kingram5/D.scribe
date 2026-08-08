@@ -197,7 +197,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: initMessages }),
+        body: JSON.stringify({ messages: initMessages, project_id: projectId }),
       });
 
       if (!res.ok) {
@@ -286,7 +286,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, project_id: projectId }),
       });
 
       if (!res.ok) {

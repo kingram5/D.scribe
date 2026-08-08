@@ -4,6 +4,7 @@ import { askClaudeWithUsage, cleanJson, type ClaudeUsage } from "@/lib/claude-li
 import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
+import { extractionProfileBlock } from "@/lib/audience-profiles";
 import {
   VOICE_PROFILE_SYSTEM,
   voiceProfilePrompt,
@@ -71,12 +72,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
   }
 
-  // Get existing project for voice profile
+  // Get existing project for voice profile + audience (extraction conditioning)
   const { data: project } = await supabase
     .from("projects")
-    .select("voice_profile")
+    .select("voice_profile, audience")
     .eq("id", project_id)
     .single();
+
+  const audiencePreserveBlock = extractionProfileBlock(project?.audience);
 
   // Step 1: Extract key points from chunked transcript
   const chunks = chunkTranscript(transcript.full_text);
@@ -91,12 +94,9 @@ export async function POST(req: NextRequest) {
 
   for (const chunk of chunks) {
     const previousTitles = allKeyPoints.map((kp) => kp.title);
-    const prompt = keyPointsPrompt(
-      chunk.text,
-      chunk.index,
-      chunk.totalChunks,
-      previousTitles
-    );
+    const prompt =
+      keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previousTitles) +
+      audiencePreserveBlock;
 
     const { text: raw, usage } = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
     kpInputTokens += usage.input_tokens;

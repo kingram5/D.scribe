@@ -35,24 +35,78 @@ interface TipTapEditorProps {
 }
 
 /** Convert plain text (with \n\n paragraph breaks) to simple HTML paragraphs */
-function textToHtml(text: string): string {
-  if (!text) return "<p></p>";
+function inlineHtml(text: string): string {
   return text
-    .split(/\n\n+/)
-    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-    .join("");
+    .replace(/\*\*\*([^*]+)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
 }
 
-/** Convert TipTap HTML back to plain text with \n\n paragraph breaks */
-function htmlToText(editor: Editor): string {
-  // getText() strips all formatting but joins paragraphs with \n\n
-  // We walk the doc manually for accurate paragraph separation
-  const doc = editor.state.doc;
-  const paragraphs: string[] = [];
-  doc.forEach((node) => {
-    paragraphs.push(node.textContent);
+// Stored chapter text carries lightweight formatting markers (see
+// src/lib/export/format-markers.ts): ## / ### headings, > quote paragraphs,
+// ** and * emphasis. The editor parses them into rich nodes here and
+// serializes them back in htmlToText, so formatting finally SURVIVES a
+// reload instead of being flattened to plain text.
+function textToHtml(text: string): string {
+  if (!text) return "<p></p>";
+  const out: string[] = [];
+  let quoteBuf: string[] = [];
+  const flushQuote = () => {
+    if (quoteBuf.length) {
+      out.push(`<blockquote>${quoteBuf.map((q) => `<p>${q}</p>`).join("")}</blockquote>`);
+      quoteBuf = [];
+    }
+  };
+  for (const raw of text.split(/\n\n+/)) {
+    const p = raw.trim();
+    if (!p) continue;
+    if (p.startsWith("> ")) {
+      quoteBuf.push(inlineHtml(p.replace(/^> ?/, "").replace(/\n> ?/g, "<br>").replace(/\n/g, "<br>")));
+      continue;
+    }
+    flushQuote();
+    if (p.startsWith("### ")) out.push(`<h3>${inlineHtml(p.slice(4))}</h3>`);
+    else if (p.startsWith("## ")) out.push(`<h2>${inlineHtml(p.slice(3))}</h2>`);
+    else out.push(`<p>${inlineHtml(p.replace(/\n/g, "<br>"))}</p>`);
+  }
+  flushQuote();
+  return out.join("") || "<p></p>";
+}
+
+type PMNode = Editor["state"]["doc"];
+
+function inlineMarkdown(block: PMNode): string {
+  let out = "";
+  block.descendants((n) => {
+    if (n.isText && n.text) {
+      let t = n.text;
+      const names = n.marks.map((m) => m.type.name);
+      const bold = names.includes("bold");
+      const italic = names.includes("italic");
+      if (bold && italic) t = `***${t}***`;
+      else if (bold) t = `**${t}**`;
+      else if (italic) t = `*${t}*`;
+      out += t;
+    }
+    return true;
   });
-  return paragraphs.join("\n\n");
+  return out;
+}
+
+/** Convert TipTap doc back to marked plain text with \n\n paragraph breaks */
+function htmlToText(editor: Editor): string {
+  const doc = editor.state.doc;
+  const parts: string[] = [];
+  doc.forEach((node) => {
+    if (node.type.name === "heading") {
+      parts.push(`${node.attrs.level === 3 ? "###" : "##"} ${inlineMarkdown(node as PMNode)}`);
+    } else if (node.type.name === "blockquote") {
+      node.forEach((child) => parts.push(`> ${inlineMarkdown(child as PMNode)}`));
+    } else {
+      parts.push(inlineMarkdown(node as PMNode));
+    }
+  });
+  return parts.join("\n\n");
 }
 
 const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(

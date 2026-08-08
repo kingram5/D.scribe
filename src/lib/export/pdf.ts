@@ -1,4 +1,5 @@
 import { Chapter, ChapterContent } from "@/types";
+import { parseBlocks, runsToPlainText } from "./format-markers";
 
 interface ExportOptions {
   title: string;
@@ -49,18 +50,47 @@ export async function generatePDF(options: ExportOptions): Promise<Buffer> {
     doc.setFontSize(fontSize);
     doc.setFont("helvetica", "normal");
 
-    const paragraphs = chapter.content.content.split("\n\n");
-    for (const paragraph of paragraphs) {
-      const lines = doc.splitTextToSize(paragraph.trim(), textWidth);
+    // Chapter text carries formatting markers (headings, quotes, emphasis —
+    // see src/lib/export/format-markers.ts). Render block structure; inline
+    // emphasis is flattened to plain text in the PDF (jsPDF has no per-run
+    // styling within wrapped lines) so no marker symbols ever leak into print.
+    const writeLines = (txt: string, x: number, width: number) => {
+      const lines = doc.splitTextToSize(txt, width);
       for (const line of lines) {
         if (y > doc.internal.pageSize.getHeight() - margin) {
           doc.addPage();
           y = margin;
         }
-        doc.text(line, margin, y);
+        doc.text(line, x, y);
         y += lineSpacing;
       }
-      y += lineSpacing * 0.5; // paragraph spacing
+    };
+    const blocks = parseBlocks(chapter.content.content);
+    for (const block of blocks) {
+      if (block.kind === "break") {
+        if (y > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+        doc.text("* * *", margin + textWidth / 2, y, { align: "center" });
+        y += lineSpacing * 1.5;
+      } else if (block.kind === "heading") {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(block.level === 2 ? 15 : 13);
+        y += lineSpacing * 0.5;
+        writeLines(runsToPlainText(block.runs), margin, textWidth);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(fontSize);
+        y += lineSpacing * 0.25;
+      } else if (block.kind === "quote") {
+        doc.setFont("helvetica", "italic");
+        for (const runs of block.paragraphs) {
+          writeLines(runsToPlainText(runs), margin + 24, textWidth - 48);
+          y += lineSpacing * 0.25;
+        }
+        doc.setFont("helvetica", "normal");
+        y += lineSpacing * 0.25;
+      } else {
+        writeLines(runsToPlainText(block.runs), margin, textWidth);
+        y += lineSpacing * 0.5; // paragraph spacing
+      }
     }
   }
 

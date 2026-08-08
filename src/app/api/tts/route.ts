@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
 import { getTtsLimit } from "@/lib/tts";
+import { stripFormatMarkers } from "@/lib/export/format-markers";
 import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireAuth();
   if (error) return error;
 
-  const { text } = await req.json();
-  if (!text?.trim()) return NextResponse.json({ error: "No text" }, { status: 400 });
+  const { text: rawText } = await req.json();
+  if (!rawText?.trim()) return NextResponse.json({ error: "No text" }, { status: 400 });
+  // Chapter text carries formatting markers (##, >, **); never speak them aloud,
+  // and never charge voice characters for them either.
+  const text = stripFormatMarkers(rawText);
 
   const supabase = createServerClient();
 

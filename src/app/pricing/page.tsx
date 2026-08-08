@@ -40,7 +40,10 @@ const TIERS = [
     price: 25,
     ink: 300,
     books: "~3 books",
-    voice: null, // no voice playback on Starter
+    // Voice allotment powers the SPOKEN brainstorm — the AI interviewer talking
+    // out loud while you answer by voice. Characters are its speech budget;
+    // ~750 chars ≈ 1 minute of it talking, so the tiers advertise minutes.
+    talk: null,
     tagline: "Test the waters — write your first book or two.",
     badge: null,
     highlight: false,
@@ -50,7 +53,7 @@ const TIERS = [
     price: 50,
     ink: 660,
     books: "~6 books",
-    voice: "20,000 voice chars / mo",
+    talk: { minutes: "≈30 min / month", chars: "20,000 voice characters" },
     tagline: "For the regular author who writes consistently.",
     badge: "Best Value",
     highlight: true,
@@ -60,7 +63,7 @@ const TIERS = [
     price: 100,
     ink: 1500,
     books: "~14 books",
-    voice: "60,000 voice chars / mo",
+    talk: { minutes: "≈80 min / month", chars: "60,000 voice characters" },
     tagline: "High-volume authors, coaches, and teams.",
     badge: null,
     highlight: false,
@@ -78,10 +81,9 @@ const INCLUDED_FEATURES = [
   "PDF / DOCX export",
 ];
 
-function valueNote(ink: number, price: number): string {
+function bonusInkPct(ink: number, price: number): number {
   const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
-  const pct = Math.round(((ink / price) / base - 1) * 100);
-  return pct <= 0 ? "Base Ink rate" : `${pct}% more Ink per $ than Starter`;
+  return Math.round(((ink / price) / base - 1) * 100);
 }
 
 export default function PricingPage() {
@@ -360,26 +362,68 @@ export default function PricingPage() {
               >
                 {tier.ink.toLocaleString()} Ink &middot; {tier.books}
               </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-geist-mono), monospace",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: tier.highlight ? "#C17A47" : "#A89F94",
-                  marginBottom: 6,
-                }}
-              >
-                {valueNote(tier.ink, tier.price)}
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-geist-mono), monospace",
-                  fontSize: 12,
-                  color: tier.voice ? "#7A7358" : "#5C5249",
-                  marginBottom: 20,
-                }}
-              >
-                {tier.voice ?? "No voice playback"}
+              {bonusInkPct(tier.ink, tier.price) > 0 ? (
+                <div
+                  style={{
+                    display: "inline-block",
+                    background: "#C17A47",
+                    color: "#fff",
+                    fontFamily: "var(--font-manrope), sans-serif",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    letterSpacing: "0.04em",
+                    padding: "7px 14px",
+                    borderRadius: 8,
+                    margin: "10px 0 14px",
+                  }}
+                >
+                  +{bonusInkPct(tier.ink, tier.price)}% MORE INK PER DOLLAR
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontFamily: "var(--font-manrope), sans-serif",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#7A7358",
+                    margin: "12px 0 16px",
+                  }}
+                >
+                  Base Ink rate
+                </div>
+              )}
+
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 20 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={tier.talk ? "#F0A878" : "#5C5249"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}>
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                </svg>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-manrope), sans-serif",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: tier.talk ? "#F0A878" : "#7A7358",
+                    }}
+                  >
+                    {tier.talk ? "Talk it out with your ghostwriter" : "Brainstorm by typing"}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                      fontSize: 12,
+                      color: "#A89F94",
+                      marginTop: 2,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {tier.talk
+                      ? `${tier.talk.minutes} of spoken AI brainstorming (${tier.talk.chars})`
+                      : "Spoken brainstorm sessions unlock on Pro and Premium"}
+                  </div>
+                </div>
               </div>
 
               <p

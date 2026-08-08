@@ -1,5 +1,8 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getGenerationBusy, subscribeGenerationBusy } from "@/lib/generation-guard";
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -24,6 +27,27 @@ const STEPS = [
 ];
 
 export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep, onNextClick, disabledStepKeys }: PageShellProps) {
+  const router = useRouter();
+  // Leave-guard: while a page reports generation in progress, every navigation
+  // out of the step gets an explicit confirm instead of silently losing work.
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pendingLeave, setPendingLeave] = useState<{ href?: string; action?: () => void } | null>(null);
+  useEffect(() => {
+    setBusy(getGenerationBusy());
+    return subscribeGenerationBusy(() => setBusy(getGenerationBusy()));
+  }, []);
+  function guardNav(e: React.MouseEvent, href: string) {
+    if (!busy) return;
+    e.preventDefault();
+    setPendingLeave({ href });
+  }
+  function confirmLeave() {
+    const p = pendingLeave;
+    setPendingLeave(null);
+    if (p?.href) router.push(p.href);
+    else if (p?.action) p.action();
+  }
+
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
   const currentLabel = currentIdx >= 0 ? STEPS[currentIdx].label : "";
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
@@ -47,6 +71,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link
               href={`/project/${projectId}`}
+              onClick={(e) => guardNav(e, `/project/${projectId}`)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -76,6 +101,31 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             }}>
               {currentLabel}
             </span>
+            {busy && (
+              <span
+                role="status"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 12px",
+                  borderRadius: 9999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: "rgba(193,122,71,0.12)",
+                  border: "1px solid rgba(193,122,71,0.35)",
+                  color: "#C17A47",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C17A47", animation: "ds-busy-pulse 1.2s ease-in-out infinite" }} />
+                {busy} — leaving this page will lose progress
+              </span>
+            )}
+            <style>{`
+              @keyframes ds-busy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+              @media (prefers-reduced-motion: reduce) { .ds-page-shell [role="status"] span { animation: none !important; } }
+            `}</style>
           </div>
 
           {/* Step indicator: "Step 2 of 6" with mini progress dots */}
@@ -102,6 +152,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     <Link
                       key={step.key}
                       href={`/project/${projectId}/${step.path}`}
+                      onClick={(e) => guardNav(e, `/project/${projectId}/${step.path}`)}
                       title={step.label}
                       style={dotStyle}
                     />
@@ -159,6 +210,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           {prevStep ? (
             <Link
               href={`/project/${projectId}/${prevStep.path}`}
+              onClick={(e) => guardNav(e, `/project/${projectId}/${prevStep.path}`)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -207,7 +259,10 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               </button>
             ) : onNextClick ? (
               <button
-                onClick={onNextClick}
+                onClick={() => {
+                  if (busy && onNextClick) setPendingLeave({ action: onNextClick });
+                  else onNextClick?.();
+                }}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
                   fontSize: 15, fontWeight: 600, color: "#F9F7F2",
@@ -225,6 +280,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             ) : (
               <Link
                 href={`/project/${projectId}/${nextStep.path}`}
+                onClick={(e) => guardNav(e, `/project/${projectId}/${nextStep.path}`)}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
                   fontSize: 15, fontWeight: 600, color: "#F9F7F2",
@@ -243,6 +299,67 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             <div />
           )}
         </nav>
+      )}
+
+      {/* Leave-while-generating confirm */}
+      {pendingLeave && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Generation in progress"
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(15,11,7,0.6)", backdropFilter: "blur(4px)",
+            padding: 24,
+          }}
+          onClick={() => setPendingLeave(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 420, width: "100%",
+              background: "var(--ds-card-bg, #2C2419)",
+              border: "1px solid var(--ds-card-border, rgba(249,247,242,0.15))",
+              borderRadius: 20, padding: 32,
+              fontFamily: "var(--font-manrope), sans-serif",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+            }}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary, #F9F7F2)", margin: 0 }}>
+              Still working on this step
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary, #A89F94)", margin: "10px 0 24px" }}>
+              {busy || "Generation is in progress"}. If you leave now, this progress will be lost and you&apos;ll have to start it again.
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button
+                onClick={() => setPendingLeave(null)}
+                autoFocus
+                style={{
+                  padding: "12px 24px", minHeight: 44, borderRadius: 9999, border: "none",
+                  background: "var(--ds-accent-400, #C17A47)", color: "#F9F7F2",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                }}
+              >
+                Stay on this page
+              </button>
+              <button
+                onClick={confirmLeave}
+                style={{
+                  padding: "12px 24px", minHeight: 44, borderRadius: 9999,
+                  border: "1px solid var(--ds-card-border, rgba(249,247,242,0.2))",
+                  background: "transparent", color: "var(--text-secondary, #A89F94)",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                }}
+              >
+                Continue and leave this page
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

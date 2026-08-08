@@ -19,6 +19,7 @@ export default function EditorPage() {
     (Chapter & { latest_content?: ChapterContent })[]
   >([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [textStylesOpen, setTextStylesOpen] = useState(false);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -665,11 +666,57 @@ export default function EditorPage() {
               transition: "all 0.15s ease",
             }}
               title="Text styles"
+              onClick={() => setTextStylesOpen((v) => !v)}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
             >
               A
             </button>
+            {textStylesOpen && (
+              <div style={{
+                position: "absolute",
+                left: "calc(100% + 10px)",
+                top: 4,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                padding: 6,
+                borderRadius: 12,
+                background: "var(--ds-card-bg)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid var(--ds-card-border)",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+                whiteSpace: "nowrap",
+              }}>
+                {([
+                  { label: "Paragraph", style: { fontSize: 13 }, run: () => editorRef.current?.getEditor()?.chain().focus().setParagraph().run() },
+                  { label: "Heading 2", style: { fontSize: 15, fontWeight: 700, fontFamily: "var(--font-playfair), serif" }, run: () => editorRef.current?.getEditor()?.chain().focus().toggleHeading({ level: 2 }).run() },
+                  { label: "Heading 3", style: { fontSize: 13.5, fontWeight: 600, fontFamily: "var(--font-playfair), serif" }, run: () => editorRef.current?.getEditor()?.chain().focus().toggleHeading({ level: 3 }).run() },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => { opt.run(); setTextStylesOpen(false); }}
+                    style={{
+                      padding: "8px 14px",
+                      minHeight: 36,
+                      borderRadius: 8,
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--text-secondary)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s ease",
+                      ...opt.style,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--ds-card-border)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Bold */}
             <button style={{
               width: 36,

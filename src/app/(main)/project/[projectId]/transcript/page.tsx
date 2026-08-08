@@ -236,14 +236,25 @@ export default function TranscriptPage() {
     setSaving(true);
     const segments = active.segments || [];
     const trimmed = fullEditText.trim();
-    const nextSegments: TranscriptSegment[] = trimmed
-      ? [{
-          start: segments[0]?.start ?? 0,
-          end: segments[segments.length - 1]?.end ?? 0,
-          speaker: segments[0]?.speaker ?? "Speaker 0",
-          text: trimmed,
-        }]
+    // Blank lines are paragraph breaks. Each paragraph becomes its own segment
+    // again (the old version collapsed EVERYTHING into one segment, which is why
+    // an edited transcript turned into a single block with no way back).
+    // Timing/speaker metadata carries by index; new paragraphs beyond the old
+    // count inherit the last segment's metadata — coarser than word timings,
+    // but the sectioned reading view survives the round trip.
+    const paras = trimmed
+      ? trimmed.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
       : [];
+    const last = segments[segments.length - 1];
+    const nextSegments: TranscriptSegment[] = paras.map((text, i) => {
+      const src = segments[i] ?? last;
+      return {
+        start: src?.start ?? i,
+        end: src?.end ?? i + 1,
+        speaker: src?.speaker ?? "Speaker 0",
+        text,
+      };
+    });
     await persistSegments(nextSegments);
     setFullEditMode(false);
     setSaving(false);
@@ -667,7 +678,13 @@ export default function TranscriptPage() {
             <div style={{ paddingBottom: 20 }}>
               <button
                 onClick={() => {
-                  setFullEditText(active?.full_text || "");
+                  // Build the editable text from SEGMENTS joined by blank lines,
+                  // not full_text (which is space-joined for the AI pipeline and
+                  // erases the paragraph structure the reader sees).
+                  const paras = (active?.segments || [])
+                    .map((s) => s.text.trim())
+                    .filter(Boolean);
+                  setFullEditText(paras.length ? paras.join("\n\n") : (active?.full_text || ""));
                   setFullEditMode(true);
                 }}
                 style={{

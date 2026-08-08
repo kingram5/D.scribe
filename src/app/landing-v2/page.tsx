@@ -1418,20 +1418,27 @@ export default function LandingV2() {
           height: auto;
           max-height: 35vh;
           display: block;
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 0.95))
-                  drop-shadow(0 0 18px rgba(240, 168, 120, 0.55));
+          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 1))
+                  drop-shadow(0 0 16px rgba(240, 168, 120, 0.85))
+                  drop-shadow(0 0 36px rgba(193, 122, 71, 0.65));
           margin: 0 auto;
           transform: translateZ(0);
         }
         .landing-v2 .lv2-waveform-halo {
           position: absolute;
           inset: -35% -20%;
-          background: radial-gradient(ellipse 52% 48% at 50% 50%,
-            rgba(193, 122, 71, 0.40), rgba(193, 122, 71, 0.16) 45%, transparent 72%);
+          background:
+            radial-gradient(ellipse 34% 30% at 50% 50%,
+              rgba(240, 168, 120, 0.42), transparent 70%),
+            radial-gradient(ellipse 55% 50% at 50% 50%,
+              rgba(193, 122, 71, 0.38), rgba(193, 122, 71, 0.15) 55%, transparent 75%);
           pointer-events: none;
         }
         .landing-v2 .bar {
-          fill: #F0A878;
+          /* Pre-baked hot peach: the retired contrast/saturate/brightness filter
+             chain used to heat #F0A878 up; the fill now carries that color
+             directly so the look survives without per-frame filter cost. */
+          fill: #FFBE92;
           transform-box: fill-box;
           transform-origin: center;
           will-change: transform, opacity;

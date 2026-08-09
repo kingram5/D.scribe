@@ -1418,9 +1418,9 @@ export default function LandingV2() {
           height: auto;
           max-height: 35vh;
           display: block;
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 1))
-                  drop-shadow(0 0 16px rgba(240, 168, 120, 0.85))
-                  drop-shadow(0 0 36px rgba(193, 122, 71, 0.65));
+          filter: drop-shadow(0 0 5px rgba(255, 204, 95, 1))
+                  drop-shadow(0 0 14px rgba(250, 172, 55, 0.95))
+                  drop-shadow(0 0 36px rgba(200, 120, 40, 0.7));
           margin: 0 auto;
           transform: translateZ(0);
         }
@@ -1428,17 +1428,17 @@ export default function LandingV2() {
           position: absolute;
           inset: -35% -20%;
           background:
-            radial-gradient(ellipse 34% 30% at 50% 50%,
-              rgba(240, 168, 120, 0.42), transparent 70%),
+            radial-gradient(ellipse 30% 28% at 50% 50%,
+              rgba(255, 190, 80, 0.55), transparent 68%),
             radial-gradient(ellipse 55% 50% at 50% 50%,
-              rgba(193, 122, 71, 0.38), rgba(193, 122, 71, 0.15) 55%, transparent 75%);
+              rgba(195, 120, 40, 0.42), rgba(195, 120, 40, 0.16) 55%, transparent 75%);
           pointer-events: none;
         }
         .landing-v2 .bar {
-          /* Pre-baked hot peach: the retired contrast/saturate/brightness filter
-             chain used to heat #F0A878 up; the fill now carries that color
-             directly so the look survives without per-frame filter cost. */
-          fill: #FFBE92;
+          /* Moonlit gold — matched side-by-side against the original filter-chain
+             render (which cooked #F0A878 toward incandescent gold); the fill
+             carries that color directly so the look costs no per-frame filters. */
+          fill: #FFC65E;
           transform-box: fill-box;
           transform-origin: center;
           will-change: transform, opacity;

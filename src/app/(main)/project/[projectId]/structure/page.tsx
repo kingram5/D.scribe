@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
-import { AUDIENCES, SCRIPTURE_AUDIENCES } from "@/lib/audience-profiles";
+import { AUDIENCES, SCRIPTURE_AUDIENCES, TRANSLATIONS } from "@/lib/audience-profiles";
 
 function ChevronUp() {
   return (
@@ -50,9 +50,8 @@ export default function StructurePage() {
      they chose 8" from "8 because that's the column default". */
   const dirtyRef = useRef(false);
 
-  // AUDIENCES + SCRIPTURE_AUDIENCES now live in @/lib/audience-profiles — one
-  // source of truth shared with project creation and the AI pipeline conditioning.
-  const TRANSLATIONS = ["KJV", "NIV", "ESV", "NLT", "NKJV", "NASB", "CSB", "The Message"];
+  // AUDIENCES + SCRIPTURE_AUDIENCES + TRANSLATIONS now live in @/lib/audience-profiles —
+  // one source of truth shared with project creation and the AI pipeline conditioning.
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)

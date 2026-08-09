@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GlassCard from "@/components/ui/GlassCard";
 import PageShell from "@/components/ui/PageShell";
-import { AUDIENCES } from "@/lib/audience-profiles";
+import { AUDIENCES, SCRIPTURE_AUDIENCES, TRANSLATIONS } from "@/lib/audience-profiles";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -22,8 +22,13 @@ export default function NewProject() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [audience, setAudience] = useState<string | null>(null);
+  const [translation, setTranslation] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only scripture audiences get asked; anything else never sees the question and
+  // never carries a value. Structure keeps its own picker for changes later.
+  const needsTranslation = !!audience && SCRIPTURE_AUDIENCES.includes(audience);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +44,7 @@ export default function NewProject() {
           title: title || "Untitled Project",
           description: "",
           audience,
+          scripture_translation: needsTranslation ? translation || null : null,
         }),
       });
 
@@ -121,6 +127,42 @@ export default function NewProject() {
                 Your AI collaborator specializes the whole process around this reader, starting with the brainstorm. You can change it later on the Structure step.
               </p>
             </div>
+
+            {needsTranslation && (
+              <div>
+                <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 }}>
+                  Scripture translation
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {TRANSLATIONS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTranslation(translation === t ? "" : t)}
+                      aria-pressed={translation === t}
+                      style={{
+                        padding: "8px 14px",
+                        minHeight: 36,
+                        borderRadius: 9999,
+                        fontSize: 13,
+                        fontFamily: "var(--font-manrope), sans-serif",
+                        fontWeight: translation === t ? 600 : 400,
+                        background: translation === t ? "#C17A47" : "transparent",
+                        color: translation === t ? "#fff" : "var(--text-secondary)",
+                        border: translation === t ? "1px solid #C17A47" : "1px solid var(--ds-input-border)",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
+                  Optional. Quotes and references will use this translation.
+                </p>
+              </div>
+            )}
 
             {error && (
               <p

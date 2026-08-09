@@ -69,7 +69,10 @@ export default function UploadPage() {
               display: "flex",
               flexDirection: "column",
               position: "relative",
-              overflow: "hidden",
+              // Fixed at height:100% inside a viewport-locked shell, so `hidden` clipped the
+              // bottom of the panel on a short window with no way to reach it (measured:
+              // 331px unreachable at 753px tall).
+              overflow: "hidden auto",
             }}
           >
             <div style={{ padding: "28px 32px 0" }}>

@@ -23,28 +23,46 @@ export default function NewProject() {
   const [title, setTitle] = useState("");
   const [audience, setAudience] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!audience) return;
     setSubmitting(true);
+    setError(null);
 
-    const res = await fetch("/api/project", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: title || "Untitled Project",
-        description: "",
-        audience,
-      }),
-    });
+    try {
+      const res = await fetch("/api/project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title || "Untitled Project",
+          description: "",
+          audience,
+        }),
+      });
 
-    if (res.ok) {
-      const project = await res.json();
-      router.push(`/project/${project.id}/upload`);
-    } else {
-      setSubmitting(false);
+      if (res.ok) {
+        const project = await res.json();
+        router.push(`/project/${project.id}/upload`);
+        return;
+      }
+      // A failure here used to reset the button and say nothing at all, so the page simply
+      // looked dead. Anything that stops a project being created has to be visible.
+      let detail = "";
+      try {
+        const body = await res.json();
+        detail = typeof body?.error === "string" ? body.error : "";
+      } catch { /* non-JSON error body */ }
+      setError(
+        detail.includes("projects_audience_check")
+          ? `"${audience}" isn't accepted by the database yet. Pick another reader for now.`
+          : detail || `Couldn't create the project (error ${res.status}). Try again.`
+      );
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
     }
+    setSubmitting(false);
   }
 
   return (
@@ -103,6 +121,24 @@ export default function NewProject() {
                 Your AI collaborator specializes the whole process around this reader, starting with the brainstorm. You can change it later on the Structure step.
               </p>
             </div>
+
+            {error && (
+              <p
+                role="alert"
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: "#B3352C",
+                  background: "rgba(179,53,44,0.08)",
+                  border: "1px solid rgba(179,53,44,0.25)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "10px 14px",
+                  margin: 0,
+                }}
+              >
+                {error}
+              </p>
+            )}
 
             <button
               type="submit"

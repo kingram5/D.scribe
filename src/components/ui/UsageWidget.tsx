@@ -15,26 +15,7 @@ interface TtsData {
   tier: string;
 }
 
-const TIER_LABELS: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  premium: "Premium",
-};
-
-const INK_LIMITS: Record<string, number> = {
-  free: 10,
-  starter: 300,
-  pro: 660,
-  premium: 1500,
-};
-
-const TIER_COLORS: Record<string, string> = {
-  free: "#7A7358",
-  starter: "#5B7FA6",
-  pro: "#C17A47",
-  premium: "#9B6BB0",
-};
+import { TIER_LABELS, INK_LIMITS, TIER_COLORS } from "@/lib/tiers";
 
 export default function UsageWidget() {
   const [ink, setInk] = useState<InkData | null>(null);

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import UserMenu from "./UserMenu";
+import InkBalanceMeter from "./InkBalanceMeter";
 
 interface OsBarProps {
   rightSlot?: React.ReactNode;
@@ -46,7 +47,8 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
         </div>
 
         {/* Right — desktop */}
-        <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          <InkBalanceMeter />
           <Link href="/project/new" className="nodum-btn-ghost" style={{ fontSize: 12, padding: "6px 14px" }}>
             New Project
           </Link>
@@ -107,6 +109,9 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
               {centerSlot}
             </div>
           )}
+          <div style={{ padding: "4px 2px" }}>
+            <InkBalanceMeter />
+          </div>
           <Link
             href="/project/new"
             className="nodum-btn"

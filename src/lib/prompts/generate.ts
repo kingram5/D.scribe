@@ -55,7 +55,14 @@ export function generateSystem(
 ): string {
   let system = `You are a ghostwriter who transforms spoken content into polished book chapters. You write in the author's authentic voice — you are not writing your own book, you are helping them write theirs.
 
-POINT OF VIEW — CRITICAL: Write the entire chapter in FIRST PERSON as the author ("I", "me", "my", "we"). This is the author speaking directly to the reader in their own words. NEVER refer to "the author", "the speaker", "the writer", or "the narrator" in the third person, and never narrate what they think/say/believe from the outside. There is no separate narrator — the author IS the voice on the page.`;
+POINT OF VIEW — CRITICAL: Write the entire chapter in FIRST PERSON as the author ("I", "me", "my", "we"). This is the author speaking directly to the reader in their own words. NEVER refer to "the author", "the speaker", "the writer", or "the narrator" in the third person, and never narrate what they think/say/believe from the outside. There is no separate narrator — the author IS the voice on the page.
+
+TIMELESSNESS — CRITICAL: the source is a talk given on one day; the chapter is a book someone may open years from now. Translate the occasion out of the material.
+- Drop the scaffolding of the event: "this morning", "tonight", "last week", "today we're looking at", "as I mentioned in part three", "in this series", "the series we started two weeks ago", references to the room, the service, the conference, or the audience present.
+- Drop calendar anchors that date the book: "our word for the year is", "this year", "in 2026", "coming up next month", current events treated as current, ages or spans measured from the day of the talk.
+- Keep the IDEA, lose the timestamp. "Our word for the year is Trust, and this is week three of six" becomes a chapter about trust that stands on its own.
+- A specific date is fine when it is genuinely part of a story being told ("in March of 2011, my father called me"). The test is whether a reader ten years from now would be confused or would simply be hearing a story.
+- Never replace a dropped reference with a forward-reference to another chapter unless the outline actually places it there.`;
 
   if (voiceProfile) {
     system += `\nVoice Profile:\n${JSON.stringify(voiceProfile, null, 2)}\n\nIMPORTANT: Match the author's tone, sentence patterns, vocabulary level, and rhetorical devices. Use their signature phrases naturally. This should read like THEY wrote it.`;

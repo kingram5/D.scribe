@@ -152,6 +152,14 @@ export default function ExportPage() {
   const [driveState, setDriveState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [driveUrl, setDriveUrl] = useState("");
 
+  // Export used to be live on a project with no chapters at all, so a brand-new project offered
+  // to download an empty manuscript. Gate on POSITIVE knowledge of emptiness only: `null` means
+  // "not loaded yet" and must not disable anything. Deliberately not derived from `stats`, which
+  // only counts chapters already generated/edited and stays null for an outline-only project —
+  // that would block a legitimate export.
+  const [chapterCount, setChapterCount] = useState<number | null>(null);
+  const hasContent = chapterCount === null || chapterCount > 0;
+
   const exportToDrive = useCallback(async () => {
     setDriveState("working");
     try {
@@ -216,6 +224,7 @@ export default function ExportPage() {
         setPublishedExcerpt(data.published_excerpt || "");
         setPublishedAuthor(data.published_author || "");
         setProjTitle(data.title || "Untitled");
+        setChapterCount((data.chapters || []).length);
         // Manuscript stats for the hero: sum real word counts across chapters
         const chs: { id: string }[] = (data.chapters || []).filter(
           (c: { status?: string }) => c.status === "generated" || c.status === "edited"
@@ -480,10 +489,12 @@ export default function ExportPage() {
             </div>
             <button
               onClick={() => handleCardExport("pdf")}
-              disabled={exporting}
+              disabled={exporting || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: exporting ? 0.6 : 1,
+                opacity: exporting || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >
@@ -531,10 +542,12 @@ export default function ExportPage() {
             </div>
             <button
               onClick={() => handleCardExport("docx")}
-              disabled={exporting}
+              disabled={exporting || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: exporting ? 0.6 : 1,
+                opacity: exporting || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >
@@ -591,10 +604,12 @@ export default function ExportPage() {
                   ? window.open(driveUrl, "_blank", "noopener")
                   : exportToDrive()
               }
-              disabled={driveState === "working"}
+              disabled={driveState === "working" || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: driveState === "working" ? 0.6 : 1,
+                opacity: driveState === "working" || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >

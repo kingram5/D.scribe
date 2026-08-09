@@ -677,6 +677,14 @@ input[type=range] {
   box-shadow: 0 8px 24px rgba(224,93,58,0.2);
 }
 
+/* These cards carry button semantics, so keyboard focus has to be visible — without this
+   a tabbing user lands on the only entry point into a project with no indication. */
+.input-card:focus-visible {
+  outline: 2px solid var(--ds-accent-400);
+  outline-offset: 3px;
+  border-color: var(--ds-accent-400);
+}
+
 .grill-pattern {
   position: absolute;
   inset: 0;

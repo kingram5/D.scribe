@@ -54,6 +54,29 @@ function useProjectTitle(projectId?: string): string {
   return title;
 }
 
+/** Furthest pipeline step this project has reached, remembered across navigation.
+ *  Completion used to be inferred from the CURRENT position, so stepping backward erased the
+ *  done-marks on steps the user had genuinely finished and made them unreachable — you had to
+ *  click forward one at a time to get back. */
+function useReachedStep(projectId: string | undefined, currentIdx: number): number {
+  const [reached, setReached] = useState(currentIdx);
+  useEffect(() => {
+    if (!projectId || currentIdx < 0) return;
+    const key = `ds_reached_${projectId}`;
+    let stored = -1;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) stored = parseInt(raw, 10);
+    } catch { /* storage unavailable — fall back to position only */ }
+    const next = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
+    setReached(next);
+    if (next > stored) {
+      try { localStorage.setItem(key, String(next)); } catch { /* ignore */ }
+    }
+  }, [projectId, currentIdx]);
+  return Math.max(reached, currentIdx);
+}
+
 export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep, onNextClick, disabledStepKeys }: PageShellProps) {
   const router = useRouter();
   // Leave-guard: while a page reports generation in progress, every navigation
@@ -78,6 +101,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
 
   const projectTitle = useProjectTitle(projectId && currentStep ? projectId : undefined);
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
+  const reachedIdx = useReachedStep(projectId, currentIdx);
   const currentLabel = currentIdx >= 0 ? STEPS[currentIdx].label : "";
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
   const nextStep = currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
@@ -183,9 +207,13 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           <div className="ds-rail-markers" style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
             {STEPS.map((step, i) => {
               const isStepDisabled = disabledStepKeys?.includes(step.key);
-              const isDone = i < currentIdx;
               const isCurrent = i === currentIdx;
-              const isClickable = !isStepDisabled && (isDone || (i === currentIdx + 1 && !disableNextStep));
+              // Done and reachable both key off the furthest step reached, not the current
+              // one, so navigating backward no longer strips checks off finished steps or
+              // traps the user into clicking forward one at a time.
+              const isDone = !isCurrent && i <= reachedIdx;
+              const isClickable = !isStepDisabled && !isCurrent
+                && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep));
               const marker = (
                 <span
                   className="ds-rail-marker-num"

@@ -136,6 +136,7 @@ export default function RightPanel({
 
         {/* File upload card */}
         <InputCard
+          label="Upload an audio file"
           onClick={() => document.getElementById("file-input-new")?.click()}
         >
           <div
@@ -391,7 +392,7 @@ export default function RightPanel({
 
         {/* Brainstorm card */}
         {onBrainstorm && (
-          <InputCard onClick={onBrainstorm}>
+          <InputCard label="Brainstorm with AI" onClick={onBrainstorm}>
             <div
               style={{
                 display: "flex",

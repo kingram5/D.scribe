@@ -15,26 +15,7 @@ interface TtsData {
   tier: string;
 }
 
-const TIER_LABELS: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  premium: "Premium",
-};
-
-const INK_LIMITS: Record<string, number> = {
-  free: 10,
-  starter: 300,
-  pro: 660,
-  premium: 1500,
-};
-
-const TIER_COLORS: Record<string, string> = {
-  free: "#7A7358",
-  starter: "#5B7FA6",
-  pro: "#C17A47",
-  premium: "#9B6BB0",
-};
+import { TIER_LABELS, INK_LIMITS, TIER_COLORS } from "@/lib/tiers";
 
 export default function UsageWidget() {
   const [ink, setInk] = useState<InkData | null>(null);
@@ -81,9 +62,13 @@ export default function UsageWidget() {
   const ttsPct = ttsLimit > 0 ? Math.min(100, (ttsUsed / ttsLimit) * 100) : 0;
 
   const inkLimit = INK_LIMITS[tier] ?? 10;
-  const inkUsed = ink ? Math.max(0, inkLimit - ink.balance) : 0;
-  const inkPct = inkLimit > 0 ? Math.min(100, (inkUsed / inkLimit) * 100) : 0;
-  const inkBarColor = inkPct > 85 ? "#ef4444" : "#3b82f6";
+  // Ink is reported as REMAINING everywhere, matching the header meter. Showing consumed
+  // here while the meter showed the balance put two different numbers under one "Ink" label
+  // on the same screen.
+  const inkLeft = ink ? Math.max(0, ink.balance) : 0;
+  const inkPct = inkLimit > 0 ? Math.min(100, (inkLeft / inkLimit) * 100) : 0;
+  // The bar now fills with what's left, so low is the alarming end.
+  const inkBarColor = inkPct < 15 ? "#ef4444" : "#3b82f6";
 
   return (
     <div
@@ -117,9 +102,11 @@ export default function UsageWidget() {
 
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: "#7A7358", fontWeight: 500 }}>Ink</span>
+          <span style={{ fontSize: 12, color: "#7A7358", fontWeight: 500 }}>Ink left</span>
           <span style={{ fontSize: 12, color: "#7A7358", fontFamily: "var(--font-geist-mono), monospace" }}>
-            {ink ? inkUsed.toFixed(1) : "—"} / {inkLimit}
+            {ink
+              ? (inkLeft >= 100 ? Math.round(inkLeft) : Math.round(inkLeft * 10) / 10).toLocaleString()
+              : "—"} / {inkLimit.toLocaleString()}
           </span>
         </div>
         <div style={{ height: 5, background: "rgba(44,36,25,0.08)", borderRadius: 999, overflow: "hidden" }}>

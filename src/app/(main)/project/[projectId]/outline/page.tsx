@@ -124,7 +124,7 @@ export default function OutlinePage() {
       <PageShell projectId={projectId} currentStep="outline">
         <div style={{ padding: "0 40px 40px", maxWidth: 600, margin: "0 auto" }}>
           <EmptyState
-            message="No outline generated yet. Re-run analysis to create chapters."
+            message="No outline yet. Run analysis and the chapters will surface."
             actionLabel="Go to Analysis"
             onAction={() => router.push(`/project/${projectId}/analysis`)}
           />

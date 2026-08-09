@@ -605,7 +605,7 @@ export default function AnalysisPage() {
 
         {tab === "outline" && !hasChapters && (
           <EmptyState
-            message="No outline generated yet. Re-run analysis to create chapters."
+            message="No outline yet. Run analysis and the chapters will surface."
             actionLabel="Re-analyze"
             onAction={runAnalysis}
           />
@@ -615,6 +615,19 @@ export default function AnalysisPage() {
         {tab === "voice" && (
           <GlassCard style={{ padding: 32 }}>
             <PanelTitle>Voice Profile</PanelTitle>
+            {data?.voice_profile?.verdict && (
+              <p style={{
+                marginTop: 20,
+                fontFamily: "var(--font-lora), serif",
+                fontStyle: "italic",
+                fontSize: 26,
+                lineHeight: 1.3,
+                color: "#2C2419",
+                maxWidth: 640,
+              }}>
+                {data.voice_profile.verdict}
+              </p>
+            )}
             {data?.voice_profile ? (
               <div className="ds-voice-grid" style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
@@ -656,6 +669,28 @@ export default function AnalysisPage() {
                           color: "#7a7369",
                         }}>
                           {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {data.voice_profile.avoid && data.voice_profile.avoid.length > 0 && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#B3352C", letterSpacing: "0.08em" }}>
+                      Never in this voice
+                    </label>
+                    <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {data.voice_profile.avoid.map((a, i) => (
+                        <span key={i} style={{
+                          fontSize: 12,
+                          padding: "2px 8px",
+                          background: "rgba(179,53,44,0.07)",
+                          borderRadius: 12,
+                          color: "#8a4a44",
+                          textDecoration: "line-through",
+                          textDecorationColor: "rgba(179,53,44,0.4)",
+                        }}>
+                          {a}
                         </span>
                       ))}
                     </div>

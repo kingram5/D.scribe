@@ -147,11 +147,18 @@ export default function AnalysisLoadingScreen({ step, complete, keyPoints, trait
           <span className="als-slideup" style={{ display: "block", fontFamily: "var(--font-manrope), sans-serif", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.3em", color: COPPER, marginBottom: 16 }}>
             Step {Math.min(stage, 3)} of 3 · Analysis
           </span>
-          <h1 className="als-slideup" style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 44, color: TEXT_PRIMARY, margin: "0 0 20px", animationDelay: "0.1s" }}>
-            {complete ? "Analysis complete" : "Mapping your story…"}
+          <h1 key={stage} className="als-slideup" style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 44, color: TEXT_PRIMARY, margin: "0 0 20px", animationDelay: "0.1s" }}>
+            {complete ? "Analysis complete"
+              : stage === 2 ? "Learning how you sound…"
+              : stage === 3 ? "Mapping the book's spine…"
+              : "Finding what carries weight…"}
           </h1>
           <p className="als-slideup" style={{ fontFamily: "var(--font-manrope), sans-serif", color: TEXT_MUTED, fontSize: 14, maxWidth: 520, margin: "0 auto", lineHeight: 1.7, animationDelay: "0.2s" }}>
-            Pulling out your key points, profiling your voice, and shaping your chapter outline.
+            {complete
+              ? "Key points, voice profile, and outline are ready below."
+              : stage === 2 ? "Building a profile of your diction, rhythm, and signature moves — so the chapters read like you."
+              : stage === 3 ? "Arranging what you said into chapters your reader can follow."
+              : "Weighing your key points by what you said and how you said it. You remain the final architect."}
           </p>
         </header>
 

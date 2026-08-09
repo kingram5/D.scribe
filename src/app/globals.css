@@ -677,6 +677,14 @@ input[type=range] {
   box-shadow: 0 8px 24px rgba(224,93,58,0.2);
 }
 
+/* These cards carry button semantics, so keyboard focus has to be visible — without this
+   a tabbing user lands on the only entry point into a project with no indication. */
+.input-card:focus-visible {
+  outline: 2px solid var(--ds-accent-400);
+  outline-offset: 3px;
+  border-color: var(--ds-accent-400);
+}
+
 .grill-pattern {
   position: absolute;
   inset: 0;
@@ -937,3 +945,64 @@ input[type=range] {
   transform: rotate(-8deg);
   pointer-events: none;
 }
+
+/* ───────────────────────────────────────────────────────────────
+   Hybrid print-shop layer (design/resonant-adoption)
+   Three-voice type system: serif speaks, mono annotates, sans operates.
+   Warm palette only — no acid, no near-black blocks.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Mono annotation voice. 10.5px floor keeps it legible (never 8px). */
+.ds-label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--text-tertiary, #716A53);
+}
+.ds-label--accent { color: #C17A47; }
+
+/* Flat plate card: 1px ink border, hard offset shadow, near-square corners.
+   The deliberate alternative to glass where a surface should feel printed. */
+.plate-card {
+  position: relative;
+  background: var(--ds-card-bg, #FFFFFF);
+  border: 1px solid var(--plate-border, rgba(44, 36, 25, 0.5));
+  border-radius: 3px;
+  box-shadow: 4px 4px 0 var(--plate-shadow, rgba(44, 36, 25, 0.14));
+}
+.paper-theme .plate-card { background: #FBF9F3; }
+
+/* Numbered plate header: "01 / RECORD" left, status/meta right. */
+.plate-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ds-divider, rgba(44, 36, 25, 0.08));
+}
+.plate-head .ds-label:last-child { text-align: right; }
+
+/* Full-bleed section band in warm tones. */
+.section-band {
+  background: var(--band-bg, #C17A47);
+  color: var(--band-fg, #F9F7F2);
+  border-block: 1px solid rgba(44, 36, 25, 0.35);
+}
+.section-band--paper {
+  --band-bg: #EAE4D3;
+  --band-fg: #2C2419;
+}
+
+/* Stamp: small mono tag used on pages (chapter number, DRAFT, WRITING LIVE). */
+.ds-stamp {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ds-stamp--live { color: #B3352C; }

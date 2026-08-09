@@ -56,7 +56,7 @@ export default function NewProject() {
             Start a new project
           </h1>
           <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>
-            Give it a name, or leave blank — you can always change it later.
+            Name it now, or let it earn a title later.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -65,7 +65,7 @@ export default function NewProject() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Sunday Sermons Vol. 1"
+                placeholder="Untitled is perfectly fine"
                 style={inputStyle}
                 autoFocus
               />

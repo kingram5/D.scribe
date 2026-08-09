@@ -36,7 +36,7 @@ export default function UnauthorizedPage() {
           color: "#1A1816",
           marginBottom: 12,
         }}>
-          Beta Access Only
+          This room isn&apos;t open yet.
         </h1>
         <p style={{
           fontSize: 15,
@@ -44,7 +44,7 @@ export default function UnauthorizedPage() {
           lineHeight: 1.6,
           marginBottom: 32,
         }}>
-          D.Scribe is currently in closed beta. If you&apos;ve been invited, make sure you&apos;re signing in with the email address we have on file.
+          D.Scribe is in closed beta. If you&apos;ve been invited, sign in with the email address your invitation was sent to.
         </p>
 
         <a

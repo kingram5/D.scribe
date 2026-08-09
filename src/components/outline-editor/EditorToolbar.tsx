@@ -41,6 +41,11 @@ export function EditorToolbar({
       transform: "translateX(-50%)",
       display: "flex",
       alignItems: "center",
+      // Buttons no longer shrink, so the row has to wrap on a narrow screen instead of
+      // pushing past the viewport edge.
+      flexWrap: "wrap",
+      justifyContent: "center",
+      maxWidth: "calc(100vw - 24px)",
       gap: 8,
       padding: "10px 20px",
       background: "rgba(255,255,255,0.7)",
@@ -82,6 +87,7 @@ export function EditorToolbar({
           style={{
             width: 28,
             height: 28,
+            flexShrink: 0,
             borderRadius: "50%",
             background: opt.color,
             border: `2px solid ${opt.border}`,
@@ -147,6 +153,9 @@ function btnStyle(disabled: boolean): React.CSSProperties {
   return {
     width: 32,
     height: 32,
+    // The toolbar is a flex row that runs out of width on a phone; without this the
+    // declared 32px collapses to ~18px, under the WCAG 2.5.8 24x24 minimum.
+    flexShrink: 0,
     borderRadius: "50%",
     background: disabled ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.8)",
     border: "1px solid rgba(0,0,0,0.1)",

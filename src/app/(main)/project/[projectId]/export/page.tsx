@@ -145,8 +145,20 @@ export default function ExportPage() {
     "loading" | "idle" | "saving" | "joined"
   >("loading");
 
+  // Hero: the manuscript as an object — real title, author, and stats
+  const [projTitle, setProjTitle] = useState("");
+  const [stats, setStats] = useState<{ words: number; chapters: number } | null>(null);
+
   const [driveState, setDriveState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [driveUrl, setDriveUrl] = useState("");
+
+  // Export used to be live on a project with no chapters at all, so a brand-new project offered
+  // to download an empty manuscript. Gate on POSITIVE knowledge of emptiness only: `null` means
+  // "not loaded yet" and must not disable anything. Deliberately not derived from `stats`, which
+  // only counts chapters already generated/edited and stays null for an outline-only project —
+  // that would block a legitimate export.
+  const [chapterCount, setChapterCount] = useState<number | null>(null);
+  const hasContent = chapterCount === null || chapterCount > 0;
 
   const exportToDrive = useCallback(async () => {
     setDriveState("working");
@@ -211,6 +223,23 @@ export default function ExportPage() {
         setIsPublic(!!data.is_public);
         setPublishedExcerpt(data.published_excerpt || "");
         setPublishedAuthor(data.published_author || "");
+        setProjTitle(data.title || "Untitled");
+        setChapterCount((data.chapters || []).length);
+        // Manuscript stats for the hero: sum real word counts across chapters
+        const chs: { id: string }[] = (data.chapters || []).filter(
+          (c: { status?: string }) => c.status === "generated" || c.status === "edited"
+        );
+        if (chs.length === 0) return;
+        Promise.all(
+          chs.map((c) =>
+            fetch(`/api/chapter-content/${c.id}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null)
+          )
+        ).then((contents) => {
+          const words = contents.reduce((sum, c) => sum + (c?.word_count || 0), 0);
+          if (words > 0) setStats({ words, chapters: chs.length });
+        });
       })
       .catch(() => {});
   }, [projectId]);
@@ -329,32 +358,78 @@ export default function ExportPage() {
           padding: "40px 24px 48px",
         }}
       >
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1
-            style={{
-              fontSize: 36,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-manrope), sans-serif",
-              margin: 0,
-              lineHeight: 1.2,
-            }}
-          >
-            Export your masterpiece
-          </h1>
-          <p
-            style={{
-              fontSize: 16,
-              color: "var(--text-secondary)",
-              fontFamily: "var(--font-playfair), serif",
-              fontStyle: "italic",
-              marginTop: 8,
-              margin: "8px 0 0 0",
-            }}
-          >
-            Choose a format and bring your words into the world
-          </p>
+        {/* Header — the manuscript as an object: 3D book + real stats */}
+        <div className="ds-export-hero" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 48, marginBottom: 40, flexWrap: "wrap" }}>
+          <div style={{ perspective: 700, flexShrink: 0 }} aria-hidden="true">
+            <div style={{
+              width: 128,
+              height: 178,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              background: "linear-gradient(120deg, #C17A47 0%, #A86230 100%)",
+              borderRadius: "3px 8px 8px 3px",
+              padding: "20px 16px",
+              transform: "rotateY(-17deg)",
+              boxShadow: "12px 10px 0 rgba(74, 58, 40, 0.35), 22px 18px 40px rgba(44,36,25,0.25)",
+              borderLeft: "6px solid #8E5A34",
+            }}>
+              <span style={{
+                fontFamily: "var(--font-playfair), var(--font-lora), serif",
+                fontSize: 16,
+                lineHeight: 1.25,
+                color: "#F9F7F2",
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 5,
+                WebkitBoxOrient: "vertical",
+              }}>
+                {projTitle || " "}
+              </span>
+              <span className="ds-label" style={{ color: "rgba(249,247,242,0.75)", fontSize: 9 }}>
+                {publishedAuthor || " "}
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign: "left", maxWidth: 460 }}>
+            {stats && (
+              <div className="ds-label ds-label--accent" style={{ marginBottom: 10 }}>
+                Manuscript ready
+              </div>
+            )}
+            <h1
+              style={{
+                fontSize: 36,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                margin: 0,
+                lineHeight: 1.2,
+              }}
+            >
+              Export your masterpiece
+            </h1>
+            {stats ? (
+              <p style={{ fontSize: 19, color: "var(--text-primary)", fontFamily: "var(--font-lora), serif", margin: "10px 0 0", lineHeight: 1.5 }}>
+                {stats.words.toLocaleString()} words · {stats.chapters} chapter{stats.chapters !== 1 ? "s" : ""} · ≈{Math.max(1, Math.round(stats.words / 250)).toLocaleString()} pages
+              </p>
+            ) : (
+              <p
+                style={{
+                  fontSize: 16,
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--font-playfair), serif",
+                  fontStyle: "italic",
+                  margin: "8px 0 0 0",
+                }}
+              >
+                Choose a format and bring your words into the world
+              </p>
+            )}
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "6px 0 0", fontFamily: "var(--font-manrope), sans-serif" }}>
+              Headings, emphasis, quotes, and chapter structure travel with it wherever it goes.
+            </p>
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -414,10 +489,12 @@ export default function ExportPage() {
             </div>
             <button
               onClick={() => handleCardExport("pdf")}
-              disabled={exporting}
+              disabled={exporting || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: exporting ? 0.6 : 1,
+                opacity: exporting || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >
@@ -465,10 +542,12 @@ export default function ExportPage() {
             </div>
             <button
               onClick={() => handleCardExport("docx")}
-              disabled={exporting}
+              disabled={exporting || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: exporting ? 0.6 : 1,
+                opacity: exporting || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >
@@ -525,10 +604,12 @@ export default function ExportPage() {
                   ? window.open(driveUrl, "_blank", "noopener")
                   : exportToDrive()
               }
-              disabled={driveState === "working"}
+              disabled={driveState === "working" || !hasContent}
+              title={!hasContent ? "Generate at least one chapter first" : undefined}
               style={{
                 ...btnBase,
-                opacity: driveState === "working" ? 0.6 : 1,
+                opacity: driveState === "working" || !hasContent ? 0.6 : 1,
+                cursor: !hasContent ? "not-allowed" : btnBase.cursor,
                 marginTop: "auto",
               }}
             >

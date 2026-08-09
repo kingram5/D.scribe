@@ -71,6 +71,10 @@ export interface VoiceProfile {
   illustration_style: string;
   avg_sentence_length: number;
   formality_score: number;
+  /** One-sentence editorial verdict on the voice. Optional: profiles built before 2026-08 lack it. */
+  verdict?: string;
+  /** Constructions/registers that would ring false in this voice. Same vintage caveat. */
+  avoid?: string[];
 }
 
 export interface NarrativeTracker {

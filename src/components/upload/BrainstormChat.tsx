@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
+import { INTERVIEWER_NAME, interviewerRoleLine } from "@/lib/interviewer";
 
 interface Message {
   role: "user" | "assistant";
@@ -43,6 +45,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const audioCtxRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const sentenceBufferRef = useRef("");
+
+  // Stage presentation state: project audience feeds the interviewer role
+  // line; the history drawer holds exchanges older than the rolling two.
+  const [audience, setAudience] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/project/${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => { if (!cancelled && p?.audience) setAudience(p.audience); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -682,47 +697,71 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     );
   }
 
-  return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100%",
-      position: "relative",
-    }}>
-      {/* Header */}
+  // ── Stage presentation (resonant-adoption): full-screen theater ──
+  // Group the transcript into interviewer/author exchanges. The live exchange
+  // renders full-size; the previous two stay visible above it, receding.
+  interface Exchange { q?: string; a?: string }
+  const exchanges: Exchange[] = [];
+  for (const m of messages) {
+    if (m.role === "assistant") {
+      exchanges.push({ q: m.content });
+    } else {
+      const last = exchanges[exchanges.length - 1];
+      if (last && last.a == null) last.a = m.content;
+      else exchanges.push({ a: m.content });
+    }
+  }
+  const live = exchanges[exchanges.length - 1];
+  const receding = exchanges.slice(0, -1).slice(-2);
+  const older = exchanges.slice(0, -1).slice(0, -2);
+  const thinking = streaming && (!live || !live.q);
+  const composing = input.trim().length > 0 || listening;
+
+  // Portal to <body>: the upload panel sits inside a transformed ancestor,
+  // which would otherwise trap this fixed overlay at panel size.
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      role="dialog"
+      aria-label="Brainstorm studio"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 150,
+        display: "flex",
+        flexDirection: "column",
+        background: "radial-gradient(circle at 50% 20%, #2C2419 0%, #1A1610 100%)",
+        color: "#F9F7F2",
+      }}
+    >
+      {/* Stage header */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        padding: "16px 24px",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        gap: 14,
+        padding: "18px 28px",
+        flexWrap: "wrap",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={onBack}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              display: "flex",
-              color: "var(--text-tertiary)",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M10 12L6 8l4-4" />
-            </svg>
-          </button>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--ds-ink)",
-            fontFamily: "var(--font-manrope), sans-serif",
-          }}>
-            Brainstorm Session
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: "rgba(249,247,242,0.6)",
+            padding: 4,
+          }}
+        >
+          <span style={{ fontSize: 20, lineHeight: 1 }}>×</span>
+          <span className="ds-label" style={{ color: "rgba(249,247,242,0.6)" }}>Exit studio</span>
+        </button>
+        <span className="ds-label" style={{ color: "rgba(249,247,242,0.75)", marginLeft: 8, maxWidth: "min(52vw, 640px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {INTERVIEWER_NAME} <span style={{ color: "rgba(249,247,242,0.4)" }}>· {interviewerRoleLine(audience)}</span>
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={() => {
               const next = !ttsEnabled;
@@ -731,12 +770,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               if (!next) stopAudio();
             }}
             title={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
+            aria-label={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
             style={{
               background: "none",
-              border: "1px solid rgba(0,0,0,0.1)",
-              borderRadius: 16,
-              padding: "12px 20px",
-              fontSize: 28,
+              border: "1px solid rgba(249,247,242,0.18)",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontSize: 18,
               cursor: "pointer",
               lineHeight: 1,
             }}
@@ -749,105 +789,204 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               onClick={undoLast}
               style={{
                 background: "none",
-                color: "var(--text-tertiary)",
-                border: "1px solid rgba(0,0,0,0.1)",
+                color: "rgba(249,247,242,0.55)",
+                border: "1px solid rgba(249,247,242,0.18)",
                 borderRadius: 8,
-                padding: "6px 12px",
+                padding: "7px 12px",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 fontFamily: "var(--font-manrope), sans-serif",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7h7a4 4 0 010 8H8" />
-                <path d="M6 4L3 7l3 3" />
-              </svg>
               Undo
             </button>
           )}
-          {canFinish && (
+          {older.length > 0 && (
             <button
-              onClick={finishBrainstorm}
+              onClick={() => setShowHistory(!showHistory)}
               style={{
-                background: "var(--ds-accent-500)",
-                color: "#fff",
-                border: "none",
+                background: showHistory ? "rgba(249,247,242,0.12)" : "none",
+                color: "rgba(249,247,242,0.55)",
+                border: "1px solid rgba(249,247,242,0.18)",
                 borderRadius: 8,
-                padding: "6px 16px",
+                padding: "7px 12px",
                 fontSize: 12,
-                fontWeight: 600,
+                fontWeight: 500,
                 cursor: "pointer",
                 fontFamily: "var(--font-manrope), sans-serif",
-                transition: "opacity 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
             >
-              Finish & Transcribe →
+              History
             </button>
           )}
         </div>
       </div>
 
-      {/* Messages */}
+      {/* History drawer */}
+      {showHistory && (
+        <div style={{
+          position: "absolute",
+          top: 68,
+          right: 24,
+          bottom: 110,
+          width: "min(400px, calc(100vw - 48px))",
+          zIndex: 5,
+          overflowY: "auto",
+          background: "rgba(26,22,16,0.97)",
+          border: "1px solid rgba(249,247,242,0.14)",
+          borderRadius: 14,
+          padding: 18,
+        }}>
+          <div className="ds-label" style={{ color: "rgba(249,247,242,0.5)", marginBottom: 12 }}>Full conversation</div>
+          {messages.map((m, i) => (
+            <p key={i} style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              margin: "0 0 12px",
+              fontFamily: m.role === "assistant" ? "var(--font-lora), serif" : "var(--font-manrope), sans-serif",
+              color: m.role === "assistant" ? "rgba(249,247,242,0.85)" : "rgba(249,247,242,0.55)",
+            }}>
+              <span className="ds-label" style={{ display: "block", fontSize: 9, color: m.role === "assistant" ? "#C17A47" : "rgba(249,247,242,0.35)", marginBottom: 3 }}>
+                {m.role === "assistant" ? INTERVIEWER_NAME : "You"}
+              </span>
+              {m.content}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Conversation stage */}
       <div style={{
         flex: 1,
         overflowY: "auto",
-        padding: "20px 24px",
         display: "flex",
         flexDirection: "column",
-        gap: 16,
+        justifyContent: "flex-end",
+        maxWidth: 880,
+        width: "100%",
+        margin: "0 auto",
+        padding: "12px 28px 20px",
       }}>
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
-            <div style={{
-              maxWidth: "80%",
-              padding: "10px 16px",
-              borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-              background: msg.role === "user"
-                ? "var(--ds-accent-500)"
-                : "rgba(0,0,0,0.04)",
-              color: msg.role === "user" ? "#fff" : "var(--ds-ink)",
-              fontSize: 14,
-              lineHeight: 1.5,
-              fontFamily: "var(--font-manrope), sans-serif",
-              whiteSpace: "pre-wrap",
-            }}>
-              {msg.content || (
-                <span style={{ opacity: 0.5 }}>
-                  <span className="typing-dots">...</span>
-                </span>
-              )}
-            </div>
+        {receding.map((ex, i) => (
+          <div key={i} style={{ marginBottom: 26, opacity: i === receding.length - 1 ? 0.55 : 0.35 }}>
+            {ex.q && (
+              <p style={{
+                fontFamily: "var(--font-lora), serif",
+                fontSize: i === receding.length - 1 ? 19 : 16,
+                lineHeight: 1.4,
+                margin: 0,
+                color: "#F9F7F2",
+              }}>
+                {ex.q}
+              </p>
+            )}
+            {ex.a && (
+              <p style={{
+                fontFamily: "var(--font-lora), serif",
+                fontStyle: "italic",
+                fontSize: i === receding.length - 1 ? 16 : 14,
+                lineHeight: 1.45,
+                margin: "8px 0 0",
+                color: "rgba(249,247,242,0.75)",
+              }}>
+                {ex.a}
+              </p>
+            )}
           </div>
         ))}
-        <div ref={messagesEndRef} />
+
+        {/* Live exchange */}
+        <div style={{ marginBottom: 8 }}>
+          <div className="ds-label ds-label--accent" style={{ marginBottom: 10 }}>
+            {thinking ? `${INTERVIEWER_NAME} · thinking` : streaming ? `${INTERVIEWER_NAME} · speaking` : `${INTERVIEWER_NAME} · asking`}
+          </div>
+          {thinking ? (
+            <p aria-live="polite" style={{ fontFamily: "var(--font-lora), serif", fontSize: 30, margin: 0, color: "rgba(249,247,242,0.45)" }}>
+              <span className="ds-stage-dots">· · ·</span>
+            </p>
+          ) : (
+            <p aria-live="polite" style={{
+              fontFamily: "var(--font-lora), serif",
+              fontSize: "clamp(24px, 3.2vw, 38px)",
+              lineHeight: 1.28,
+              margin: 0,
+              color: "#F9F7F2",
+              letterSpacing: "-0.01em",
+            }}>
+              {live?.q}
+            </p>
+          )}
+          {live?.a && (
+            <p style={{
+              fontFamily: "var(--font-lora), serif",
+              fontStyle: "italic",
+              fontSize: "clamp(18px, 2.2vw, 24px)",
+              lineHeight: 1.4,
+              margin: "14px 0 0",
+              color: "rgba(249,247,242,0.7)",
+            }}>
+              {live.a}
+            </p>
+          )}
+        </div>
+
+        {/* Your live transcript */}
+        {composing && (
+          <div style={{ marginTop: 18 }}>
+            <div className="ds-label" style={{ color: "rgba(249,247,242,0.45)", marginBottom: 8 }}>
+              You · {listening ? "live transcript" : "typing"}
+            </div>
+            <p style={{
+              fontFamily: "var(--font-lora), serif",
+              fontSize: "clamp(20px, 2.6vw, 30px)",
+              lineHeight: 1.35,
+              margin: 0,
+              color: "rgba(249,247,242,0.65)",
+            }}>
+              {input}
+              <span className="ds-stage-cursor" aria-hidden="true" />
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Input */}
-      <div style={{
-        padding: "16px 24px 24px",
-        borderTop: "1px solid rgba(0,0,0,0.06)",
-      }}>
+      {/* Input bar */}
+      <div style={{ padding: "0 28px calc(20px + env(safe-area-inset-bottom))", maxWidth: 880, width: "100%", margin: "0 auto" }}>
         <div style={{
           display: "flex",
           alignItems: "flex-end",
-          gap: 12,
-          background: "rgba(255,255,255,0.8)",
-          border: "1px solid rgba(0,0,0,0.1)",
-          borderRadius: 16,
-          padding: "14px 16px",
+          gap: 10,
+          flexWrap: "wrap",
         }}>
+          {speechSupported && (
+            <button
+              onClick={toggleListening}
+              disabled={streaming}
+              style={{
+                background: listening ? "#ef4444" : "rgba(249,247,242,0.08)",
+                border: listening ? "none" : "1px solid rgba(249,247,242,0.18)",
+                borderRadius: 12,
+                height: 52,
+                padding: "0 18px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: streaming ? "default" : "pointer",
+                flexShrink: 0,
+                animation: listening ? "micPulse 1.5s ease-in-out infinite" : "none",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "rgba(249,247,242,0.7)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="1" width="6" height="9" rx="3" />
+                <path d="M3 7v1a5 5 0 0010 0V7" />
+                <path d="M8 13v2" />
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: listening ? "#fff" : "rgba(249,247,242,0.7)", fontFamily: "var(--font-manrope), sans-serif", whiteSpace: "nowrap" }}>
+                {listening ? "Listening…" : "Speak"}
+              </span>
+            </button>
+          )}
           <textarea
             ref={inputRef}
             value={input}
@@ -858,58 +997,26 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
                 sendMessage();
               }
             }}
-            placeholder={streaming ? "AI is thinking..." : speechSupported ? "Tap the mic or type your ideas..." : "Share your ideas..."}
+            placeholder={streaming ? `${INTERVIEWER_NAME} is thinking…` : speechSupported ? "Speak, or type your answer…" : "Type your answer…"}
             disabled={streaming}
-            rows={2}
+            rows={1}
+            aria-label="Your answer"
             style={{
               flex: 1,
-              border: "none",
+              minWidth: 220,
+              border: "1px solid rgba(249,247,242,0.18)",
               outline: "none",
               resize: "none",
               fontSize: 16,
               fontFamily: "var(--font-manrope), sans-serif",
-              background: "transparent",
-              color: "var(--ds-ink)",
+              background: "rgba(249,247,242,0.06)",
+              color: "#F9F7F2",
               lineHeight: 1.5,
-              maxHeight: 160,
+              maxHeight: 120,
+              borderRadius: 12,
+              padding: "14px 16px",
             }}
           />
-          {speechSupported && (
-            <button
-              onClick={toggleListening}
-              disabled={streaming}
-              style={{
-                background: listening ? "#ef4444" : "rgba(0,0,0,0.04)",
-                border: listening ? "none" : "1px solid rgba(0,0,0,0.08)",
-                borderRadius: 14,
-                height: 56,
-                padding: "0 20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                cursor: streaming ? "default" : "pointer",
-                transition: "background 0.15s",
-                flexShrink: 0,
-                animation: listening ? "micPulse 1.5s ease-in-out infinite" : "none",
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "#7a7369"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="1" width="6" height="9" rx="3" />
-                <path d="M3 7v1a5 5 0 0010 0V7" />
-                <path d="M8 13v2" />
-              </svg>
-              <span style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: listening ? "#fff" : "#7a7369",
-                fontFamily: "var(--font-manrope), sans-serif",
-                whiteSpace: "nowrap",
-              }}>
-                {listening ? "Listening..." : "Speak"}
-              </span>
-            </button>
-          )}
           <button
             onClick={() => {
               if (listening) {
@@ -919,45 +1026,73 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               sendMessage();
             }}
             disabled={!input.trim() || streaming}
+            aria-label="Send answer"
             style={{
-              background: input.trim() && !streaming ? "var(--ds-accent-500)" : "rgba(0,0,0,0.08)",
+              background: input.trim() && !streaming ? "#C17A47" : "rgba(249,247,242,0.08)",
               border: "none",
-              borderRadius: 14,
-              width: 56,
-              height: 56,
+              borderRadius: 12,
+              width: 52,
+              height: 52,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: input.trim() && !streaming ? "pointer" : "default",
-              transition: "background 0.15s",
               flexShrink: 0,
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke={input.trim() && !streaming ? "#fff" : "#a0978a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke={input.trim() && !streaming ? "#fff" : "rgba(249,247,242,0.35)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2L7 9" />
               <path d="M14 2l-5 12-2-5-5-2z" />
             </svg>
+          </button>
+          <button
+            onClick={finishBrainstorm}
+            disabled={!canFinish}
+            style={{
+              background: "none",
+              color: canFinish ? "#F9F7F2" : "rgba(249,247,242,0.3)",
+              border: `1px solid ${canFinish ? "rgba(249,247,242,0.35)" : "rgba(249,247,242,0.12)"}`,
+              borderRadius: 12,
+              height: 52,
+              padding: "0 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: canFinish ? "pointer" : "default",
+              fontFamily: "var(--font-manrope), sans-serif",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            Finish &amp; add to sources
           </button>
         </div>
         {userMessageCount > 0 && (
           <p style={{
             fontSize: 11,
-            color: "var(--text-tertiary)",
-            marginTop: 6,
+            color: "rgba(249,247,242,0.4)",
+            marginTop: 8,
             textAlign: "center",
             fontFamily: "var(--font-manrope), sans-serif",
           }}>
             {userMessageCount < 2
-              ? "Keep going — share a few more ideas before finishing"
-              : `${userMessageCount} exchanges · Ready to finish when you are`}
+              ? "Keep going — a couple more answers before this becomes source material"
+              : `${userMessageCount} answers gathered · finish when you're ready`}
           </p>
         )}
       </div>
 
       <style>{`
-        .typing-dots {
-          animation: typingPulse 1.2s ease-in-out infinite;
+        .ds-stage-cursor {
+          display: inline-block;
+          width: 2px;
+          height: 1em;
+          margin-left: 3px;
+          vertical-align: -0.12em;
+          background: #C17A47;
+          animation: dsBlink 0.85s steps(1) infinite;
         }
+        .ds-stage-dots { animation: typingPulse 1.2s ease-in-out infinite; }
+        @keyframes dsBlink { 50% { opacity: 0; } }
         @keyframes typingPulse {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 1; }
@@ -966,7 +1101,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
           50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .ds-stage-cursor, .ds-stage-dots { animation: none !important; }
+        }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -387,7 +387,7 @@ export default function GeneratePage() {
     return (
       <PageShell projectId={projectId} currentStep="generate">
         <EmptyState
-          message="No chapters outlined yet."
+          message="No chapters yet. The outline surfaces from Analysis."
           actionLabel="Create Outline"
           onAction={() => router.push(`/project/${projectId}/analysis`)}
         />
@@ -1002,7 +1002,7 @@ export default function GeneratePage() {
       </div>
       <CelebrationToast
         show={showCelebration}
-        message="Your manuscript is ready — time to edit and refine."
+        message="The manuscript is written. Now make every line more yours."
         onDone={() => setShowCelebration(false)}
       />
       {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}

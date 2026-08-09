@@ -24,6 +24,8 @@ Produce a voice profile with these dimensions:
 - illustration_style: How examples, stories, and metaphors are used
 - avg_sentence_length: Estimated average in words
 - formality_score: 1-5 scale (1 = very casual, 5 = very formal)
+- verdict: ONE editorial sentence that captures the essence of this voice, in the form "This voice is ..." — specific and memorable, like a sharp editor summing up a writer, never generic praise
+- avoid: 2-4 constructions, cliches, or registers that would ring FALSE in this voice (things this speaker never does), each a short phrase
 
 IMPORTANT: Focus on what makes this speaker sound distinctive and authentic. Capture their natural rhythms, characteristic phrasing, and personal style. The goal is to reproduce their real voice at a professional quality level, not a generic AI approximation. Note their use of contractions, signature transitions, and rhetorical habits.`;
 

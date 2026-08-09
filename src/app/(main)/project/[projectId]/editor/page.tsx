@@ -129,7 +129,7 @@ export default function EditorPage() {
     return (
       <PageShell projectId={projectId} currentStep="editor">
         <EmptyState
-          message="No chapters to edit yet."
+          message="Nothing to edit until a chapter is written."
           actionLabel="Generate Chapters"
           onAction={() => router.push(`/project/${projectId}/generate`)}
         />
@@ -319,7 +319,7 @@ export default function EditorPage() {
               {saved ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669" }} />
-                  <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif" }}>Saved</span>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif" }}>Saved to editorial memory</span>
                 </div>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -966,7 +966,7 @@ export default function EditorPage() {
                     onChange={handleContentChange}
                     onSelectionChange={setSelection}
                     editable={!isRewriting}
-                    placeholder="Begin writing your chapter here, or generate content from the Generate page..."
+                    placeholder="The page is yours. Write, or let Generate hand you a draft..."
                   />
                   <MagicEditBubble
                     editor={editorRef.current?.getEditor() ?? null}
@@ -1109,7 +1109,7 @@ export default function EditorPage() {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  Saved
+                  Saved to memory
                 </>
               ) : (
                 <>

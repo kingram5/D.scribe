@@ -400,7 +400,7 @@ export default function TranscriptPage() {
           </div>
         ) : (
           <EmptyState
-            message="No transcripts yet."
+            message="No words yet. Record, upload, or talk it through."
             actionLabel="Upload Audio"
             onAction={() => router.push(`/project/${projectId}/upload`)}
           />

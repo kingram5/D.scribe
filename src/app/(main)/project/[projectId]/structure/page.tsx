@@ -377,6 +377,36 @@ export default function StructurePage() {
             </div>
           </div>
 
+          {/* Book math — live manuscript estimate from chapters × words */}
+          <div style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: 16,
+            background: "linear-gradient(135deg, #C17A47 0%, #A86230 100%)",
+            borderRadius: 8,
+            padding: "20px 24px",
+            marginBottom: 32,
+          }}>
+            <div>
+              <div className="ds-label" style={{ color: "rgba(249,247,242,0.85)" }}>
+                Estimated manuscript
+              </div>
+              <div className="ds-label" style={{ color: "rgba(249,247,242,0.65)", marginTop: 6 }}>
+                words · about {Math.max(1, Math.round((numChapters * wordsPerChapter) / 250)).toLocaleString()} pages
+              </div>
+            </div>
+            <span style={{
+              fontFamily: "var(--font-playfair), var(--font-lora), serif",
+              fontSize: 44,
+              lineHeight: 1,
+              color: "#F9F7F2",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {(numChapters * wordsPerChapter).toLocaleString()}
+            </span>
+          </div>
+
           {/* Audience selector */}
           <div style={{
             borderBottom: "1px solid var(--ds-card-border)",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import TheoOrb from "@/components/ui/TheoOrb";
 import PageShell from "@/components/ui/PageShell";
@@ -14,14 +14,6 @@ export default function UploadPage() {
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
-  // The studio intro introduces T.H.E.O as tuned to THIS book's reader.
-  const [audience, setAudience] = useState<string>("");
-  useEffect(() => {
-    fetch(`/api/project/${projectId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.audience) setAudience(d.audience); })
-      .catch(() => {});
-  }, [projectId]);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -264,41 +256,6 @@ export default function UploadPage() {
                 }}>
                   TECHNICAL HUMAN EXPRESSION ORGANIZER
                 </p>
-                <p style={{
-                  fontSize: 14.5,
-                  color: "var(--text-secondary)",
-                  fontFamily: "var(--font-manrope), sans-serif",
-                  maxWidth: 330,
-                  margin: "0 auto",
-                  lineHeight: 1.6,
-                }}>
-                  Your ghostwriter, not a chatbot. T.H.E.O interviews the way a good editor does:
-                  he listens for the book inside the way you tell it, then asks the question that
-                  pulls the next chapter out of you.
-                </p>
-              </div>
-
-              <div style={{ maxWidth: 360, display: "flex", flexDirection: "column", gap: 9 }}>
-                {[
-                  audience && audience !== "General"
-                    ? `Pre-tuned for ${audience} — his questions already fit this book's reader`
-                    : "Tuned to your book's reader the moment you chose one",
-                  "Speak or type — he keeps up either way",
-                  "Everything you say becomes source material when you hit Finish",
-                ].map((tip, i) => (
-                  <div key={i} style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    fontSize: 13.5,
-                    color: "var(--text-secondary)",
-                    fontFamily: "var(--font-manrope), sans-serif",
-                    lineHeight: 1.5,
-                  }}>
-                    <span style={{ color: "#C17A47", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
-                    {tip}
-                  </div>
-                ))}
               </div>
             </div>
             <div style={{

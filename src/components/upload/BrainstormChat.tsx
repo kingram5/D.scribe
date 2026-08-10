@@ -647,12 +647,37 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <p style={{
             fontSize: 14,
             color: "var(--text-secondary)",
-            maxWidth: 320,
-            lineHeight: 1.5,
+            maxWidth: 340,
+            lineHeight: 1.55,
             fontFamily: "var(--font-manrope), sans-serif",
+            margin: "0 auto",
           }}>
-            Have a conversation to develop your ideas. The AI will ask questions to draw out your thoughts — no blank page required.
+            Your ghostwriter, not a chatbot. T.H.E.O interviews the way a good editor does:
+            he listens for the book inside the way you tell it, then asks the question that
+            pulls the next chapter out of you.
           </p>
+          <div style={{ maxWidth: 340, margin: "14px auto 0", display: "flex", flexDirection: "column", gap: 9, textAlign: "left" }}>
+            {[
+              audience && audience !== "General"
+                ? `Pre-tuned for ${audience} — his questions already fit this book's reader`
+                : "Tuned to your book's reader the moment you chose one",
+              "Speak or type — he keeps up either way",
+              "Everything you say becomes source material when you hit Finish",
+            ].map((tip, i) => (
+              <div key={i} style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--text-secondary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                lineHeight: 1.5,
+              }}>
+                <span style={{ color: "#C17A47", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
+                {tip}
+              </div>
+            ))}
+          </div>
           {speechSupported && (
             <div style={{
               display: "flex",

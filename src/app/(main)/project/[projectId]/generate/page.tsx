@@ -22,24 +22,9 @@ export default function GeneratePage() {
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   // Living page: streamed prose for the chapter currently being written.
-  // Chunks accumulate in a ref and flush to state on a timer — one setState
-  // per SSE token re-rendered the whole page thousands of times per chapter.
-  const [liveText, setLiveText] = useState("");
-  const [liveChapterId, setLiveChapterId] = useState<string | null>(null);
-  const liveBufRef = useRef("");
-  const liveFlushRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startLiveCapture = (chapterId: string) => {
-    liveBufRef.current = "";
-    setLiveText("");
-    setLiveChapterId(chapterId);
-    if (liveFlushRef.current) clearInterval(liveFlushRef.current);
-    liveFlushRef.current = setInterval(() => setLiveText(liveBufRef.current), 120);
-  };
-  const stopLiveCapture = () => {
-    if (liveFlushRef.current) { clearInterval(liveFlushRef.current); liveFlushRef.current = null; }
-    setLiveText(liveBufRef.current);
-  };
-  useEffect(() => () => { if (liveFlushRef.current) clearInterval(liveFlushRef.current); }, []);
+  // The SSE stream is still consumed (it carries done/error and keeps the request
+  // honest), but partial prose is never surfaced: D.Scribe only ever shows finished
+  // chapters, in whole (Kyle 2026-08-09). Nothing accumulates the text client-side.
   const [loading, setLoading] = useState(true);
   const { showUpgrade, setShowUpgrade, guardedFetch } = useInkGuard();
   const [creativeFreedom, setCreativeFreedom] = useState(50);
@@ -49,7 +34,6 @@ export default function GeneratePage() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   // Client-orchestrated generate-all state (replaces single long-running job)
   const [genAllRunning, setGenAllRunning] = useState(false);
-  const [watchMode, setWatchMode] = useState(false);
   const [genAllError, setGenAllError] = useState<string | null>(null);
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
@@ -169,10 +153,9 @@ export default function GeneratePage() {
     }).catch(() => {});
   }
 
-  // Consume a streaming /api/generate SSE response and wait for done/error event.
-  // Text chunks feed the living page so the prose is visible as it's written.
+  // Consume the /api/generate SSE response purely to await done/error. Text chunks are
+  // deliberately discarded — the chapter becomes visible only once it is finished.
   async function streamGenerate(chapterId: string): Promise<void> {
-    startLiveCapture(chapterId);
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -201,8 +184,8 @@ export default function GeneratePage() {
         if (raw === "[DONE]") return;
         try {
           const ev = JSON.parse(raw);
-          if (ev.chunk) liveBufRef.current += ev.chunk;
-          if (ev.done) { stopLiveCapture(); return; }
+          // ev.chunk intentionally ignored — no partial prose reaches the UI.
+          if (ev.done) return;
           if (ev.error) throw new Error(ev.error);
         } catch (parseErr) {
           // JSON.parse on a partial/heartbeat chunk throws SyntaxError — ignore.
@@ -425,10 +408,6 @@ export default function GeneratePage() {
   const recommendedQuotes = activeGenCh ? Math.max(1, Math.min(6, Math.round((activeGenCh.target_word_count || 1500) / 750))) : 0;
   const selectedQuoteCount = chapterEnrichments.filter((e) => e.included).length;
   const isGenerating = genAllRunning || regenRunning;
-  // The stage owns the screen while chapters are written; "Watch it write instead"
-  // drops the author back to the live page for this run only.
-  const showStage = isGenerating && !watchMode;
-  useEffect(() => { if (!isGenerating) setWatchMode(false); }, [isGenerating]);
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
   const estimatedSeconds = ungeneratedCount * 45;
@@ -444,7 +423,7 @@ export default function GeneratePage() {
       disabledStepKeys={!anyGenerated || isGenerating ? ["editor"] : []}
     >
       <GenerationStage
-        open={showStage}
+        open={isGenerating}
         coherence={genIsCoherence}
         progressLabel={
           genIsCoherence
@@ -454,7 +433,6 @@ export default function GeneratePage() {
               : undefined
         }
         progress={genTotal > 0 ? genCurrent / genTotal : undefined}
-        onWatch={() => setWatchMode(true)}
       />
       <div className="ds-pipeline-grid" style={{
         display: "grid",
@@ -712,70 +690,38 @@ export default function GeneratePage() {
                 </div>
               )}
 
-              {/* The living page — a book page the prose writes itself onto */}
-              {(() => {
-                const writingHere = isGenerating && liveChapterId === active.id && liveText.length > 0;
-                const wroteHere = !isGenerating && liveChapterId === active.id && liveText.length > 0;
-                return (
-                  <div style={{
-                    background: "#FDFCF8",
-                    border: "1px solid var(--ds-card-border)",
-                    borderRadius: 6,
-                    boxShadow: "0 8px 28px rgba(44,36,25,0.1)",
-                    padding: "28px 34px 30px",
-                    marginBottom: 24,
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 22 }}>
-                      <span className="ds-stamp" style={{ color: "var(--text-tertiary)" }}>
-                        Chapter {active.chapter_number}
-                      </span>
-                      <span className={`ds-stamp${writingHere ? " ds-stamp--live" : ""}`} style={writingHere ? {} : { color: "#C17A47" }}>
-                        {writingHere ? "Writing live" : active.status === "generated" || active.status === "edited" || wroteHere ? "Drafted" : "Outlined"}
-                      </span>
-                    </div>
-                    <h2 style={{ fontSize: 26, fontWeight: 500, color: "var(--text-primary)", marginBottom: 14, fontFamily: "var(--font-lora), serif" }}>
-                      {active.title}
-                    </h2>
-                    {(writingHere || wroteHere) ? (
-                      <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column-reverse" }}>
-                        <p style={{
-                          fontSize: 16,
-                          color: "var(--text-primary)",
-                          lineHeight: 1.75,
-                          fontFamily: "var(--font-lora), serif",
-                          whiteSpace: "pre-wrap",
-                          margin: 0,
-                        }}>
-                          {liveText}
-                          {writingHere && <span className="ds-live-cursor" aria-hidden="true" />}
-                        </p>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
-                        {active.summary}
-                        {active.status !== "generated" && active.status !== "edited" && (
-                          <span style={{ display: "block", marginTop: 10, fontStyle: "italic", color: "var(--text-tertiary)" }}>
-                            This chapter is outlined and ready to become prose.
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    <style>{`
-                      .ds-live-cursor {
-                        display: inline-block;
-                        width: 2px;
-                        height: 1.05em;
-                        margin-left: 2px;
-                        vertical-align: -0.15em;
-                        background: #B3352C;
-                        animation: dsPageBlink 0.85s steps(1) infinite;
-                      }
-                      @keyframes dsPageBlink { 50% { opacity: 0; } }
-                      @media (prefers-reduced-motion: reduce) { .ds-live-cursor { animation: none !important; } }
-                    `}</style>
-                  </div>
-                );
-              })()}
+              {/* The chapter plate. Partial prose is NEVER rendered (Kyle 2026-08-09: the
+                  site only ever produces finished chapters in whole) — while a chapter is
+                  being written the GenerationStage owns the screen, and the finished text
+                  appears in the Editor. */}
+              <div style={{
+                background: "#FDFCF8",
+                border: "1px solid var(--ds-card-border)",
+                borderRadius: 6,
+                boxShadow: "0 8px 28px rgba(44,36,25,0.1)",
+                padding: "28px 34px 30px",
+                marginBottom: 24,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 22 }}>
+                  <span className="ds-stamp" style={{ color: "var(--text-tertiary)" }}>
+                    Chapter {active.chapter_number}
+                  </span>
+                  <span className="ds-stamp" style={{ color: "#C17A47" }}>
+                    {active.status === "generated" || active.status === "edited" ? "Drafted" : "Outlined"}
+                  </span>
+                </div>
+                <h2 style={{ fontSize: 26, fontWeight: 500, color: "var(--text-primary)", marginBottom: 14, fontFamily: "var(--font-lora), serif" }}>
+                  {active.title}
+                </h2>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                  {active.summary}
+                  {active.status !== "generated" && active.status !== "edited" && (
+                    <span style={{ display: "block", marginTop: 10, fontStyle: "italic", color: "var(--text-tertiary)" }}>
+                      This chapter is outlined and ready to become prose.
+                    </span>
+                  )}
+                </p>
+              </div>
 
               {/* Enrichment quotes — interactive */}
               <div style={{ marginBottom: 24 }}>

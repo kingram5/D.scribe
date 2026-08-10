@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ThinkingOrb } from "thinking-orbs";
+import TheoOrb from "@/components/ui/TheoOrb";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
 import BrainstormChat from "@/components/upload/BrainstormChat";
@@ -188,19 +188,18 @@ export default function UploadPage() {
               </div>
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
-              {/* T.H.E.O's portrait: the live orb on its own dark disc. `dark` theme paints
-                  light ink, which is what this disc needs even though the panel is paper. */}
+              {/* T.H.E.O's portrait: burnt orange on papery beige. */}
               <div style={{
                 width: 150,
                 height: 150,
                 borderRadius: "50%",
                 display: "grid",
                 placeItems: "center",
-                background: "radial-gradient(circle at 32% 22%, #3A3023 0%, #2C2419 65%, #241D14 100%)",
-                boxShadow: "0 0 0 1px rgba(193,122,71,0.35), 0 0 40px rgba(193,122,71,0.22)",
+                background: "var(--ds-paper, #F4F1E8)",
+                boxShadow: "0 0 0 1px rgba(193,122,71,0.4), 0 0 40px rgba(193,122,71,0.2)",
                 flexShrink: 0,
               }}>
-                <ThinkingOrb state="listening" size={64} speed={0.6} theme="dark" aria-label="T.H.E.O, listening" />
+                <TheoOrb state="listening" size={64} speed={0.6} aria-label="T.H.E.O, listening" />
               </div>
 
               <div style={{ textAlign: "center" }}>

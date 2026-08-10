@@ -1037,7 +1037,7 @@ input[type=range] {
   --band-fg: #2C2419;
 }
 
-/* Stamp: small mono tag used on pages (chapter number, DRAFT, WRITING LIVE). */
+/* Stamp: small mono tag used on pages (chapter number, DRAFTED, OUTLINED). */
 .ds-stamp {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 10.5px;

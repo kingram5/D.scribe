@@ -9,8 +9,9 @@
 // would resolve against the host page and paint dark ink on dark.
 
 import { useEffect, useRef, useState } from "react";
-import { ThinkingOrb, type OrbState } from "thinking-orbs";
+import { type OrbState } from "thinking-orbs";
 import { createPortal } from "react-dom";
+import TheoOrb from "./TheoOrb";
 
 /** The cycle. Order is the felt order of the work, not the literal pipeline. */
 const PHASES: { state: OrbState; text: string }[] = [
@@ -35,11 +36,9 @@ interface GenerationStageProps {
   progressLabel?: string;
   /** 0–1; omitted renders no bar. */
   progress?: number;
-  /** Lets the author drop back to watch the prose stream in. */
-  onWatch?: () => void;
 }
 
-export default function GenerationStage({ open, coherence, progressLabel, progress, onWatch }: GenerationStageProps) {
+export default function GenerationStage({ open, coherence, progressLabel, progress }: GenerationStageProps) {
   const [i, setI] = useState(0);
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -101,18 +100,18 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
           gap: 22,
           padding: "48px 44px",
           borderRadius: 18,
-          background: "radial-gradient(circle at 50% 12%, #3A3023 0%, #2C2419 55%, #241D14 100%)",
-          border: "1px solid rgba(193,122,71,0.35)",
-          boxShadow: "0 30px 90px rgba(0,0,0,0.5)",
+          background: "var(--ds-paper, #F4F1E8)",
+          border: "1px solid rgba(193,122,71,0.3)",
+          boxShadow: "0 30px 90px rgba(0,0,0,0.45)",
           outline: "none",
           textAlign: "center",
         }}
       >
-        <span className="ds-label" style={{ color: "rgba(249,247,242,0.5)", letterSpacing: "0.14em", fontSize: 10 }}>
-          {coherence ? "FINAL PASS" : "WRITING LIVE"}
+        <span className="ds-label" style={{ color: "#A05526", letterSpacing: "0.14em", fontSize: 10 }}>
+          {coherence ? "FINAL PASS" : "AT THE DESK"}
         </span>
 
-        <ThinkingOrb key={phase.state} state={phase.state} size={64} theme="dark" />
+        <TheoOrb key={phase.state} state={phase.state} size={64} />
 
         <p
           key={phase.text}
@@ -123,7 +122,7 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
             fontWeight: 400,
             fontSize: "clamp(22px, 2.6vw, 30px)",
             lineHeight: 1.2,
-            color: "#F9F7F2",
+            color: "var(--ds-ink, #2C2419)",
             margin: 0,
             textWrap: "balance",
           }}
@@ -136,7 +135,7 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
             fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
             fontSize: 11,
             letterSpacing: "0.08em",
-            color: "rgba(249,247,242,0.6)",
+            color: "#6B644F",
             margin: 0,
           }}>
             {progressLabel}
@@ -144,7 +143,7 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
         )}
 
         {typeof progress === "number" && (
-          <div style={{ width: "min(320px, 70%)", height: 3, background: "rgba(249,247,242,0.14)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ width: "min(320px, 70%)", height: 3, background: "rgba(44,36,25,0.12)", borderRadius: 2, overflow: "hidden" }}>
             <div style={{
               height: "100%",
               width: "100%",
@@ -156,28 +155,9 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
           </div>
         )}
 
-        <p style={{ fontSize: 12.5, color: "rgba(249,247,242,0.45)", margin: 0, maxWidth: 420, lineHeight: 1.5 }}>
-          Leaving this page stops the run. This usually takes a few minutes.
+        <p style={{ fontSize: 12.5, color: "#6B644F", margin: 0, maxWidth: 430, lineHeight: 1.5 }}>
+          Chapters arrive finished, never half-written. Leaving this page stops the run.
         </p>
-
-        {onWatch && (
-          <button
-            type="button"
-            onClick={onWatch}
-            style={{
-              border: "1px solid rgba(249,247,242,0.25)",
-              background: "transparent",
-              color: "rgba(249,247,242,0.8)",
-              fontFamily: "var(--font-manrope), sans-serif",
-              fontSize: 13,
-              borderRadius: 9999,
-              padding: "9px 18px",
-              cursor: "pointer",
-            }}
-          >
-            Watch it write instead
-          </button>
-        )}
       </div>
     </div>,
     document.body

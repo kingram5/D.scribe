@@ -9,7 +9,7 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 const MODEL = "claude-haiku-4-5-20251001";
 
-const SYSTEM_PROMPT = `You are a warm, curious brainstorming partner helping someone develop ideas for their manuscript. Your job is to draw ideas OUT of the user — not to lecture or generate content for them.
+const SYSTEM_PROMPT = `You are T.H.E.O (Technical Human Expression Organizer) — "Theo" in conversation — the user's ghostwriter and a warm, curious brainstorming partner helping them develop ideas for their manuscript. Your job is to draw ideas OUT of the user — not to lecture or generate content for them. Refer to yourself as Theo if the moment calls for it; never spell out the acronym unprompted.
 
 You exist ONLY to help with book and manuscript ideation. If the user asks for anything unrelated to developing their writing (coding, general questions, advice, etc.), redirect them: "I'm here to help you brainstorm your book — what are you thinking about writing?"
 
@@ -73,16 +73,20 @@ export async function POST(req: NextRequest) {
   // interviewer rather than erroring — older clients don't send project_id at all.
   let verifiedProjectId: string | null = null;
   let audienceBlock: string | null = null;
+  let projectTitle = "";
+  let projectAudience = "";
   if (project_id) {
     const supabase = createServerClient();
     const { data: project } = await supabase
       .from("projects")
-      .select("id, audience, scripture_translation")
+      .select("id, title, audience, scripture_translation")
       .eq("id", project_id)
       .eq("user_id", user.id)
       .single();
     if (project) {
       verifiedProjectId = project.id;
+      projectTitle = project.title || "";
+      projectAudience = project.audience || "";
       audienceBlock = brainstormProfileBlock(project.audience, project.scripture_translation);
     }
   }
@@ -99,10 +103,29 @@ export async function POST(req: NextRequest) {
       m.role === "user" && m.content.trim() !== "Start the brainstorm session."
   );
   const baseSystem = audienceBlock ? SYSTEM_PROMPT + audienceBlock : SYSTEM_PROMPT;
+
+  // Warm opener (Kyle's note 5): the first message used to jump straight into "what are
+  // we writing about", which read as rushed. On the session's opening turn only, Theo
+  // greets by name and shows he already knows the project. Every fact is optional —
+  // one of the accounts has no name on file, titles default to "Untitled Project",
+  // and audience can be General — so the instruction lists only what actually exists.
+  let greetingBlock = "";
+  if (!firstRealUserMsg) {
+    const rawName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
+    const firstName = rawName ? (rawName.split(/\s+/)[0] ?? "") : "";
+    const knownTitle = projectTitle && !/^untitled/i.test(projectTitle) ? projectTitle : "";
+    const knownAudience = projectAudience && projectAudience !== "General" ? projectAudience : "";
+    const known: string[] = [];
+    if (firstName) known.push(`The author's first name is ${JSON.stringify(firstName)} — greet them by it.`);
+    if (knownTitle) known.push(`Their working title is ${JSON.stringify(knownTitle)} — mention it naturally.`);
+    if (knownAudience) known.push(`The book is aimed at a ${JSON.stringify(knownAudience)} audience — acknowledge that.`);
+    greetingBlock = `\n\nOPENING GREETING — This is the very first message of the session. Open warmly as Theo, in one or two sentences, before your first question: introduce yourself briefly and show you already know this project.\n${known.length ? known.join("\n") : "Nothing about the author or project is on file yet — keep the greeting warm and generic."}\nShape (adapt, don't recite): "Hey ${firstName || "there"}, Theo here to help you start brainstorming${knownTitle ? ` ${JSON.stringify(knownTitle)}` : " your book"}${knownAudience ? `. I see you're writing for a ${knownAudience} audience` : ""}. Why don't we start with you telling me..."\nThen ask your single opening question. Never invent a name, title, or audience that is not listed above.`;
+  }
+
   const dynamicSystem = firstRealUserMsg
     ? baseSystem +
       `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
-    : baseSystem;
+    : baseSystem + greetingBlock;
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.

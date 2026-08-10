@@ -508,6 +508,7 @@ export default function EditorPage() {
             {/* Export link */}
             <Link
               href={`/project/${projectId}/export`}
+              className={chapters.length > 0 && chaptersWithContent === chapters.length ? "ds-cta-pulse" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
@@ -13,6 +13,14 @@ export default function UploadPage() {
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
+  // The studio intro introduces T.H.E.O as tuned to THIS book's reader.
+  const [audience, setAudience] = useState<string>("");
+  useEffect(() => {
+    fetch(`/api/project/${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.audience) setAudience(d.audience); })
+      .catch(() => {});
+  }, [projectId]);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -145,7 +153,7 @@ export default function UploadPage() {
             <button
               onClick={handleInitialize}
               disabled={(!engine.canInitialize && !engine.allDone) || engine.uploading}
-              className="transcribe-btn"
+              className={`transcribe-btn${engine.allDone ? " ds-cta-pulse" : ""}`}
             >
               {engine.uploading ? "Processing..." : engine.allDone ? "View Transcripts →" : "Transcribe →"}
             </button>
@@ -178,48 +186,99 @@ export default function UploadPage() {
                 <span style={{ fontSize: 22, fontWeight: 300, color: "var(--ds-ink)", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
               </div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 28, overflow: "hidden", minHeight: 0 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
+              {/* Placeholder portrait — a generated T.H.E.O graphic replaces this later */}
+              <div aria-hidden="true" style={{
+                width: 150,
+                height: 150,
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                background: "radial-gradient(circle at 32% 22%, #3A3023 0%, #2C2419 65%, #241D14 100%)",
+                border: "2px dashed rgba(193,122,71,0.5)",
+                position: "relative",
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  color: "#C17A47",
+                }}>
+                  T.H.
+                </span>
+                <span style={{
+                  position: "absolute",
+                  bottom: -10,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  whiteSpace: "nowrap",
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  color: "var(--text-tertiary)",
+                  background: "var(--ds-paper)",
+                  padding: "2px 8px",
+                }}>
+                  PORTRAIT · COMING SOON
+                </span>
+              </div>
+
               <div style={{ textAlign: "center" }}>
                 <h1 style={{
                   fontFamily: "var(--font-lora), serif",
                   fontStyle: "italic",
                   fontWeight: 400,
-                  fontSize: "2.4rem",
-                  lineHeight: 1.15,
+                  fontSize: "2.3rem",
+                  lineHeight: 1.1,
                   color: "var(--ds-ink)",
                   letterSpacing: "-0.02em",
-                  marginBottom: 12,
+                  marginBottom: 6,
                 }}>
-                  Brainstorm Studio
+                  Meet T.H.E.O
                 </h1>
                 <p style={{
-                  fontSize: 14,
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 10.5,
+                  letterSpacing: "0.09em",
+                  color: "#A05526",
+                  marginBottom: 14,
+                }}>
+                  TECHNICAL HUMAN EXPRESSION ORGANIZER
+                </p>
+                <p style={{
+                  fontSize: 14.5,
                   color: "var(--text-secondary)",
                   fontFamily: "var(--font-manrope), sans-serif",
-                  fontWeight: 400,
-                  maxWidth: 280,
+                  maxWidth: 330,
                   margin: "0 auto",
-                  lineHeight: 1.5,
+                  lineHeight: 1.6,
                 }}>
-                  Talk through your ideas with AI. Speak or type — the AI asks questions to draw out your best thinking.
+                  Your ghostwriter, not a chatbot. T.H.E.O interviews the way a good editor does:
+                  he listens for the book inside the way you tell it, then asks the question that
+                  pulls the next chapter out of you.
                 </p>
               </div>
-              <div style={{ maxWidth: 400, display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+
+              <div style={{ maxWidth: 360, display: "flex", flexDirection: "column", gap: 9 }}>
                 {[
-                  "Tap \"Speak\" and talk naturally — no need to type",
-                  "The AI asks follow-up questions to deepen your ideas",
-                  "When you're done, hit \"Finish\" to create your source material",
+                  audience && audience !== "General"
+                    ? `Pre-tuned for ${audience} — his questions already fit this book's reader`
+                    : "Tuned to your book's reader the moment you chose one",
+                  "Speak or type — he keeps up either way",
+                  "Everything you say becomes source material when you hit Finish",
                 ].map((tip, i) => (
                   <div key={i} style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 8,
-                    fontSize: 15,
+                    fontSize: 13.5,
                     color: "var(--text-secondary)",
                     fontFamily: "var(--font-manrope), sans-serif",
                     lineHeight: 1.5,
                   }}>
-                    <span style={{ color: "var(--text-tertiary)", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
+                    <span style={{ color: "#C17A47", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
                     {tip}
                   </div>
                 ))}

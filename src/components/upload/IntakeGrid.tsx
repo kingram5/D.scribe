@@ -98,10 +98,68 @@ export default function IntakeGrid(p: IntakeGridProps) {
 
   return (
     <div className="ds-intake">
-      {/* ── 01 · RECORD — the cassette stays ─────────────────────────────── */}
+      {/* ── 01 · BRAINSTORM STUDIO — the featured way in (Kyle 2026-08-09:
+             "the brainstorm should really be the primarily featured option") ── */}
+      <article className="ds-intake-brain" style={{
+        ...cardBase,
+        background: "radial-gradient(circle at 28% 0%, #3A3023 0%, #2C2419 55%, #241D14 100%)",
+        border: "1px solid rgba(193,122,71,0.4)",
+        padding: "22px 28px 26px",
+      }}>
+        <CardTop l="01 / BRAINSTORM STUDIO" r="● LIVE" hot light />
+        <div style={{ display: "flex", alignItems: "center", gap: 26, flexWrap: "wrap", marginTop: 12 }}>
+          <div aria-hidden="true" style={{
+            width: 92,
+            height: 92,
+            borderRadius: "50%",
+            flexShrink: 0,
+            display: "grid",
+            placeItems: "center",
+            background: "#C17A47",
+            color: "#241D14",
+            fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+            fontSize: 17,
+            fontWeight: 700,
+            letterSpacing: "0.05em",
+            boxShadow: "0 0 0 1px rgba(249,247,242,0.18), 0 0 34px rgba(193,122,71,0.4)",
+          }}>
+            T.H.
+          </div>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <h3 style={{ ...serifH3, color: "#F9F7F2", fontSize: 30, margin: "0 0 8px" }}>
+              Talk your book into existence.
+            </h3>
+            <p style={{ fontSize: 14, color: "rgba(249,247,242,0.75)", lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
+              Sit down with T.H.E.O, your ghostwriter — already tuned to this book&apos;s reader.
+              No script, no blank page. He listens for the book inside the way you tell it.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={p.onBrainstorm}
+            style={{
+              flexShrink: 0,
+              border: "none",
+              borderRadius: 12,
+              background: "#C17A47",
+              color: "#241D14",
+              fontFamily: "var(--font-manrope), sans-serif",
+              fontSize: 16,
+              fontWeight: 700,
+              padding: "17px 26px",
+              cursor: "pointer",
+              boxShadow: "0 0 24px rgba(193,122,71,0.35)",
+            }}
+          >
+            Enter the studio ↗
+          </button>
+        </div>
+      </article>
+
+      {/* ── 02 · RECORD — the cassette stays ─────────────────────────────── */}
       <article className="ds-intake-record" style={{ ...cardBase, background: "var(--ds-paper)", alignItems: "center" }}>
         <div style={{ alignSelf: "stretch" }}>
-          <CardTop l="01 / RECORD LIVE" r={p.isRecording ? "● RECORDING" : "STANDBY"} hot={p.isRecording} />
+          <CardTop l="02 / RECORD LIVE" r={p.isRecording ? "● RECORDING" : "STANDBY"} hot={p.isRecording} />
         </div>
         <h3 style={{ ...serifH3, fontSize: 30, textAlign: "center", marginTop: 22 }}>
           Give it your voice, live.
@@ -187,7 +245,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
         onDragOver={(e) => { e.preventDefault(); p.setDragging(true); }}
         onDragLeave={() => p.setDragging(false)}
       >
-        <CardTop l="02 / AUDIO FILES" r={sourceState} hot={p.allDone || transcribing > 0 || failed > 0} />
+        <CardTop l="03 / AUDIO FILES" r={sourceState} hot={p.allDone || transcribing > 0 || failed > 0} />
         <h3 style={serifH3}>Drop the recordings you already have.</h3>
         <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
           {p.dragging ? "Drop to add them to this book." : "MP3, WAV, M4A, MP4 — up to 500 MB each. Combine as many as the book needs."}
@@ -271,7 +329,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
 
       {/* ── 03 · YOUTUBE ─────────────────────────────────────────────────── */}
       <article style={cardBase}>
-        <CardTop l="03 / YOUTUBE" r="2 INK" hot />
+        <CardTop l="04 / YOUTUBE" r="2 INK" hot />
         <h3 style={serifH3}>Bring a public conversation in.</h3>
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
           <input
@@ -313,59 +371,6 @@ export default function IntakeGrid(p: IntakeGridProps) {
         </p>
       </article>
 
-      {/* ── 04 · BRAINSTORM STUDIO — the dark stage teaser ───────────────── */}
-      <article className="ds-intake-brain" style={{
-        ...cardBase,
-        background: "radial-gradient(circle at 30% 0%, #3A3023 0%, #2C2419 55%, #241D14 100%)",
-        border: "1px solid rgba(193,122,71,0.35)",
-      }}>
-        <CardTop l="04 / BRAINSTORM STUDIO" r="LIVE" hot light />
-        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
-          <div aria-hidden="true" style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            flexShrink: 0,
-            display: "grid",
-            placeItems: "center",
-            background: "#C17A47",
-            color: "#241D14",
-            fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: "0.05em",
-            boxShadow: "0 0 0 1px rgba(249,247,242,0.15), 0 0 24px rgba(193,122,71,0.35)",
-          }}>
-            T.H.
-          </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h3 style={{ ...serifH3, color: "#F9F7F2", margin: "0 0 6px" }}>
-              Don&apos;t know where to begin? Begin here.
-            </h3>
-            <p style={{ fontSize: 13, color: "rgba(249,247,242,0.72)", lineHeight: 1.55, maxWidth: 520 }}>
-              T.H.E.O, your ghostwriter, is already tuned to this book&apos;s reader. Talk it out — he listens for the book inside the way you tell it.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={p.onBrainstorm}
-            style={{
-              flexShrink: 0,
-              border: "none",
-              borderRadius: 10,
-              background: "#C17A47",
-              color: "#241D14",
-              fontFamily: "var(--font-manrope), sans-serif",
-              fontSize: 14,
-              fontWeight: 700,
-              padding: "13px 20px",
-              cursor: "pointer",
-            }}
-          >
-            Enter the studio ↗
-          </button>
-        </div>
-      </article>
     </div>
   );
 }

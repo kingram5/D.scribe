@@ -1061,7 +1061,7 @@ export default function GeneratePage() {
                 <div style={{ marginTop: 16 }}>
                   <button
                     onClick={() => { if (!isGenerating) router.push(`/project/${projectId}/editor`); }}
-                    className="nodum-btn"
+                    className={`nodum-btn${allGenerated && !isGenerating ? " ds-cta-pulse" : ""}`}
                     disabled={isGenerating}
                     style={{
                       width: "100%",

@@ -115,13 +115,25 @@ Source Material (transcript excerpts for this chapter):
 ${opts.transcriptExcerpts}
 ---
 
-Key Points — Featured (give each its own section with dedicated coverage):
+Key Points — Featured (the movements of this chapter's one argument — each must be covered fully, in this order unless the material demands otherwise):
 ${featured.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
 
   if (blended.length > 0) {
-    prompt += `\n\nKey Points — Blended (weave these themes into the featured sections naturally, don't give them standalone coverage):
+    prompt += `\n\nKey Points — Blended (weave these themes through the movements naturally, never as standalone coverage):
 ${blended.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
   }
+
+  // One chapter = one argument. The old instruction ("give each key point its own
+  // section") produced chapters that read as loosely related snippets pasted in
+  // sequence — every point opened cold under its own subheader. The subheading
+  // budget scales with length so a short chapter isn't carved into fragments.
+  const headingBudget = Math.max(0, Math.floor(opts.targetWords / 1200));
+  prompt += `\n\nCHAPTER SHAPE — one chapter, one argument:
+- Open by establishing what this chapter claims, drawn from the chapter summary, in the author's voice. Everything that follows serves that claim.
+- The featured key points are MOVEMENTS of that argument, not sections. Carry the reader from one to the next with written transitions — a sentence or short paragraph that makes the next movement feel inevitable. Never jump to a new topic by simply starting a new heading.
+- Subheading budget: at most ${headingBudget === 0 ? "ZERO subheadings — this chapter is too short to carve up; write it as continuous prose" : `${headingBudget} "## " subheading${headingBudget === 1 ? "" : "s"}`}, and only where the argument genuinely turns. Fewer is better.
+- Never open a movement by restating its key point title as a heading or first sentence. Enter through story, consequence, or the thread left by the previous movement.
+- The chapter should read as one sustained piece of thinking that happens to pass through these points, not a collection that happens to share a title.`;
 
   if (opts.enrichments && opts.enrichments.length > 0) {
     const included = opts.enrichments.filter((e) => e.included);
@@ -156,7 +168,7 @@ Parameters:
 - Audience: ${opts.audience}
 - Creative freedom: ${opts.freedomInstruction}
 
-Write the full chapter text. Use proper paragraphs. Include section breaks where natural.
+Write the full chapter text. Use proper paragraphs. Honor the CHAPTER SHAPE rules above — transitions carry the reader between movements; section breaks are the exception, not the rhythm.
 Do not include the chapter title at the top (the editor will handle formatting).
 
 REMINDER: Absolutely NO em dashes (—), NO AI clichés (tapestry, journey, landscape, dive deep, lean into, etc.), NO rhetorical questions as transitions. Write like a human. Reread the humanizer rules before outputting.`;

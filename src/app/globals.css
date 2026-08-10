@@ -699,6 +699,17 @@ input[type=range] {
   .ds-rec-dot, .ds-record-hint, .ds-bar-active { animation: none; }
 }
 
+/* Step-complete pulse (Kyle's note 6): when a step's work is finished, its
+   forward CTA breathes — a glow, not a size change, so nothing reflows. */
+.ds-cta-pulse { animation: dsCtaPulse 1.8s ease-in-out infinite; }
+@keyframes dsCtaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(193, 122, 71, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(193, 122, 71, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-cta-pulse { animation: none; box-shadow: 0 0 0 2px rgba(193, 122, 71, 0.45); }
+}
+
 .grill-pattern {
   position: absolute;
   inset: 0;

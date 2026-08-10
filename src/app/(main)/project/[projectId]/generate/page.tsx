@@ -12,6 +12,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import JobProgress from "@/components/ui/JobProgress";
 import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
+import GenerationStage from "@/components/ui/GenerationStage";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useInkGuard } from "@/hooks/useInkGuard";
 import InkTooltip from "@/components/ui/InkTooltip";
@@ -48,6 +49,7 @@ export default function GeneratePage() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   // Client-orchestrated generate-all state (replaces single long-running job)
   const [genAllRunning, setGenAllRunning] = useState(false);
+  const [watchMode, setWatchMode] = useState(false);
   const [genAllError, setGenAllError] = useState<string | null>(null);
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
@@ -423,6 +425,10 @@ export default function GeneratePage() {
   const recommendedQuotes = activeGenCh ? Math.max(1, Math.min(6, Math.round((activeGenCh.target_word_count || 1500) / 750))) : 0;
   const selectedQuoteCount = chapterEnrichments.filter((e) => e.included).length;
   const isGenerating = genAllRunning || regenRunning;
+  // The stage owns the screen while chapters are written; "Watch it write instead"
+  // drops the author back to the live page for this run only.
+  const showStage = isGenerating && !watchMode;
+  useEffect(() => { if (!isGenerating) setWatchMode(false); }, [isGenerating]);
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
   const estimatedSeconds = ungeneratedCount * 45;
@@ -437,6 +443,19 @@ export default function GeneratePage() {
       currentStep="generate"
       disabledStepKeys={!anyGenerated || isGenerating ? ["editor"] : []}
     >
+      <GenerationStage
+        open={showStage}
+        coherence={genIsCoherence}
+        progressLabel={
+          genIsCoherence
+            ? "Smoothing transitions across the manuscript"
+            : genTotal > 0
+              ? `Chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}`
+              : undefined
+        }
+        progress={genTotal > 0 ? genCurrent / genTotal : undefined}
+        onWatch={() => setWatchMode(true)}
+      />
       <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "340px 1fr",

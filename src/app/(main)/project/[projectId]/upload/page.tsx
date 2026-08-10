@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThinkingOrb } from "thinking-orbs";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
 import BrainstormChat from "@/components/upload/BrainstormChat";
@@ -187,42 +188,19 @@ export default function UploadPage() {
               </div>
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
-              {/* Placeholder portrait — a generated T.H.E.O graphic replaces this later */}
-              <div aria-hidden="true" style={{
+              {/* T.H.E.O's portrait: the live orb on its own dark disc. `dark` theme paints
+                  light ink, which is what this disc needs even though the panel is paper. */}
+              <div style={{
                 width: 150,
                 height: 150,
                 borderRadius: "50%",
                 display: "grid",
                 placeItems: "center",
                 background: "radial-gradient(circle at 32% 22%, #3A3023 0%, #2C2419 65%, #241D14 100%)",
-                border: "2px dashed rgba(193,122,71,0.5)",
-                position: "relative",
+                boxShadow: "0 0 0 1px rgba(193,122,71,0.35), 0 0 40px rgba(193,122,71,0.22)",
                 flexShrink: 0,
               }}>
-                <span style={{
-                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                  fontSize: 22,
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  color: "#C17A47",
-                }}>
-                  T.H.
-                </span>
-                <span style={{
-                  position: "absolute",
-                  bottom: -10,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  whiteSpace: "nowrap",
-                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                  fontSize: 9,
-                  letterSpacing: "0.1em",
-                  color: "var(--text-tertiary)",
-                  background: "var(--ds-paper)",
-                  padding: "2px 8px",
-                }}>
-                  PORTRAIT · COMING SOON
-                </span>
+                <ThinkingOrb state="listening" size={64} speed={0.6} theme="dark" aria-label="T.H.E.O, listening" />
               </div>
 
               <div style={{ textAlign: "center" }}>

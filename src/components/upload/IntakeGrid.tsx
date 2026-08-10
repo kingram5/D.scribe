@@ -5,6 +5,7 @@
 // 02 audio files with live per-file transcription rows, 03 YouTube, 04 brainstorm studio.
 // Replaces the old 45/55 LeftPanel/RightPanel split. All engine logic arrives via props.
 
+import { ThinkingOrb } from "thinking-orbs";
 import CassetteTape from "./CassetteTape";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 
@@ -108,22 +109,10 @@ export default function IntakeGrid(p: IntakeGridProps) {
       }}>
         <CardTop l="01 / BRAINSTORM STUDIO" r="● LIVE" hot light />
         <div style={{ display: "flex", alignItems: "center", gap: 26, flexWrap: "wrap", marginTop: 12 }}>
-          <div aria-hidden="true" style={{
-            width: 92,
-            height: 92,
-            borderRadius: "50%",
-            flexShrink: 0,
-            display: "grid",
-            placeItems: "center",
-            background: "#C17A47",
-            color: "#241D14",
-            fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-            fontSize: 17,
-            fontWeight: 700,
-            letterSpacing: "0.05em",
-            boxShadow: "0 0 0 1px rgba(249,247,242,0.18), 0 0 34px rgba(193,122,71,0.4)",
-          }}>
-            T.H.
+          {/* T.H.E.O's live identity. `dark` paints light ink for this near-black card;
+              `auto` would resolve against the page and disappear. */}
+          <div style={{ flexShrink: 0, display: "grid", placeItems: "center", width: 92, height: 92 }}>
+            <ThinkingOrb state="listening" size={64} speed={0.6} theme="dark" aria-label="T.H.E.O, listening" />
           </div>
           <div style={{ flex: 1, minWidth: 260 }}>
             <h3 style={{ ...serifH3, color: "#F9F7F2", fontSize: 30, margin: "0 0 8px" }}>

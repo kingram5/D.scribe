@@ -109,18 +109,10 @@ export default function IntakeGrid(p: IntakeGridProps) {
       }}>
         <CardTop l="01 / BRAINSTORM STUDIO" r="● LIVE" hot light />
         <div style={{ display: "flex", alignItems: "center", gap: 26, flexWrap: "wrap", marginTop: 12 }}>
-          {/* T.H.E.O's live identity: burnt orange on a papery beige medallion. */}
-          <div style={{
-            flexShrink: 0,
-            display: "grid",
-            placeItems: "center",
-            width: 92,
-            height: 92,
-            borderRadius: "50%",
-            background: "var(--ds-paper, #F4F1E8)",
-            boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 30px rgba(193,122,71,0.28)",
-          }}>
-            <TheoOrb state="listening" size={64} speed={0.6} aria-label="T.H.E.O, listening" />
+          {/* T.H.E.O's live identity: the orange orb sits straight on the brown card, no
+              medallion behind it (Kyle 2026-08-09). */}
+          <div style={{ flexShrink: 0, display: "grid", placeItems: "center", width: 140, height: 140 }}>
+            <TheoOrb state="listening" size={64} display={128} speed={0.6} aria-label="T.H.E.O, listening" />
           </div>
           <div style={{ flex: 1, minWidth: 260 }}>
             <h3 style={{ ...serifH3, color: "#F9F7F2", fontSize: 30, margin: "0 0 8px" }}>

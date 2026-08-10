@@ -15,6 +15,12 @@ interface TheoOrbProps {
   state?: OrbState;
   /** The package ships exactly two tuned designs; they are not a scale factor. */
   size?: OrbSize;
+  /**
+   * Rendered width/height in CSS px. Defaults to `size`. The tuned design is still
+   * resolved at `size` (dot count, dot size and speed are hand-tuned per preset) and then
+   * drawn at `display / size` scale, so it grows crisply instead of being a stretched bitmap.
+   */
+  display?: number;
   /** Animation speed multiplier on top of the preset's baked speed. */
   speed?: number;
   /** Any CSS colour. Defaults to D.Scribe burnt orange. */
@@ -30,6 +36,7 @@ const BURNT_ORANGE = "#C17A47";
 export default function TheoOrb({
   state = "listening",
   size = 64,
+  display,
   speed = 1,
   color = BURNT_ORANGE,
   paused = false,
@@ -37,6 +44,7 @@ export default function TheoOrb({
   style,
   "aria-label": ariaLabel,
 }: TheoOrbProps) {
+  const rendered = display ?? size;
   const ref = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -46,17 +54,20 @@ export default function TheoOrb({
     if (!canvas) return;
 
     const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
-    canvas.width = Math.round(size * dpr);
-    canvas.height = Math.round(size * dpr);
+    // Backing store covers the RENDERED size so a scaled-up orb stays sharp.
+    canvas.width = Math.round(rendered * dpr);
+    canvas.height = Math.round(rendered * dpr);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Preset is always resolved at the tuned size; `k` scales the drawing, not the design.
     const { mode, speed: presetSpeed, opts } = resolvePreset(state, size);
     const draw = MODE_DRAWS[mode];
     const rate = presetSpeed * speed;
+    const k = rendered / size;
 
     const paint = (t: number) => {
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
       ctx.clearRect(0, 0, size, size);
       // dark=true paints the light-ink variant: full-strength greyscale, the cleanest
       // possible mask for the tint below.
@@ -103,7 +114,7 @@ export default function TheoOrb({
       io?.disconnect();
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [state, size, speed, color, paused]);
+  }, [state, size, rendered, speed, color, paused]);
 
   return (
     <canvas
@@ -112,7 +123,7 @@ export default function TheoOrb({
       role={ariaLabel ? "img" : undefined}
       aria-label={ariaLabel}
       aria-hidden={ariaLabel ? undefined : true}
-      style={{ width: size, height: size, display: "block", ...style }}
+      style={{ width: rendered, height: rendered, display: "block", ...style }}
     />
   );
 }

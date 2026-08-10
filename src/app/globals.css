@@ -710,6 +710,11 @@ input[type=range] {
   .ds-cta-pulse { animation: none; box-shadow: 0 0 0 2px rgba(193, 122, 71, 0.45); }
 }
 
+/* Spinning affordance for in-flight icon buttons (e.g. fetching new quotes). */
+.ds-spin { animation: dsSpin 0.9s linear infinite; transform-origin: 50% 50%; }
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ds-spin { animation: none; } }
+
 /* Generation stage: each phase line fades up as it swaps (keyed remount). */
 .ds-gen-stage { animation: dsStageIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .ds-gen-phase { animation: dsPhaseIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }

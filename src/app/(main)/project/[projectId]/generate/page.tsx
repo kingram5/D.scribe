@@ -34,6 +34,8 @@ export default function GeneratePage() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   // Client-orchestrated generate-all state (replaces single long-running job)
   const [genAllRunning, setGenAllRunning] = useState(false);
+  const [applyingWordCount, setApplyingWordCount] = useState(false);
+  const [dismissedWordCountFor, setDismissedWordCountFor] = useState<string | null>(null);
   const [genAllError, setGenAllError] = useState<string | null>(null);
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
@@ -407,6 +409,33 @@ export default function GeneratePage() {
   const activeGenCh = activeChapter ? chapters.find((c) => c.id === activeChapter) : null;
   const recommendedQuotes = activeGenCh ? Math.max(1, Math.min(6, Math.round((activeGenCh.target_word_count || 1500) / 750))) : 0;
   const selectedQuoteCount = chapterEnrichments.filter((e) => e.included).length;
+
+  /* Word-count suggestion — 750 words of room per selected quote, rounded to the nearest
+     100, and only offered when it is a meaningful jump (>=250 words) over the current
+     target. Returns null when there is nothing worth suggesting. */
+  const wordCountSuggestion = (() => {
+    if (!activeGenCh || dismissedWordCountFor === activeChapter) return null;
+    if (selectedQuoteCount <= recommendedQuotes) return null;
+    const current = activeGenCh.target_word_count || 1500;
+    const proposed = Math.round((selectedQuoteCount * 750) / 100) * 100;
+    return proposed - current >= 250 ? proposed : null;
+  })();
+
+  async function applyWordCountSuggestion(words: number) {
+    if (!activeChapter) return;
+    setApplyingWordCount(true);
+    try {
+      const res = await fetch(`/api/project/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: activeChapter, target_word_count: words }),
+      });
+      if (res.ok) {
+        setChapters((prev) => prev.map((c) => (c.id === activeChapter ? { ...c, target_word_count: words } : c)));
+      }
+    } catch { /* leave the chip up so the author can retry */ }
+    setApplyingWordCount(false);
+  }
   const isGenerating = genAllRunning || regenRunning;
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
@@ -728,24 +757,40 @@ export default function GeneratePage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <PanelTitle>Enrichment Quotes</PanelTitle>
                   {chapterEnrichments.length > 0 && (
-                    <InkTooltip label="~0.5 Ink to refresh quotes" position="top">
+                    <InkTooltip label="~0.5 Ink to fetch a fresh set of quotes" position="top">
+                      {/* Was a near-invisible ghost button reading "Refresh" (Kyle's note 9):
+                          accent-outlined, labelled with what it actually does, icon-led. */}
                       <button
                         onClick={() => activeChapter && fetchEnrichments(activeChapter)}
                         disabled={enriching === activeChapter}
                         style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: enriching === activeChapter ? "var(--text-tertiary)" : "var(--text-secondary)",
-                          background: "none",
-                          border: "1px solid var(--ds-input-bg)",
-                          borderRadius: 8,
-                          padding: "6px 14px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 7,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          color: enriching === activeChapter ? "var(--text-tertiary)" : "#A05526",
+                          background: enriching === activeChapter ? "transparent" : "rgba(193,122,71,0.1)",
+                          border: `1px solid ${enriching === activeChapter ? "var(--ds-input-border)" : "rgba(193,122,71,0.5)"}`,
+                          borderRadius: 9999,
+                          padding: "8px 16px",
                           cursor: enriching === activeChapter ? "wait" : "pointer",
                           fontFamily: "var(--font-manrope), sans-serif",
-                          transition: "all 0.15s",
+                          transition: "background 0.15s, border-color 0.15s, color 0.15s",
                         }}
                       >
-                        {enriching === activeChapter ? "Refreshing..." : "Refresh"}
+                        <svg
+                          width="13" height="13" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                          className={enriching === activeChapter ? "ds-spin" : undefined}
+                          aria-hidden="true"
+                        >
+                          <path d="M21 2v6h-6" />
+                          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                          <path d="M3 22v-6h6" />
+                          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                        </svg>
+                        {enriching === activeChapter ? "Finding quotes..." : "New quotes"}
                       </button>
                     </InkTooltip>
                   )}
@@ -758,6 +803,67 @@ export default function GeneratePage() {
                         {selectedQuoteCount} selected{selectedQuoteCount > recommendedQuotes ? " (a few more than suggested)" : ""}.
                       </span>
                     </p>
+
+                    {/* Word-count suggestion (Kyle's note 10). A CHIP, never an auto-adjust:
+                        more quotes than the length recommends means the chapter needs more
+                        room, but the number stays the author's to set. */}
+                    {wordCountSuggestion !== null && (
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 10,
+                        padding: "10px 14px",
+                        marginBottom: 4,
+                        borderRadius: 10,
+                        background: "rgba(193,122,71,0.08)",
+                        border: "1px solid rgba(193,122,71,0.3)",
+                      }}>
+                        <span style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                          {selectedQuoteCount} quotes selected. Give this chapter room to hold them:{" "}
+                          <strong style={{ color: "#A05526" }}>
+                            {activeGenCh?.target_word_count?.toLocaleString()} → {wordCountSuggestion.toLocaleString()} words
+                          </strong>?
+                        </span>
+                        <span style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                          <button
+                            type="button"
+                            onClick={() => applyWordCountSuggestion(wordCountSuggestion)}
+                            disabled={applyingWordCount}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              fontFamily: "var(--font-manrope), sans-serif",
+                              color: "#241D14",
+                              background: "#C17A47",
+                              border: "none",
+                              borderRadius: 9999,
+                              padding: "7px 15px",
+                              cursor: applyingWordCount ? "wait" : "pointer",
+                            }}
+                          >
+                            {applyingWordCount ? "Updating..." : "Use it"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDismissedWordCountFor(activeChapter)}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: "var(--font-manrope), sans-serif",
+                              color: "var(--text-tertiary)",
+                              background: "transparent",
+                              border: "1px solid var(--ds-input-border)",
+                              borderRadius: 9999,
+                              padding: "7px 13px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Keep as is
+                          </button>
+                        </span>
+                      </div>
+                    )}
                     {chapterEnrichments.map((e) => (
                       <div
                         key={e.id}

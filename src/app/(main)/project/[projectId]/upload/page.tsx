@@ -190,8 +190,8 @@ export default function UploadPage() {
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
               {/* T.H.E.O's portrait: burnt orange on papery beige. */}
               <div style={{
-                width: 150,
-                height: 150,
+                width: 200,
+                height: 200,
                 borderRadius: "50%",
                 display: "grid",
                 placeItems: "center",
@@ -199,7 +199,7 @@ export default function UploadPage() {
                 boxShadow: "0 0 0 1px rgba(193,122,71,0.4), 0 0 40px rgba(193,122,71,0.2)",
                 flexShrink: 0,
               }}>
-                <TheoOrb state="listening" size={64} speed={0.6} aria-label="T.H.E.O, listening" />
+                <TheoOrb state="listening" size={64} display={128} speed={0.6} aria-label="T.H.E.O, listening" />
               </div>
 
               <div style={{ textAlign: "center" }}>

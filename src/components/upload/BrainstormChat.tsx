@@ -642,7 +642,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             color: "var(--ds-ink)",
             marginBottom: 8,
           }}>
-            Brainstorm with AI
+            Brainstorm with T.H.E.O
           </h2>
           <p style={{
             fontSize: 14,

@@ -188,18 +188,43 @@ export default function UploadPage() {
               </div>
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
-              {/* T.H.E.O's portrait: burnt orange on papery beige. */}
-              <div style={{
-                width: 200,
-                height: 200,
-                borderRadius: "50%",
-                display: "grid",
-                placeItems: "center",
-                background: "var(--ds-paper, #F4F1E8)",
-                boxShadow: "0 0 0 1px rgba(193,122,71,0.4), 0 0 40px rgba(193,122,71,0.2)",
-                flexShrink: 0,
-              }}>
-                <TheoOrb state="listening" size={64} display={128} speed={0.6} aria-label="T.H.E.O, listening" />
+              {/* T.H.E.O's portrait, framed like a plate in a book. The live orb sits in the
+                  corner so his animated identity and his face read as the same character. */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                {/* Frame matches the source 4:3 exactly, so the whole scene survives —
+                    the fireplace, the waveform on his tablet, and the machine hands. */}
+                <div style={{
+                  width: 320,
+                  height: 240,
+                  maxWidth: "100%",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#241D14",
+                  boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 18px 44px rgba(44,36,25,0.28)",
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/theo-portrait.webp"
+                    alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
+                    width={320}
+                    height={240}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+                <div style={{
+                  position: "absolute",
+                  right: -14,
+                  bottom: -14,
+                  width: 62,
+                  height: 62,
+                  borderRadius: "50%",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "var(--ds-paper, #F4F1E8)",
+                  boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 26px rgba(193,122,71,0.3)",
+                }}>
+                  <TheoOrb state="listening" size={20} display={40} speed={0.6} aria-label="T.H.E.O, listening" />
+                </div>
               </div>
 
               <div style={{ textAlign: "center" }}>

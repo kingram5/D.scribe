@@ -186,35 +186,42 @@ export default function UploadPage() {
                 reads as the same surface rather than a caption under a photo. */}
             <div style={{
               position: "relative",
-              width: "100%",
-              height: "50%",
-              minHeight: 280,
+              margin: "12px 14px 4px",
               flexShrink: 0,
-              background: "#241D14",
+              background: "var(--ds-paper, #F4F1E8)",
+              borderRadius: 22,
               overflow: "hidden",
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/theo-portrait.webp"
                 alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
-                // The panel's top half is a wide band (~2.3:1) against a 4:3 source, so the
-                // crop is vertical and the anchor decides whether we see his face or the dark
-                // ceiling above it. He sits centre-right, eyeline high: 56% / 30% keeps the
-                // face, the tablet waveform and the fire all in frame.
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "56% 30%", display: "block" }}
+                // Whole portrait in frame — his face, the tablet waveform and the machine
+                // hands (the tell for what he is) all survive. Width tracks the panel, height
+                // follows the 4:3 source, so it never crops top-to-bottom.
+                style={{ width: "100%", height: "auto", display: "block" }}
               />
-              {/* Fade is a share of the hero, not a fixed 130px — on a short window that was
-                  swallowing 43% of the image. */}
+              {/* Feather every edge into the paper so the plate dissolves into the panel
+                  instead of ending on a hard rectangle. */}
+              <div aria-hidden="true" style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: 22,
+                boxShadow: "inset 0 0 30px 12px var(--ds-paper, #F4F1E8), inset 0 0 9px 3px var(--ds-paper, #F4F1E8)",
+                pointerEvents: "none",
+              }} />
+              {/* Gentle bottom transition into the copy — kept short so the machine hands
+                  near the lower edge stay readable. */}
               <div aria-hidden="true" style={{
                 position: "absolute",
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: "26%",
-                background: "linear-gradient(to bottom, rgba(244,241,232,0) 0%, rgba(244,241,232,0.6) 58%, var(--ds-paper, #F4F1E8) 100%)",
+                height: "15%",
+                background: "linear-gradient(to bottom, rgba(244,241,232,0) 0%, var(--ds-paper, #F4F1E8) 100%)",
                 pointerEvents: "none",
               }} />
-              <div style={{ position: "absolute", top: 22, left: 30, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
+              <div style={{ position: "absolute", top: 26, left: 34, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
                 <span style={{ fontSize: 22, fontWeight: 700, color: "#F9F7F2", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
                 <span style={{ fontSize: 22, fontWeight: 300, color: "#F9F7F2", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
               </div>

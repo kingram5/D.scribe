@@ -660,29 +660,43 @@ input[type=range] {
   z-index: 0;
 }
 
-.input-card {
-  background: var(--ds-card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--ds-card-border);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+/* .input-card removed 2026-08-09 — the upload intake grid (IntakeGrid.tsx) replaced the
+   clickable-card sources with explicit buttons inside numbered plate cards. */
+
+/* ── Upload intake grid (Resonant recomposition, 2026-08-09) ──
+   Record card holds the left column for two rows; audio + YouTube stack beside it;
+   the brainstorm stage runs full width beneath. One column on small screens. */
+.ds-intake {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.ds-intake-record { grid-row: span 2; }
+.ds-intake-brain { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .ds-intake { grid-template-columns: 1fr; }
+  .ds-intake-record { grid-row: auto; }
 }
 
-.input-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--ds-accent-400);
-  box-shadow: 0 8px 24px rgba(224,93,58,0.2);
+.ds-rec-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  flex-shrink: 0;
+  animation: dsRecPulse 1s ease-in-out infinite;
 }
-
-/* These cards carry button semantics, so keyboard focus has to be visible — without this
-   a tabbing user lands on the only entry point into a project with no indication. */
-.input-card:focus-visible {
-  outline: 2px solid var(--ds-accent-400);
-  outline-offset: 3px;
-  border-color: var(--ds-accent-400);
+.ds-record-hint { animation: dsRecPulse 2s ease-in-out infinite; }
+/* Indeterminate "working" state for a transcription bar — opacity only, no layout motion. */
+.ds-bar-active { animation: dsRecPulse 1.4s ease-in-out infinite; }
+@keyframes dsRecPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-rec-dot, .ds-record-hint, .ds-bar-active { animation: none; }
 }
 
 .grill-pattern {

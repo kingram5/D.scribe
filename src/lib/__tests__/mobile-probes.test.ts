@@ -194,7 +194,8 @@ describe("mobile: the upload journey (the core mobile use case)", () => {
 
   it("the file input accepts both MIME wildcards and extensions", () => {
     // Correct defence against inconsistent mobile MIME reporting.
-    const accept = /accept="([^"]+)"/.exec(read("components/upload/RightPanel.tsx"))?.[1] ?? "";
+    // 2026-08-09: the file input moved from RightPanel to IntakeGrid in the intake recomposition.
+    const accept = /accept="([^"]+)"/.exec(read("components/upload/IntakeGrid.tsx"))?.[1] ?? "";
     expect(accept).toContain("audio/*");
     expect(accept).toContain(".m4a");
   });

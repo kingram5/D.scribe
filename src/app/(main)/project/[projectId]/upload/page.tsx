@@ -181,52 +181,60 @@ export default function UploadPage() {
               overflow: "hidden auto",
             }}
           >
-            <div style={{ padding: "28px 32px 0" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: "var(--ds-ink)", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
-                <span style={{ fontSize: 22, fontWeight: 300, color: "var(--ds-ink)", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
+            {/* T.H.E.O owns the top half, full bleed. The wordmark and the live orb ride on
+                the image, and the bottom edge dissolves into the paper so the copy below
+                reads as the same surface rather than a caption under a photo. */}
+            <div style={{
+              position: "relative",
+              width: "100%",
+              height: "50%",
+              minHeight: 280,
+              flexShrink: 0,
+              background: "#241D14",
+              overflow: "hidden",
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/theo-portrait.webp"
+                alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
+                // The panel's top half is a wide band (~2.3:1) against a 4:3 source, so the
+                // crop is vertical and the anchor decides whether we see his face or the dark
+                // ceiling above it. He sits centre-right, eyeline high: 56% / 30% keeps the
+                // face, the tablet waveform and the fire all in frame.
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "56% 30%", display: "block" }}
+              />
+              {/* Fade is a share of the hero, not a fixed 130px — on a short window that was
+                  swallowing 43% of the image. */}
+              <div aria-hidden="true" style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "26%",
+                background: "linear-gradient(to bottom, rgba(244,241,232,0) 0%, rgba(244,241,232,0.6) 58%, var(--ds-paper, #F4F1E8) 100%)",
+                pointerEvents: "none",
+              }} />
+              <div style={{ position: "absolute", top: 22, left: 30, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: "#F9F7F2", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
+                <span style={{ fontSize: 22, fontWeight: 300, color: "#F9F7F2", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
+              </div>
+              <div style={{
+                position: "absolute",
+                right: 26,
+                bottom: 22,
+                width: 62,
+                height: 62,
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                background: "var(--ds-paper, #F4F1E8)",
+                boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 26px rgba(193,122,71,0.35)",
+              }}>
+                <TheoOrb state="listening" size={20} display={40} speed={0.6} aria-label="T.H.E.O, listening" />
               </div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 22, overflow: "hidden auto", minHeight: 0 }}>
-              {/* T.H.E.O's portrait, framed like a plate in a book. The live orb sits in the
-                  corner so his animated identity and his face read as the same character. */}
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                {/* Frame matches the source 4:3 exactly, so the whole scene survives —
-                    the fireplace, the waveform on his tablet, and the machine hands. */}
-                <div style={{
-                  width: 320,
-                  height: 240,
-                  maxWidth: "100%",
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  background: "#241D14",
-                  boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 18px 44px rgba(44,36,25,0.28)",
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/theo-portrait.webp"
-                    alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
-                    width={320}
-                    height={240}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
-                </div>
-                <div style={{
-                  position: "absolute",
-                  right: -14,
-                  bottom: -14,
-                  width: 62,
-                  height: 62,
-                  borderRadius: "50%",
-                  display: "grid",
-                  placeItems: "center",
-                  background: "var(--ds-paper, #F4F1E8)",
-                  boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 26px rgba(193,122,71,0.3)",
-                }}>
-                  <TheoOrb state="listening" size={20} display={40} speed={0.6} aria-label="T.H.E.O, listening" />
-                </div>
-              </div>
 
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "22px 32px 0", gap: 20, minHeight: 0 }}>
               <div style={{ textAlign: "center" }}>
                 <h1 style={{
                   fontFamily: "var(--font-lora), serif",

@@ -660,29 +660,103 @@ input[type=range] {
   z-index: 0;
 }
 
-.input-card {
-  background: var(--ds-card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--ds-card-border);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+/* .input-card removed 2026-08-09 — the upload intake grid (IntakeGrid.tsx) replaced the
+   clickable-card sources with explicit buttons inside numbered plate cards. */
+
+/* ── Upload intake grid (Resonant recomposition, 2026-08-09) ──
+   Record card holds the left column for two rows; audio + YouTube stack beside it;
+   the brainstorm stage runs full width beneath. One column on small screens. */
+.ds-intake {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.ds-intake-record { grid-row: span 2; }
+.ds-intake-brain { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .ds-intake { grid-template-columns: 1fr; }
+  .ds-intake-record { grid-row: auto; }
 }
 
-.input-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--ds-accent-400);
-  box-shadow: 0 8px 24px rgba(224,93,58,0.2);
+.ds-rec-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  flex-shrink: 0;
+  animation: dsRecPulse 1s ease-in-out infinite;
+}
+.ds-record-hint { animation: dsRecPulse 2s ease-in-out infinite; }
+/* Indeterminate "working" state for a transcription bar — opacity only, no layout motion. */
+.ds-bar-active { animation: dsRecPulse 1.4s ease-in-out infinite; }
+@keyframes dsRecPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-rec-dot, .ds-record-hint, .ds-bar-active { animation: none; }
 }
 
-/* These cards carry button semantics, so keyboard focus has to be visible — without this
-   a tabbing user lands on the only entry point into a project with no indication. */
-.input-card:focus-visible {
-  outline: 2px solid var(--ds-accent-400);
-  outline-offset: 3px;
-  border-color: var(--ds-accent-400);
+/* Step-complete pulse (Kyle's note 6): when a step's work is finished, its
+   forward CTA breathes — a glow, not a size change, so nothing reflows. */
+.ds-cta-pulse { animation: dsCtaPulse 1.8s ease-in-out infinite; }
+@keyframes dsCtaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(193, 122, 71, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(193, 122, 71, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-cta-pulse { animation: none; box-shadow: 0 0 0 2px rgba(193, 122, 71, 0.45); }
+}
+
+/* Spinning affordance for in-flight icon buttons (e.g. fetching new quotes). */
+.ds-spin { animation: dsSpin 0.9s linear infinite; transform-origin: 50% 50%; }
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ds-spin { animation: none; } }
+
+/* Generation stage. Phases run as a carousel: the outgoing slide exits left while the
+   incoming one enters from the right, both mounted for the length of the animation. */
+.ds-gen-stage { animation: dsStageIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.ds-phase-stage {
+  position: relative;
+  width: 100%;
+  min-height: 148px;
+  overflow: hidden;
+}
+.ds-phase-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 8px;
+  will-change: transform, opacity;
+}
+/* Dissolve, staggered rather than a straight crossfade. Fading both at once parks two
+   lines at ~50% opacity over each other and reads as a smear, so the outgoing phase is
+   almost gone (800ms) before the incoming one starts at 700ms — a 100ms kiss of overlap.
+   The whisper of scale gives it the character of dissolving instead of just dimming. */
+.ds-phase-out { animation: dsPhaseDissolveOut 800ms cubic-bezier(0.4, 0, 1, 1) both; }
+.ds-phase-in { animation: dsPhaseDissolveIn 1100ms cubic-bezier(0, 0, 0.2, 1) 700ms both; }
+@keyframes dsPhaseDissolveOut {
+  from { opacity: 1; transform: scale(1); filter: blur(0); }
+  to { opacity: 0; transform: scale(0.985); filter: blur(2px); }
+}
+@keyframes dsPhaseDissolveIn {
+  from { opacity: 0; transform: scale(1.015); filter: blur(2px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-gen-stage { animation: none; }
+  /* Crossfade in place rather than travelling. */
+  .ds-phase-in { animation: dsPhaseFadeIn 200ms linear both; }
+  .ds-phase-out { animation: dsPhaseFadeOut 200ms linear both; }
+  @keyframes dsPhaseFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes dsPhaseFadeOut { from { opacity: 1; } to { opacity: 0; } }
 }
 
 .grill-pattern {
@@ -997,7 +1071,7 @@ input[type=range] {
   --band-fg: #2C2419;
 }
 
-/* Stamp: small mono tag used on pages (chapter number, DRAFT, WRITING LIVE). */
+/* Stamp: small mono tag used on pages (chapter number, DRAFTED, OUTLINED). */
 .ds-stamp {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 10.5px;

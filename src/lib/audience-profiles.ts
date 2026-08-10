@@ -29,6 +29,10 @@ export const AUDIENCES = [
 
 export const SCRIPTURE_AUDIENCES = ["Christian Living", "Faith Community"];
 
+/** Offered wherever a scripture audience is chosen — project creation and Structure.
+ *  Shared so the two pickers cannot drift apart. */
+export const TRANSLATIONS = ["KJV", "NIV", "ESV", "NLT", "NKJV", "NASB", "CSB", "The Message"];
+
 export interface AudienceProfile {
   /** One line: who the brainstorm interviewer is for this genre. */
   persona: string;

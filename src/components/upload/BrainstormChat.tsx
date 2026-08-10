@@ -25,6 +25,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [summarizing, setSummarizing] = useState(false);
   const [started, setStarted] = useState(false);
   const [listening, setListening] = useState(false);
+  /* Hands-free (Kyle 2026-08-09): Speak is a session toggle, not a per-turn button. While
+     it is on the mic re-arms itself as soon as Theo has finished — the user should never
+     have to reach for the button again mid-conversation. */
+  const [handsFree, setHandsFree] = useState(false);
+  /* True while TTS audio is actually playing. The queue lives in refs, so state is what
+     lets the resume effect wait for silence instead of transcribing Theo's own voice. */
+  const [speaking, setSpeaking] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
@@ -81,8 +88,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
   // TTS helpers — defined before toggleListening to avoid TDZ
   const playNext = useCallback(() => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+    if (isPlayingRef.current) return;
+    // Queue drained: Theo has stopped talking. Hands-free mode watches this to know
+    // when it is safe to re-open the mic without recording his own voice.
+    if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
     isPlayingRef.current = true;
+    setSpeaking(true);
     const buf = audioQueueRef.current.shift()!;
     const ctx = (audioCtxRef.current ??= new AudioContext());
     ctx.decodeAudioData(buf.slice(0), (decoded) => {
@@ -120,6 +131,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     sentenceBufferRef.current = "";
+    setSpeaking(false);
   }, []);
 
   // Cleanup audio on unmount
@@ -130,14 +142,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
   }, [stopAudio]);
 
-  const toggleListening = useCallback(() => {
-    if (listening) {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      recognitionRef.current?.stop();
-      setListening(false);
-      return;
-    }
-
+  /** Open the mic. Shared by the Speak button and the hands-free auto-resume, so a
+   *  re-armed mic behaves identically to a hand-clicked one. */
+  const startRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -176,9 +183,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       setListening(false);
+      // A denied or unavailable mic will fail identically forever, so drop out of
+      // hands-free rather than spinning up a restart loop. "no-speech" is routine and
+      // must NOT disarm the session.
+      if (event?.error === "not-allowed" || event?.error === "service-not-allowed" || event?.error === "audio-capture") {
+        setHandsFree(false);
+      }
     };
 
     recognition.onend = () => {
@@ -188,9 +201,31 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     recognitionRef.current = recognition;
     stopAudio(); // stop AI voice when user starts speaking
-    recognition.start();
+    try { recognition.start(); } catch { return; } // already-started throws; ignore
     setListening(true);
-  }, [listening, stopAudio]);
+  }, [stopAudio]);
+
+  const toggleListening = useCallback(() => {
+    if (listening || handsFree) {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      recognitionRef.current?.stop();
+      setListening(false);
+      setHandsFree(false);
+      return;
+    }
+    setHandsFree(true);
+    startRecognition();
+  }, [listening, handsFree, startRecognition]);
+
+  /* Hands-free re-arm. The mic is deliberately closed while Theo answers so it cannot
+     transcribe his own TTS voice, so this waits for BOTH halves of his turn to finish:
+     `streaming` false (he has stopped writing) and `speaking` false (the audio queue has
+     drained). The short delay lets the last syllable decay before the mic opens. */
+  useEffect(() => {
+    if (!handsFree || listening || streaming || speaking || summarizing) return;
+    const t = setTimeout(() => startRecognition(), 500);
+    return () => clearTimeout(t);
+  }, [handsFree, listening, streaming, speaking, summarizing, startRecognition]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -607,7 +642,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             color: "var(--ds-ink)",
             marginBottom: 8,
           }}>
-            Brainstorm with AI
+            Brainstorm with T.H.E.O
           </h2>
           <p style={{
             fontSize: 14,
@@ -962,28 +997,32 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           {speechSupported && (
             <button
               onClick={toggleListening}
-              disabled={streaming}
+              aria-pressed={handsFree}
+              title={handsFree ? "Hands-free is on — tap to stop listening" : "Turn on hands-free: the mic re-opens after each answer"}
               style={{
-                background: listening ? "#ef4444" : "rgba(249,247,242,0.08)",
-                border: listening ? "none" : "1px solid rgba(249,247,242,0.18)",
+                // Live red while actually recording; amber-armed while hands-free is on but
+                // Theo has the floor. The button no longer goes dead between turns, because
+                // the session state is what it reports.
+                background: listening ? "#ef4444" : handsFree ? "rgba(193,122,71,0.22)" : "rgba(249,247,242,0.08)",
+                border: listening ? "none" : handsFree ? "1px solid rgba(193,122,71,0.6)" : "1px solid rgba(249,247,242,0.18)",
                 borderRadius: 12,
                 height: 52,
                 padding: "0 18px",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                cursor: streaming ? "default" : "pointer",
+                cursor: "pointer",
                 flexShrink: 0,
                 animation: listening ? "micPulse 1.5s ease-in-out infinite" : "none",
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : "rgba(249,247,242,0.7)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke={listening ? "#fff" : handsFree ? "#E0A35D" : "rgba(249,247,242,0.7)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="5" y="1" width="6" height="9" rx="3" />
                 <path d="M3 7v1a5 5 0 0010 0V7" />
                 <path d="M8 13v2" />
               </svg>
-              <span style={{ fontSize: 13, fontWeight: 600, color: listening ? "#fff" : "rgba(249,247,242,0.7)", fontFamily: "var(--font-manrope), sans-serif", whiteSpace: "nowrap" }}>
-                {listening ? "Listening…" : "Speak"}
+              <span style={{ fontSize: 13, fontWeight: 600, color: listening ? "#fff" : handsFree ? "#E0A35D" : "rgba(249,247,242,0.7)", fontFamily: "var(--font-manrope), sans-serif", whiteSpace: "nowrap" }}>
+                {listening ? "Listening…" : handsFree ? "Hands-free" : "Speak"}
               </span>
             </button>
           )}

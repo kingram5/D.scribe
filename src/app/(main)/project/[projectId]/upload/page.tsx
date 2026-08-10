@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import TheoOrb from "@/components/ui/TheoOrb";
 import PageShell from "@/components/ui/PageShell";
-import LeftPanel from "@/components/upload/LeftPanel";
-import RightPanel from "@/components/upload/RightPanel";
+import IntakeGrid from "@/components/upload/IntakeGrid";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 import { useUploadEngine } from "./useUploadEngine";
 
@@ -14,6 +14,14 @@ export default function UploadPage() {
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
+  // The studio intro introduces T.H.E.O as tuned to THIS book's reader.
+  const [audience, setAudience] = useState<string>("");
+  useEffect(() => {
+    fetch(`/api/project/${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.audience) setAudience(d.audience); })
+      .catch(() => {});
+  }, [projectId]);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -56,6 +64,104 @@ export default function UploadPage() {
           }
         }
       `}</style>
+      {!showBrainstorm && (
+        <div className="ds-upload-stage" style={{ flex: 1, minHeight: 0, overflow: "hidden auto", padding: "6px 40px 32px" }}>
+          {/* Stage head — editorial headline over the intake, per the Resonant recomposition */}
+          <header style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: "8px 40px",
+            borderBottom: "1px solid rgba(44,36,25,0.1)",
+            padding: "6px 2px 18px",
+            margin: "0 0 18px",
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-lora), serif",
+              fontStyle: "italic",
+              fontWeight: 400,
+              fontSize: "clamp(28px, 3.2vw, 40px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.02em",
+              color: "var(--ds-ink)",
+              margin: 0,
+              textWrap: "balance",
+            }}>
+              Give us the raw voice.
+            </h1>
+            <p style={{
+              fontSize: 13.5,
+              color: "var(--text-secondary)",
+              fontFamily: "var(--font-manrope), sans-serif",
+              lineHeight: 1.55,
+              maxWidth: 420,
+              margin: 0,
+            }}>
+              Combine anything. A rough voice note and a three-hour interview can belong to the same book.
+            </p>
+          </header>
+
+          <IntakeGrid
+            isRecording={engine.isRecording}
+            recordingError={engine.recordingError}
+            seconds={engine.seconds}
+            onToggleRecording={engine.toggleRecording}
+            onStopRecording={engine.stopRecording}
+            files={engine.files}
+            uploading={engine.uploading}
+            uploadPercent={engine.uploadPercent}
+            uploadError={engine.uploadError}
+            progressEntries={engine.progressEntries}
+            dragging={engine.dragging}
+            setDragging={engine.setDragging}
+            handleDrop={engine.handleDrop}
+            handleFileInput={engine.handleFileInput}
+            youtubeUrl={engine.youtubeUrl}
+            setYoutubeUrl={engine.setYoutubeUrl}
+            youtubeError={engine.youtubeError}
+            setYoutubeError={engine.setYoutubeError}
+            onYoutubeFetch={engine.handleYoutubeSubmit}
+            canInitialize={engine.canInitialize}
+            allDone={engine.allDone}
+            onInitialize={handleInitialize}
+            onBrainstorm={() => setShowBrainstorm(true)}
+          />
+
+          {/* Action bar */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            padding: "18px 2px 0",
+          }}>
+            <span style={{
+              fontSize: 10,
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-geist-mono), monospace",
+              letterSpacing: "0.04em",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#a0978a" strokeWidth="1.2" aria-hidden="true">
+                <rect x="2" y="4" width="8" height="6" rx="1" />
+                <path d="M4 4V3a2 2 0 014 0v1" />
+              </svg>
+              End-to-End Encrypted
+            </span>
+            <button
+              onClick={handleInitialize}
+              disabled={(!engine.canInitialize && !engine.allDone) || engine.uploading}
+              className={`transcribe-btn${engine.allDone ? " ds-cta-pulse" : ""}`}
+            >
+              {engine.uploading ? "Processing..." : engine.allDone ? "View Transcripts →" : "Transcribe →"}
+            </button>
+          </div>
+        </div>
+      )}
+      {showBrainstorm && (
       <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
         {showBrainstorm ? (
           <div
@@ -69,57 +175,120 @@ export default function UploadPage() {
               display: "flex",
               flexDirection: "column",
               position: "relative",
-              overflow: "hidden",
+              // Fixed at height:100% inside a viewport-locked shell, so `hidden` clipped the
+              // bottom of the panel on a short window with no way to reach it (measured:
+              // 331px unreachable at 753px tall).
+              overflow: "hidden auto",
             }}
           >
-            <div style={{ padding: "28px 32px 0" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: "var(--ds-ink)", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
-                <span style={{ fontSize: 22, fontWeight: 300, color: "var(--ds-ink)", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
+            {/* T.H.E.O owns the top half, full bleed. The wordmark and the live orb ride on
+                the image, and the bottom edge dissolves into the paper so the copy below
+                reads as the same surface rather than a caption under a photo. */}
+            <div style={{
+              position: "relative",
+              width: "100%",
+              height: "50%",
+              minHeight: 280,
+              flexShrink: 0,
+              background: "#241D14",
+              overflow: "hidden",
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/theo-portrait.webp"
+                alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
+                // The panel's top half is a wide band (~2.3:1) against a 4:3 source, so the
+                // crop is vertical and the anchor decides whether we see his face or the dark
+                // ceiling above it. He sits centre-right, eyeline high: 56% / 30% keeps the
+                // face, the tablet waveform and the fire all in frame.
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "56% 30%", display: "block" }}
+              />
+              {/* Fade is a share of the hero, not a fixed 130px — on a short window that was
+                  swallowing 43% of the image. */}
+              <div aria-hidden="true" style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "26%",
+                background: "linear-gradient(to bottom, rgba(244,241,232,0) 0%, rgba(244,241,232,0.6) 58%, var(--ds-paper, #F4F1E8) 100%)",
+                pointerEvents: "none",
+              }} />
+              <div style={{ position: "absolute", top: 22, left: 30, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: "#F9F7F2", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
+                <span style={{ fontSize: 22, fontWeight: 300, color: "#F9F7F2", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
+              </div>
+              <div style={{
+                position: "absolute",
+                right: 26,
+                bottom: 22,
+                width: 62,
+                height: 62,
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                background: "var(--ds-paper, #F4F1E8)",
+                boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 26px rgba(193,122,71,0.35)",
+              }}>
+                <TheoOrb state="listening" size={20} display={40} speed={0.6} aria-label="T.H.E.O, listening" />
               </div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", gap: 28, overflow: "hidden", minHeight: 0 }}>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "22px 32px 0", gap: 20, minHeight: 0 }}>
               <div style={{ textAlign: "center" }}>
                 <h1 style={{
                   fontFamily: "var(--font-lora), serif",
                   fontStyle: "italic",
                   fontWeight: 400,
-                  fontSize: "2.4rem",
-                  lineHeight: 1.15,
+                  fontSize: "2.3rem",
+                  lineHeight: 1.1,
                   color: "var(--ds-ink)",
                   letterSpacing: "-0.02em",
-                  marginBottom: 12,
+                  marginBottom: 6,
                 }}>
-                  Brainstorm Studio
+                  Meet T.H.E.O
                 </h1>
                 <p style={{
-                  fontSize: 14,
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 10.5,
+                  letterSpacing: "0.09em",
+                  color: "#A05526",
+                  marginBottom: 14,
+                }}>
+                  TECHNICAL HUMAN EXPRESSION ORGANIZER
+                </p>
+                <p style={{
+                  fontSize: 14.5,
                   color: "var(--text-secondary)",
                   fontFamily: "var(--font-manrope), sans-serif",
-                  fontWeight: 400,
-                  maxWidth: 280,
+                  maxWidth: 330,
                   margin: "0 auto",
-                  lineHeight: 1.5,
+                  lineHeight: 1.6,
                 }}>
-                  Talk through your ideas with AI. Speak or type — the AI asks questions to draw out your best thinking.
+                  Your ghostwriter, not a chatbot. T.H.E.O interviews the way a good editor does:
+                  he listens for the book inside the way you tell it, then asks the question that
+                  pulls the next chapter out of you.
                 </p>
               </div>
-              <div style={{ maxWidth: 400, display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+
+              <div style={{ maxWidth: 360, display: "flex", flexDirection: "column", gap: 9 }}>
                 {[
-                  "Tap \"Speak\" and talk naturally — no need to type",
-                  "The AI asks follow-up questions to deepen your ideas",
-                  "When you're done, hit \"Finish\" to create your source material",
+                  audience && audience !== "General"
+                    ? `Pre-tuned for ${audience} — his questions already fit this book's reader`
+                    : "Tuned to your book's reader the moment you chose one",
+                  "Speak or type — he keeps up either way",
+                  "Everything you say becomes source material when you hit Finish",
                 ].map((tip, i) => (
                   <div key={i} style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 8,
-                    fontSize: 15,
+                    fontSize: 13.5,
                     color: "var(--text-secondary)",
                     fontFamily: "var(--font-manrope), sans-serif",
                     lineHeight: 1.5,
                   }}>
-                    <span style={{ color: "var(--text-tertiary)", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
+                    <span style={{ color: "#C17A47", flexShrink: 0, marginTop: 2 }}>&#8226;</span>
                     {tip}
                   </div>
                 ))}
@@ -135,15 +304,7 @@ export default function UploadPage() {
               D.SCRIBE v1.0
             </div>
           </div>
-        ) : (
-          <LeftPanel
-            isRecording={engine.isRecording}
-            recordingError={engine.recordingError}
-            seconds={engine.seconds}
-            onToggleRecording={engine.toggleRecording}
-            onStopRecording={engine.stopRecording}
-          />
-        )}
+        ) : null}
         {showBrainstorm ? (
           <div className="upload-slide-right" style={{
             width: "55%",
@@ -162,29 +323,9 @@ export default function UploadPage() {
               onFinishTriggered={() => setTriggerBrainstormFinish(false)}
             />
           </div>
-        ) : (
-          <RightPanel
-            files={engine.files}
-            uploading={engine.uploading}
-            progress={engine.progress}
-            uploadPercent={engine.uploadPercent}
-            uploadError={engine.uploadError}
-            progressEntries={engine.progressEntries}
-            dragging={engine.dragging}
-            setDragging={engine.setDragging}
-            youtubeUrl={engine.youtubeUrl}
-            setYoutubeUrl={engine.setYoutubeUrl}
-            youtubeError={engine.youtubeError}
-            setYoutubeError={engine.setYoutubeError}
-            handleDrop={engine.handleDrop}
-            handleFileInput={engine.handleFileInput}
-            canInitialize={engine.canInitialize}
-            allDone={engine.allDone}
-            onInitialize={handleInitialize}
-            onBrainstorm={() => setShowBrainstorm(true)}
-          />
-        )}
+        ) : null}
       </div>
+      )}
     </PageShell>
   );
 }

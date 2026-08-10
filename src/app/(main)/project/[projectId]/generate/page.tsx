@@ -12,6 +12,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import JobProgress from "@/components/ui/JobProgress";
 import { STATUS_COLORS } from "@/lib/constants";
 import CelebrationToast from "@/components/ui/CelebrationToast";
+import GenerationStage from "@/components/ui/GenerationStage";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useInkGuard } from "@/hooks/useInkGuard";
 import InkTooltip from "@/components/ui/InkTooltip";
@@ -21,24 +22,9 @@ export default function GeneratePage() {
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   // Living page: streamed prose for the chapter currently being written.
-  // Chunks accumulate in a ref and flush to state on a timer — one setState
-  // per SSE token re-rendered the whole page thousands of times per chapter.
-  const [liveText, setLiveText] = useState("");
-  const [liveChapterId, setLiveChapterId] = useState<string | null>(null);
-  const liveBufRef = useRef("");
-  const liveFlushRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startLiveCapture = (chapterId: string) => {
-    liveBufRef.current = "";
-    setLiveText("");
-    setLiveChapterId(chapterId);
-    if (liveFlushRef.current) clearInterval(liveFlushRef.current);
-    liveFlushRef.current = setInterval(() => setLiveText(liveBufRef.current), 120);
-  };
-  const stopLiveCapture = () => {
-    if (liveFlushRef.current) { clearInterval(liveFlushRef.current); liveFlushRef.current = null; }
-    setLiveText(liveBufRef.current);
-  };
-  useEffect(() => () => { if (liveFlushRef.current) clearInterval(liveFlushRef.current); }, []);
+  // The SSE stream is still consumed (it carries done/error and keeps the request
+  // honest), but partial prose is never surfaced: D.Scribe only ever shows finished
+  // chapters, in whole (Kyle 2026-08-09). Nothing accumulates the text client-side.
   const [loading, setLoading] = useState(true);
   const { showUpgrade, setShowUpgrade, guardedFetch } = useInkGuard();
   const [creativeFreedom, setCreativeFreedom] = useState(50);
@@ -48,6 +34,8 @@ export default function GeneratePage() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   // Client-orchestrated generate-all state (replaces single long-running job)
   const [genAllRunning, setGenAllRunning] = useState(false);
+  const [applyingWordCount, setApplyingWordCount] = useState(false);
+  const [dismissedWordCountFor, setDismissedWordCountFor] = useState<string | null>(null);
   const [genAllError, setGenAllError] = useState<string | null>(null);
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
@@ -167,10 +155,9 @@ export default function GeneratePage() {
     }).catch(() => {});
   }
 
-  // Consume a streaming /api/generate SSE response and wait for done/error event.
-  // Text chunks feed the living page so the prose is visible as it's written.
+  // Consume the /api/generate SSE response purely to await done/error. Text chunks are
+  // deliberately discarded — the chapter becomes visible only once it is finished.
   async function streamGenerate(chapterId: string): Promise<void> {
-    startLiveCapture(chapterId);
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -199,8 +186,8 @@ export default function GeneratePage() {
         if (raw === "[DONE]") return;
         try {
           const ev = JSON.parse(raw);
-          if (ev.chunk) liveBufRef.current += ev.chunk;
-          if (ev.done) { stopLiveCapture(); return; }
+          // ev.chunk intentionally ignored — no partial prose reaches the UI.
+          if (ev.done) return;
           if (ev.error) throw new Error(ev.error);
         } catch (parseErr) {
           // JSON.parse on a partial/heartbeat chunk throws SyntaxError — ignore.
@@ -422,6 +409,33 @@ export default function GeneratePage() {
   const activeGenCh = activeChapter ? chapters.find((c) => c.id === activeChapter) : null;
   const recommendedQuotes = activeGenCh ? Math.max(1, Math.min(6, Math.round((activeGenCh.target_word_count || 1500) / 750))) : 0;
   const selectedQuoteCount = chapterEnrichments.filter((e) => e.included).length;
+
+  /* Word-count suggestion — 750 words of room per selected quote, rounded to the nearest
+     100, and only offered when it is a meaningful jump (>=250 words) over the current
+     target. Returns null when there is nothing worth suggesting. */
+  const wordCountSuggestion = (() => {
+    if (!activeGenCh || dismissedWordCountFor === activeChapter) return null;
+    if (selectedQuoteCount <= recommendedQuotes) return null;
+    const current = activeGenCh.target_word_count || 1500;
+    const proposed = Math.round((selectedQuoteCount * 750) / 100) * 100;
+    return proposed - current >= 250 ? proposed : null;
+  })();
+
+  async function applyWordCountSuggestion(words: number) {
+    if (!activeChapter) return;
+    setApplyingWordCount(true);
+    try {
+      const res = await fetch(`/api/project/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter_id: activeChapter, target_word_count: words }),
+      });
+      if (res.ok) {
+        setChapters((prev) => prev.map((c) => (c.id === activeChapter ? { ...c, target_word_count: words } : c)));
+      }
+    } catch { /* leave the chip up so the author can retry */ }
+    setApplyingWordCount(false);
+  }
   const isGenerating = genAllRunning || regenRunning;
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
@@ -437,6 +451,18 @@ export default function GeneratePage() {
       currentStep="generate"
       disabledStepKeys={!anyGenerated || isGenerating ? ["editor"] : []}
     >
+      <GenerationStage
+        open={isGenerating}
+        coherence={genIsCoherence}
+        progressLabel={
+          genIsCoherence
+            ? "Smoothing transitions across the manuscript"
+            : genTotal > 0
+              ? `Chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}`
+              : undefined
+        }
+        progress={genTotal > 0 ? genCurrent / genTotal : undefined}
+      />
       <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "340px 1fr",
@@ -693,94 +719,78 @@ export default function GeneratePage() {
                 </div>
               )}
 
-              {/* The living page — a book page the prose writes itself onto */}
-              {(() => {
-                const writingHere = isGenerating && liveChapterId === active.id && liveText.length > 0;
-                const wroteHere = !isGenerating && liveChapterId === active.id && liveText.length > 0;
-                return (
-                  <div style={{
-                    background: "#FDFCF8",
-                    border: "1px solid var(--ds-card-border)",
-                    borderRadius: 6,
-                    boxShadow: "0 8px 28px rgba(44,36,25,0.1)",
-                    padding: "28px 34px 30px",
-                    marginBottom: 24,
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 22 }}>
-                      <span className="ds-stamp" style={{ color: "var(--text-tertiary)" }}>
-                        Chapter {active.chapter_number}
-                      </span>
-                      <span className={`ds-stamp${writingHere ? " ds-stamp--live" : ""}`} style={writingHere ? {} : { color: "#C17A47" }}>
-                        {writingHere ? "Writing live" : active.status === "generated" || active.status === "edited" || wroteHere ? "Drafted" : "Outlined"}
-                      </span>
-                    </div>
-                    <h2 style={{ fontSize: 26, fontWeight: 500, color: "var(--text-primary)", marginBottom: 14, fontFamily: "var(--font-lora), serif" }}>
-                      {active.title}
-                    </h2>
-                    {(writingHere || wroteHere) ? (
-                      <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column-reverse" }}>
-                        <p style={{
-                          fontSize: 16,
-                          color: "var(--text-primary)",
-                          lineHeight: 1.75,
-                          fontFamily: "var(--font-lora), serif",
-                          whiteSpace: "pre-wrap",
-                          margin: 0,
-                        }}>
-                          {liveText}
-                          {writingHere && <span className="ds-live-cursor" aria-hidden="true" />}
-                        </p>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
-                        {active.summary}
-                        {active.status !== "generated" && active.status !== "edited" && (
-                          <span style={{ display: "block", marginTop: 10, fontStyle: "italic", color: "var(--text-tertiary)" }}>
-                            This chapter is outlined and ready to become prose.
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    <style>{`
-                      .ds-live-cursor {
-                        display: inline-block;
-                        width: 2px;
-                        height: 1.05em;
-                        margin-left: 2px;
-                        vertical-align: -0.15em;
-                        background: #B3352C;
-                        animation: dsPageBlink 0.85s steps(1) infinite;
-                      }
-                      @keyframes dsPageBlink { 50% { opacity: 0; } }
-                      @media (prefers-reduced-motion: reduce) { .ds-live-cursor { animation: none !important; } }
-                    `}</style>
-                  </div>
-                );
-              })()}
+              {/* The chapter plate. Partial prose is NEVER rendered (Kyle 2026-08-09: the
+                  site only ever produces finished chapters in whole) — while a chapter is
+                  being written the GenerationStage owns the screen, and the finished text
+                  appears in the Editor. */}
+              <div style={{
+                background: "#FDFCF8",
+                border: "1px solid var(--ds-card-border)",
+                borderRadius: 6,
+                boxShadow: "0 8px 28px rgba(44,36,25,0.1)",
+                padding: "28px 34px 30px",
+                marginBottom: 24,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 22 }}>
+                  <span className="ds-stamp" style={{ color: "var(--text-tertiary)" }}>
+                    Chapter {active.chapter_number}
+                  </span>
+                  <span className="ds-stamp" style={{ color: "#C17A47" }}>
+                    {active.status === "generated" || active.status === "edited" ? "Drafted" : "Outlined"}
+                  </span>
+                </div>
+                <h2 style={{ fontSize: 26, fontWeight: 500, color: "var(--text-primary)", marginBottom: 14, fontFamily: "var(--font-lora), serif" }}>
+                  {active.title}
+                </h2>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                  {active.summary}
+                  {active.status !== "generated" && active.status !== "edited" && (
+                    <span style={{ display: "block", marginTop: 10, fontStyle: "italic", color: "var(--text-tertiary)" }}>
+                      This chapter is outlined and ready to become prose.
+                    </span>
+                  )}
+                </p>
+              </div>
 
               {/* Enrichment quotes — interactive */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <PanelTitle>Enrichment Quotes</PanelTitle>
                   {chapterEnrichments.length > 0 && (
-                    <InkTooltip label="~0.5 Ink to refresh quotes" position="top">
+                    <InkTooltip label="~0.5 Ink to fetch a fresh set of quotes" position="top">
+                      {/* Was a near-invisible ghost button reading "Refresh" (Kyle's note 9):
+                          accent-outlined, labelled with what it actually does, icon-led. */}
                       <button
                         onClick={() => activeChapter && fetchEnrichments(activeChapter)}
                         disabled={enriching === activeChapter}
                         style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: enriching === activeChapter ? "var(--text-tertiary)" : "var(--text-secondary)",
-                          background: "none",
-                          border: "1px solid var(--ds-input-bg)",
-                          borderRadius: 8,
-                          padding: "6px 14px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 7,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          color: enriching === activeChapter ? "var(--text-tertiary)" : "#A05526",
+                          background: enriching === activeChapter ? "transparent" : "rgba(193,122,71,0.1)",
+                          border: `1px solid ${enriching === activeChapter ? "var(--ds-input-border)" : "rgba(193,122,71,0.5)"}`,
+                          borderRadius: 9999,
+                          padding: "8px 16px",
                           cursor: enriching === activeChapter ? "wait" : "pointer",
                           fontFamily: "var(--font-manrope), sans-serif",
-                          transition: "all 0.15s",
+                          transition: "background 0.15s, border-color 0.15s, color 0.15s",
                         }}
                       >
-                        {enriching === activeChapter ? "Refreshing..." : "Refresh"}
+                        <svg
+                          width="13" height="13" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                          className={enriching === activeChapter ? "ds-spin" : undefined}
+                          aria-hidden="true"
+                        >
+                          <path d="M21 2v6h-6" />
+                          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                          <path d="M3 22v-6h6" />
+                          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                        </svg>
+                        {enriching === activeChapter ? "Finding quotes..." : "New quotes"}
                       </button>
                     </InkTooltip>
                   )}
@@ -793,6 +803,67 @@ export default function GeneratePage() {
                         {selectedQuoteCount} selected{selectedQuoteCount > recommendedQuotes ? " (a few more than suggested)" : ""}.
                       </span>
                     </p>
+
+                    {/* Word-count suggestion (Kyle's note 10). A CHIP, never an auto-adjust:
+                        more quotes than the length recommends means the chapter needs more
+                        room, but the number stays the author's to set. */}
+                    {wordCountSuggestion !== null && (
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 10,
+                        padding: "10px 14px",
+                        marginBottom: 4,
+                        borderRadius: 10,
+                        background: "rgba(193,122,71,0.08)",
+                        border: "1px solid rgba(193,122,71,0.3)",
+                      }}>
+                        <span style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                          {selectedQuoteCount} quotes selected. Give this chapter room to hold them:{" "}
+                          <strong style={{ color: "#A05526" }}>
+                            {activeGenCh?.target_word_count?.toLocaleString()} → {wordCountSuggestion.toLocaleString()} words
+                          </strong>?
+                        </span>
+                        <span style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                          <button
+                            type="button"
+                            onClick={() => applyWordCountSuggestion(wordCountSuggestion)}
+                            disabled={applyingWordCount}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              fontFamily: "var(--font-manrope), sans-serif",
+                              color: "#241D14",
+                              background: "#C17A47",
+                              border: "none",
+                              borderRadius: 9999,
+                              padding: "7px 15px",
+                              cursor: applyingWordCount ? "wait" : "pointer",
+                            }}
+                          >
+                            {applyingWordCount ? "Updating..." : "Use it"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDismissedWordCountFor(activeChapter)}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: "var(--font-manrope), sans-serif",
+                              color: "var(--text-tertiary)",
+                              background: "transparent",
+                              border: "1px solid var(--ds-input-border)",
+                              borderRadius: 9999,
+                              padding: "7px 13px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Keep as is
+                          </button>
+                        </span>
+                      </div>
+                    )}
                     {chapterEnrichments.map((e) => (
                       <div
                         key={e.id}
@@ -1061,7 +1132,7 @@ export default function GeneratePage() {
                 <div style={{ marginTop: 16 }}>
                   <button
                     onClick={() => { if (!isGenerating) router.push(`/project/${projectId}/editor`); }}
-                    className="nodum-btn"
+                    className={`nodum-btn${allGenerated && !isGenerating ? " ds-cta-pulse" : ""}`}
                     disabled={isGenerating}
                     style={{
                       width: "100%",

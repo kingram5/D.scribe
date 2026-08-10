@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
       title: body.title || "Untitled Project",
       description: body.description || "",
       audience: body.audience || "General",
+      // Only set for scripture audiences; the client sends null otherwise.
+      scripture_translation: body.scripture_translation || null,
       user_id: user.id,
     })
     .select()

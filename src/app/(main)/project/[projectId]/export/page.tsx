@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
+import { useAuth } from "@/hooks/useAuth";
 
 /* ─── Document Preview SVGs ─── */
 
@@ -151,6 +152,13 @@ export default function ExportPage() {
 
   const [driveState, setDriveState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [driveUrl, setDriveUrl] = useState("");
+
+  // The cover byline (Kyle's note 15). published_author is the Publish-section override and
+  // is blank until someone fills it in, which left the cover unsigned; the account name is
+  // the sensible default for "who wrote this".
+  const { user } = useAuth();
+  const accountName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim();
+  const coverAuthor = (publishedAuthor || accountName).trim();
 
   // Export used to be live on a project with no chapters at all, so a brand-new project offered
   // to download an empty manuscript. Gate on POSITIVE knowledge of emptiness only: `null` means
@@ -387,7 +395,7 @@ export default function ExportPage() {
                 {projTitle || " "}
               </span>
               <span className="ds-label" style={{ color: "rgba(249,247,242,0.75)", fontSize: 9 }}>
-                {publishedAuthor || " "}
+                {coverAuthor ? `By ${coverAuthor}` : " "}
               </span>
             </div>
           </div>
@@ -399,15 +407,18 @@ export default function ExportPage() {
             )}
             <h1
               style={{
-                fontSize: 36,
-                fontWeight: 700,
+                fontSize: 40,
+                fontWeight: 400,
+                fontStyle: "italic",
                 color: "var(--text-primary)",
-                fontFamily: "var(--font-manrope), sans-serif",
+                fontFamily: "var(--font-lora), serif",
+                letterSpacing: "-0.02em",
                 margin: 0,
-                lineHeight: 1.2,
+                lineHeight: 1.05,
+                textWrap: "balance",
               }}
             >
-              Export your masterpiece
+              Send the book into the world.
             </h1>
             {stats ? (
               <p style={{ fontSize: 19, color: "var(--text-primary)", fontFamily: "var(--font-lora), serif", margin: "10px 0 0", lineHeight: 1.5 }}>
@@ -484,7 +495,17 @@ export default function ExportPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Print-ready PDF with clean typography. Perfect for sharing or archiving.
+                Print-ready pages with clean typography.
+              </p>
+              {/* Fidelity line: says exactly what survives the trip, per format. */}
+              <p style={{
+                fontSize: 11.5,
+                color: "var(--text-tertiary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                margin: "8px 0 0",
+                lineHeight: 1.45,
+              }}>
+                Block structure rendered; inline emphasis flattened cleanly.
               </p>
             </div>
             <button
@@ -499,7 +520,11 @@ export default function ExportPage() {
               }}
             >
               <DownloadIcon />
-              {exporting && format === "pdf" ? "Exporting..." : "Download .pdf"}
+              {exporting && format === "pdf"
+                ? "Working…"
+                : exported && format === "pdf"
+                  ? "✓ Done — download again"
+                  : "Download .pdf"}
             </button>
           </div>
 
@@ -537,7 +562,16 @@ export default function ExportPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Editable Word document. Great for further revisions or submissions.
+                Full-fidelity manuscript, ready for revisions or submission.
+              </p>
+              <p style={{
+                fontSize: 11.5,
+                color: "var(--text-tertiary)",
+                fontFamily: "var(--font-manrope), sans-serif",
+                margin: "8px 0 0",
+                lineHeight: 1.45,
+              }}>
+                Headings, bold, italics and indented quote blocks all preserved.
               </p>
             </div>
             <button
@@ -552,7 +586,11 @@ export default function ExportPage() {
               }}
             >
               <DownloadIcon />
-              {exporting && format === "docx" ? "Exporting..." : "Download .docx"}
+              {exporting && format === "docx"
+                ? "Working…"
+                : exported && format === "docx"
+                  ? "✓ Done — download again"
+                  : "Download .docx"}
             </button>
           </div>
 

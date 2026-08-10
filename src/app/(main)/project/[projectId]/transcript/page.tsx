@@ -120,6 +120,10 @@ export default function TranscriptPage() {
   /* Per-paragraph editing: index into `merged`, plus the working text. */
   const [editingPara, setEditingPara] = useState<number | null>(null);
   const [paraDraft, setParaDraft] = useState("");
+  /* Reading view (Kyle's note 7): "segments" keeps speakers, timestamps and the
+     5-minute markers; "full" is the same text as continuous prose for a straight
+     read-through. A view choice only — editing still writes back into segments. */
+  const [view, setView] = useState<"segments" | "full">("segments");
 
   const active = transcripts[activeIdx] ?? null;
   // Plain computation, not useMemo: an optional-chained dependency defeats the
@@ -674,6 +678,48 @@ export default function TranscriptPage() {
               </div>
             )}
 
+            {/* Reading view toggle */}
+            <div style={{ paddingBottom: 14 }}>
+              <div style={{
+                fontSize: 10,
+                fontFamily: P.mono,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: P.muted,
+                marginBottom: 8,
+              }}>
+                Reading view
+              </div>
+              <div role="group" aria-label="Transcript reading view" style={{ display: "flex", gap: 6 }}>
+                {([["segments", "Segments"], ["full", "Full text"]] as const).map(([key, label]) => {
+                  const on = view === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setView(key)}
+                      aria-pressed={on}
+                      style={{
+                        flex: 1,
+                        padding: "7px 0",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: on ? 700 : 500,
+                        fontFamily: P.sans,
+                        cursor: "pointer",
+                        background: on ? "rgba(193,122,71,0.15)" : "transparent",
+                        color: on ? P.accent : P.muted,
+                        border: `1px solid ${on ? "rgba(193,122,71,0.45)" : P.border}`,
+                        transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Edit transcript button */}
             <div style={{ paddingBottom: 20 }}>
               <button
@@ -705,6 +751,32 @@ export default function TranscriptPage() {
               >
                 Edit Transcript
               </button>
+
+              {/* What this step is for. The blank space under the button was the natural
+                  place to explain that nothing here is final and everything here feeds
+                  the book (Kyle's note 8). */}
+              <div style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: `1px solid ${P.border}`,
+                fontFamily: P.sans,
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: P.muted,
+              }}>
+                <p style={{ margin: "0 0 8px", fontWeight: 600, color: P.text }}>
+                  Read it before the book does.
+                </p>
+                <p style={{ margin: "0 0 8px" }}>
+                  Everything on this page becomes source material. Whatever you leave here is
+                  what the analysis reads, so it is worth a pass before you move on.
+                </p>
+                <p style={{ margin: 0 }}>
+                  Click any paragraph to correct a word the transcription misheard, or use
+                  Edit Transcript to rewrite the whole thing. Cut anything you would not want
+                  taken into account. Timing and speakers stay attached behind the scenes.
+                </p>
+              </div>
             </div>
           </div>
         </aside>
@@ -848,7 +920,33 @@ export default function TranscriptPage() {
                   padding: "64px 48px 160px 48px",
                 }}
               >
-              {merged.length > 0
+              {view === "full" ? (
+                /* Full text: the same paragraphs as continuous prose, no speaker rail,
+                   no timestamps, no markers — for reading it straight through. */
+                <div style={{ maxWidth: 720, margin: "0 auto" }}>
+                  {merged.length > 0 ? (
+                    merged.map((para, i) => (
+                      <p
+                        key={i}
+                        style={{
+                          fontFamily: P.serif,
+                          fontSize: 17,
+                          lineHeight: 1.75,
+                          color: P.text,
+                          margin: "0 0 1.15em",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {para.text}
+                      </p>
+                    ))
+                  ) : (
+                    <p style={{ fontFamily: P.serif, fontSize: 17, lineHeight: 1.75, color: P.text, whiteSpace: "pre-wrap" }}>
+                      {active?.full_text || ""}
+                    </p>
+                  )}
+                </div>
+              ) : merged.length > 0
                 ? merged.map((para, i) => {
                     const show = shouldShowSpeaker(i);
                     const colorIdx = speakerStats.findIndex((s) => s.speaker === para.speaker);

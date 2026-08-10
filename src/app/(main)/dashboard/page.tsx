@@ -208,7 +208,11 @@ export default function Dashboard() {
         padding: "0 40px 40px",
         position: "relative",
         flex: 1,
-        overflow: "hidden",
+        // The grid is the app's only scroll region here — the shell is locked to 100dvh and
+        // the window itself cannot scroll. With `hidden` the book rows past the fold were
+        // simply unreachable on a short desktop window (measured: 1,936px of content in a
+        // 505px box). The mobile query below already set `auto`; desktop never did.
+        overflow: "hidden auto",
         zIndex: 1,
       }}>
         {/* Left panel — Lined Paper */}

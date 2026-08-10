@@ -61,10 +61,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
   if (!apiKey) return NextResponse.json({ error: "TTS not configured" }, { status: 503 });
 
-  const voiceId = process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
+  // T.H.E.O = ElevenLabs "Finley - Articulate Anchor" (old, deep, British, narrative).
+  // .trim() guards against a stray trailing newline in the env value corrupting the URL.
+  const voiceId = (process.env.ELEVENLABS_VOICE_ID ?? "fnYMz3F5gMEDGMWcH1ex").trim();
 
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,

@@ -29,7 +29,7 @@ const COHERENCE = { state: "solving" as OrbState, text: "Performing coherence pa
 /** Dwell per phase. Halved in pace (was 4.2s) so the panel reads calm, not busy. */
 const PHASE_MS = 8400;
 /** Slide duration; must match the CSS animation length so the outgoing slide unmounts clean. */
-const ANIM_MS = 620;
+const ANIM_MS = 1860;
 
 type Phase = { state: OrbState; text: string };
 

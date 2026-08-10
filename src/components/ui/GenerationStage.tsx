@@ -26,7 +26,12 @@ const PHASES: { state: OrbState; text: string }[] = [
 /** The coherence pass is a real, nameable stage — when it's running, say so and stop cycling. */
 const COHERENCE = { state: "solving" as OrbState, text: "Performing coherence pass..." };
 
-const PHASE_MS = 4200;
+/** Dwell per phase. Halved in pace (was 4.2s) so the panel reads calm, not busy. */
+const PHASE_MS = 8400;
+/** Slide duration; must match the CSS animation length so the outgoing slide unmounts clean. */
+const ANIM_MS = 620;
+
+type Phase = { state: OrbState; text: string };
 
 interface GenerationStageProps {
   open: boolean;
@@ -36,6 +41,29 @@ interface GenerationStageProps {
   progressLabel?: string;
   /** 0–1; omitted renders no bar. */
   progress?: number;
+}
+
+/** One carousel slide: the orb and its line, moving as a single unit. */
+function PhaseSlide({ phase, leaving }: { phase: Phase; leaving?: boolean }) {
+  return (
+    <div className={`ds-phase-slide ${leaving ? "ds-phase-out" : "ds-phase-in"}`}>
+      <TheoOrb state={phase.state} size={64} />
+      <p
+        style={{
+          fontFamily: "var(--font-lora), serif",
+          fontStyle: "italic",
+          fontWeight: 400,
+          fontSize: "clamp(22px, 2.6vw, 30px)",
+          lineHeight: 1.2,
+          color: "var(--ds-ink, #2C2419)",
+          margin: 0,
+          textWrap: "balance",
+        }}
+      >
+        {phase.text}
+      </p>
+    </div>
+  );
 }
 
 export default function GenerationStage({ open, coherence, progressLabel, progress }: GenerationStageProps) {
@@ -55,6 +83,22 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
   // Reset to the first phase on each new run so it never opens mid-cycle.
   useEffect(() => { if (open) setI(0); }, [open]);
 
+  // Carousel: the outgoing phase stays mounted for one animation so it can slide left
+  // while the incoming one slides in from the right. Keyed by phase identity, which also
+  // covers the switch into the pinned coherence slide.
+  const activeKey = coherence ? "coherence" : `p${i}`;
+  const activePhase: Phase = coherence ? COHERENCE : PHASES[i];
+  const prevRef = useRef<{ key: string; phase: Phase }>({ key: activeKey, phase: activePhase });
+  const [outgoing, setOutgoing] = useState<{ key: string; phase: Phase } | null>(null);
+
+  useEffect(() => {
+    if (prevRef.current.key === activeKey) return;
+    setOutgoing(prevRef.current);
+    prevRef.current = { key: activeKey, phase: activePhase };
+    const t = setTimeout(() => setOutgoing(null), ANIM_MS);
+    return () => clearTimeout(t);
+  }, [activeKey, activePhase]);
+
   // Keep focus inside the panel while it owns the screen.
   useEffect(() => {
     if (!open) return;
@@ -65,8 +109,6 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
   }, [open]);
 
   if (!open || !mounted) return null;
-
-  const phase = coherence ? COHERENCE : PHASES[i];
 
   return createPortal(
     <div
@@ -111,24 +153,12 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
           {coherence ? "FINAL PASS" : "AT THE DESK"}
         </span>
 
-        <TheoOrb key={phase.state} state={phase.state} size={64} />
-
-        <p
-          key={phase.text}
-          className="ds-gen-phase"
-          style={{
-            fontFamily: "var(--font-lora), serif",
-            fontStyle: "italic",
-            fontWeight: 400,
-            fontSize: "clamp(22px, 2.6vw, 30px)",
-            lineHeight: 1.2,
-            color: "var(--ds-ink, #2C2419)",
-            margin: 0,
-            textWrap: "balance",
-          }}
-        >
-          {phase.text}
-        </p>
+        {/* Carousel track: orb and line travel together as one slide. Overflow is clipped
+            so a slide never spills past the panel's rounded edge. */}
+        <div className="ds-phase-stage">
+          {outgoing && <PhaseSlide key={outgoing.key} phase={outgoing.phase} leaving />}
+          <PhaseSlide key={activeKey} phase={activePhase} />
+        </div>
 
         {progressLabel && (
           <p style={{

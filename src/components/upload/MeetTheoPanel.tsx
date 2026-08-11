@@ -71,12 +71,12 @@ export default function MeetTheoPanel({
           playsInline
           preload="auto"
           aria-hidden="true"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 40%" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 40%", transform: "scaleX(-1)" }}
         />
 
         {/* 2 — grade: vignette, ember pulse, bottom fade */}
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 100% at 50% 30%, rgba(26,22,16,0) 40%, rgba(26,22,16,0.5) 100%)" }} />
-        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 60% at 18% 78%, rgba(224,140,72,0.28) 0%, rgba(224,140,72,0) 62%)", animation: "theo-ember 7s ease-in-out infinite" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 60% at 82% 78%, rgba(224,140,72,0.28) 0%, rgba(224,140,72,0) 62%)", animation: "theo-ember 7s ease-in-out infinite" }} />
         <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "30%", background: "linear-gradient(to bottom, rgba(26,22,16,0), rgba(20,17,12,0.85))" }} />
 
         {/* 3 — T.H.E.O, standing in the room */}

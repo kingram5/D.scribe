@@ -127,7 +127,7 @@ export default function MeetTheoPanel({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <TheoOrb state="listening" size={64} display={60} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
+            <TheoOrb state="listening" size={64} display={60} speed={0.5} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
             <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.1rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
               Brainstorm with T.H.E.O
             </h2>

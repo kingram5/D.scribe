@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// Lead time between starting the greeting clip and revealing it, so the
+// dissolve happens between two moving images instead of into a frozen frame.
+const PREROLL_MS = 260;
+const DISSOLVE_MS = 220;
+
 /**
  * The Meet T.H.E.O plate. Two stacked clips: the 15s intro (he looks up from his
  * tablet, closes it, and greets you in Finley's voice) plays once, then crossfades
@@ -65,15 +70,23 @@ export default function TheoIntroVideo({
     // buffered enough to play through — so he never talks over a loading page.
     let delayDone = false;
     let cancelled = false;
+    let greeted = false;
     const tryGreet = () => {
-      if (cancelled || !delayDone || intro.readyState < 3) return;
-      setPhase("greeting");
+      if (cancelled || greeted || !delayDone || intro.readyState < 3) return;
+      greeted = true;
+      // Pre-roll: get the clip MOVING before it is revealed. Dissolving into a
+      // frozen first frame is what reads as a visible fade; two moving images
+      // blend invisibly.
       intro.muted = false;
-      intro.play().catch(() => {
+      const started = intro.play().catch(() => {
         // Sound blocked (no activation / low media engagement): play muted, offer unmute.
         intro.muted = true;
         setShowUnmute(true);
-        intro.play().catch(() => {});
+        return intro.play().catch(() => {});
+      });
+      Promise.resolve(started).then(() => {
+        if (cancelled) return;
+        window.setTimeout(() => { if (!cancelled) setPhase("greeting"); }, PREROLL_MS);
       });
     };
     const timer = window.setTimeout(() => { delayDone = true; tryGreet(); }, greetDelayMs);
@@ -87,13 +100,11 @@ export default function TheoIntroVideo({
   }, []);
 
   function handleEnded() {
+    // The idle never stopped, so it is mid-breath when we cross back. Resetting
+    // currentTime here would snap it to a frozen pose during the dissolve.
+    idleRef.current?.play().catch(() => {});
     setPhase("done");
     setShowUnmute(false);
-    const idle = idleRef.current;
-    if (idle) {
-      idle.currentTime = 0;
-      idle.play().catch(() => {});
-    }
   }
 
   function unmute() {
@@ -136,7 +147,7 @@ export default function TheoIntroVideo({
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
           ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introVisible ? 0 : 1,
-          transition: "opacity 400ms ease",
+          transition: `opacity ${DISSOLVE_MS}ms linear`,
         }}
       >
         {lobby && <source src="/theo-idle-alpha.webm" type='video/webm; codecs="vp9"' />}
@@ -160,7 +171,7 @@ export default function TheoIntroVideo({
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
           ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introVisible ? 1 : 0,
-          transition: "opacity 400ms ease",
+          transition: `opacity ${DISSOLVE_MS}ms linear`,
         }}
       >
         {lobby && <source src="/theo-intro-alpha.webm" type='video/webm; codecs="vp9"' />}

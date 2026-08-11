@@ -30,6 +30,21 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
   const idleRef = useRef<HTMLVideoElement>(null);
   const [introDone, setIntroDone] = useState(false);
   const [showUnmute, setShowUnmute] = useState(false);
+  // Lobby: true while the browser is playing the baked-background mp4 fallback
+  // (Safari — no VP9 alpha). The edge-feather masks only apply then; the alpha
+  // cutout needs no feathering and the bottom fade would ghost the figure.
+  const [usingFallback, setUsingFallback] = useState(false);
+
+  useEffect(() => {
+    if (!lobby) return;
+    const v = introRef.current;
+    if (!v) return;
+    const check = () => { if (v.currentSrc) setUsingFallback(v.currentSrc.endsWith(".mp4")); };
+    check();
+    v.addEventListener("loadedmetadata", check);
+    return () => v.removeEventListener("loadedmetadata", check);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lobby]);
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return; // hold on the poster
@@ -71,13 +86,16 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
         // Lobby composites over the page's own scene — no opaque plate, and the
         // horizontal half of the edge feather rides the wrapper.
         background: lobby ? "transparent" : "var(--ds-paper, #F4F1E8)",
-        ...(lobby ? { maskImage: lobbyWrapMask, WebkitMaskImage: lobbyWrapMask } : {}),
+        ...(lobby && usingFallback ? { maskImage: lobbyWrapMask, WebkitMaskImage: lobbyWrapMask } : {}),
       }}
     >
       {/* Idle loop underneath — revealed when the intro ends */}
       <video
         ref={idleRef}
-        src="/theo-idle.mp4"
+        // Lobby serves the alpha-channel cutout (VP9 webm); the baked-background
+        // mp4 rides behind it as the Safari fallback, which the edge feathering
+        // keeps presentable. Non-lobby modes keep the plain mp4.
+        {...(lobby ? {} : { src: "/theo-idle.mp4" })}
         muted
         loop
         playsInline
@@ -90,16 +108,19 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
           height: "100%",
           objectFit: "cover",
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
-          ...(lobby ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
+          ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introDone ? 1 : 0,
           transition: "opacity 400ms ease",
         }}
-      />
+      >
+        {lobby && <source src="/theo-idle-alpha.webm" type='video/webm; codecs="vp9"' />}
+        {lobby && <source src="/theo-idle.mp4" type="video/mp4" />}
+      </video>
       {/* Intro on top, plays once */}
       <video
         ref={introRef}
-        src="/theo-intro.mp4"
-        poster="/theo-poster.jpg"
+        {...(lobby ? {} : { src: "/theo-intro.mp4" })}
+        poster={lobby ? "/theo-poster-alpha.png" : "/theo-poster.jpg"}
         playsInline
         preload="auto"
         onEnded={handleEnded}
@@ -111,11 +132,14 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
           height: "100%",
           objectFit: "cover",
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
-          ...(lobby ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
+          ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introDone ? 0 : 1,
           transition: "opacity 400ms ease",
         }}
-      />
+      >
+        {lobby && <source src="/theo-intro-alpha.webm" type='video/webm; codecs="vp9"' />}
+        {lobby && <source src="/theo-intro.mp4" type="video/mp4" />}
+      </video>
       {showUnmute && !introDone && (
         <button
           onClick={unmute}

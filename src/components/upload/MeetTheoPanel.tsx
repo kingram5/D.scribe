@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import TheoIntroVideo from "./TheoIntroVideo";
+import TheoOrb from "../ui/TheoOrb";
 
 /**
  * Meet T.H.E.O — the game-lobby scene (Kyle's 8/11 vision, from the
@@ -44,7 +45,7 @@ export default function MeetTheoPanel({
           .theo-lobby-panel { position: static !important; width: auto !important; margin: 0 20px 32px !important; }
           .theo-lobby-scene { justify-content: flex-end !important; align-items: flex-end !important; }
           .theo-lobby-figure { opacity: .5 !important; }
-          .theo-lobby-title { left: 28px !important; bottom: 28px !important; }
+          .theo-lobby-title { left: 24px !important; top: 24px !important; }
         }
       `}</style>
       <main
@@ -82,21 +83,15 @@ export default function MeetTheoPanel({
         {/* 3 — T.H.E.O, standing in the room */}
         <div
           className="theo-lobby-figure"
-          style={{ position: "absolute", left: 0, bottom: 0, height: "96%", aspectRatio: "816 / 1104" }}
+          style={{ position: "absolute", left: "10%", bottom: 0, height: "96%", aspectRatio: "816 / 1104" }}
         >
           {/* grounding shadow so he stands on the floor instead of floating */}
           <div aria-hidden="true" style={{ position: "absolute", left: "8%", right: "8%", bottom: 0, height: 80, background: "radial-gradient(50% 50% at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%)" }} />
           <TheoIntroVideo mode="lobby" />
         </div>
 
-        {/* 4 — UI. Wordmark. */}
-        <div style={{ position: "absolute", top: 34, left: 44, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 18px rgba(0,0,0,0.7)", zIndex: 2 }}>
-          <span style={{ font: "700 22px var(--font-manrope), sans-serif", color: "#F9F7F2" }}>D.</span>
-          <span style={{ font: "300 italic 22px var(--font-lora), serif", color: "#F9F7F2" }}>scribe</span>
-        </div>
-
-        {/* Status + title, bottom-left over the figure */}
-        <div className="theo-lobby-title" style={{ position: "absolute", left: 60, bottom: 64, zIndex: 2, textShadow: "0 4px 26px rgba(0,0,0,0.85)" }}>
+        {/* 4 — UI. Title block sits top-left, in the wordmark slot. */}
+        <div className="theo-lobby-title" style={{ position: "absolute", left: 44, top: 34, zIndex: 2, textShadow: "0 4px 26px rgba(0,0,0,0.85)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px" }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8FBF7F", boxShadow: "0 0 10px #8FBF7F" }} />
             <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 10, letterSpacing: "0.18em", color: "rgba(249,247,242,0.62)" }}>
@@ -132,7 +127,7 @@ export default function MeetTheoPanel({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <span aria-hidden="true" style={{ flexShrink: 0, width: 60, height: 60, borderRadius: "50%", background: "radial-gradient(circle at 40% 35%, #F2B47A, #C17A47)", boxShadow: "0 0 44px rgba(193,122,71,0.75)" }} />
+            <TheoOrb state="listening" size={64} display={60} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
             <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.1rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
               Brainstorm with T.H.E.O
             </h2>

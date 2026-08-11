@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import TheoOrb from "@/components/ui/TheoOrb";
+import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
-import BrainstormChat from "@/components/upload/BrainstormChat";
 import { useUploadEngine } from "./useUploadEngine";
 
 export default function UploadPage() {
@@ -13,7 +12,6 @@ export default function UploadPage() {
   const router = useRouter();
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
-  const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -28,34 +26,7 @@ export default function UploadPage() {
   }
 
   return (
-    <PageShell
-      projectId={projectId}
-      currentStep="upload"
-      onNextClick={showBrainstorm ? () => setTriggerBrainstormFinish(true) : undefined}
-    >
-      <style>{`
-        @media (max-width: 768px) {
-          .ds-upload-split {
-            flex-direction: column !important;
-            overflow-y: auto !important;
-            height: auto !important;
-          }
-          .ds-upload-split .upload-slide-left {
-            width: 100% !important;
-            height: auto !important;
-            min-height: auto !important;
-            border-right: none !important;
-            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
-            box-shadow: none !important;
-            padding-bottom: 24px !important;
-          }
-          .ds-upload-split .upload-slide-right {
-            width: 100% !important;
-            height: auto !important;
-            min-height: auto !important;
-          }
-        }
-      `}</style>
+    <PageShell projectId={projectId} currentStep="upload">
       {!showBrainstorm && (
         <div className="ds-upload-stage" style={{ flex: 1, minHeight: 0, overflow: "hidden auto", padding: "6px 40px 32px" }}>
           {/* Stage head — editorial headline over the intake, per the Resonant recomposition */}
@@ -154,141 +125,13 @@ export default function UploadPage() {
         </div>
       )}
       {showBrainstorm && (
-      <div className="flex ds-upload-split" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-        {showBrainstorm ? (
-          <div
-            className="upload-slide-left"
-            style={{
-              width: "45%",
-              height: "100%",
-              background: "var(--ds-paper)",
-              borderRight: "1px solid rgba(0,0,0,0.06)",
-              boxShadow: "4px 0 24px rgba(0,0,0,0.04)",
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
-              // Fixed at height:100% inside a viewport-locked shell, so `hidden` clipped the
-              // bottom of the panel on a short window with no way to reach it (measured:
-              // 331px unreachable at 753px tall).
-              overflow: "hidden auto",
-            }}
-          >
-            {/* T.H.E.O owns the top half, full bleed. The wordmark and the live orb ride on
-                the image, and the bottom edge dissolves into the paper so the copy below
-                reads as the same surface rather than a caption under a photo. */}
-            <div style={{
-              position: "relative",
-              margin: "12px 14px 4px",
-              flexShrink: 0,
-              background: "var(--ds-paper, #F4F1E8)",
-              borderRadius: 22,
-              overflow: "hidden",
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/theo-portrait.webp"
-                alt="T.H.E.O by the fire in a book-lined study, machine hands holding a tablet that shows a voice waveform"
-                // Whole portrait in frame — his face, the tablet waveform and the machine
-                // hands (the tell for what he is) all survive. Width tracks the panel, height
-                // follows the 4:3 source, so it never crops top-to-bottom.
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-              {/* Feather every edge into the paper so the plate dissolves into the panel
-                  instead of ending on a hard rectangle. */}
-              <div aria-hidden="true" style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: 22,
-                boxShadow: "inset 0 0 30px 12px var(--ds-paper, #F4F1E8), inset 0 0 9px 3px var(--ds-paper, #F4F1E8)",
-                pointerEvents: "none",
-              }} />
-              {/* Gentle bottom transition into the copy — kept short so the machine hands
-                  near the lower edge stay readable. */}
-              <div aria-hidden="true" style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: "15%",
-                background: "linear-gradient(to bottom, rgba(244,241,232,0) 0%, var(--ds-paper, #F4F1E8) 100%)",
-                pointerEvents: "none",
-              }} />
-              <div style={{ position: "absolute", top: 26, left: 34, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: "#F9F7F2", fontFamily: "var(--font-manrope), sans-serif" }}>D.</span>
-                <span style={{ fontSize: 22, fontWeight: 300, color: "#F9F7F2", fontFamily: "var(--font-lora), serif", fontStyle: "italic" }}>scribe</span>
-              </div>
-              <div style={{
-                position: "absolute",
-                right: 26,
-                bottom: 22,
-                width: 62,
-                height: 62,
-                borderRadius: "50%",
-                display: "grid",
-                placeItems: "center",
-                background: "var(--ds-paper, #F4F1E8)",
-                boxShadow: "0 0 0 1px rgba(193,122,71,0.45), 0 0 26px rgba(193,122,71,0.35)",
-              }}>
-                <TheoOrb state="listening" size={20} display={40} speed={0.6} aria-label="T.H.E.O, listening" />
-              </div>
-            </div>
-
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "22px 32px 0", gap: 20, minHeight: 0 }}>
-              <div style={{ textAlign: "center" }}>
-                <h1 style={{
-                  fontFamily: "var(--font-lora), serif",
-                  fontStyle: "italic",
-                  fontWeight: 400,
-                  fontSize: "2.3rem",
-                  lineHeight: 1.1,
-                  color: "var(--ds-ink)",
-                  letterSpacing: "-0.02em",
-                  marginBottom: 6,
-                }}>
-                  Meet T.H.E.O
-                </h1>
-                <p style={{
-                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                  fontSize: 10.5,
-                  letterSpacing: "0.09em",
-                  color: "#A05526",
-                  marginBottom: 14,
-                }}>
-                  TECHNICAL HUMAN EXPRESSION ORGANIZER
-                </p>
-              </div>
-            </div>
-            <div style={{
-              padding: "0 32px 20px",
-              fontSize: 10,
-              color: "var(--text-tertiary)",
-              fontFamily: "var(--font-geist-mono), monospace",
-              letterSpacing: "0.06em",
-            }}>
-              D.SCRIBE v1.0
-            </div>
-          </div>
-        ) : null}
-        {showBrainstorm ? (
-          <div className="upload-slide-right" style={{
-            width: "55%",
-            height: "100%",
-            background: "var(--ds-surface)",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            overflow: "hidden",
-          }}>
-            <BrainstormChat
-              projectId={projectId}
-              onComplete={() => router.push(`/project/${projectId}/transcript`)}
-              onBack={() => setShowBrainstorm(false)}
-              triggerFinish={triggerBrainstormFinish}
-              onFinishTriggered={() => setTriggerBrainstormFinish(false)}
-            />
-          </div>
-        ) : null}
-      </div>
+        // Meet T.H.E.O — variant C full-bleed, static pitch per the design pass.
+        // To make the CTA launch the live brainstorm later: re-add
+        // `import BrainstormChat from "@/components/upload/BrainstormChat"` and render it
+        // when MeetTheoPanel's onStart fires (a `chatting` state swap).
+        <div className="flex" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+          <MeetTheoPanel onBack={() => setShowBrainstorm(false)} />
+        </div>
       )}
     </PageShell>
   );

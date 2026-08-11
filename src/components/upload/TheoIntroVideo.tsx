@@ -21,14 +21,20 @@ import { useEffect, useRef, useState } from "react";
  *   game-lobby composite. Horizontal feather lives on the wrapper, vertical on
  *   each video, so the two masks intersect without mask-composite support.
  */
-export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fill" | "lobby" } = {}) {
+export default function TheoIntroVideo({
+  mode = "card",
+  greetDelayMs = 3500,
+}: { mode?: "card" | "fill" | "lobby"; greetDelayMs?: number } = {}) {
   const fill = mode === "fill" || mode === "lobby";
   const lobby = mode === "lobby";
   const lobbyWrapMask = "linear-gradient(to right, transparent 0%, #000 13%, #000 74%, transparent 100%)";
   const lobbyVideoMask = "linear-gradient(to bottom, transparent 0%, #000 9%, #000 58%, rgba(0,0,0,0.55) 84%, transparent 99%)";
   const introRef = useRef<HTMLVideoElement>(null);
   const idleRef = useRef<HTMLVideoElement>(null);
-  const [introDone, setIntroDone] = useState(false);
+  // He idles on arrival, greets after a settle beat, then idles again:
+  // "waiting" (idle loop, greet pending) -> "greeting" (intro) -> "done" (idle).
+  const [phase, setPhase] = useState<"waiting" | "greeting" | "done">("waiting");
+  const introVisible = phase === "greeting";
   const [showUnmute, setShowUnmute] = useState(false);
   // Lobby: true while the browser is playing the baked-background mp4 fallback
   // (Safari — no VP9 alpha). The edge-feather masks only apply then; the alpha
@@ -48,20 +54,40 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return; // hold on the poster
-    const v = introRef.current;
-    if (!v) return;
-    v.muted = false;
-    v.play()
-      .catch(() => {
+    const intro = introRef.current;
+    const idle = idleRef.current;
+    if (!intro || !idle) return;
+
+    // Arrive on the idle: he's standing there breathing while the page settles.
+    idle.play().catch(() => {});
+
+    // Greet only after BOTH the settle beat has passed AND the intro is
+    // buffered enough to play through — so he never talks over a loading page.
+    let delayDone = false;
+    let cancelled = false;
+    const tryGreet = () => {
+      if (cancelled || !delayDone || intro.readyState < 3) return;
+      setPhase("greeting");
+      intro.muted = false;
+      intro.play().catch(() => {
         // Sound blocked (no activation / low media engagement): play muted, offer unmute.
-        v.muted = true;
+        intro.muted = true;
         setShowUnmute(true);
-        return v.play().catch(() => {});
+        intro.play().catch(() => {});
       });
+    };
+    const timer = window.setTimeout(() => { delayDone = true; tryGreet(); }, greetDelayMs);
+    intro.addEventListener("canplaythrough", tryGreet);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      intro.removeEventListener("canplaythrough", tryGreet);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleEnded() {
-    setIntroDone(true);
+    setPhase("done");
     setShowUnmute(false);
     const idle = idleRef.current;
     if (idle) {
@@ -109,7 +135,7 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
           objectFit: "cover",
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
           ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
-          opacity: introDone ? 1 : 0,
+          opacity: introVisible ? 0 : 1,
           transition: "opacity 400ms ease",
         }}
       >
@@ -133,14 +159,14 @@ export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fil
           objectFit: "cover",
           objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
           ...(lobby && usingFallback ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
-          opacity: introDone ? 0 : 1,
+          opacity: introVisible ? 1 : 0,
           transition: "opacity 400ms ease",
         }}
       >
         {lobby && <source src="/theo-intro-alpha.webm" type='video/webm; codecs="vp9"' />}
         {lobby && <source src="/theo-intro.mp4" type="video/mp4" />}
       </video>
-      {showUnmute && !introDone && (
+      {showUnmute && introVisible && (
         <button
           onClick={unmute}
           aria-label="Hear T.H.E.O"

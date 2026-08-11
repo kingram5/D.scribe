@@ -112,9 +112,9 @@ export default function MeetTheoPanel({
           style={{
             position: "relative",
             zIndex: 3,
-            width: "min(46vw, 600px)",
+            width: "min(57.5vw, 750px)",
             marginRight: "10vw",
-            padding: "44px 46px 40px",
+            padding: "55px 58px 50px",
             borderRadius: 32,
             background: "rgba(30,25,18,0.62)",
             backdropFilter: "blur(26px)",
@@ -123,27 +123,27 @@ export default function MeetTheoPanel({
             boxShadow: "0 32px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(249,247,242,0.14)",
             display: "flex",
             flexDirection: "column",
-            gap: 30,
+            gap: 38,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <TheoOrb state="listening" size={64} display={60} speed={0.5} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
-            <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.1rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+            <TheoOrb state="listening" size={64} display={75} speed={0.5} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
+            <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.6rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
               Brainstorm with T.H.E.O
             </h2>
           </div>
 
-          <p style={{ fontSize: 16, color: "#C3B9AC", lineHeight: 1.65, margin: 0, textWrap: "pretty" }}>
+          <p style={{ fontSize: 20, color: "#C3B9AC", lineHeight: 1.65, margin: 0, textWrap: "pretty" }}>
             Your specialized ghostwriter. T.H.E.O interviews the way a good editor does: he listens for the book inside the way you tell it, then asks the question that pulls the next chapter out of you.
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, borderTop: "1px solid rgba(249,247,242,0.1)", paddingTop: 26 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 17, borderTop: "1px solid rgba(249,247,242,0.1)", paddingTop: 32 }}>
             {[
               "Tuned to your book's reader the moment you chose one",
               "Speak or type — he keeps up either way",
               "Everything you say becomes source material when you hit Finish",
             ].map((t, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 17, color: "var(--text-secondary)", lineHeight: 1.5 }}>
                 <span style={{ color: "var(--ds-accent-400)", flexShrink: 0, marginTop: 2 }}>•</span>
                 {t}
               </div>
@@ -159,11 +159,11 @@ export default function MeetTheoPanel({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 16,
-                padding: "24px 48px",
+                padding: "30px 60px",
                 color: "#fff",
                 border: "none",
                 borderRadius: 100,
-                font: "600 24px var(--font-manrope), sans-serif",
+                font: "600 30px var(--font-manrope), sans-serif",
                 cursor: "pointer",
                 boxShadow: "0 10px 38px rgba(224,93,58,0.35)",
               }}
@@ -171,7 +171,7 @@ export default function MeetTheoPanel({
               Start Brainstorming →
             </button>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(168,159,148,0.75)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, color: "rgba(168,159,148,0.75)" }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="5" y="1" width="6" height="9" rx="3" />
                   <path d="M3 7v1a5 5 0 0010 0V7" />
@@ -182,7 +182,7 @@ export default function MeetTheoPanel({
               <button
                 className="theo-lobby-back"
                 onClick={onBack}
-                style={{ background: "none", border: "none", fontSize: 13, color: "rgba(168,159,148,0.75)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}
+                style={{ background: "none", border: "none", fontSize: 16, color: "rgba(168,159,148,0.75)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}
               >
                 ← Back to upload options
               </button>

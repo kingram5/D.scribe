@@ -1,16 +1,20 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import TheoIntroVideo from "./TheoIntroVideo";
 
 /**
- * Meet T.H.E.O — variant C (full-bleed), ported from the "D.Scribe Dark Dual Panel"
- * design. Left 38%: the talking-T.H.E.O clip fills the panel, wordmark top-left and
- * the "Meet T.H.E.O" title + org line overlaid at the bottom over a paper fade.
- * Right 62%: the static "Brainstorm with T.H.E.O" pitch (orb, copy, bullets, CTA).
+ * Meet T.H.E.O — the game-lobby scene (Kyle's 8/11 vision, from the
+ * "Meet THEO Variant C" design draft). T.H.E.O stands IN a firelit library like
+ * a character in a game lobby, not a video on a static page.
  *
- * Static-pitch-only per Kyle: the CTA/back are wired to the passed callbacks but the
- * live brainstorm chat does not render here. Design tokens are the app's --ds-* set,
- * which defaults dark and matches the dark mockup 1:1.
+ * Layers, back to front:
+ *  1. Library scene: a 10s seamless fire/lamp-flicker loop (Seedance-animated
+ *     from the FLUX still; the still doubles as poster + reduced-motion fallback)
+ *  2. Grade: dim vignette + bottom fade + pulsing ember glow low-left
+ *  3. The figure: TheoIntroVideo mode="lobby" — talking intro then idle loop,
+ *     edges feathered so his baked-in backdrop dissolves into the scene
+ *  4. UI: wordmark, ONLINE status + title bottom-left, frosted-glass pitch panel right
  */
 export default function MeetTheoPanel({
   onStart,
@@ -19,167 +23,177 @@ export default function MeetTheoPanel({
   onStart?: () => void;
   onBack?: () => void;
 }) {
+  const bgRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // Reduced motion: hold the scene on the still; TheoIntroVideo already
+    // holds itself on its poster under the same setting.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    bgRef.current?.play().catch(() => {});
+  }, []);
+
   return (
     <>
       <style>{`
-        .mt-cta { background: var(--ds-accent-500); }
-        .mt-cta:hover { background: var(--ds-accent-600); }
-        .mt-back:hover { color: var(--ds-ink); }
-        @media (max-width: 768px) {
-          .mt-main { flex-direction: column !important; overflow-y: auto !important; }
-          .mt-left, .mt-right { width: 100% !important; }
-          .mt-left { min-height: 62vh !important; }
-          .mt-right { padding: 40px 28px !important; }
+        @keyframes theo-ember { 0%, 100% { opacity: .72; } 45% { opacity: 1; } }
+        .theo-lobby-cta { background: var(--ds-accent-500); transition: background .15s, transform .15s; }
+        .theo-lobby-cta:hover { background: var(--ds-accent-600); transform: translateY(-2px); }
+        .theo-lobby-back { transition: color .15s; }
+        .theo-lobby-back:hover { color: var(--ds-ink); }
+        @media (max-width: 900px) {
+          .theo-lobby-panel { position: static !important; width: auto !important; margin: 0 20px 32px !important; }
+          .theo-lobby-scene { justify-content: flex-end !important; align-items: flex-end !important; }
+          .theo-lobby-figure { opacity: .5 !important; }
+          .theo-lobby-title { left: 28px !important; bottom: 28px !important; }
         }
       `}</style>
       <main
-        className="mt-main"
+        className="theo-lobby-scene"
         style={{
-          display: "flex",
+          position: "relative",
           flex: 1,
           minHeight: 0,
-          borderTop: "1px solid var(--ds-divider)",
+          overflow: "hidden",
+          background: "#1A1610",
+          fontFamily: "var(--font-manrope), system-ui, sans-serif",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
         }}
       >
-        {/* LEFT 38% — full-bleed talking T.H.E.O */}
-        <section
-          className="mt-left"
-          style={{
-            width: "38%",
-            background: "var(--ds-paper)",
-            borderRight: "1px solid var(--ds-divider)",
-            boxShadow: "4px 0 24px rgba(0,0,0,0.04)",
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            // hidden auto (not bare hidden): a viewport-locked shell clips the panel
-            // bottom at short heights otherwise.
-            overflow: "hidden auto",
-          }}
-        >
-          <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <div style={{ position: "absolute", inset: 0 }}>
-              <TheoIntroVideo fill />
-            </div>
-            {/* Bottom fade so the overlaid title reads as the same surface */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: "42%",
-                background: "linear-gradient(to bottom, rgba(44,36,25,0) 0%, var(--ds-paper) 82%)",
-                pointerEvents: "none",
-              }}
-            />
-            {/* Wordmark, top-left */}
-            <div style={{ position: "absolute", top: 26, left: 34, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 14px rgba(0,0,0,0.55)" }}>
-              <span style={{ font: "700 22px var(--font-manrope), sans-serif", color: "#F9F7F2" }}>D.</span>
-              <span style={{ font: "300 italic 22px var(--font-lora), serif", color: "#F9F7F2" }}>scribe</span>
-            </div>
-            {/* Title + org, overlaid bottom */}
-            <div style={{ position: "absolute", left: 40, right: 40, bottom: 34 }}>
-              <h1 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.6rem", lineHeight: 1.05, color: "var(--ds-ink)", letterSpacing: "-0.02em", margin: "0 0 8px" }}>
-                Meet T.H.E.O
-              </h1>
-              <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 10.5, letterSpacing: "0.09em", color: "var(--ds-accent-500)", margin: 0 }}>
-                TECHNICAL HUMAN EXPRESSION ORGANIZER
-              </p>
-            </div>
-          </div>
-          <div style={{ padding: "18px 40px 20px", fontFamily: "var(--font-geist-mono), monospace", fontSize: 10, color: "var(--text-tertiary)", letterSpacing: "0.06em" }}>
-            D.SCRIBE v1.0
-          </div>
-        </section>
+        {/* 1 — the library, alive: seamless flicker loop over its own still */}
+        <video
+          ref={bgRef}
+          src="/theo-library.mp4"
+          poster="/theo-library.jpg"
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 40%" }}
+        />
 
-        {/* RIGHT 62% — static brainstorm pitch */}
-        <section
-          className="mt-right"
+        {/* 2 — grade: vignette, ember pulse, bottom fade */}
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 100% at 50% 30%, rgba(26,22,16,0) 40%, rgba(26,22,16,0.5) 100%)" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 60% at 18% 78%, rgba(224,140,72,0.28) 0%, rgba(224,140,72,0) 62%)", animation: "theo-ember 7s ease-in-out infinite" }} />
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "30%", background: "linear-gradient(to bottom, rgba(26,22,16,0), rgba(20,17,12,0.85))" }} />
+
+        {/* 3 — T.H.E.O, standing in the room */}
+        <div
+          className="theo-lobby-figure"
+          style={{ position: "absolute", left: 0, bottom: 0, height: "96%", aspectRatio: "816 / 1104" }}
+        >
+          {/* grounding shadow so he stands on the floor instead of floating */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "8%", right: "8%", bottom: 0, height: 80, background: "radial-gradient(50% 50% at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%)" }} />
+          <TheoIntroVideo mode="lobby" />
+        </div>
+
+        {/* 4 — UI. Wordmark. */}
+        <div style={{ position: "absolute", top: 34, left: 44, display: "flex", alignItems: "baseline", gap: 2, textShadow: "0 2px 18px rgba(0,0,0,0.7)", zIndex: 2 }}>
+          <span style={{ font: "700 22px var(--font-manrope), sans-serif", color: "#F9F7F2" }}>D.</span>
+          <span style={{ font: "300 italic 22px var(--font-lora), serif", color: "#F9F7F2" }}>scribe</span>
+        </div>
+
+        {/* Status + title, bottom-left over the figure */}
+        <div className="theo-lobby-title" style={{ position: "absolute", left: 60, bottom: 64, zIndex: 2, textShadow: "0 4px 26px rgba(0,0,0,0.85)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px" }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8FBF7F", boxShadow: "0 0 10px #8FBF7F" }} />
+            <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 10, letterSpacing: "0.18em", color: "rgba(249,247,242,0.62)" }}>
+              ONLINE — IN THE STUDY
+            </span>
+          </div>
+          <h1 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "3rem", lineHeight: 1.02, color: "#F9F7F2", letterSpacing: "-0.02em", margin: "0 0 10px" }}>
+            Meet T.H.E.O
+          </h1>
+          <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 10.5, letterSpacing: "0.09em", color: "var(--ds-accent-500)", margin: 0 }}>
+            TECHNICAL HUMAN EXPRESSION ORGANIZER
+          </p>
+        </div>
+
+        {/* Frosted-glass pitch panel */}
+        <div
+          className="theo-lobby-panel"
           style={{
-            width: "62%",
-            background: "var(--ds-surface)",
+            position: "relative",
+            zIndex: 3,
+            width: "min(46vw, 600px)",
+            marginRight: "10vw",
+            padding: "44px 46px 40px",
+            borderRadius: 32,
+            background: "rgba(30,25,18,0.62)",
+            backdropFilter: "blur(26px)",
+            WebkitBackdropFilter: "blur(26px)",
+            border: "1px solid rgba(249,247,242,0.12)",
+            boxShadow: "0 32px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(249,247,242,0.14)",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
-            gap: 40,
-            padding: "56px 6vw",
-            position: "relative",
-            overflow: "hidden auto",
+            gap: 30,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                alignSelf: "center",
-                width: 112,
-                height: 112,
-                borderRadius: "50%",
-                background: "radial-gradient(circle at 40% 35%, #F2B47A, #C17A47)",
-                boxShadow: "0 0 60px var(--ds-accent-400)",
-              }}
-            />
-            <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.4rem", lineHeight: 1.1, color: "var(--ds-ink)", margin: 0, letterSpacing: "-0.01em", maxWidth: "34ch" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <span aria-hidden="true" style={{ flexShrink: 0, width: 60, height: 60, borderRadius: "50%", background: "radial-gradient(circle at 40% 35%, #F2B47A, #C17A47)", boxShadow: "0 0 44px rgba(193,122,71,0.75)" }} />
+            <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.1rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
               Brainstorm with T.H.E.O
             </h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: "40px 48px", alignItems: "start" }}>
-            <p style={{ fontSize: 16, color: "var(--text-secondary)", lineHeight: 1.65, margin: 0, textWrap: "pretty" }}>
-              Your specialized ghostwriter. T.H.E.O interviews the way a good editor does: he listens for the book inside the way you tell it, then asks the question that pulls the next chapter out of you.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, borderLeft: "1px solid var(--ds-divider)", paddingLeft: 28 }}>
-              {[
-                "Tuned to your book's reader the moment you chose one",
-                "Speak or type — he keeps up either way",
-                "Everything you say becomes source material when you hit Finish",
-              ].map((t, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  <span style={{ color: "var(--ds-accent-400)", flexShrink: 0, marginTop: 2 }}>•</span>
-                  {t}
-                </div>
-              ))}
-            </div>
+          <p style={{ fontSize: 16, color: "#C3B9AC", lineHeight: 1.65, margin: 0, textWrap: "pretty" }}>
+            Your specialized ghostwriter. T.H.E.O interviews the way a good editor does: he listens for the book inside the way you tell it, then asks the question that pulls the next chapter out of you.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, borderTop: "1px solid rgba(249,247,242,0.1)", paddingTop: 26 }}>
+            {[
+              "Tuned to your book's reader the moment you chose one",
+              "Speak or type — he keeps up either way",
+              "Everything you say becomes source material when you hit Finish",
+            ].map((t, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                <span style={{ color: "var(--ds-accent-400)", flexShrink: 0, marginTop: 2 }}>•</span>
+                {t}
+              </div>
+            ))}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <button
-              className="mt-cta"
+              className="theo-lobby-cta"
               onClick={onStart}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: 16,
-                padding: "26px 60px",
+                padding: "24px 48px",
                 color: "#fff",
                 border: "none",
                 borderRadius: 100,
-                font: "600 27px var(--font-manrope), sans-serif",
+                font: "600 24px var(--font-manrope), sans-serif",
                 cursor: "pointer",
-                boxShadow: "0 8px 32px rgba(224,93,58,0.25)",
+                boxShadow: "0 10px 38px rgba(224,93,58,0.35)",
               }}
             >
               Start Brainstorming →
             </button>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-tertiary)" }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="5" y="1" width="6" height="9" rx="3" />
-                <path d="M3 7v1a5 5 0 0010 0V7" />
-                <path d="M8 13v2" />
-              </svg>
-              Voice enabled — tap the mic to speak
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(168,159,148,0.75)" }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="5" y="1" width="6" height="9" rx="3" />
+                  <path d="M3 7v1a5 5 0 0010 0V7" />
+                  <path d="M8 13v2" />
+                </svg>
+                Voice enabled — tap the mic to speak
+              </div>
+              <button
+                className="theo-lobby-back"
+                onClick={onBack}
+                style={{ background: "none", border: "none", fontSize: 13, color: "rgba(168,159,148,0.75)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}
+              >
+                ← Back to upload options
+              </button>
             </div>
-            <button
-              className="mt-back"
-              onClick={onBack}
-              style={{ background: "none", border: "none", fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}
-            >
-              ← Back to upload options
-            </button>
           </div>
-        </section>
+        </div>
       </main>
     </>
   );

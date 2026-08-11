@@ -12,7 +12,20 @@ import { useEffect, useRef, useState } from "react";
  * sound; if the browser blocks it we fall back to muted and offer an unmute.
  * prefers-reduced-motion leaves it paused on the poster.
  */
-export default function TheoIntroVideo({ fill = false }: { fill?: boolean } = {}) {
+/**
+ * mode:
+ * - "card": 3:4 plate (original studio-panel use)
+ * - "fill": fills the parent (variant-C full-bleed panel)
+ * - "lobby": fills the parent AND feathers the clip's edges away so T.H.E.O's
+ *   baked-in backdrop dissolves into the page's own library scene — the
+ *   game-lobby composite. Horizontal feather lives on the wrapper, vertical on
+ *   each video, so the two masks intersect without mask-composite support.
+ */
+export default function TheoIntroVideo({ mode = "card" }: { mode?: "card" | "fill" | "lobby" } = {}) {
+  const fill = mode === "fill" || mode === "lobby";
+  const lobby = mode === "lobby";
+  const lobbyWrapMask = "linear-gradient(to right, transparent 0%, #000 13%, #000 74%, transparent 100%)";
+  const lobbyVideoMask = "linear-gradient(to bottom, transparent 0%, #000 9%, #000 58%, rgba(0,0,0,0.55) 84%, transparent 99%)";
   const introRef = useRef<HTMLVideoElement>(null);
   const idleRef = useRef<HTMLVideoElement>(null);
   const [introDone, setIntroDone] = useState(false);
@@ -50,7 +63,17 @@ export default function TheoIntroVideo({ fill = false }: { fill?: boolean } = {}
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", ...(fill ? { height: "100%" } : { aspectRatio: "3 / 4" }), background: "var(--ds-paper, #F4F1E8)" }}>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        ...(fill ? { height: "100%" } : { aspectRatio: "3 / 4" }),
+        // Lobby composites over the page's own scene — no opaque plate, and the
+        // horizontal half of the edge feather rides the wrapper.
+        background: lobby ? "transparent" : "var(--ds-paper, #F4F1E8)",
+        ...(lobby ? { maskImage: lobbyWrapMask, WebkitMaskImage: lobbyWrapMask } : {}),
+      }}
+    >
       {/* Idle loop underneath — revealed when the intro ends */}
       <video
         ref={idleRef}
@@ -66,7 +89,8 @@ export default function TheoIntroVideo({ fill = false }: { fill?: boolean } = {}
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: fill ? "50% 28%" : "center",
+          objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
+          ...(lobby ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introDone ? 1 : 0,
           transition: "opacity 400ms ease",
         }}
@@ -86,7 +110,8 @@ export default function TheoIntroVideo({ fill = false }: { fill?: boolean } = {}
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: fill ? "50% 28%" : "center",
+          objectPosition: lobby ? "52% 8%" : fill ? "50% 28%" : "center",
+          ...(lobby ? { maskImage: lobbyVideoMask, WebkitMaskImage: lobbyVideoMask } : {}),
           opacity: introDone ? 0 : 1,
           transition: "opacity 400ms ease",
         }}

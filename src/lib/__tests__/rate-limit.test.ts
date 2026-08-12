@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
@@ -24,5 +26,12 @@ describe("checkRateLimit degraded mode", () => {
 
     await expect(checkRateLimit(`user-${Math.random()}`, "public-read", 1, 60_000, "local"))
       .resolves.toEqual({ allowed: true, retryAfterMs: 0 });
+  });
+});
+
+describe("authenticated API coverage", () => {
+  it("keeps the baseline limiter in the shared auth guard", () => {
+    const auth = fs.readFileSync(path.resolve(__dirname, "..", "auth.ts"), "utf8");
+    expect(auth).toMatch(/checkRateLimit\(user\.id,\s*"authenticated-api",\s*120\)/);
   });
 });

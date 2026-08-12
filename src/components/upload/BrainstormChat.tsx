@@ -784,16 +784,45 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     <div
       role="dialog"
       aria-label="Brainstorm studio"
+      className="ds-studio-stage"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 150,
         display: "flex",
         flexDirection: "column",
-        background: "radial-gradient(circle at 50% 20%, #2C2419 0%, #1A1610 100%)",
+        background: "#1A1610",
         color: "#F9F7F2",
       }}
     >
+      {/* The studio sits in the same library as the Meet T.H.E.O lobby, thrown
+          far out of focus so the conversation stays the subject. One CSS rule
+          lifts every sibling above it, so the stage markup below is untouched. */}
+      <style>{`
+        .ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }
+      `}</style>
+      <div className="ds-studio-bg" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
+        <video
+          src="/theo-library.mp4"
+          poster="/theo-library.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            // Mirrored to match the lobby; scaled up so the blur has no soft edge.
+            transform: "scaleX(-1) scale(1.14)",
+            filter: "blur(30px) brightness(0.5) saturate(1.05)",
+          }}
+        />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 20%, rgba(44,36,25,0.55) 0%, rgba(26,22,16,0.88) 100%)" }} />
+      </div>
       {/* Stage header */}
       <div style={{
         display: "flex",

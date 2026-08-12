@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
+import BrainstormChat from "@/components/upload/BrainstormChat";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
 import { useUploadEngine } from "./useUploadEngine";
@@ -12,6 +13,9 @@ export default function UploadPage() {
   const router = useRouter();
   const engine = useUploadEngine(projectId);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
+  // The lobby is the doorway; "Start Brainstorming" opens the studio over it.
+  const [chatting, setChatting] = useState(false);
+  const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -26,7 +30,11 @@ export default function UploadPage() {
   }
 
   return (
-    <PageShell projectId={projectId} currentStep="upload">
+    <PageShell
+      projectId={projectId}
+      currentStep="upload"
+      onNextClick={chatting ? () => setTriggerBrainstormFinish(true) : undefined}
+    >
       {!showBrainstorm && (
         <div className="ds-upload-stage" style={{ flex: 1, minHeight: 0, overflow: "hidden auto", padding: "6px 40px 32px" }}>
           {/* Stage head — editorial headline over the intake, per the Resonant recomposition */}
@@ -125,12 +133,22 @@ export default function UploadPage() {
         </div>
       )}
       {showBrainstorm && (
-        // Meet T.H.E.O — variant C full-bleed, static pitch per the design pass.
-        // To make the CTA launch the live brainstorm later: re-add
-        // `import BrainstormChat from "@/components/upload/BrainstormChat"` and render it
-        // when MeetTheoPanel's onStart fires (a `chatting` state swap).
+        // The Meet T.H.E.O lobby. Its CTA opens the brainstorm studio, which
+        // portals to <body> and covers the lobby while the session runs.
         <div className="flex" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-          <MeetTheoPanel onBack={() => setShowBrainstorm(false)} />
+          <MeetTheoPanel
+            onStart={() => setChatting(true)}
+            onBack={() => setShowBrainstorm(false)}
+          />
+          {chatting && (
+            <BrainstormChat
+              projectId={projectId}
+              onComplete={() => router.push(`/project/${projectId}/transcript`)}
+              onBack={() => setChatting(false)}
+              triggerFinish={triggerBrainstormFinish}
+              onFinishTriggered={() => setTriggerBrainstormFinish(false)}
+            />
+          )}
         </div>
       )}
     </PageShell>

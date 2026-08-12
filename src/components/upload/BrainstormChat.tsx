@@ -735,7 +735,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
   // Resume prompt
   if (showResume) {
-    const lastMsg = savedMessages[savedMessages.length - 1];
+    // Show HER last words, not T.H.E.O's. After a normal turn the final message
+    // is his question, so the one screen meant to prove her story survived was
+    // quoting the machine back at her.
+    const lastMsg = [...savedMessages].reverse().find(m => m.role === "user") ?? savedMessages[savedMessages.length - 1];
     const preview = lastMsg?.content.slice(0, 110) + (lastMsg?.content.length > 110 ? "…" : "");
     return (
       <StudioShell>
@@ -765,7 +768,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </button>
           <button
             className="transcribe-btn"
-            style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+            style={{ background: "rgba(249,247,242,0.08)", color: "var(--text-secondary)", border: "1px solid rgba(249,247,242,0.22)" }}
             onClick={() => {
               try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
               setSavedMessages([]);
@@ -835,7 +838,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           {ttsBlocked ? (
             <div style={{
               padding: "10px 16px", borderRadius: 8, textAlign: "center",
-              background: "rgba(0,0,0,0.04)", border: "1px solid var(--border-subtle)",
+              background: "rgba(249,247,242,0.06)", border: "1px solid rgba(249,247,242,0.18)",
               fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif",
             }}>
               {isLocked ? "Voice unavailable on your plan" : "Monthly limit reached"}
@@ -851,7 +854,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           )}
           <button
             className="transcribe-btn"
-            style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+            style={{ background: "rgba(249,247,242,0.08)", color: "var(--text-secondary)", border: "1px solid rgba(249,247,242,0.22)" }}
             onClick={() => chooseTts(false)}
           >
             {ttsBlocked ? "Continue — text only" : "No thanks, text only"}

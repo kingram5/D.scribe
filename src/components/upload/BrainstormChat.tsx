@@ -10,6 +10,32 @@ interface Message {
   content: string;
 }
 
+interface SavedBrainstormSession {
+  messages: Message[];
+  draft: string;
+}
+
+function isMessage(value: unknown): value is Message {
+  return typeof value === "object" && value !== null &&
+    ((value as Message).role === "user" || (value as Message).role === "assistant") &&
+    typeof (value as Message).content === "string";
+}
+
+/** Supports the pre-M3 array format so interrupted existing sessions remain resumable. */
+function parseSavedSession(raw: string): SavedBrainstormSession | null {
+  const parsed: unknown = JSON.parse(raw);
+  if (Array.isArray(parsed)) {
+    return { messages: parsed.filter(isMessage), draft: "" };
+  }
+  if (typeof parsed === "object" && parsed !== null && Array.isArray((parsed as SavedBrainstormSession).messages)) {
+    return {
+      messages: (parsed as SavedBrainstormSession).messages.filter(isMessage),
+      draft: typeof (parsed as SavedBrainstormSession).draft === "string" ? (parsed as SavedBrainstormSession).draft : "",
+    };
+  }
+  return null;
+}
+
 interface BrainstormChatProps {
   projectId: string;
   onComplete: () => void;
@@ -106,6 +132,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [speaking, setSpeaking] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
+  const [savedDraft, setSavedDraft] = useState("");
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
   // The studio had no error surface at all: every failure was a console.error or
   // a bare return, so a dead send looked like T.H.E.O repeating himself.
@@ -121,6 +148,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // Autosave support: the flush handlers fire outside the effect closure, so
   // they read the latest transcript from a ref rather than a captured value.
   const messagesRef = useRef<Message[]>([]);
+  const draftRef = useRef("");
+  // Browser interruption can leave a fetch/TTS callback running after the app
+  // has been backgrounded. Re-check this mutable flag at the callback boundary,
+  // not only in React effects.
+  const pageVisibleRef = useRef(true);
   // True once the user hand-edits the composer, so a re-armed recognizer cannot
   // overwrite what they typed. Cleared when a turn is sent.
   const typedRef = useRef(false);
@@ -130,6 +162,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const ttsEnabledRef = useRef(true);
+  // Fetching sentence audio concurrently lets faster later responses jump ahead
+  // of earlier ones. Keep text requests ordered as well as decoded audio.
+  const ttsRequestQueueRef = useRef<string[]>([]);
+  const ttsRequestInFlightRef = useRef(false);
+  const ttsRequestGenerationRef = useRef(0);
   const audioQueueRef = useRef<ArrayBuffer[]>([]);
   const isPlayingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -182,6 +219,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // TTS helpers — defined before toggleListening to avoid TDZ
   const playNext = useCallback(() => {
     if (isPlayingRef.current) return;
+    if (!pageVisibleRef.current) {
+      audioQueueRef.current = [];
+      setSpeaking(false);
+      return;
+    }
     // Queue drained: Theo has stopped talking. Hands-free mode watches this to know
     // when it is safe to re-open the mic without recording his own voice.
     if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
@@ -236,24 +278,41 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
   }, []);
 
-  const speakSentence = useCallback(async (text: string) => {
-    if (!ttsEnabledRef.current || !text.trim()) return;
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) return;
-      const buf = await res.arrayBuffer();
-      audioQueueRef.current.push(buf);
-      playNext();
-    } catch { /* TTS is enhancement only — never block chat */ }
+  const speakSentence = useCallback((text: string) => {
+    if (!pageVisibleRef.current || !ttsEnabledRef.current || !text.trim()) return;
+    ttsRequestQueueRef.current.push(text);
+    if (ttsRequestInFlightRef.current) return;
+
+    const drain = async () => {
+      const next = ttsRequestQueueRef.current.shift();
+      if (!next || !pageVisibleRef.current || !ttsEnabledRef.current) {
+        ttsRequestInFlightRef.current = false;
+        return;
+      }
+      ttsRequestInFlightRef.current = true;
+      const generation = ttsRequestGenerationRef.current;
+      try {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: next }),
+        });
+        if (!res.ok || generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
+        const buf = await res.arrayBuffer();
+        if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
+        audioQueueRef.current.push(buf);
+        playNext();
+      } catch { /* TTS is enhancement only — never block chat */ }
+      finally { void drain(); }
+    };
+    void drain();
   }, [playNext]);
 
   const stopAudio = useCallback(() => {
     try { currentSourceRef.current?.stop(); } catch { /* ignore */ }
     currentSourceRef.current = null;
+    ttsRequestGenerationRef.current += 1;
+    ttsRequestQueueRef.current = [];
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     sentenceBufferRef.current = "";
@@ -271,6 +330,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   /** Open the mic. Shared by the Speak button and the hands-free auto-resume, so a
    *  re-armed mic behaves identically to a hand-clicked one. */
   const startRecognition = useCallback(() => {
+    if (!pageVisibleRef.current) return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -375,6 +435,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setHandsFree(true);
     startRecognition();
   }, [listening, handsFree, startRecognition]);
+
+  // A phone call or app switch must not leave either microphone capture or
+  // playback alive in the background. Do not auto-reopen the mic on return:
+  // mobile browsers can treat it as a non-gesture request, and surprise capture
+  // after an interruption is worse than one explicit tap.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      pageVisibleRef.current = document.visibilityState === "visible";
+      if (pageVisibleRef.current) return;
+      const wasActive = handsFree || listening || speaking;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      try { recognitionRef.current?.stop(); } catch { /* not started */ }
+      setListening(false);
+      setHandsFree(false);
+      stopAudio();
+      if (wasActive) {
+        setSendError("Voice playback and hands-free dictation were paused while the app was in the background. Tap Speak when you return.");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [handsFree, listening, speaking, stopAudio]);
 
   /* Hands-free re-arm. The mic is deliberately closed while Theo answers so it cannot
      transcribe his own TTS voice, so this waits for BOTH halves of his turn to finish:
@@ -600,6 +682,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     autoSendRef.current = sendMessage;
   }, [sendMessage]);
 
+  useEffect(() => {
+    draftRef.current = input;
+  }, [input]);
+
   // autoStart: the lobby was the pre-start screen, so open the voice choice
   // directly. Reads the saved session itself rather than waiting on showResume,
   // which is set in a sibling mount effect and would still read false here.
@@ -609,8 +695,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     try {
       const raw = localStorage.getItem(sessionKey);
       if (raw) {
-        const msgs = JSON.parse(raw);
-        hasSaved = Array.isArray(msgs) && msgs.length >= 2;
+        const saved = parseSavedSession(raw);
+        hasSaved = !!saved && (saved.messages.length >= 2 || !!saved.draft.trim());
       }
     } catch {}
     if (!hasSaved) setShowTtsPrompt(true); // a saved session shows Resume instead
@@ -621,14 +707,20 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     try {
       const raw = localStorage.getItem(sessionKey);
       if (raw) {
-        const msgs: Message[] = JSON.parse(raw);
-        if (msgs.length >= 2) { setSavedMessages(msgs); setShowResume(true); }
+        const saved = parseSavedSession(raw);
+        if (saved && (saved.messages.length >= 2 || !!saved.draft.trim())) {
+          setSavedMessages(saved.messages);
+          setSavedDraft(saved.draft);
+          setShowResume(true);
+        }
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Autosave on every message change
+  // Autosave messages AND an in-progress answer. A phone can evict a tab while
+  // someone is composing a long memoir answer; messages alone cannot restore
+  // words that have not been sent yet.
   useEffect(() => {
     messagesRef.current = messages;
     if (!started || messages.length === 0) return;
@@ -640,7 +732,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // throw out of an effect took the whole page to the error screen.)
     const write = () => {
       try {
-        localStorage.setItem(sessionKey, JSON.stringify(messagesRef.current));
+        localStorage.setItem(sessionKey, JSON.stringify({
+          version: 1,
+          messages: messagesRef.current,
+          draft: draftRef.current,
+        }));
       } catch {
         setStorageBlocked(true);
       }
@@ -655,7 +751,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", write);
     };
-  }, [messages, started, sessionKey]);
+  }, [messages, input, started, sessionKey]);
+
+  // The max-wait timer intentionally outlives individual message/input renders,
+  // but not the studio itself. Otherwise Finish removes the completed session
+  // and a stale timer recreates it, offering a duplicate session on return.
+  useEffect(() => () => {
+    if (maxWaitRef.current) clearTimeout(maxWaitRef.current);
+  }, []);
 
   // Fetch TTS availability when modal opens
   useEffect(() => {
@@ -690,7 +793,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       });
 
       if (res.ok) {
-        localStorage.removeItem(sessionKey);
+        if (maxWaitRef.current) {
+          clearTimeout(maxWaitRef.current);
+          maxWaitRef.current = null;
+        }
+        // Storage can be blocked even though the server successfully created
+        // the transcript. Never trap the user here or let a second Finish make
+        // duplicate source material.
+        try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
         onComplete();
       } else {
         const err = await res.json();
@@ -739,7 +849,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // is his question, so the one screen meant to prove her story survived was
     // quoting the machine back at her.
     const lastMsg = [...savedMessages].reverse().find(m => m.role === "user") ?? savedMessages[savedMessages.length - 1];
-    const preview = lastMsg?.content.slice(0, 110) + (lastMsg?.content.length > 110 ? "…" : "");
+    const previewSource = savedDraft.trim() || lastMsg?.content || "";
+    const preview = previewSource.slice(0, 110) + (previewSource.length > 110 ? "…" : "");
     return (
       <StudioShell>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, maxWidth: 620 }}>
@@ -753,7 +864,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             Continue where you left off?
           </h2>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 300, lineHeight: 1.5, marginBottom: 4 }}>
-            Last message:
+            {savedDraft.trim() ? "Unsent answer:" : "Last message:"}
           </p>
           <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-tertiary)", fontFamily: "var(--font-lora), serif", maxWidth: 320, lineHeight: 1.6 }}>
             &ldquo;{preview}&rdquo;
@@ -772,6 +883,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             onClick={() => {
               try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
               setSavedMessages([]);
+              setSavedDraft("");
+              setInput("");
               setShowResume(false);
               // Hand straight to the voice choice. Without this the render falls
               // through to the un-portaled pre-start screen — a second identical
@@ -799,6 +912,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setShowTtsPrompt(false);
       if (pendingResume) {
         setMessages(savedMessages);
+        setInput(savedDraft);
+        typedRef.current = !!savedDraft.trim();
         setStarted(true);
       } else {
         startConversation();

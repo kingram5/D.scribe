@@ -4,8 +4,8 @@
  * Uses check_rate_limit() — a single atomic upsert function defined in
  * migration 010. Works across multiple Next.js instances (Vercel, etc.).
  *
- * Falls back to in-memory if the RPC call fails (e.g., local dev without
- * the migration applied) — logs a warning so it doesn't fail silently.
+ * Database failures deny by default. A per-process fallback cannot enforce a
+ * distributed limit and must never be used to authorize spend-bearing work.
  */
 
 import { createServerClient } from "@/lib/supabase";
@@ -52,7 +52,8 @@ export async function checkRateLimit(
   userId: string,
   route: string,
   limit = 10,
-  windowMs = 60_000
+  windowMs = 60_000,
+  failureMode: "closed" | "local" = "closed"
 ): Promise<{ allowed: boolean; retryAfterMs: number }> {
   const key = `${userId}:${route}`;
 
@@ -68,19 +69,18 @@ export async function checkRateLimit(
 
     const row = Array.isArray(data) ? data[0] : data;
     if (!row || typeof row.allowed !== "boolean") {
-      // A healthy-but-empty response is not a connectivity problem — name it
-      // instead of letting the null deref masquerade as one in the catch.
-      console.warn("[rate-limit] check_rate_limit returned no row — falling back to in-memory limiter");
-      return localCheck(key, limit, windowMs);
+      throw new Error("check_rate_limit returned no row");
     }
     return {
       allowed: row.allowed,
       retryAfterMs: Number(row.retry_after_ms ?? 0),
     };
   } catch (err) {
-    // Migration not yet applied or DB unreachable — fall back to in-memory
-    console.warn("[rate-limit] Falling back to in-memory limiter:", (err as Error).message);
-    return localCheck(key, limit, windowMs);
+    console.error("[rate-limit] Distributed limiter unavailable:", (err as Error).message);
+    // Local limiting is only an explicit availability choice for routes that
+    // cannot cause vendor spend. It is intentionally never the default.
+    if (failureMode === "local") return localCheck(key, limit, windowMs);
+    return { allowed: false, retryAfterMs: windowMs };
   }
 }
 

@@ -5,11 +5,19 @@ import { logger } from "@/lib/logger";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/enrich?project_id=xxx — read existing enrichments for all chapters in a project
 export async function GET(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "enrich");
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const projectId = new URL(req.url).searchParams.get("project_id");
   if (!projectId) {

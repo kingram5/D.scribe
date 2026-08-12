@@ -3,11 +3,19 @@ import { requireAuth } from "@/lib/auth";
 import { checkInk } from "@/lib/ink";
 import { distillStyleMemory, loadStyleMemory } from "@/lib/style-memory";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/voice-memory — the user's current distilled style memory
 export async function GET() {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "style-distill", 5, 60 * 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const memory = await loadStyleMemory(user.id);
   return NextResponse.json({ memory });

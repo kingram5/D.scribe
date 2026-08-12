@@ -62,6 +62,7 @@ export interface InkCheck {
   reason?: string;
   balance: number;
   tier: string;
+  reservationId?: string;
 }
 
 /** sha256 hex of an email string. */
@@ -135,6 +136,82 @@ export async function checkInk(userId: string, operation?: InkOperation): Promis
     balance: balance.ink_balance,
     tier: balance.tier,
   };
+}
+
+/**
+ * Atomically hold an operation's minimum Ink before calling a vendor. Unlike
+ * checkInk(), concurrent calls cannot approve the same balance. Call
+ * releaseInkReservation if no vendor work is started.
+ */
+export async function reserveInk(userId: string, operation: InkOperation): Promise<InkCheck> {
+  const balance = await ensureBalance(userId);
+  const required = estimateInkCost(operation);
+  if (balance.ink_balance < required) {
+    return {
+      allowed: false,
+      reason: `This needs about ${required} Ink and you have ${Number(balance.ink_balance.toFixed(2))}. Top up to continue.`,
+      balance: balance.ink_balance,
+      tier: balance.tier,
+    };
+  }
+
+  const supabase = createServerClient();
+  const { data, error } = await supabase.rpc("reserve_ink", {
+    p_user_id: userId,
+    p_operation: operation,
+    p_ink_amount: required,
+  });
+  if (error?.message.includes("Insufficient Ink")) {
+    return {
+      allowed: false,
+      reason: `This needs about ${required} Ink and your balance is reserved by another request. Please try again shortly.`,
+      balance: balance.ink_balance,
+      tier: balance.tier,
+    };
+  }
+  if (error) throw new Error(`reserve_ink failed: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.reservation_id) throw new Error("reserve_ink returned no reservation");
+  return {
+    allowed: true,
+    balance: Number(row.ink_balance),
+    tier: row.tier,
+    reservationId: row.reservation_id,
+  };
+}
+
+/** Release an unused pre-vendor reservation. Safe to call more than once. */
+export async function releaseInkReservation(reservationId?: string): Promise<void> {
+  if (!reservationId) return;
+  const { error } = await createServerClient().rpc("release_ink_reservation", {
+    p_reservation_id: reservationId,
+  });
+  if (error) throw new Error(`release_ink_reservation failed: ${error.message}`);
+}
+
+/** Settle a reservation with the actual vendor cost and release its hold. */
+export async function settleInkReservation(
+  reservationId: string,
+  projectId: string | null,
+  operation: InkOperation,
+  model: "fast" | "quality" | string,
+  usage: ClaudeUsage | null,
+  flatInkCost?: number
+): Promise<number> {
+  const { data, error } = await createServerClient().rpc("settle_ink_reservation", {
+    p_reservation_id: reservationId,
+    p_project_id: projectId,
+    p_operation: operation,
+    p_model: model === "fast" ? "haiku" : model === "quality" ? "sonnet" : model,
+    p_input_tokens: usage?.input_tokens ?? 0,
+    p_output_tokens: usage?.output_tokens ?? 0,
+    p_flat_ink_cost: flatInkCost == null ? null : Math.max(0, Number(flatInkCost.toFixed(4))),
+  });
+  if (error) {
+    if (error.message.includes("Insufficient Ink")) throw new Error("Insufficient Ink balance");
+    throw new Error(`settle_ink_reservation failed: ${error.message}`);
+  }
+  return Number(data);
 }
 
 /** Get current balance and usage stats */

@@ -10,7 +10,8 @@ import {
 } from "@/lib/prosody";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
-import { checkInk, recordInkUsage } from "@/lib/ink";
+import { releaseInkReservation, reserveInk, settleInkReservation } from "@/lib/ink";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -20,9 +21,11 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const inkCheck = await checkInk(user.id, "analyze");
-  if (!inkCheck.allowed) {
-    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "analyze", 30);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
   }
 
   const { project_id, transcript_id, chunk_index, previous_titles } = await req.json();
@@ -71,6 +74,12 @@ export async function POST(req: NextRequest) {
     deliveryPromptBlock(delivery)
   );
 
+  const inkCheck = await reserveInk(user.id, "analyze");
+  if (!inkCheck.allowed || !inkCheck.reservationId) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
+  const reservationId = inkCheck.reservationId;
+
   let raw: string;
   let usage: { input_tokens: number; output_tokens: number };
   try {
@@ -78,6 +87,7 @@ export async function POST(req: NextRequest) {
     raw = result.text;
     usage = result.usage;
   } catch (apiErr) {
+    await releaseInkReservation(reservationId);
     const msg = apiErr instanceof Error ? apiErr.message : String(apiErr);
     console.error("Claude API error for key points:", msg);
     return NextResponse.json({ error: "Key points extraction failed: " + msg }, { status: 500 });
@@ -100,9 +110,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (!parseFailed) {
-    await recordInkUsage(user.id, project_id, "analyze", "fast", usage).catch((billErr) =>
-      console.error("key-points: Ink settle failed after successful parse:", billErr)
-    );
+    try {
+      await settleInkReservation(reservationId, project_id, "analyze", "fast", usage);
+    } catch (billErr) {
+      console.error("key-points: Ink settlement failed:", billErr);
+      return NextResponse.json({ error: "Unable to settle Ink usage. Please try again." }, { status: 503 });
+    }
+  } else {
+    await releaseInkReservation(reservationId);
   }
 
   // Save this chunk's key points to DB

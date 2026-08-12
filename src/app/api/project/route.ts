@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 
 // GET /api/project — list user's projects
 export async function GET() {
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -22,10 +20,8 @@ export async function GET() {
 
 // POST /api/project — create a new project
 export async function POST(req: NextRequest) {
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   const body = await req.json();
   const supabase = createServerClient();

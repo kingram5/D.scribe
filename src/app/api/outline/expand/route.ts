@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { OUTLINE_SYSTEM, expandOutlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/outline/expand
 // Body { project_id, dry_run: true }     → Claude proposes new chapters, no DB writes
@@ -12,6 +13,13 @@ import { checkInk, recordInkUsage } from "@/lib/ink";
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "outline");
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const body = await req.json();
   const { project_id, dry_run, chapters: confirmedChapters } = body;

@@ -3,7 +3,8 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { MIND_MAP_SYSTEM, mindMapPrompt } from "@/lib/prompts/mind-map";
 import { requireAuth } from "@/lib/auth";
-import { checkInk, recordInkUsage } from "@/lib/ink";
+import { releaseInkReservation, reserveInk, settleInkReservation } from "@/lib/ink";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -12,9 +13,11 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const inkCheck = await checkInk(user.id, "mind_map");
-  if (!inkCheck.allowed) {
-    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "analyze");
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
   }
 
   const { project_id } = await req.json();
@@ -41,17 +44,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ mind_map: null, reason: "No key points to map" });
   }
 
-  const { text: raw, usage } = await askClaudeWithUsage(
-    MIND_MAP_SYSTEM,
-    mindMapPrompt(keyPoints),
-    { model: "fast", maxTokens: 4096 }
-  );
-
-  // Meter the call — mind-map was gate-only (checked balance > 0 but never deducted).
-  await recordInkUsage(user.id, project_id, "mind_map", "fast", usage);
+  const inkCheck = await reserveInk(user.id, "mind_map");
+  if (!inkCheck.allowed || !inkCheck.reservationId) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
+  const reservationId = inkCheck.reservationId;
+  let raw: string;
+  let usage: { input_tokens: number; output_tokens: number };
+  try {
+    ({ text: raw, usage } = await askClaudeWithUsage(
+      MIND_MAP_SYSTEM,
+      mindMapPrompt(keyPoints),
+      { model: "fast", maxTokens: 4096 }
+    ));
+  } catch (err) {
+    await releaseInkReservation(reservationId);
+    throw err;
+  }
 
   try {
     const { nodes, edges } = JSON.parse(cleanJsonLite(raw));
+    await settleInkReservation(reservationId, project_id, "mind_map", "fast", usage);
 
     if (nodes?.length) {
       const { error: nodesErr } = await supabase.from("mind_map_nodes").insert(
@@ -87,6 +100,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ mind_map: { nodes: nodes?.length || 0, edges: edges?.length || 0 } });
   } catch {
+    await releaseInkReservation(reservationId);
     return NextResponse.json({ mind_map: null });
   }
 }

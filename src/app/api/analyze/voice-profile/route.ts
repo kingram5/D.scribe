@@ -3,7 +3,8 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
 import { VOICE_PROFILE_SYSTEM, voiceProfilePrompt } from "@/lib/prompts/voice-profile";
 import { requireAuth } from "@/lib/auth";
-import { checkInk, recordInkUsage } from "@/lib/ink";
+import { releaseInkReservation, reserveInk, settleInkReservation } from "@/lib/ink";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -12,9 +13,11 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const inkCheck = await checkInk(user.id, "voice_profile");
-  if (!inkCheck.allowed) {
-    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "analyze");
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
   }
 
   const { project_id, transcript_id } = await req.json();
@@ -48,22 +51,33 @@ export async function POST(req: NextRequest) {
     words.slice(-sampleSize).join(" "),
   ];
 
-  const { text: raw, usage } = await askClaudeWithUsage(
-    VOICE_PROFILE_SYSTEM,
-    voiceProfilePrompt(samples, projectOwner.voice_profile),
-    { model: "fast", maxTokens: 2048 }
-  );
+  const inkCheck = await reserveInk(user.id, "voice_profile");
+  if (!inkCheck.allowed || !inkCheck.reservationId) {
+    return NextResponse.json({ error: "out_of_ink", message: inkCheck.reason }, { status: 402 });
+  }
+  const reservationId = inkCheck.reservationId;
+  let raw: string;
+  let usage: { input_tokens: number; output_tokens: number };
+  try {
+    ({ text: raw, usage } = await askClaudeWithUsage(
+      VOICE_PROFILE_SYSTEM,
+      voiceProfilePrompt(samples, projectOwner.voice_profile),
+      { model: "fast", maxTokens: 2048 }
+    ));
+  } catch (err) {
+    await releaseInkReservation(reservationId);
+    throw err;
+  }
 
   // Parse BEFORE billing (edge-test 19/50) — a truncated response used to be
   // deducted and then return nothing.
   try {
     const profile = JSON.parse(cleanJsonLite(raw));
     await supabase.from("projects").update({ voice_profile: profile }).eq("id", project_id);
-    await recordInkUsage(user.id, project_id, "voice_profile", "fast", usage).catch((billErr) =>
-      console.error("voice-profile: Ink settle failed after successful parse:", billErr)
-    );
+    await settleInkReservation(reservationId, project_id, "voice_profile", "fast", usage);
     return NextResponse.json({ voice_profile: profile });
   } catch {
+    await releaseInkReservation(reservationId);
     return NextResponse.json({ voice_profile: null });
   }
 }

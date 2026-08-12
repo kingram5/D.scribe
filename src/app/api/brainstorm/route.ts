@@ -4,6 +4,7 @@ import { checkInk, recordInkUsage } from "@/lib/ink";
 import { logger } from "@/lib/logger";
 import { createServerClient } from "@/lib/supabase";
 import { brainstormProfileBlock } from "@/lib/audience-profiles";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -49,6 +50,14 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "brainstorm", 30);
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please wait before trying again." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   // Pre-flight Ink check
   const inkCheck = await checkInk(user.id, "brainstorm");

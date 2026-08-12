@@ -6,11 +6,19 @@ import { OUTLINE_SYSTEM, outlinePrompt } from "@/lib/prompts/outline";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { reconcileOutline, type DraftChapter } from "@/lib/outline-reconcile";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/outline — generate chapter outline from key points
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "outline");
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   // Pre-flight Ink check
   const inkCheck = await checkInk(user.id, "outline");

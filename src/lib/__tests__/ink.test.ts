@@ -21,7 +21,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Import AFTER mocks are in place.
-import { estimateInkCost, checkInk } from "@/lib/ink";
+import { estimateInkCost, checkInk, reserveInk } from "@/lib/ink";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,5 +124,34 @@ describe("checkInk", () => {
     seedBalance(50, "pro");
     const result = await checkInk("user-pro", "outline");
     expect(result.tier).toBe("pro");
+  });
+});
+
+describe("reserveInk", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the atomic reservation identifier", async () => {
+    mockRpc
+      .mockResolvedValueOnce({ data: [{ ink_balance: 10, tier: "free", lifetime_used: 0 }], error: null })
+      .mockResolvedValueOnce({ data: [{ reservation_id: "reservation-1", ink_balance: 10, tier: "free" }], error: null });
+
+    await expect(reserveInk("user-1", "analyze")).resolves.toMatchObject({
+      allowed: true,
+      reservationId: "reservation-1",
+    });
+    expect(mockRpc).toHaveBeenLastCalledWith("reserve_ink", expect.objectContaining({
+      p_user_id: "user-1",
+      p_ink_amount: 3,
+    }));
+  });
+
+  it("denies when a concurrent reservation leaves insufficient Ink", async () => {
+    mockRpc
+      .mockResolvedValueOnce({ data: [{ ink_balance: 10, tier: "free", lifetime_used: 0 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "Insufficient Ink balance" } });
+
+    await expect(reserveInk("user-1", "generate")).resolves.toMatchObject({ allowed: false });
   });
 });

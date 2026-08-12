@@ -4,10 +4,18 @@ import { createServerClient } from "@/lib/supabase";
 import { getTtsLimit } from "@/lib/tts";
 import { stripFormatMarkers } from "@/lib/export/format-markers";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireAuth();
   if (error) return error;
+
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "tts", 30);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait before trying again." }, {
+      status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const { text: rawText } = await req.json();
   if (!rawText?.trim()) return NextResponse.json({ error: "No text" }, { status: 400 });

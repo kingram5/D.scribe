@@ -399,6 +399,131 @@ input[type=range] {
   .show-mobile { display: flex !important; }
 }
 
+/* ── Brainstorm studio ─────────────────────────────────────────────
+   This is a true viewport surface rather than another upload panel.  Its
+   visual-viewport variables are maintained by BrainstormChat for iOS Safari;
+   interactive-widget=resizes-content covers browsers that implement it. */
+.ds-studio-stage {
+  position: fixed;
+  top: var(--ds-studio-viewport-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--ds-studio-viewport-height, 100dvh);
+  min-height: 0;
+  z-index: 400;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  isolation: isolate;
+}
+.ds-studio-stage > *:not(.ds-studio-bg) {
+  position: relative;
+  z-index: 1;
+}
+.ds-studio-shell-content {
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  justify-content: center;
+  padding: env(safe-area-inset-top) clamp(16px, 5vw, 48px) env(safe-area-inset-bottom);
+}
+.ds-studio-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  padding: calc(18px + env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) 18px max(28px, env(safe-area-inset-left));
+}
+.ds-studio-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.ds-studio-conversation {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 28px 20px;
+}
+.ds-studio-history {
+  position: absolute;
+  inset: 0 max(24px, env(safe-area-inset-right)) 0 auto;
+  z-index: 2;
+  width: min(400px, calc(100% - 48px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(26,22,16,0.97);
+  border: 1px solid rgba(249,247,242,0.14);
+  border-radius: 14px;
+  padding: 18px;
+}
+.ds-studio-composer {
+  flex: 0 0 auto;
+  padding: 0 max(28px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+}
+@media (max-width: 768px) {
+  .ds-studio-header {
+    gap: 10px;
+    padding: calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  }
+  .ds-studio-title {
+    flex: 1 1 160px;
+    margin-left: 0 !important;
+    max-width: none !important;
+  }
+  .ds-studio-actions {
+    width: 100%;
+    margin-left: 0 !important;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .ds-studio-conversation {
+    padding: 8px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+  }
+  .ds-studio-history {
+    inset-inline: max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-left));
+    width: auto;
+    border-radius: 12px;
+  }
+  .ds-studio-composer {
+    padding: 0 max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+}
+@media (max-width: 500px) {
+  .ds-studio-composer-form {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px !important;
+  }
+  .ds-studio-textarea {
+    grid-column: 2;
+    min-width: 0 !important;
+  }
+  .ds-studio-composer-form:not(:has(.ds-studio-mic)) .ds-studio-textarea {
+    grid-column: 1 / 3;
+  }
+  .ds-studio-send { grid-column: 3; }
+  .ds-studio-finish {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-studio-bg-image,
+  .ds-studio-stage .brainstorm-spinner,
+  .ds-studio-stage .ds-stage-cursor,
+  .ds-studio-stage .ds-stage-dots,
+  .ds-studio-stage .ds-studio-mic {
+    animation: none !important;
+  }
+}
+
 /* PageShell — desktop: locked to viewport */
 .ds-page-shell {
   height: 100dvh;

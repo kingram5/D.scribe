@@ -62,6 +62,26 @@ export default function MeetTheoPanel({
           .theo-lobby-panel > div { gap: 14px !important; }
           .theo-lobby-cta { padding: 18px 24px !important; font-size: 18px !important; }
         }
+        @media (max-width: 420px) {
+          .theo-lobby-panel {
+            max-height: calc(100dvh - 16px) !important;
+            margin: 8px !important;
+            padding: 20px 16px !important;
+            border-radius: 20px !important;
+            overflow-x: hidden !important;
+          }
+          .theo-lobby-panel > div { gap: 12px !important; }
+          .theo-lobby-cta {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 16px !important;
+            font-size: clamp(16px, 5vw, 18px) !important;
+            white-space: normal !important;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .theo-lobby-cta, .theo-lobby-back { transition: none; }
+        }
       `}</style>
       <main
         className="theo-lobby-scene"

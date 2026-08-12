@@ -143,6 +143,7 @@ export default function UploadPage() {
           {chatting && (
             <BrainstormChat
               projectId={projectId}
+              autoStart
               onComplete={() => router.push(`/project/${projectId}/transcript`)}
               onBack={() => setChatting(false)}
               triggerFinish={triggerBrainstormFinish}

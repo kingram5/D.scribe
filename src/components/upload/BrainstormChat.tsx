@@ -16,9 +16,74 @@ interface BrainstormChatProps {
   onBack: () => void;
   triggerFinish?: boolean;
   onFinishTriggered?: () => void;
+  /**
+   * The caller already showed a "Start Brainstorming" screen (the Meet T.H.E.O
+   * lobby), so skip this component's own pre-start screen and go straight to
+   * the voice choice. Without it the user sees a second identical CTA.
+   */
+  autoStart?: boolean;
 }
 
-export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered }: BrainstormChatProps) {
+/**
+ * Every studio screen — resume, voice choice, summarizing, and the session
+ * itself — renders full-screen through this shell. Rendering them inline made
+ * them inherit the caller's panel width, which is why they read as a side
+ * panel next to the lobby instead of taking over the page.
+ */
+function StudioShell({ children }: { children: React.ReactNode }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      className="ds-studio-stage"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 150,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#1A1610",
+        color: "#F9F7F2",
+        padding: "0 48px",
+      }}
+    >
+      <style>{`.ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }`}</style>
+      <StudioBackdrop />
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+/** The lobby's library, thrown far out of focus, behind every studio screen. */
+function StudioBackdrop() {
+  return (
+    <div className="ds-studio-bg" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
+      <video
+        src="/theo-library.mp4"
+        poster="/theo-library.jpg"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transform: "scaleX(-1) scale(1.14)",
+          filter: "blur(30px) brightness(0.5) saturate(1.05)",
+        }}
+      />
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 20%, rgba(44,36,25,0.55) 0%, rgba(26,22,16,0.88) 100%)" }} />
+    </div>
+  );
+}
+
+export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered, autoStart }: BrainstormChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -400,6 +465,22 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     autoSendRef.current = sendMessage;
   }, [sendMessage]);
 
+  // autoStart: the lobby was the pre-start screen, so open the voice choice
+  // directly. Reads the saved session itself rather than waiting on showResume,
+  // which is set in a sibling mount effect and would still read false here.
+  useEffect(() => {
+    if (!autoStart) return;
+    let hasSaved = false;
+    try {
+      const raw = localStorage.getItem(sessionKey);
+      if (raw) {
+        const msgs = JSON.parse(raw);
+        hasSaved = Array.isArray(msgs) && msgs.length >= 2;
+      }
+    } catch {}
+    if (!hasSaved) setShowTtsPrompt(true); // a saved session shows Resume instead
+  }, [autoStart, sessionKey]);
+
   // Load saved session on mount
   useEffect(() => {
     try {
@@ -492,7 +573,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const lastMsg = savedMessages[savedMessages.length - 1];
     const preview = lastMsg?.content.slice(0, 110) + (lastMsg?.content.length > 110 ? "…" : "");
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20, padding: "0 48px" }}>
+      <StudioShell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, maxWidth: 620 }}>
         <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
@@ -527,7 +609,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         <button onClick={onBack} style={{ background: "none", border: "none", fontSize: 13, color: "var(--text-tertiary)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}>
           ← Back to upload options
         </button>
-      </div>
+        </div>
+      </StudioShell>
     );
   }
 
@@ -550,7 +633,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const ttsBlocked = isLocked || isExhausted;
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 24, padding: "0 48px" }}>
+      <StudioShell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, maxWidth: 620 }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
           background: ttsBlocked ? "rgba(0,0,0,0.06)" : "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))",
@@ -604,7 +688,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             View plans →
           </a>
         )}
-      </div>
+        </div>
+      </StudioShell>
     );
   }
 
@@ -724,12 +809,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // Summarizing state
   if (summarizing) {
     return (
-      <div style={{
+      <StudioShell>
+        <div style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        height: "100%",
         gap: 16,
       }}>
         <div className="brainstorm-spinner" />
@@ -753,7 +838,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             to { transform: rotate(360deg); }
           }
         `}</style>
-      </div>
+        </div>
+      </StudioShell>
     );
   }
 
@@ -801,28 +887,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       <style>{`
         .ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }
       `}</style>
-      <div className="ds-studio-bg" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
-        <video
-          src="/theo-library.mp4"
-          poster="/theo-library.jpg"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            // Mirrored to match the lobby; scaled up so the blur has no soft edge.
-            transform: "scaleX(-1) scale(1.14)",
-            filter: "blur(30px) brightness(0.5) saturate(1.05)",
-          }}
-        />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 20%, rgba(44,36,25,0.55) 0%, rgba(26,22,16,0.88) 100%)" }} />
-      </div>
+      <StudioBackdrop />
       {/* Stage header */}
       <div style={{
         display: "flex",

@@ -46,10 +46,21 @@ export default function MeetTheoPanel({
         .theo-lobby-back { transition: color .15s; }
         .theo-lobby-back:hover { color: var(--ds-ink); }
         @media (max-width: 900px) {
-          .theo-lobby-panel { position: static !important; width: auto !important; margin: 0 20px 32px !important; }
+          .theo-lobby-panel {
+            position: static !important;
+            width: auto !important;
+            max-height: calc(100dvh - 24px) !important;
+            margin: 12px !important;
+            padding: 24px !important;
+            gap: 22px !important;
+          }
           .theo-lobby-scene { justify-content: flex-end !important; align-items: flex-end !important; }
           .theo-lobby-figure { opacity: .5 !important; }
           .theo-lobby-title { left: 24px !important; top: 24px !important; }
+          .theo-lobby-panel h2 { font-size: clamp(1.65rem, 8vw, 2.2rem) !important; }
+          .theo-lobby-panel > p { font-size: 16px !important; line-height: 1.5 !important; }
+          .theo-lobby-panel > div { gap: 14px !important; }
+          .theo-lobby-cta { padding: 18px 24px !important; font-size: 18px !important; }
         }
       `}</style>
       <main

@@ -63,10 +63,35 @@ export default function TheoIntroVideo({
     if (!lobby) return;
     const v = introRef.current;
     if (!v) return;
-    const check = () => { if (v.currentSrc) setUsingFallback(v.currentSrc.endsWith(".mp4")); };
+    // Capability probe, not a filename check. "Decodes VP9-in-WebM" and
+    // "composites ALPHA_MODE" are different things: Safari 17.4+ added the
+    // former without the latter, so it picks the webm, renders its colour
+    // planes opaque (they are byte-identical to the mp4's baked backdrop) and
+    // the old endsWith(".mp4") test left the feather OFF — a hard rectangle
+    // pasted on the library. Draw a frame that should be transparent and read
+    // the alpha byte. Fails SAFE: masks stay on unless alpha is proven, since
+    // feathering a true cutout only softens it slightly.
+    const check = () => {
+      if (!v.videoWidth) return;
+      try {
+        const c = document.createElement("canvas");
+        c.width = 8; c.height = 8;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        if (!g) return;
+        g.clearRect(0, 0, 8, 8);
+        g.drawImage(v, 0, 0, 8, 8);
+        // Top-left is background in every frame of these clips.
+        const alphaComposited = g.getImageData(0, 0, 1, 1).data[3] < 250;
+        setUsingFallback(!alphaComposited);
+      } catch {
+        setUsingFallback(true); // unreadable: keep the feather
+      }
+    };
     check();
-    v.addEventListener("loadedmetadata", check);
-    return () => v.removeEventListener("loadedmetadata", check);
+    // loadeddata, not loadedmetadata: metadata gives dimensions but no
+    // decodable frame to sample.
+    v.addEventListener("loadeddata", check);
+    return () => v.removeEventListener("loadeddata", check);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lobby]);
 
@@ -115,10 +140,16 @@ export default function TheoIntroVideo({
       });
     };
     const timer = window.setTimeout(() => { delayDone = true; tryGreet(); }, greetDelayMs);
+    // Listen for canplay AS WELL as canplaythrough: the gate accepts
+    // readyState >= 3, but canplaythrough only fires at 4. A clip that buffers
+    // to 3 and stalls (cellular, Data Saver) satisfied the gate and was never
+    // re-checked, so the greeting silently never happened.
+    intro.addEventListener("canplay", tryGreet);
     intro.addEventListener("canplaythrough", tryGreet);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      intro.removeEventListener("canplay", tryGreet);
       intro.removeEventListener("canplaythrough", tryGreet);
     };
   }, []);
@@ -181,6 +212,7 @@ export default function TheoIntroVideo({
         // mp4 rides behind it as the Safari fallback, which the edge feathering
         // keeps presentable. Non-lobby modes keep the plain mp4.
         {...(lobby ? {} : { src: "/theo-idle.mp4" })}
+        poster={lobby ? "/theo-poster-alpha.png" : "/theo-poster.jpg"}
         muted
         loop
         playsInline

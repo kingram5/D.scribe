@@ -111,6 +111,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Autosave support: the flush handlers fire outside the effect closure, so
+  // they read the latest transcript from a ref rather than a captured value.
+  const messagesRef = useRef<Message[]>([]);
+  const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
 
   // TTS state
@@ -465,6 +469,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const apiMessages: Message[] = [initMsg, ...firstExchange, ...windowed];
 
     let aiText = "";
+    let streamFailed = false;
 
     try {
       const res = await fetch("/api/brainstorm", {
@@ -500,12 +505,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
           try {
             const parsed = JSON.parse(data);
-            // The route deliberately emits {error} on a mid-stream failure and
-            // then closes cleanly. Ignoring it meant a truncated half-question
-            // was treated as complete: saved, spoken, replayed on resume, and
-            // shipped into summarize as source material.
+            // The route emits {error} on a mid-stream failure then closes
+            // cleanly. Surfacing a banner is not enough: the partial answer has
+            // to be REMOVED, or it is still spoken, autosaved, replayed on
+            // resume and shipped into summarize as source material. Restoring
+            // the user's text is also what makes Retry work at all — the
+            // composer was cleared before the fetch.
             if (parsed.error) {
-              setSendError("That answer was cut off. Try again.");
+              streamFailed = true;
+              sentenceBufferRef.current = "";
+              setMessages(messages);
+              setInput(text);
+              setSendError("That answer was cut off. Your message is back in the box — try again.");
               break;
             }
             if (parsed.text) {
@@ -524,8 +535,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           }
         }
       }
-      // Flush any remaining text after stream ends
-      if (sentenceBufferRef.current.trim()) {
+      // Flush any remaining text after stream ends — but never speak the tail
+      // of an answer we just discarded.
+      if (!streamFailed && sentenceBufferRef.current.trim()) {
         speakSentence(sentenceBufferRef.current.trim());
         sentenceBufferRef.current = "";
       }
@@ -582,20 +594,31 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
   // Autosave on every message change
   useEffect(() => {
+    messagesRef.current = messages;
     if (!started || messages.length === 0) return;
-    // Debounced + guarded. This used to re-serialize the whole transcript and
-    // write synchronously on EVERY streamed token, and it was the only
-    // unguarded setItem in the repo — with storage blocked (private browsing,
-    // quota) the throw escaped a useEffect and took the whole page to the error
-    // screen, destroying the in-memory conversation it claimed was safe.
-    const t = setTimeout(() => {
+    // Debounced + guarded, with a maxWait and a flush on teardown. A plain
+    // debounce was worse than it looked on a phone: stream tokens arrive far
+    // faster than 400ms, so the timer reset forever and NO write landed for the
+    // whole answer, and the cleanup cancelled instead of flushing. If iOS then
+    // evicted the tab, the turn was gone. (Guarded because a blocked-storage
+    // throw out of an effect took the whole page to the error screen.)
+    const write = () => {
       try {
-        localStorage.setItem(sessionKey, JSON.stringify(messages));
+        localStorage.setItem(sessionKey, JSON.stringify(messagesRef.current));
       } catch {
         setStorageBlocked(true);
       }
-    }, 400);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(write, 400);
+    if (!maxWaitRef.current) maxWaitRef.current = setTimeout(() => { maxWaitRef.current = null; write(); }, 2000);
+    const onHide = () => { if (document.visibilityState === "hidden") write(); };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", write);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", write);
+    };
   }, [messages, started, sessionKey]);
 
   // Fetch TTS availability when modal opens

@@ -32,6 +32,31 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(src).toMatch(/useEffect\(\(\) => \(\) => \{\s*if \(maxWaitRef\.current\) clearTimeout/m);
   });
 
+  it("flushes the latest session once on unmount without recreating a completed one", () => {
+    const src = chat();
+    expect(src).toMatch(/persistSessionOnUnmountRef\.current && startedRef\.current/);
+    expect(src).toMatch(/localStorage\.setItem\(sessionKey, JSON\.stringify\(\{/);
+    expect(src).toMatch(/persistSessionOnUnmountRef\.current = false/);
+  });
+
+  it("rolls back a failed opening stream and routes Retry to a new opening request", () => {
+    const src = chat();
+    const start = src.slice(src.indexOf("const startConversation"), src.indexOf("const sendMessage"));
+    expect(start).toMatch(/let streamFailed = false/);
+    expect(start).toMatch(/streamFailed = true;[\s\S]{0,180}?setMessages\(\[\]\)/);
+    expect(start).toMatch(/setRetryAction\("start"\)/);
+    expect(start).toMatch(/if \(!streamFailed && sentenceBufferRef\.current\.trim\(\)\)/);
+    expect(src).toMatch(/if \(action === "start"\) startConversation\(\)/);
+  });
+
+  it("surfaces a failed Finish and retries the summarize request rather than sending an empty turn", () => {
+    const src = chat();
+    const finish = src.slice(src.indexOf("const finishBrainstorm"), src.indexOf("const undoLast"));
+    expect(finish).toMatch(/setSendError\(err\.message \|\| "Couldn't add this session/);
+    expect(finish).toMatch(/setRetryAction\("finish"\)/);
+    expect(src).toMatch(/else if \(action === "finish"\) finishBrainstorm\(\)/);
+  });
+
   it("stops background voice activity rather than capturing after an interruption", () => {
     const src = chat();
     expect(src).toMatch(/document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
@@ -58,6 +83,10 @@ describe("T.H.E.O. M3: small-screen lobby density", () => {
     expect(mobile).toMatch(/max-height:\s*calc\(100dvh - 24px\)/);
     expect(mobile).toMatch(/\.theo-lobby-cta \{ padding: 18px 24px !important; font-size: 18px !important; \}/);
     expect(mobile).toMatch(/\.theo-lobby-panel h2 \{ font-size: clamp\(1\.65rem, 8vw, 2\.2rem\) !important; \}/);
+  });
+
+  it("keeps studio prompts clear of display cutouts and releases horizontal space", () => {
+    expect(chat()).toMatch(/padding: "env\(safe-area-inset-top\) clamp\(16px, 5vw, 48px\) env\(safe-area-inset-bottom\)"/);
   });
 });
 

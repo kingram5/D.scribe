@@ -71,7 +71,11 @@ function StudioShell({ children }: { children: React.ReactNode }) {
         justifyContent: "center",
         background: "#1A1610",
         color: "#F9F7F2",
-        padding: "0 48px",
+        // The shell is a portal rather than part of PageShell, so it must carry
+        // its own display-cutout insets and cannot inherit the page's mobile
+        // padding. clamp keeps the desktop composition while releasing width on
+        // a narrow or landscape phone.
+        padding: "env(safe-area-inset-top) clamp(16px, 5vw, 48px) env(safe-area-inset-bottom)",
       }}
     >
       <style>{`.ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }`}</style>
@@ -137,6 +141,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // The studio had no error surface at all: every failure was a console.error or
   // a bare return, so a dead send looked like T.H.E.O repeating himself.
   const [sendError, setSendError] = useState<string | null>(null);
+  const [retryAction, setRetryAction] = useState<"start" | "send" | "finish" | null>(null);
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
@@ -149,6 +154,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // they read the latest transcript from a ref rather than a captured value.
   const messagesRef = useRef<Message[]>([]);
   const draftRef = useRef("");
+  const startedRef = useRef(false);
+  const persistSessionOnUnmountRef = useRef(true);
   // Browser interruption can leave a fetch/TTS callback running after the app
   // has been backgrounded. Re-check this mutable flag at the callback boundary,
   // not only in React effects.
@@ -392,6 +399,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // must NOT disarm the session.
       if (event?.error === "not-allowed" || event?.error === "service-not-allowed" || event?.error === "audio-capture") {
         setHandsFree(false);
+        setRetryAction(null);
         // Denial was completely silent, and Safari remembers it — so the second
         // tap produced no prompt either and the headline feature just died with
         // the button flickering back to "Speak". Say what happened and how to
@@ -451,6 +459,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setHandsFree(false);
       stopAudio();
       if (wasActive) {
+        setRetryAction(null);
         setSendError("Voice playback and hands-free dictation were paused while the app was in the background. Tap Speak when you return.");
       }
     };
@@ -486,9 +495,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const startConversation = useCallback(async () => {
     setStarted(true);
     setStreaming(true);
+    setSendError(null);
+    setRetryAction(null);
 
     const initMessages: Message[] = [{ role: "user", content: "Start the brainstorm session." }];
     let aiText = "";
+    let streamFailed = false;
 
     try {
       const res = await fetch("/api/brainstorm", {
@@ -529,7 +541,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             // was treated as complete: saved, spoken, replayed on resume, and
             // shipped into summarize as source material.
             if (parsed.error) {
+              streamFailed = true;
+              sentenceBufferRef.current = "";
+              setMessages([]);
               setSendError("That answer was cut off. Try again.");
+              setRetryAction("start");
               break;
             }
             if (parsed.text) {
@@ -547,9 +563,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             // skip
           }
         }
+        if (streamFailed) {
+          reader.cancel().catch(() => {});
+          break;
+        }
       }
-      // Flush any remaining text after stream ends
-      if (sentenceBufferRef.current.trim()) {
+      // Never speak an opening question just discarded after a stream failure.
+      if (!streamFailed && sentenceBufferRef.current.trim()) {
         speakSentence(sentenceBufferRef.current.trim());
         sentenceBufferRef.current = "";
       }
@@ -557,15 +577,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       console.error("Brainstorm start error:", err);
       const msg = err instanceof Error ? err.message : "Something went wrong";
       const isInkError = msg.includes("ink") || msg.includes("402");
-      aiText = isInkError
+      setMessages([]);
+      setSendError(isInkError
         ? "You're out of Ink for this session. Upgrade your plan to continue brainstorming."
-        : "Couldn't connect to the brainstorm session. Please try again.";
-      setMessages([{ role: "assistant", content: aiText }]);
+        : "Couldn't connect to the brainstorm session. Please try again.");
+      setRetryAction("start");
     }
 
     setStreaming(false);
     inputRef.current?.focus();
-  }, [speakSentence]);
+  }, [projectId, speakSentence]);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -577,6 +598,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setInput("");
     typedRef.current = false; // turn sent: dictation may own the composer again
     setStreaming(true);
+    setSendError(null);
+    setRetryAction(null);
 
     // Build API messages: pin init + first exchange, window the rest to last 8 (4 exchanges)
     const WINDOW_SIZE = 8;
@@ -635,6 +658,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               setMessages(messages);
               setInput(text);
               setSendError("That answer was cut off. Your message is back in the box — try again.");
+              setRetryAction("send");
               break;
             }
             if (parsed.text) {
@@ -670,6 +694,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setMessages(messages);
       setInput(text);
       setSendError("Couldn't reach T.H.E.O. Your answer is back in the box — try again.");
+      setRetryAction("send");
       setHandsFree(false);
     }
 
@@ -685,6 +710,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   useEffect(() => {
     draftRef.current = input;
   }, [input]);
+
+  useEffect(() => {
+    startedRef.current = started;
+  }, [started]);
 
   // autoStart: the lobby was the pre-start screen, so open the voice choice
   // directly. Reads the saved session itself rather than waiting on showResume,
@@ -758,7 +787,21 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // and a stale timer recreates it, offering a duplicate session on return.
   useEffect(() => () => {
     if (maxWaitRef.current) clearTimeout(maxWaitRef.current);
-  }, []);
+    // pagehide is not guaranteed for an SPA route change. Flush the latest refs
+    // once at unmount rather than from the per-keystroke effect cleanup, which
+    // would defeat debouncing for a long memoir answer.
+    if (persistSessionOnUnmountRef.current && startedRef.current && messagesRef.current.length > 0) {
+      try {
+        localStorage.setItem(sessionKey, JSON.stringify({
+          version: 1,
+          messages: messagesRef.current,
+          draft: draftRef.current,
+        }));
+      } catch {
+        // The mounted error surface is gone; there is nothing useful to render.
+      }
+    }
+  }, [sessionKey]);
 
   // Fetch TTS availability when modal opens
   useEffect(() => {
@@ -784,6 +827,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (userMessages.length < 2) return;
 
     setSummarizing(true);
+    setSendError(null);
+    setRetryAction(null);
 
     try {
       const res = await fetch("/api/brainstorm/summarize", {
@@ -800,16 +845,21 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         // Storage can be blocked even though the server successfully created
         // the transcript. Never trap the user here or let a second Finish make
         // duplicate source material.
+        persistSessionOnUnmountRef.current = false;
         try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
         onComplete();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         console.error("Summarize error:", err);
         setSummarizing(false);
+        setSendError(err.message || "Couldn't add this session to your sources. Your answers are still here — try again.");
+        setRetryAction("finish");
       }
     } catch (err) {
       console.error("Summarize error:", err);
       setSummarizing(false);
+      setSendError("Couldn't add this session to your sources. Your answers are still here — try again.");
+      setRetryAction("finish");
     }
   }, [messages, projectId, onComplete]);
 
@@ -1421,9 +1471,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <span style={{ flex: 1 }}>
             {sendError ?? "This browser is blocking storage, so this session won't be saved if you close the tab."}
           </span>
-          {sendError && (
+          {retryAction && (
             <button
-              onClick={() => { setSendError(null); sendMessage(); }}
+              onClick={() => {
+                const action = retryAction;
+                setSendError(null);
+                setRetryAction(null);
+                if (action === "start") startConversation();
+                else if (action === "finish") finishBrainstorm();
+                else sendMessage();
+              }}
               style={{
                 background: "var(--ds-accent-500)", color: "#fff", border: "none",
                 borderRadius: 100, padding: "6px 16px", fontSize: 12, fontWeight: 600,
@@ -1434,7 +1491,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </button>
           )}
           <button
-            onClick={() => { setSendError(null); setStorageBlocked(false); }}
+            onClick={() => { setSendError(null); setRetryAction(null); setStorageBlocked(false); }}
             aria-label="Dismiss"
             style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
           >

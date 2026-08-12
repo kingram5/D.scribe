@@ -8,12 +8,12 @@
 |---|---|---|
 | 1. Small-screen typography/density | Complete | The lobby CTA/panel consumed too much of a phone viewport. A narrow-screen containment and type/CTA reduction is included. The studio itself still needs its separate mobile redesign. |
 | 2. Offline & PWA behaviour | Complete | No manifest, service worker, offline shell, asset cache, or queued mutation path exists. The product is currently online-only. |
-| 3. Notifications / interruption recovery | Complete | Background microphone/TTS was not explicitly stopped. A long unsent answer was not persisted. Both are fixed. |
+| 3. Notifications / interruption recovery | Complete | Background microphone/TTS was not explicitly stopped. Opening-stream and Finish failures left broken/no-op retry paths. Long unsent answers were not persisted. All are fixed. |
 | 4. Content-length extremes | Complete | A 3,000-word draft could be lost on eviction; TTS requests could complete and play out of sentence order. Both are fixed. There is still no explicit server-side conversation-size budget. |
-| 5. Returning-user journey | Complete | A stale max-wait write could recreate a finished session; blocked browser storage could prevent navigation after a successful Finish. Both are fixed. Legacy array sessions remain readable. |
+| 5. Returning-user journey | Complete | A stale max-wait write could recreate a finished session; blocked browser storage could prevent navigation after a successful Finish; SPA unmount could skip the final flush. All are fixed. Legacy array sessions remain readable. |
 
 ## Confirmed still open from prior backlog
-None confirmed for these surfaces. The unavailable local report cannot be treated as evidence. The four relevant shipped commits (`931102b`, `3e7f2e0`, `bbab85e`, `240b136`) cover the named greeting, studio error surface, Safari alpha, mobile Enter/IME, microphone-denial, auto-scroll, escape-hatch CSS-variable, and Resume-quote regressions; M3 did not re-litigate them.
+The batch-1 and batch-3 commit messages confirm that a further external backlog exists in `projects/dscribe-edge-test-theo-2026-08-11.md`, but that file is unavailable here. Its entries, severity, and locations cannot be honestly enumerated. The four relevant shipped commits (`931102b`, `3e7f2e0`, `bbab85e`, `240b136`) cover the named greeting, studio error surface, Safari alpha, mobile Enter/IME, microphone-denial, auto-scroll, escape-hatch CSS-variable, and Resume-quote regressions; M3 did not re-litigate them.
 
 ## New in M3
 | ID | Severity | Lens | Location | Finding / mobile memoir harm | Concrete fix |
@@ -26,18 +26,22 @@ None confirmed for these surfaces. The unavailable local report cannot be treate
 | M3-06 | MED — deferred | 4 | `BrainstormChat.tsx: sendMessage`, `/api/brainstorm/route.ts: POST`, `/api/brainstorm/summarize/route.ts: POST` | Neither client nor route applies a conversation/message size budget. A 3,000-word answer currently has no friendly boundary; much larger input can become a slow/failed request or an oversized final source without an actionable limit. | Kyle must set the acceptable answer/session limit and whether over-limit content is chunked, warned, or rejected. Then enforce the same budget client/server and expose remaining capacity. |
 | M3-07 | LOW — fixed | 1 | `MeetTheoPanel.tsx: mobile style block` | On narrow phones, the lobby retained a 30px CTA with 60px horizontal padding and a spacious 55px panel inset. The panel competed with the title and easily dominated the usable height. | At <=900px, constrain to `100dvh`, reduce panel spacing and copy scale, and make the CTA 18px/24px. This is containment, not a studio redesign. |
 | M3-08 | LOW — deferred | 1 | `BrainstormChat.tsx: stage header/input bar` | The studio uses desktop-scale header actions and a wrapping input bar, without a narrow-stage layout. At 320–375px the controls can consume multiple rows and leave little reading room above the keyboard. | Defer to the explicit mobile studio rebuild: establish a mobile header priority order, compact actions, keyboard-safe stage space, and tested 320px/landscape variants. |
+| M3-09 | HIGH — fixed | 3, 5 | `BrainstormChat.tsx: startConversation` | The opening stream treated a mid-stream `{error}` as a completed partial question, then could speak/autosave/resume it. Its Retry button called `sendMessage()` with an empty composer, so it did nothing. | Roll back the partial opening, suppress its TTS tail, and route Retry to a fresh opening request. |
+| M3-10 | HIGH — fixed | 3, 5 | `BrainstormChat.tsx: finishBrainstorm` | A summarize failure only logged to the console and stopped the spinner. On mobile, Finish appeared to do nothing even though the answers remained available. | Surface a retryable error and retry the summarize request, not a blank chat turn. |
+| M3-11 | MED — fixed | 3, 5 | `BrainstormChat.tsx: unmount persistence effect` | A client-side route change may not emit `pagehide`; the per-render cleanup cancelled the debounce. A just-completed answer could therefore be absent from a returning-user session. | Flush the latest refs once on unmount while suppressing that write after a successful Finish. |
+| M3-12 | MED — fixed | 1, 3 | `BrainstormChat.tsx: StudioShell` | The portalled studio did not inherit PageShell's safe-area policy and used a fixed 48px horizontal inset. Resume/voice-choice screens could crowd a cutout and waste phone width. | Use top/bottom display-cutout insets and responsive horizontal padding. |
 
 ## Top 10 launch/product risks
 1. **M3-01 (fixed):** unsent memoir prose lost after interruption.
-2. **M3-02 (fixed):** a completed session resurrected and could be summarized twice.
-3. **M3-03 (fixed):** Finish trapped users after server success when storage is blocked.
-4. **M3-04 (deferred):** no offline product contract despite a mobile-first conversation flow.
-5. **M3-05 (fixed):** TTS could speak streamed sentences out of order.
-6. **M3-06 (deferred):** no defined size/timeout experience for long answers.
-7. **M3-08 (deferred):** narrow studio leaves insufficient reading space once the keyboard is up.
-8. **M3-07 (fixed):** oversized mobile lobby CTA/panel hides the actual decision path.
-9. **M3-03 follow-on (fixed):** retrying Finish after a locally thrown cleanup error could duplicate a transcript.
-10. **M3-04 follow-on (deferred):** no durable, encrypted offline draft queue means an offline-originated memoir answer has no recovery path.
+2. **M3-09 (fixed):** a failed opening was treated as real source material and could not be retried.
+3. **M3-02 (fixed):** a completed session resurrected and could be summarized twice.
+4. **M3-03 (fixed):** Finish trapped users after server success when storage is blocked.
+5. **M3-10 (fixed):** Finish failed silently on a flaky connection.
+6. **M3-04 (deferred):** no offline product contract despite a mobile-first conversation flow.
+7. **M3-05 (fixed):** TTS could speak streamed sentences out of order.
+8. **M3-06 (deferred):** no defined size/timeout experience for long answers.
+9. **M3-08 (deferred):** narrow studio leaves insufficient reading space once the keyboard is up.
+10. **M3-11 (fixed):** an SPA exit could discard the latest answer before its debounce fired.
 
 ## Decisions required from Kyle
 1. Is Brainstorm intentionally online-only? If not, define the offline promise precisely: installability, assets available offline, draft retention period, encryption/key model, send/replay moment, conflict resolution, and wording.
@@ -48,9 +52,11 @@ None confirmed for these surfaces. The unavailable local report cannot be treate
 ## Shipped in this PR
 - Draft-aware, backward-compatible local resume persistence.
 - Finish cleanup that cannot resurrect/combine a completed session or block post-success navigation.
+- Opening-stream and Finish recovery with the correct retry action and no partial source material.
+- A final SPA-unmount session flush, safely disabled after successful Finish.
 - Privacy-safe interruption handling for active playback and hands-free capture.
 - Ordered TTS request queue with stop/background invalidation.
-- Narrow-phone lobby density containment.
+- Narrow-phone lobby density containment plus safe-area-aware studio prompts.
 - `src/lib/__tests__/theo-m3-probes.test.ts`, including an `it.fails()` guard for the deliberately deferred PWA gap.
 
 ## Verification

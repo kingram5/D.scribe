@@ -81,7 +81,9 @@ export default function MeetTheoPanel({
 
         {/* 2 — grade: vignette, ember pulse, bottom fade */}
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 100% at 50% 30%, rgba(26,22,16,0) 40%, rgba(26,22,16,0.5) 100%)" }} />
-        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 60% at 82% 78%, rgba(224,140,72,0.28) 0%, rgba(224,140,72,0) 62%)", animation: "theo-ember 7s ease-in-out infinite" }} />
+        {/* animationPlayState: a full-viewport opacity keyframe kept ticking at
+            60Hz underneath the opaque studio. */}
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 60% at 82% 78%, rgba(224,140,72,0.28) 0%, rgba(224,140,72,0) 62%)", animation: "theo-ember 7s ease-in-out infinite", animationPlayState: paused ? "paused" : "running" }} />
         <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "30%", background: "linear-gradient(to bottom, rgba(26,22,16,0), rgba(20,17,12,0.85))" }} />
 
         {/* 3 — T.H.E.O, standing in the room */}
@@ -118,6 +120,12 @@ export default function MeetTheoPanel({
             zIndex: 3,
             width: "min(57.5vw, 750px)",
             marginRight: "10vw",
+            // The scene is overflow:hidden inside a 100dvh shell, so a panel
+            // taller than the viewport gets clipped at BOTH edges under
+            // align-items:center with no way to scroll to either. Real at
+            // 1280x800 once the panel grew.
+            maxHeight: "100%",
+            overflowY: "auto",
             padding: "55px 58px 50px",
             borderRadius: 32,
             background: "rgba(30,25,18,0.62)",
@@ -131,7 +139,10 @@ export default function MeetTheoPanel({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-            <TheoOrb state="listening" size={64} display={75} speed={0.5} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
+            {/* paused matters: the orb's IntersectionObserver measures viewport
+                intersection, not occlusion, so under the studio's opaque portal
+                it kept painting a 60Hz canvas nobody could see. */}
+            <TheoOrb state="listening" size={64} display={75} speed={0.5} paused={paused} aria-label="T.H.E.O, listening" style={{ flexShrink: 0 }} />
             <h2 style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontWeight: 400, fontSize: "2.6rem", lineHeight: 1.1, color: "#F9F7F2", margin: 0, letterSpacing: "-0.01em" }}>
               Brainstorm with T.H.E.O
             </h2>

@@ -46,6 +46,18 @@ export default function TheoIntroVideo({
   // (Safari — no VP9 alpha). The edge-feather masks only apply then; the alpha
   // cutout needs no feathering and the bottom fade would ghost the figure.
   const [usingFallback, setUsingFallback] = useState(false);
+  // Read once, then consulted by every play() path. The greet effect checked it
+  // but the resume path did not, so a reduced-motion user still got a looping
+  // idle from first paint.
+  const reducedMotionRef = useRef(
+    typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+  );
+  // tryGreet fires on a timer that `paused` cannot reach through a dep array;
+  // without this, entering the studio inside the settle beat still starts the
+  // greeting — audibly — underneath the studio.
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const prevPausedRef = useRef(paused);
 
   useEffect(() => {
     if (!lobby) return;
@@ -59,7 +71,7 @@ export default function TheoIntroVideo({
   }, [lobby]);
 
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return; // hold on the poster
+    if (reducedMotionRef.current) return; // hold on the poster
     const intro = introRef.current;
     const idle = idleRef.current;
     if (!intro || !idle) return;
@@ -73,13 +85,20 @@ export default function TheoIntroVideo({
     let cancelled = false;
     let greeted = false;
     const tryGreet = () => {
-      if (cancelled || greeted || !delayDone || intro.readyState < 3) return;
+      // pausedRef, not a dep: this fires from a timer the studio cannot reach.
+      // Without it, opening the studio inside the settle beat still starts the
+      // greeting, audibly, underneath it.
+      if (cancelled || greeted || pausedRef.current || !delayDone || intro.readyState < 3) return;
       greeted = true;
       // Pre-roll: get the clip MOVING before it is revealed. Dissolving into a
       // frozen first frame is what reads as a visible fade; two moving images
       // blend invisibly.
       intro.muted = false;
-      const started = intro.play().catch(() => {
+      const started = intro.play().catch((err: DOMException) => {
+        // A pause() during a pending play() rejects with AbortError. Treating
+        // that as an autoplay block would restart a clip we just deliberately
+        // stopped (and flag a bogus unmute).
+        if (err?.name === "AbortError") return;
         // Sound blocked (no activation / low media engagement): play muted, offer unmute.
         intro.muted = true;
         setShowUnmute(true);
@@ -87,7 +106,12 @@ export default function TheoIntroVideo({
       });
       Promise.resolve(started).then(() => {
         if (cancelled) return;
-        window.setTimeout(() => { if (!cancelled) setPhase("greeting"); }, PREROLL_MS);
+        window.setTimeout(() => {
+          // Reveal only if he is genuinely playing. If every play() was blocked,
+          // showing the clip would strand him frozen on frame 0 with no onEnded
+          // to hand back to the idle.
+          if (!cancelled && !pausedRef.current && !intro.paused) setPhase("greeting");
+        }, PREROLL_MS);
       });
     };
     const timer = window.setTimeout(() => { delayDone = true; tryGreet(); }, greetDelayMs);
@@ -97,7 +121,6 @@ export default function TheoIntroVideo({
       window.clearTimeout(timer);
       intro.removeEventListener("canplaythrough", tryGreet);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The studio opens on top of the lobby while this stays mounted. Without this
@@ -105,16 +128,24 @@ export default function TheoIntroVideo({
   useEffect(() => {
     const intro = introRef.current;
     const idle = idleRef.current;
+    const wasPaused = prevPausedRef.current;
+    prevPausedRef.current = paused;
+
     if (paused) {
       if (intro) { intro.pause(); intro.muted = true; }
       idle?.pause();
-    } else if (intro && idle) {
-      // Coming back to the lobby: resume the quiet idle only. Re-greeting on
-      // every exit from the studio would be a nag.
-      idle.play().catch(() => {});
-      if (phase === "greeting") setPhase("done");
+      return;
     }
-  }, [paused, phase]);
+    // Only act on a real resume. This effect used to carry `phase` in its deps,
+    // so the moment the greeting became visible it re-ran, took this branch and
+    // immediately flipped phase to "done" — the clip showed for a single frame
+    // and the rest of the greeting played as disembodied audio over the idle.
+    if (!wasPaused) return;
+    // Back from the studio: resume the quiet idle only. Re-greeting on every
+    // exit would be a nag.
+    if (!reducedMotionRef.current) idle?.play().catch(() => {});
+    setPhase((p) => (p === "greeting" ? "done" : p));
+  }, [paused]);
 
   function handleEnded() {
     // The idle never stopped, so it is mid-breath when we cross back. Resetting

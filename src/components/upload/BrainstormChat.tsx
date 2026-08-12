@@ -60,20 +60,20 @@ function StudioShell({ children }: { children: React.ReactNode }) {
 function StudioBackdrop() {
   return (
     <div className="ds-studio-bg" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
-      <video
-        src="/theo-library.mp4"
-        poster="/theo-library.jpg"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
+      {/* A still, deliberately. This was the library VIDEO under blur(30px):
+          a CSS filter disqualifies a <video> from the zero-copy overlay plane,
+          so every frame ran decode -> texture -> multi-pass blur -> composite,
+          24x a second, for the entire session. At sigma 60 device px nothing of
+          the fire loop survived anyway, and it also held a second decoder open
+          on a file the paused lobby was already holding. Same picture, no cost,
+          and it needs no reduced-motion guard because it does not move. */}
+      <div
         style={{
           position: "absolute",
           inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
+          backgroundImage: "url(/theo-library.jpg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           transform: "scaleX(-1) scale(1.14)",
           filter: "blur(30px) brightness(0.5) saturate(1.05)",
         }}
@@ -100,6 +100,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
   const [showTtsPrompt, setShowTtsPrompt] = useState(false);
+  // The studio had no error surface at all: every failure was a console.error or
+  // a bare return, so a dead send looked like T.H.E.O repeating himself.
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
   const sessionKey = `brainstorm_session_${projectId}`;
@@ -157,8 +161,22 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // Queue drained: Theo has stopped talking. Hands-free mode watches this to know
     // when it is safe to re-open the mic without recording his own voice.
     if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
+    // Everything from here to src.start() runs inside a guard: the latch is set
+    // before the AudioContext is constructed, so any throw (no webkitAudioContext
+    // on old Safari, a closed context) used to strand isPlayingRef/speaking true
+    // for the session — silent TTS, permanently dead hands-free, and later
+    // sentences still fetched and billed for audio nobody hears.
     isPlayingRef.current = true;
     setSpeaking(true);
+    // Declared outside the try so the catch can reach it: any throw between the
+    // latch and src.start() has to release the latch and drain the queue, or the
+    // session goes permanently silent with hands-free dead.
+    const onDecodeFailed = () => {
+      isPlayingRef.current = false;
+      currentSourceRef.current = null;
+      playNext();
+    };
+    try {
     // Close the mic the instant he starts talking. The hands-free effect below
     // only ever RE-ARMED after he finished; nothing shut the mic while audio was
     // playing, so an open mic transcribed his own TTS straight back into the
@@ -169,7 +187,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setListening(false);
     }
     const buf = audioQueueRef.current.shift()!;
-    const ctx = (audioCtxRef.current ??= new AudioContext());
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = (audioCtxRef.current ??= new Ctx());
+    // A context created outside a gesture can start suspended (iOS). Then
+    // src.start() is silent, onended never fires, and the latch above sticks.
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    // The decode error callback is mandatory. Without one, a single failed
+    // decode (truncated upstream body, partial mp3) left isPlayingRef and
+    // `speaking` true forever.
     ctx.decodeAudioData(buf.slice(0), (decoded) => {
       const src = ctx.createBufferSource();
       src.buffer = decoded;
@@ -181,7 +206,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         playNext();
       };
       src.start();
-    });
+    }, onDecodeFailed);
+    } catch {
+      onDecodeFailed();
+    }
   }, []);
 
   const speakSentence = useCallback(async (text: string) => {
@@ -221,6 +249,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const startRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
+
+    // Kill the outgoing instance before replacing it. Overwriting the ref alone
+    // orphaned the old recognizer: it kept transcribing T.H.E.O's TTS with no
+    // handle left to stop it, and its late handlers clobbered the new one's
+    // shared state (silence timer, listening flag).
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch { /* not started */ }
+      recognitionRef.current = null;
+    }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -275,7 +312,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     recognitionRef.current = recognition;
     stopAudio(); // stop AI voice when user starts speaking
-    try { recognition.start(); } catch { return; } // already-started throws; ignore
+    try {
+      recognition.start();
+    } catch {
+      // Disarm rather than returning silently: the button would otherwise keep
+      // showing an amber "Hands-free" over a dead mic. Real on iOS, where the
+      // re-arm timer is not a user gesture and start() is refused.
+      setHandsFree(false);
+      setListening(false);
+      return;
+    }
     setListening(true);
   }, [stopAudio]);
 
@@ -357,6 +403,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
           try {
             const parsed = JSON.parse(data);
+            // The route deliberately emits {error} on a mid-stream failure and
+            // then closes cleanly. Ignoring it meant a truncated half-question
+            // was treated as complete: saved, spoken, replayed on resume, and
+            // shipped into summarize as source material.
+            if (parsed.error) {
+              setSendError("That answer was cut off. Try again.");
+              break;
+            }
             if (parsed.text) {
               aiText += parsed.text;
               setMessages([{ role: "assistant", content: aiText }]);
@@ -446,6 +500,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
           try {
             const parsed = JSON.parse(data);
+            // The route deliberately emits {error} on a mid-stream failure and
+            // then closes cleanly. Ignoring it meant a truncated half-question
+            // was treated as complete: saved, spoken, replayed on resume, and
+            // shipped into summarize as source material.
+            if (parsed.error) {
+              setSendError("That answer was cut off. Try again.");
+              break;
+            }
             if (parsed.text) {
               aiText += parsed.text;
               setMessages([...updatedMessages, { role: "assistant", content: aiText }]);
@@ -469,6 +531,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
     } catch (err) {
       console.error("Brainstorm error:", err);
+      // A silent failure ate the user's words: the composer was cleared before
+      // the fetch and the turn was already pushed, so T.H.E.O appeared to repeat
+      // himself and the stage eventually painted a blank headline. Roll the turn
+      // back, hand their text back, say so, and disarm hands-free — otherwise
+      // the mic re-arms and the silence timer resends into the same dead route
+      // forever, appending unanswered turns to the summarize payload.
+      setMessages(messages);
+      setInput(text);
+      setSendError("Couldn't reach T.H.E.O. Your answer is back in the box — try again.");
+      setHandsFree(false);
     }
 
     setStreaming(false);
@@ -510,9 +582,20 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
   // Autosave on every message change
   useEffect(() => {
-    if (started && messages.length > 0) {
-      localStorage.setItem(sessionKey, JSON.stringify(messages));
-    }
+    if (!started || messages.length === 0) return;
+    // Debounced + guarded. This used to re-serialize the whole transcript and
+    // write synchronously on EVERY streamed token, and it was the only
+    // unguarded setItem in the repo — with storage blocked (private browsing,
+    // quota) the throw escaped a useEffect and took the whole page to the error
+    // screen, destroying the in-memory conversation it claimed was safe.
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(sessionKey, JSON.stringify(messages));
+      } catch {
+        setStorageBlocked(true);
+      }
+    }, 400);
+    return () => clearTimeout(t);
   }, [messages, started, sessionKey]);
 
   // Fetch TTS availability when modal opens
@@ -522,12 +605,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     fetch("/api/ink/usage")
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (!d) { setTtsAvail("available"); return; }
+        // Fail CLOSED. Defaulting to "available" offered voice to users the
+        // server then 403s on every sentence — swallowed silently, so they got
+        // total silence with the speaker icon lit and no explanation.
+        if (!d) { setTtsAvail("locked"); return; }
         if (d.tts_limit === 0) setTtsAvail("locked");
         else if (d.tts_chars_used >= d.tts_limit) setTtsAvail("exhausted");
         else setTtsAvail("available");
       })
-      .catch(() => setTtsAvail("available"));
+      .catch(() => setTtsAvail("locked"));
   }, [showTtsPrompt]);
 
   const finishBrainstorm = useCallback(async () => {
@@ -564,7 +650,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const lastAiIdx = messages.length - 1;
     const lastUserIdx = messages.length - 2;
     if (messages[lastAiIdx]?.role === "assistant" && messages[lastUserIdx]?.role === "user") {
+      // Undo drops T.H.E.O's reply AND the answer the user just spoke, and the
+      // autosave makes that permanent on the next tick. Put their words back in
+      // the composer so a mislabelled button cannot silently delete dictation.
+      const spoken = messages[lastUserIdx]?.content ?? "";
       setMessages(messages.slice(0, -2));
+      if (spoken) setInput((cur) => (cur.trim() ? cur : spoken));
     }
   }, [messages, streaming]);
 
@@ -616,7 +707,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <button
             className="transcribe-btn"
             style={{ background: "var(--input-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
-            onClick={() => { localStorage.removeItem(sessionKey); setSavedMessages([]); setShowResume(false); }}
+            onClick={() => {
+              try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
+              setSavedMessages([]);
+              setShowResume(false);
+              // Hand straight to the voice choice. Without this the render falls
+              // through to the un-portaled pre-start screen — a second identical
+              // CTA squeezed in beside the lobby, which is exactly what
+              // `autoStart` exists to prevent.
+              setShowTtsPrompt(true);
+            }}
           >
             Start New Session
           </button>
@@ -1119,6 +1219,51 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </div>
         )}
       </div>
+
+      {/* The studio's only error surface. Everything else was a console.error. */}
+      {(sendError || storageBlocked) && (
+        <div
+          role="alert"
+          style={{
+            maxWidth: 880,
+            width: "100%",
+            margin: "0 auto 10px",
+            padding: "10px 16px",
+            borderRadius: 10,
+            background: "rgba(193,122,71,0.16)",
+            border: "1px solid rgba(224,140,72,0.45)",
+            color: "#F2D7C2",
+            fontSize: 13,
+            fontFamily: "var(--font-manrope), sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            {sendError ?? "This browser is blocking storage, so this session won't be saved if you close the tab."}
+          </span>
+          {sendError && (
+            <button
+              onClick={() => { setSendError(null); sendMessage(); }}
+              style={{
+                background: "var(--ds-accent-500)", color: "#fff", border: "none",
+                borderRadius: 100, padding: "6px 16px", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Retry
+            </button>
+          )}
+          <button
+            onClick={() => { setSendError(null); setStorageBlocked(false); }}
+            aria-label="Dismiss"
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Input bar */}
       <div style={{ padding: "0 28px calc(20px + env(safe-area-inset-bottom))", maxWidth: 880, width: "100%", margin: "0 auto" }}>

@@ -50,42 +50,117 @@ interface BrainstormChatProps {
   autoStart?: boolean;
 }
 
+function useStudioViewport() {
+  const [viewport, setViewport] = useState({ height: 0, offsetTop: 0 });
+
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+    const update = () => {
+      setViewport({
+        height: Math.round(visualViewport?.height ?? window.innerHeight),
+        offsetTop: Math.round(visualViewport?.offsetTop ?? 0),
+      });
+    };
+    update();
+    visualViewport?.addEventListener("resize", update);
+    visualViewport?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      visualViewport?.removeEventListener("resize", update);
+      visualViewport?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return {
+    "--ds-studio-viewport-height": viewport.height ? `${viewport.height}px` : "100dvh",
+    "--ds-studio-viewport-top": `${viewport.offsetTop}px`,
+  } as React.CSSProperties;
+}
+
+function useStudioDialog(onExit: () => void, active = true) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    const dialog = dialogRef.current;
+    dialog?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onExit();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => !element.hasAttribute("inert") && element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [active, onExit]);
+
+  return dialogRef;
+}
+
 /**
  * Every studio screen — resume, voice choice, summarizing, and the session
  * itself — renders full-screen through this shell. Rendering them inline made
  * them inherit the caller's panel width, which is why they read as a side
  * panel next to the lobby instead of taking over the page.
  */
-function StudioShell({ children }: { children: React.ReactNode }) {
+function StudioShell({ children, onExit, label = "Brainstorm studio" }: { children: React.ReactNode; onExit: () => void; label?: string }) {
+  const viewportStyle = useStudioViewport();
+  const dialogRef = useStudioDialog(onExit);
   if (typeof document === "undefined") return null;
   return createPortal(
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      tabIndex={-1}
       className="ds-studio-stage"
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 150,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         background: "#1A1610",
         color: "#F9F7F2",
-        // The shell is a portal rather than part of PageShell, so it must carry
-        // its own display-cutout insets and cannot inherit the page's mobile
-        // padding. clamp keeps the desktop composition while releasing width on
-        // a narrow or landscape phone.
-        padding: "env(safe-area-inset-top) clamp(16px, 5vw, 48px) env(safe-area-inset-bottom)",
+        ...viewportStyle,
       }}
     >
-      <style>{`.ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }`}</style>
       <StudioBackdrop />
       {/* maxHeight + scroll: centering a card taller than the viewport clips it
           at BOTH edges with no way to reach either — real on any phone in
           landscape, where the resume prompt is the first screen a returning
           user sees and both its buttons can be off-screen. MeetTheoPanel
           already fixes this for itself; the shell never inherited it. */}
-      <div style={{ maxHeight: "100%", overflowY: "auto", width: "100%", display: "flex", justifyContent: "center" }}>
+      <div className="ds-studio-shell-content">
         {children}
       </div>
     </div>,
@@ -105,6 +180,7 @@ function StudioBackdrop() {
           on a file the paused lobby was already holding. Same picture, no cost,
           and it needs no reduced-motion guard because it does not move. */}
       <div
+        className="ds-studio-bg-image"
         style={{
           position: "absolute",
           inset: 0,
@@ -184,6 +260,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // line; the history drawer holds exchanges older than the rolling two.
   const [audience, setAudience] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const studioViewportStyle = useStudioViewport();
+  // Prompt and saving screens own StudioShell's dialog handling. The live
+  // stage enables it here so only one Escape/focus-trap listener exists.
+  const dialogRef = useStudioDialog(onBack, started && !showResume && !showTtsPrompt && !summarizing);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/project/${projectId}`)
@@ -902,7 +982,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const previewSource = savedDraft.trim() || lastMsg?.content || "";
     const preview = previewSource.slice(0, 110) + (previewSource.length > 110 ? "…" : "");
     return (
-      <StudioShell>
+      <StudioShell onExit={onBack} label="Resume brainstorm studio">
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, maxWidth: 620 }}>
         <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, var(--ds-accent-400), var(--ds-accent-500))", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -975,7 +1055,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const ttsBlocked = isLocked || isExhausted;
 
     return (
-      <StudioShell>
+      <StudioShell onExit={onBack} label="Brainstorm voice settings">
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, maxWidth: 620 }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
@@ -1132,6 +1212,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           Start Brainstorming →
         </button>
         <button
+          className="ds-studio-exit"
           onClick={onBack}
           style={{
             background: "none",
@@ -1151,8 +1232,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // Summarizing state
   if (summarizing) {
     return (
-      <StudioShell>
-        <div style={{
+      <StudioShell onExit={onBack} label="Saving brainstorm session">
+        <div role="status" aria-live="polite" style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -1210,36 +1291,30 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   if (typeof document === "undefined") return null;
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
+      aria-modal="true"
       aria-label="Brainstorm studio"
+      tabIndex={-1}
       className="ds-studio-stage"
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 150,
         display: "flex",
         flexDirection: "column",
         background: "#1A1610",
         color: "#F9F7F2",
+        ...studioViewportStyle,
       }}
     >
       {/* The studio sits in the same library as the Meet T.H.E.O lobby, thrown
           far out of focus so the conversation stays the subject. One CSS rule
           lifts every sibling above it, so the stage markup below is untouched. */}
-      <style>{`
-        .ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }
-      `}</style>
       <StudioBackdrop />
       {/* Stage header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "18px 28px",
-        flexWrap: "wrap",
-      }}>
+      <div className="ds-studio-header">
         <button
+          className="ds-studio-exit"
           onClick={onBack}
+          aria-label="Exit studio"
           style={{
             background: "none",
             border: "none",
@@ -1254,10 +1329,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <span style={{ fontSize: 20, lineHeight: 1 }}>×</span>
           <span className="ds-label" style={{ color: "rgba(249,247,242,0.6)" }}>Exit studio</span>
         </button>
-        <span className="ds-label" style={{ color: "rgba(249,247,242,0.75)", marginLeft: 8, maxWidth: "min(52vw, 640px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span className="ds-label ds-studio-title" style={{ color: "rgba(249,247,242,0.75)", marginLeft: 8, maxWidth: "min(52vw, 640px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {INTERVIEWER_NAME} <span style={{ color: "rgba(249,247,242,0.4)" }}>· {interviewerRoleLine(audience)}</span>
         </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="ds-studio-actions" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={() => {
               const next = !ttsEnabled;
@@ -1300,7 +1375,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           )}
           {older.length > 0 && (
             <button
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => setShowHistory((open) => !open)}
+              aria-expanded={showHistory}
+              aria-controls="ds-studio-history"
               style={{
                 background: showHistory ? "rgba(249,247,242,0.12)" : "none",
                 color: "rgba(249,247,242,0.55)",
@@ -1319,51 +1396,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         </div>
       </div>
 
-      {/* History drawer */}
-      {showHistory && (
-        <div style={{
-          position: "absolute",
-          top: 68,
-          right: 24,
-          bottom: 110,
-          width: "min(400px, calc(100vw - 48px))",
-          zIndex: 5,
-          overflowY: "auto",
-          background: "rgba(26,22,16,0.97)",
-          border: "1px solid rgba(249,247,242,0.14)",
-          borderRadius: 14,
-          padding: 18,
-        }}>
-          <div className="ds-label" style={{ color: "rgba(249,247,242,0.5)", marginBottom: 12 }}>Full conversation</div>
-          {messages.map((m, i) => (
-            <p key={i} style={{
-              fontSize: 13,
-              lineHeight: 1.55,
-              margin: "0 0 12px",
-              fontFamily: m.role === "assistant" ? "var(--font-lora), serif" : "var(--font-manrope), sans-serif",
-              color: m.role === "assistant" ? "rgba(249,247,242,0.85)" : "rgba(249,247,242,0.55)",
-            }}>
-              <span className="ds-label" style={{ display: "block", fontSize: 9, color: m.role === "assistant" ? "#C17A47" : "rgba(249,247,242,0.35)", marginBottom: 3 }}>
-                {m.role === "assistant" ? INTERVIEWER_NAME : "You"}
-              </span>
-              {m.content}
-            </p>
-          ))}
-        </div>
-      )}
-
       {/* Conversation stage */}
-      <div ref={messagesEndRef} style={{
-        flex: 1,
-        overflowY: "auto",
-        overscrollBehavior: "contain",
+      <div className="ds-studio-content">
+      <div ref={messagesEndRef} className="ds-studio-conversation" style={{
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
         maxWidth: 880,
         width: "100%",
         margin: "0 auto",
-        padding: "12px 28px 20px",
       }}>
         {receding.map((ex, i) => (
           <div key={i} style={{ marginBottom: 26, opacity: i === receding.length - 1 ? 0.55 : 0.35 }}>
@@ -1447,6 +1488,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </div>
         )}
       </div>
+      {/* The drawer belongs to the flex content area, so its edges follow the
+          actual wrapped header and composer instead of fixed pixel guesses. */}
+      {showHistory && (
+        <aside id="ds-studio-history" className="ds-studio-history" aria-label="Full conversation">
+          <div className="ds-label" style={{ color: "rgba(249,247,242,0.5)", marginBottom: 12 }}>Full conversation</div>
+          {messages.map((m, i) => (
+            <p key={i} style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              margin: "0 0 12px",
+              fontFamily: m.role === "assistant" ? "var(--font-lora), serif" : "var(--font-manrope), sans-serif",
+              color: m.role === "assistant" ? "rgba(249,247,242,0.85)" : "rgba(249,247,242,0.55)",
+            }}>
+              <span className="ds-label" style={{ display: "block", fontSize: 9, color: m.role === "assistant" ? "#C17A47" : "rgba(249,247,242,0.35)", marginBottom: 3 }}>
+                {m.role === "assistant" ? INTERVIEWER_NAME : "You"}
+              </span>
+              {m.content}
+            </p>
+          ))}
+        </aside>
+      )}
+      </div>
 
       {/* The studio's only error surface. Everything else was a console.error. */}
       {(sendError || storageBlocked) && (
@@ -1501,8 +1564,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       )}
 
       {/* Input bar */}
-      <div style={{ padding: "0 28px calc(20px + env(safe-area-inset-bottom))", maxWidth: 880, width: "100%", margin: "0 auto" }}>
-        <div style={{
+      <div className="ds-studio-composer" style={{ maxWidth: 880, width: "100%", margin: "0 auto" }}>
+        <div className="ds-studio-composer-form" style={{
           display: "flex",
           alignItems: "flex-end",
           gap: 10,
@@ -1510,6 +1573,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         }}>
           {speechSupported && (
             <button
+              className="ds-studio-mic"
               onClick={toggleListening}
               aria-pressed={handsFree}
               title={handsFree ? "Hands-free is on — tap to stop listening" : "Turn on hands-free: the mic re-opens after each answer"}
@@ -1541,6 +1605,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </button>
           )}
           <textarea
+            className="ds-studio-textarea"
             ref={inputRef}
             value={input}
             onChange={e => { typedRef.current = true; setInput(e.target.value); }}
@@ -1578,6 +1643,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             }}
           />
           <button
+            className="ds-studio-send"
             onClick={() => {
               if (listening) {
                 recognitionRef.current?.stop();
@@ -1606,6 +1672,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </svg>
           </button>
           <button
+            className="ds-studio-finish"
             onClick={finishBrainstorm}
             disabled={!canFinish}
             style={{

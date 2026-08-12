@@ -83,6 +83,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android Chrome otherwise leaves fixed overlays at the layout viewport when
+  // its keyboard opens. The studio also watches visualViewport for iOS Safari,
+  // which does not consistently honour this policy.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

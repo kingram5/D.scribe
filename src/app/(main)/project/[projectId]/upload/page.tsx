@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
 import BrainstormChat from "@/components/upload/BrainstormChat";
@@ -16,6 +16,27 @@ export default function UploadPage() {
   // The lobby is the doorway; "Start Brainstorming" opens the studio over it.
   const [chatting, setChatting] = useState(false);
   const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
+
+  // A studio is an overlay, not a new route. Give it one history entry so a
+  // phone Back gesture closes the overlay before it leaves the upload journey.
+  // The session itself persists its draft, so closing is safe recovery rather
+  // than a destructive escape hatch.
+  useEffect(() => {
+    if (!chatting) return;
+    const studioState = { ...window.history.state, dsStudio: true };
+    window.history.pushState(studioState, "", window.location.href);
+    const onPopState = () => setChatting(false);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [chatting]);
+
+  const closeStudio = useCallback(() => {
+    if (window.history.state?.dsStudio) {
+      window.history.back();
+    } else {
+      setChatting(false);
+    }
+  }, []);
 
   function handleInitialize() {
     if (engine.allDone) {
@@ -135,7 +156,12 @@ export default function UploadPage() {
       {showBrainstorm && (
         // The Meet T.H.E.O lobby. Its CTA opens the brainstorm studio, which
         // portals to <body> and covers the lobby while the session runs.
-        <div className="flex" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+        <div
+          className="flex"
+          inert={chatting}
+          aria-hidden={chatting || undefined}
+          style={{ flex: 1, overflow: "hidden", minHeight: 0 }}
+        >
           <MeetTheoPanel
             onStart={() => setChatting(true)}
             onBack={() => setShowBrainstorm(false)}
@@ -146,7 +172,7 @@ export default function UploadPage() {
               projectId={projectId}
               autoStart
               onComplete={() => router.push(`/project/${projectId}/transcript`)}
-              onBack={() => setChatting(false)}
+              onBack={closeStudio}
               triggerFinish={triggerBrainstormFinish}
               onFinishTriggered={() => setTriggerBrainstormFinish(false)}
             />

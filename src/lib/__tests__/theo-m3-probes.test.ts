@@ -13,6 +13,8 @@ import { describe, expect, it } from "vitest";
 const SRC = path.resolve(__dirname, "../..");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const chat = () => read("components/upload/BrainstormChat.tsx");
+const css = () => read("app/globals.css");
+const uploadPage = () => read("app/(main)/project/[projectId]/upload/page.tsx");
 
 describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
   it("persists an unsent draft with messages and still reads legacy array sessions", () => {
@@ -86,7 +88,46 @@ describe("T.H.E.O. M3: small-screen lobby density", () => {
   });
 
   it("keeps studio prompts clear of display cutouts and releases horizontal space", () => {
-    expect(chat()).toMatch(/padding: "env\(safe-area-inset-top\) clamp\(16px, 5vw, 48px\) env\(safe-area-inset-bottom\)"/);
+    expect(css()).toMatch(/\.ds-studio-shell-content[\s\S]*env\(safe-area-inset-top\)[\s\S]*env\(safe-area-inset-bottom\)/);
+    expect(css()).toMatch(/\.ds-studio-header[\s\S]*safe-area-inset-top/);
+  });
+});
+
+describe("T.H.E.O. M3: studio mobile surface", () => {
+  it("resizes to the visual viewport so the composer stays above a soft keyboard", () => {
+    const src = chat();
+    expect(src).toMatch(/window\.visualViewport/);
+    expect(src).toMatch(/visualViewport\?\.addEventListener\("resize", update\)/);
+    expect(src).toMatch(/--ds-studio-viewport-height/);
+    expect(read("app/layout.tsx")).toMatch(/interactiveWidget:\s*"resizes-content"/);
+  });
+
+  it("locks the studio surface and contains overscroll instead of refreshing the route", () => {
+    const src = chat();
+    expect(src).toMatch(/document\.body\.style\.overflow = "hidden"/);
+    expect(css()).toMatch(/\.ds-studio-stage[\s\S]*overscroll-behavior: none/);
+    expect(css()).toMatch(/\.ds-studio-conversation[\s\S]*overscroll-behavior: contain/);
+  });
+
+  it("uses a dialog with a focus trap and makes the covered lobby inert", () => {
+    const src = chat();
+    expect(src).toMatch(/aria-modal="true"/);
+    expect(src).toMatch(/event\.key === "Escape"/);
+    expect(src).toMatch(/event\.key !== "Tab"/);
+    expect(uploadPage()).toMatch(/inert=\{chatting\}/);
+  });
+
+  it("adds a history entry so phone Back exits the studio before the upload route", () => {
+    const src = uploadPage();
+    expect(src).toMatch(/window\.history\.pushState\(studioState/);
+    expect(src).toMatch(/window\.addEventListener\("popstate", onPopState\)/);
+    expect(src).toMatch(/window\.history\.back\(\)/);
+  });
+
+  it("positions history within the flex content area rather than fixed header/footer pixels", () => {
+    expect(chat()).toMatch(/className="ds-studio-content"[\s\S]*className="ds-studio-history"/);
+    expect(css()).toMatch(/\.ds-studio-history\s*\{[\s\S]*inset: 0/);
+    expect(chat()).not.toMatch(/top:\s*68/);
   });
 });
 

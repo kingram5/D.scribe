@@ -487,7 +487,7 @@ input[type=range] {
     padding: 8px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
   }
   .ds-studio-history {
-    inset-inline: max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-left));
+    inset-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
     width: auto;
     border-radius: 12px;
   }

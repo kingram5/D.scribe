@@ -54,4 +54,6 @@ None confirmed for these surfaces. The unavailable local report cannot be treate
 - `src/lib/__tests__/theo-m3-probes.test.ts`, including an `it.fails()` guard for the deliberately deferred PWA gap.
 
 ## Verification
-- Pending final CI command results for TypeScript, Vitest, and production build are recorded in the PR handoff.
+- `npm exec tsc -- --noEmit` — passed.
+- `npm test` — passed: 13 files, 193 assertions passed, 1 expected failure (the deliberate M3 PWA probe).
+- `npm run build` — compilation and type validation passed, then static generation failed at `/blog` because this environment has no `supabaseUrl`. This is environment configuration, not an M3 compile/type failure.

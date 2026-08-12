@@ -104,6 +104,7 @@ export default function PrivacyPolicyPage() {
         items={[
           <><Strong>Anthropic</Strong> — AI text generation and related processing</>,
           <><Strong>Deepgram</Strong> — transcription and speech processing</>,
+          <><Strong>ElevenLabs</Strong> — text-to-speech voice generation</>,
           <><Strong>Cloudflare R2</Strong> — file storage and delivery</>,
           <><Strong>Supabase</Strong> — database, authentication, and backend services</>,
           <><Strong>Stripe</Strong> — billing and subscription processing</>,

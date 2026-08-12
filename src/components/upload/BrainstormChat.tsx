@@ -50,7 +50,14 @@ function StudioShell({ children }: { children: React.ReactNode }) {
     >
       <style>{`.ds-studio-stage > *:not(.ds-studio-bg) { position: relative; z-index: 1; }`}</style>
       <StudioBackdrop />
-      {children}
+      {/* maxHeight + scroll: centering a card taller than the viewport clips it
+          at BOTH edges with no way to reach either — real on any phone in
+          landscape, where the resume prompt is the first screen a returning
+          user sees and both its buttons can be off-screen. MeetTheoPanel
+          already fixes this for itself; the shell never inherited it. */}
+      <div style={{ maxHeight: "100%", overflowY: "auto", width: "100%", display: "flex", justifyContent: "center" }}>
+        {children}
+      </div>
     </div>,
     document.body,
   );
@@ -114,6 +121,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // Autosave support: the flush handlers fire outside the effect closure, so
   // they read the latest transcript from a ref rather than a captured value.
   const messagesRef = useRef<Message[]>([]);
+  // True once the user hand-edits the composer, so a re-armed recognizer cannot
+  // overwrite what they typed. Cleared when a turn is sent.
+  const typedRef = useRef(false);
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
 
@@ -139,13 +149,23 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     return () => { cancelled = true; };
   }, [projectId]);
 
+  // Auto-scroll never worked: the ref this used to read was declared but never
+  // attached to any element, so scrollIntoView ran on nothing every commit.
+  // On a phone that meant T.H.E.O's question streamed in below the fold and the
+  // user's own live dictation rendered off-screen while they spoke. Scroll the
+  // stage container directly (scrollIntoView would walk to the document on
+  // mobile and yank the page), and only when already near the bottom, so it
+  // cannot fight a user who scrolled up to re-read.
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesEndRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, input, scrollToBottom]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -282,6 +302,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           interim = transcript;
         }
       }
+      // Never clobber what the user typed. The mic is closed while T.H.E.O
+      // speaks, so typing during his turn is the natural recovery when
+      // dictation misfires — and then the 900ms re-arm built a fresh recognizer
+      // whose empty transcript overwrote the whole typed answer on its first
+      // stray syllable. Same rule undoLast already follows.
+      if (typedRef.current) return;
       setInput(finalTranscript + interim);
 
       // Reset silence timer on every result
@@ -306,6 +332,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // must NOT disarm the session.
       if (event?.error === "not-allowed" || event?.error === "service-not-allowed" || event?.error === "audio-capture") {
         setHandsFree(false);
+        // Denial was completely silent, and Safari remembers it — so the second
+        // tap produced no prompt either and the headline feature just died with
+        // the button flickering back to "Speak". Say what happened and how to
+        // undo it; the error surface already exists.
+        setSendError(
+          event?.error === "audio-capture"
+            ? "No microphone available. You can keep typing your answers."
+            : "Microphone access is blocked. On iPhone: tap aA in the address bar, then Website Settings, then Microphone. You can keep typing in the meantime.",
+        );
       }
     };
 
@@ -458,6 +493,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
+    typedRef.current = false; // turn sent: dictation may own the composer again
     setStreaming(true);
 
     // Build API messages: pin init + first exchange, window the rest to last 8 (4 exchanges)
@@ -1149,9 +1185,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       )}
 
       {/* Conversation stage */}
-      <div style={{
+      <div ref={messagesEndRef} style={{
         flex: 1,
         overflowY: "auto",
+        overscrollBehavior: "contain",
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
@@ -1331,9 +1368,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <textarea
             ref={inputRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => { typedRef.current = true; setInput(e.target.value); }}
             onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Touch keyboards have no Shift+Enter, so Enter-to-send made a
+              // paragraph break unreachable — and the key still renders as
+              // "return", so hitting it to start a new paragraph fired a
+              // half-answer that became permanent source material. On coarse
+              // pointers the send button is the only send path.
+              const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+              // isComposing: committing an IME candidate with return must not send.
+              if (e.key === "Enter" && !e.shiftKey && !coarse && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 sendMessage();
               }

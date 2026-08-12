@@ -2,6 +2,7 @@ import { createAuthClient } from "@/lib/supabase-auth";
 import { isAllowedEmail } from "@/lib/allowlist";
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /** Get the authenticated user from the request cookie. Returns null if not logged in. */
 export async function getUser() {
@@ -50,6 +51,19 @@ export async function requireAuth(): Promise<
     return {
       user: null,
       error: NextResponse.json({ error: "Access revoked" }, { status: 403 }),
+    };
+  }
+  // A baseline limit makes every requireAuth()-protected API route bounded,
+  // including routine CRUD routes that do not need a bespoke spend limit.
+  // Expensive routes layer stricter route-specific buckets on top.
+  const { allowed, retryAfterMs } = await checkRateLimit(user.id, "authenticated-api", 120);
+  if (!allowed) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: "Too many requests. Please wait before trying again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+      ),
     };
   }
   return { user, error: null };

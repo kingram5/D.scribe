@@ -20,9 +20,12 @@ import TheoOrb from "../ui/TheoOrb";
 export default function MeetTheoPanel({
   onStart,
   onBack,
+  paused = false,
 }: {
   onStart?: () => void;
   onBack?: () => void;
+  /** True while the studio covers the lobby, so T.H.E.O stops talking under it. */
+  paused?: boolean;
 }) {
   const bgRef = useRef<HTMLVideoElement>(null);
 
@@ -30,8 +33,9 @@ export default function MeetTheoPanel({
     // Reduced motion: hold the scene on the still; TheoIntroVideo already
     // holds itself on its poster under the same setting.
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    bgRef.current?.play().catch(() => {});
-  }, []);
+    if (paused) bgRef.current?.pause();
+    else bgRef.current?.play().catch(() => {});
+  }, [paused]);
 
   return (
     <>
@@ -87,7 +91,7 @@ export default function MeetTheoPanel({
         >
           {/* grounding shadow so he stands on the floor instead of floating */}
           <div aria-hidden="true" style={{ position: "absolute", left: "8%", right: "8%", bottom: 0, height: 80, background: "radial-gradient(50% 50% at 50% 100%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%)" }} />
-          <TheoIntroVideo mode="lobby" />
+          <TheoIntroVideo mode="lobby" paused={paused} />
         </div>
 
         {/* 4 — UI. Title block sits top-left, in the wordmark slot. */}

@@ -159,6 +159,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
     isPlayingRef.current = true;
     setSpeaking(true);
+    // Close the mic the instant he starts talking. The hands-free effect below
+    // only ever RE-ARMED after he finished; nothing shut the mic while audio was
+    // playing, so an open mic transcribed his own TTS straight back into the
+    // conversation.
+    if (recognitionRef.current) {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      try { recognitionRef.current.stop(); } catch { /* not started */ }
+      setListening(false);
+    }
     const buf = audioQueueRef.current.shift()!;
     const ctx = (audioCtxRef.current ??= new AudioContext());
     ctx.decodeAudioData(buf.slice(0), (decoded) => {
@@ -288,7 +297,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
      drained). The short delay lets the last syllable decay before the mic opens. */
   useEffect(() => {
     if (!handsFree || listening || streaming || speaking || summarizing) return;
-    const t = setTimeout(() => startRecognition(), 500);
+    const t = setTimeout(() => {
+      // `speaking` goes false every time the audio queue momentarily drains, even
+      // with more sentences still arriving mid-stream. Re-check the refs at fire
+      // time so that flicker cannot re-open the mic just as he speaks again.
+      if (isPlayingRef.current || audioQueueRef.current.length > 0) return;
+      startRecognition();
+    }, 900);
     return () => clearTimeout(t);
   }, [handsFree, listening, streaming, speaking, summarizing, startRecognition]);
 

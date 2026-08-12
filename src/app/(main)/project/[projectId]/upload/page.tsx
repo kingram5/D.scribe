@@ -139,6 +139,7 @@ export default function UploadPage() {
           <MeetTheoPanel
             onStart={() => setChatting(true)}
             onBack={() => setShowBrainstorm(false)}
+            paused={chatting}
           />
           {chatting && (
             <BrainstormChat

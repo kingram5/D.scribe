@@ -64,12 +64,12 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "TTS not configured" }, { status: 503 });
 
-  // T.H.E.O speaks as ElevenLabs "Finley" everywhere — the studio and the intro
-  // video must be the same voice. Defaulted in code rather than trusting env:
-  // the old fallback was stock "Rachel", so a missing/typo'd var silently gave
-  // T.H.E.O a completely different (female) voice. env still overrides, with
-  // whitespace trimmed — a stray newline in the value had broken this before.
-  const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || "fnYMz3F5gMEDGMWcH1ex";
+  // T.H.E.O speaks as ElevenLabs "Finley" — one voice for the studio and every
+  // T.H.E.O video, per Kyle's standing directive. Deliberately NOT env-driven:
+  // this is brand identity, not configuration. The env var used to win here and
+  // held a stale id in prod, so the studio kept answering in a different voice
+  // after the code default was already correct.
+  const voiceId = "fnYMz3F5gMEDGMWcH1ex";
 
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,

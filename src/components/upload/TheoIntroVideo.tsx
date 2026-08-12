@@ -29,7 +29,8 @@ const DISSOLVE_MS = 220;
 export default function TheoIntroVideo({
   mode = "card",
   greetDelayMs = 3500,
-}: { mode?: "card" | "fill" | "lobby"; greetDelayMs?: number } = {}) {
+  paused = false,
+}: { mode?: "card" | "fill" | "lobby"; greetDelayMs?: number; paused?: boolean } = {}) {
   const fill = mode === "fill" || mode === "lobby";
   const lobby = mode === "lobby";
   const lobbyWrapMask = "linear-gradient(to right, transparent 0%, #000 13%, #000 74%, transparent 100%)";
@@ -98,6 +99,22 @@ export default function TheoIntroVideo({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The studio opens on top of the lobby while this stays mounted. Without this
+  // his greeting keeps playing underneath and talks over the studio's own voice.
+  useEffect(() => {
+    const intro = introRef.current;
+    const idle = idleRef.current;
+    if (paused) {
+      if (intro) { intro.pause(); intro.muted = true; }
+      idle?.pause();
+    } else if (intro && idle) {
+      // Coming back to the lobby: resume the quiet idle only. Re-greeting on
+      // every exit from the studio would be a nag.
+      idle.play().catch(() => {});
+      if (phase === "greeting") setPhase("done");
+    }
+  }, [paused, phase]);
 
   function handleEnded() {
     // The idle never stopped, so it is mid-breath when we cross back. Resetting

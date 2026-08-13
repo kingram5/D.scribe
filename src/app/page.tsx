@@ -46,7 +46,7 @@ const faqSchema = {
       name: "How does D.scribe work?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Upload any audio recording — a sermon, a coaching call, a podcast episode, or a voice memo. D.scribe transcribes it word-for-word, builds a structure based on your chapter targets, analyzes your themes and voice patterns, then generates a full manuscript chapter by chapter.",
+        text: "Upload any audio recording — begin with a sermon, or use a coaching call, podcast episode, or voice memo. D.scribe captures your words, helps you build a structure around your chapter targets, and shapes them chapter by chapter. You remain involved at every step.",
       },
     },
     {
@@ -70,7 +70,7 @@ const faqSchema = {
       name: "How long does it take to generate a manuscript?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
+        text: "That depends on the length of your recording and the book you want to make. You can begin with one sermon, review the first chapter, and keep shaping the manuscript at your own pace.",
       },
     },
     {
@@ -78,7 +78,7 @@ const faqSchema = {
       name: "Who is D.scribe for?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "D.scribe is built for people who already have something to say — coaches, pastors, speakers, consultants, and experts who think best out loud. If you've been told you should write a book but never had the time or the process to do it, D.scribe is the bridge between your voice and a finished manuscript.",
+        text: "D.scribe is built first for pastors with sermons and teaching worth carrying beyond Sunday. It also serves coaches, speakers, consultants, and other people who think best out loud.",
       },
     },
   ],

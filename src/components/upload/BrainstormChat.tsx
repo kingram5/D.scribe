@@ -406,7 +406,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const initializeTtsAudio = useCallback(() => {
     try {
       const audio = audioRef.current ?? new Audio();
-      audio.playsInline = true;
+      audio.setAttribute("playsinline", "");
       audio.preload = "auto";
       audioRef.current = audio;
       return true;

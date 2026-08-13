@@ -97,7 +97,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const initialize = src.slice(src.indexOf("const initializeTtsAudio"), src.indexOf("// TTS helpers"));
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
     expect(src).toMatch(/<audio ref=\{audioRef\} playsInline preload="auto"/);
-    expect(initialize).toMatch(/audio\.playsInline = true/);
+    expect(initialize).toMatch(/audio\.setAttribute\("playsinline", ""\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
     expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
@@ -225,7 +225,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(onStop).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
     expect(onStop).not.toMatch(/setFiles\(/);
     expect(intakeGrid()).toMatch(/p\.recordings\.map/);
-    expect(intakeGrid()).not.toMatch(/p\.files\.map\(\(file\).*RECORDED HERE/s);
+    expect(intakeGrid()).not.toMatch(/p\.files\.map\(\(file\)[\s\S]*RECORDED HERE/);
   });
 
   it("uses dynamic viewport height and respects the iPhone safe area for the app bar", () => {

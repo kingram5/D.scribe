@@ -113,7 +113,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         {/* CTA */}
         <div style={{ marginTop: 72, padding: "40px 36px", background: "rgba(193,122,71,0.06)", border: "1px solid rgba(193,122,71,0.2)", borderRadius: 20, textAlign: "center" }}>
           <p style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(20px, 3vw, 26px)", fontStyle: "italic", color: "#F9F7F2", marginBottom: 12 }}>Ready to write your book?</p>
-          <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, color: "#A89F94", marginBottom: 28, lineHeight: 1.6 }}>D. scribe turns your voice into a manuscript — no writing required.</p>
+          <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, color: "#A89F94", marginBottom: 28, lineHeight: 1.6 }}>Bring the words you already share, then shape each chapter into a book you can call your own.</p>
           <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, fontWeight: 600, color: "#fff", background: "#C17A47", padding: "13px 32px", borderRadius: 9999, textDecoration: "none", display: "inline-block" }}>Start for free</Link>
         </div>
       </article>

@@ -4,13 +4,13 @@ import { createServerClient } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
-  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
+  description: "Practical guides, strategies, and stories for pastors, coaches, and speakers ready to shape the words they already share into a book.",
   alternates: {
     canonical: "https://d-scribe.app/blog",
   },
   openGraph: {
     title: "D.scribe Blog — Voice to Book Guides & Strategies",
-    description: "Practical guides for coaches, pastors, and speakers ready to publish their book with AI transcription and manuscript generation.",
+    description: "Practical guides for pastors, coaches, and speakers ready to shape their spoken wisdom into a book.",
     url: "https://d-scribe.app/blog",
     siteName: "D.scribe",
     type: "website",
@@ -22,7 +22,7 @@ const blogSchema = {
   "@type": "Blog",
   name: "D.scribe Blog",
   url: "https://d-scribe.app/blog",
-  description: "Guides and strategies for turning voice recordings into published books with AI",
+  description: "Guides and strategies for pastors, coaches, and speakers shaping spoken wisdom into books",
   publisher: { "@type": "Organization", name: "D.scribe", url: "https://d-scribe.app" },
 };
 
@@ -85,10 +85,10 @@ export default async function BlogIndexPage() {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "72px 24px 56px", position: "relative", zIndex: 10 }}>
         <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#C17A47", marginBottom: 16 }}>The D. scribe Blog</p>
         <h1 style={{ fontFamily: "var(--font-playfair), var(--font-lora), serif", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 400, fontStyle: "italic", color: "#F9F7F2", lineHeight: 1.2, marginBottom: 20 }}>
-          Turning your voice<br />into a published book
+          Writing the book<br />you already carry
         </h1>
         <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 17, color: "#A89F94", lineHeight: 1.7, maxWidth: 560 }}>
-          Guides, strategies, and stories for coaches, pastors, and speakers who have a book inside them. Every article here is built around one question: how do you turn what you already know — the sermons, the talks, the coaching sessions — into a book you&apos;re proud to hand someone?
+          Guides, strategies, and stories for pastors, coaches, and speakers who have a book inside them. Every article here is built around one question: how do you shape what you already know — the sermons, the talks, the coaching sessions — into a book you&apos;re proud to hand someone?
         </p>
         <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, color: "#7A7358", lineHeight: 1.75, maxWidth: 520, marginTop: 16 }}>
           You&apos;ll find practical walkthroughs of the D.scribe workflow, guidance on structuring your ideas before you write, and honest takes on what it actually takes to go from &ldquo;I should write a book&rdquo; to a finished manuscript.

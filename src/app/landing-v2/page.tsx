@@ -20,9 +20,9 @@ const PIPELINE = [
   { num: "02", title: "Transcribe", desc: "AI captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
   { num: "03", title: "Structure", desc: "Set your chapter count, word targets, and tone. The blueprint for your book, built before a word is written." },
   { num: "04", title: "Analyze", desc: "Key themes extracted, voice profile built, narrative arcs identified. Your ideas, mapped." },
-  { num: "05", title: "Generate", desc: "AI writes your manuscript chapter by chapter — in your voice, not a robot's." },
+  { num: "05", title: "Shape", desc: "Your spoken words, chapter by chapter, in your voice." },
   { num: "06", title: "Edit", desc: "Review every sentence in a full manuscript editor. Refine, rewrite, and make it yours." },
-  { num: "07", title: "Export", desc: "Download your finished book as PDF or DOCX. Print-ready. Publisher-ready. Yours." },
+  { num: "07", title: "Export", desc: "Download your finished book as PDF or DOCX, ready for the next step you choose." },
 ];
 
 function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
@@ -76,7 +76,7 @@ const DASH_PIPELINE = [
   { key: "transcribe", label: "Transcription",      desc: "Your words, captured and ready to shape" },
   { key: "structure",  label: "Structure Setup",    desc: "Set chapters and word targets" },
   { key: "analyze",    label: "Content Analysis",   desc: "AI identifies themes, voice patterns, and narrative arcs" },
-  { key: "generate",   label: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter" },
+  { key: "generate",   label: "Chapter Shaping",    desc: "Your words, shaped one chapter at a time" },
   { key: "editor",     label: "Manuscript Editor",  desc: "Review, refine, and polish your manuscript" },
   { key: "export",     label: "Export & Publish",   desc: "Download your finished book in any format" },
 ];
@@ -754,7 +754,7 @@ const LANDING_BOOKS = [
     genre: "Faith Community",
     cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
     snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years: the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
-    review: "My congregation had been asking me to write down my sermons for years. What I couldn't have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.",
+    review: "My congregation had been asking me to write down my sermons for years. D. scribe gave me a faithful place to begin, and every word still sounds like me.",
   },
   {
     title: "The Anxiety Playbook",
@@ -1100,7 +1100,7 @@ export default function LandingV2() {
             className="lv2-author-cta"
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", minHeight: 50 }}
           >
-            Begin Your Book <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
+            Upload a sermon. Get your first chapter. <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
           </Link>
         </div>
 
@@ -1117,8 +1117,8 @@ export default function LandingV2() {
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>From voice to published book</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Your voice</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>AI writes in your style, not its own</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Sounds like you</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Voice-Match, not AI polish</div>
           </div>
         </div>
 
@@ -1211,7 +1211,7 @@ export default function LandingV2() {
                 fontSize: "clamp(56px, 8vw, 84px)", fontWeight: 400,
                 lineHeight: 1.2, marginBottom: 24,
               }}>
-                You bring the ideas. We fill in the gaps.
+                You bring the ideas. You stay in the chair.
               </h2>
               <p style={{
                 fontFamily: "var(--font-lora), serif", fontSize: 36, lineHeight: 1.7,
@@ -1222,7 +1222,7 @@ export default function LandingV2() {
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 {[
                   { title: "Your Voice", desc: "AI captures your speaking style — rhythm, vocabulary, pacing — and writes in it." },
-                  { title: "Your Ideas", desc: "Every key point comes from your words. Nothing invented. Nothing hallucinated." },
+                  { title: "Your Ideas", desc: "Every key point starts from words you’ve already said. You stay in the chair." },
                   { title: "Your Book", desc: "Edit every sentence. Rearrange every chapter. Export when it's ready. It's yours." },
                 ].map((pillar) => (
                   <div key={pillar.title}>
@@ -1313,7 +1313,7 @@ export default function LandingV2() {
             {[
               {
                 q: "How does D.scribe work?",
-                a: "Upload any audio recording — a sermon, a coaching call, a podcast episode, or a voice memo. D.scribe transcribes it word-for-word, builds a structure based on your chapter targets, analyzes your themes and voice patterns, then generates a full manuscript chapter by chapter. The entire process takes minutes, not months.",
+                a: "Upload any audio recording — begin with a sermon, or use a coaching call, podcast episode, or voice memo. D.scribe captures your words, helps you build a structure around your chapter targets, and shapes them chapter by chapter. You remain involved at every step.",
               },
               {
                 q: "What audio formats does D.scribe support?",
@@ -1325,11 +1325,11 @@ export default function LandingV2() {
               },
               {
                 q: "How long does it take to generate a manuscript?",
-                a: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
+                a: "That depends on the length of your recording and the book you want to make. You can begin with one sermon, review the first chapter, and keep shaping the manuscript at your own pace.",
               },
               {
                 q: "Who is D.scribe for?",
-                a: "D.scribe is built for people who already have something to say — coaches, pastors, speakers, consultants, and experts who think best out loud. If you've been told you should write a book but never had the time or the process to do it, D.scribe is the bridge between your voice and a finished manuscript.",
+                a: "D.scribe is built first for pastors with sermons and teaching worth carrying beyond Sunday. It also serves coaches, speakers, consultants, and other people who think best out loud.",
               },
             ].map((item, i) => (
               <div key={i} style={{ padding: "28px 0", borderBottom: "1px solid rgba(249,247,242,0.08)", borderTop: i === 0 ? "1px solid rgba(249,247,242,0.08)" : "none" }}>
@@ -1362,7 +1362,7 @@ export default function LandingV2() {
             Let your spoken words lead the way to a page you can shape, refine, and call your own.
           </p>
           <Link href="/login" className="lv2-cta">
-            Begin Your Book
+            Upload a sermon. Get your first chapter.
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -1378,7 +1378,7 @@ export default function LandingV2() {
         flexWrap: "wrap", gap: 16,
       }}>
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
-          D. scribe &mdash; Your Voice, Written
+          D. scribe &mdash; Your words, your book.
         </span>
       </footer>
 

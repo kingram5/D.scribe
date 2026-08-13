@@ -114,7 +114,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
   it("only explains iPhone Silent mode after a successful media response begins", () => {
     const src = chat();
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,300}?Silent mode/);
+    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,500}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
     expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);

@@ -435,8 +435,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       audio.onerror = null;
       audio.pause();
     }
-    if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
-    currentAudioUrlRef.current = null;
+    // Leave the completed clip attached while dictation is open. Revoking the
+    // blob that is still `audio.src` can leave Safari holding a dead media
+    // session, which prevents SpeechRecognition from acquiring the mic. The
+    // next clip revokes it only after replacing `audio.src`; stopAudio remains
+    // the one hard-reset path.
     playbackGenerationRef.current += 1;
     audioQueueRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
     ttsRequestGenerationRef.current += 1;
@@ -530,7 +533,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     const nextAudio = audioQueueRef.current.shift()!;
     const { url, text } = nextAudio;
-    currentAudioUrlRef.current = url;
+    const previousAudioUrl = currentAudioUrlRef.current;
     const playbackGeneration = ++playbackGenerationRef.current;
     const isCurrentPlayback = () =>
       playbackGenerationRef.current === playbackGeneration &&
@@ -538,8 +541,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const finishPlayback = () => {
       if (!isCurrentPlayback()) return;
       isPlayingRef.current = false;
-      if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
-      currentAudioUrlRef.current = null;
       audio.onended = null;
       audio.onerror = null;
       // Safari can keep the output audio session active after `ended`. Pause
@@ -562,6 +563,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (isCurrentPlayback()) playbackFailed("T.H.E.O.'s voice could not play.");
     };
     audio.src = url;
+    // The old blob must remain valid while it is this element's source. Once
+    // the next clip has replaced it, it is safe to release that URL.
+    if (previousAudioUrl && previousAudioUrl !== url) URL.revokeObjectURL(previousAudioUrl);
+    currentAudioUrlRef.current = url;
     isPlayingRef.current = true;
     setSpeaking(true);
     void audio.play().then(() => {
@@ -664,6 +669,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    let recognitionStarted = false;
+
+    recognition.onstart = () => {
+      if (recognitionRef.current !== recognition) return;
+      recognitionStarted = true;
+    };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       if (recognitionRef.current !== recognition) return;
@@ -740,6 +751,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // hands-free effect waits for that pending send before it can re-arm.
       recognitionRef.current = null;
       setListening(false);
+      if (!recognitionStarted) {
+        setHandsFree(false);
+        setRetryAction(null);
+        setSendError("Hands-free could not start the microphone. Tap Speak to try again, or type your answer.");
+      }
     };
 
     recognitionRef.current = recognition;
@@ -816,10 +832,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // with more sentences still arriving mid-stream. Re-check the refs at fire
       // time so that flicker cannot re-open the mic just as he speaks again.
       if (awaitingAutoSendRef.current || isPlayingRef.current || audioQueueRef.current.length > 0) return;
+      // A finished clip stays attached to the unlocked player until another
+      // clip replaces it. Pause that idle session before asking iOS for mic
+      // capture, without resetting or revoking the current source.
+      releaseAudioForRecognition();
       startRecognition();
     }, 900);
     return () => clearTimeout(t);
-  }, [handsFree, listening, streaming, speaking, summarizing, startRecognition]);
+  }, [handsFree, listening, streaming, speaking, summarizing, releaseAudioForRecognition, startRecognition]);
 
   // Clean up recognition on unmount
   useEffect(() => {

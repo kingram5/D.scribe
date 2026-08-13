@@ -2,21 +2,17 @@ import type { Metadata } from "next";
 import LandingPage from "@/app/landing-v2/page";
 
 export const metadata: Metadata = {
-  title: "D.scribe — Write your book as easily as you can talk about it.",
-  description: "D.scribe helps pastors turn the wisdom they already speak into a book, with a guided path for coaches and speakers, too.",
+  title: "D.scribe — Turn Your Voice Into a Published Book with AI",
+  description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
   alternates: {
     canonical: "https://d-scribe.app",
   },
   openGraph: {
-    title: "D.scribe — Write your book as easily as you can talk about it.",
-    description: "For pastors with a message to share, D.scribe makes the path from spoken wisdom to book feel as natural as conversation.",
+    title: "D.scribe — Turn Your Voice Into a Published Book with AI",
+    description: "Upload any audio, set your structure, and watch AI write your manuscript chapter by chapter — in your voice.",
     url: "https://d-scribe.app",
     siteName: "D.scribe",
     type: "website",
-  },
-  twitter: {
-    title: "D.scribe — Write your book as easily as you can talk about it.",
-    description: "For pastors with a message to share, D.scribe makes the path from spoken wisdom to book feel as natural as conversation.",
   },
 };
 
@@ -25,15 +21,15 @@ const orgSchema = {
   "@type": "Organization",
   name: "D.scribe",
   url: "https://d-scribe.app",
-  description: "A guided path for pastors, coaches, and speakers to shape spoken wisdom into a book",
+  description: "AI-powered voice-to-manuscript software for coaches, pastors, and speakers",
 };
 
 const webPageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  name: "D.scribe — Write your book as easily as you can talk about it.",
+  name: "D.scribe — Turn Your Voice Into a Published Book with AI",
   url: "https://d-scribe.app",
-  description: "A guided path from spoken wisdom to a book, built first for pastors.",
+  description: "Upload audio, transcribe, and generate your book manuscript with AI",
   isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
 };
 

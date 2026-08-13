@@ -526,8 +526,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       currentAudioUrlRef.current = null;
       audio.onended = null;
       audio.onerror = null;
-      // An ended element is already paused. Keep its source in place so iOS
-      // retains the same unlocked media element for the next queued clip.
+      // Safari can keep the output audio session active after `ended`. Pause
+      // explicitly before the hands-free effect re-opens recognition, but keep
+      // the source in place so the same element remains gesture-unlocked for
+      // the next queued clip.
+      audio.pause();
       playNext();
     };
     const playbackFailed = (message: string) => {
@@ -707,12 +710,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (isPlayingRef.current) releaseAudioForRecognition();
     try {
       recognition.start();
-    } catch {
+    } catch (error) {
       // Disarm rather than returning silently: the button would otherwise keep
-      // showing an amber "Hands-free" over a dead mic. Real on iOS, where the
-      // re-arm timer is not a user gesture and start() is refused.
+      // showing an amber "Hands-free" over a dead mic. Real on iOS, where a
+      // previous audio session or recognizer has not released yet.
       setHandsFree(false);
       setListening(false);
+      const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+      setSendError(`Hands-free could not start the microphone${detail}. Tap Speak to try again, or type your answer.`);
       return;
     }
     setListening(true);

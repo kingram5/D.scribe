@@ -192,6 +192,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playback).toMatch(/audio\.src = url/);
     expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,220}?playNext\(\)/);
     expect(playback).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    expect(playback).toMatch(/Safari can keep the output audio session active after `ended`\.[\s\S]{0,220}?audio\.pause\(\)/);
     const hardStop = src.slice(src.indexOf("const stopAudio"), src.indexOf("const releaseAudioForRecognition"));
     expect(hardStop).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\)/);
     expect(tts).toMatch(/audioQueueRef\.current\.push\(\{\s*url: URL\.createObjectURL[\s\S]*text: next/);
@@ -218,6 +219,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(recognition).toMatch(/if \(isPlayingRef\.current\) releaseAudioForRecognition\(\)/);
     expect(recognition).not.toMatch(/initializeTtsAudio|playbackFailed/);
     expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
+    expect(recognition).toMatch(/setSendError\(`Hands-free could not start the microphone/);
   });
 
   it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {

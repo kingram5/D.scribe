@@ -216,12 +216,28 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     const src = chat();
     const release = src.slice(src.indexOf("const releaseAudioForRecognition"), src.indexOf("const initializeTtsAudio"));
     const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    const rearm = src.slice(src.indexOf("/* Hands-free re-arm"), src.indexOf("// Clean up recognition on unmount"));
     expect(release).toMatch(/audio\.pause\(\)/);
     expect(release).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    expect(release).not.toMatch(/currentAudioUrlRef\.current\) URL\.revokeObjectURL/);
     expect(recognition).toMatch(/if \(isPlayingRef\.current\) releaseAudioForRecognition\(\)/);
     expect(recognition).not.toMatch(/initializeTtsAudio|playbackFailed/);
     expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
     expect(recognition).toMatch(/setSendError\(`Hands-free could not start the microphone/);
+    expect(recognition).toMatch(/recognition\.onstart[\s\S]{0,500}?recognitionStarted = true/);
+    expect(recognition).toMatch(/if \(!recognitionStarted\)[\s\S]{0,240}?Hands-free could not start the microphone/);
+    expect(rearm).toMatch(/releaseAudioForRecognition\(\);\s*startRecognition\(\)/);
+  });
+
+  it("keeps a finished blob live until the next clip replaces audio.src", () => {
+    const playback = chat().slice(chat().indexOf("const playNext"), chat().indexOf("const speakSentence"));
+    const finish = playback.slice(playback.indexOf("const finishPlayback"), playback.indexOf("const playbackFailed"));
+    const assignNext = playback.slice(playback.indexOf("audio.src = url"), playback.indexOf("isPlayingRef.current = true"));
+    expect(finish).not.toMatch(/URL\.revokeObjectURL|currentAudioUrlRef\.current = null/);
+    expect(finish).toMatch(/audio\.pause\(\);\s*playNext\(\)/);
+    expect(assignNext).toMatch(
+      /audio\.src = url;[\s\S]{0,260}?URL\.revokeObjectURL\(previousAudioUrl\)[\s\S]{0,120}?currentAudioUrlRef\.current = url/,
+    );
   });
 
   it("ignores stale audio and recognition callbacks instead of clobbering a new turn", () => {
@@ -231,7 +247,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(src).toMatch(/const playbackGenerationRef = useRef\(0\)/);
     expect(playback).toMatch(/const isCurrentPlayback = \(\) =>[\s\S]{0,180}?currentAudioUrlRef\.current === url/);
     expect(playback).toMatch(/if \(!isCurrentPlayback\(\)\) return;/);
-    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(3);
+    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(4);
     expect(recognition).toMatch(/event\?\.error === "network"/);
     expect(recognition).toMatch(/Hands-free lost the microphone service/);
   });

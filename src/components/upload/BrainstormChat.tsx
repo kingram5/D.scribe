@@ -17,9 +17,11 @@ interface SavedBrainstormSession {
 
 type StudioRetryAction = "start" | "send" | "finish";
 
-// A two-sample silent WAV. iOS only grants media playback permission from the
-// tap itself, not from the later TTS fetch or SSE callback.
-const TTS_UNLOCK_AUDIO = "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAAAAAA==";
+// A 12.5ms silent WAV. iOS only grants media playback permission from the tap
+// itself, not from the later TTS fetch or SSE callback. Two samples can end
+// before Safari creates a playback session, so keep this long enough to start
+// and immediately pause it without leaving output active for recognition.
+const TTS_UNLOCK_AUDIO = "data:audio/wav;base64,UklGRogAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWQAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
 
 function isMessage(value: unknown): value is Message {
   return typeof value === "object" && value !== null &&

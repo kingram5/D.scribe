@@ -58,6 +58,10 @@ async function readServerError(res: Response, fallback: string): Promise<string>
 
 export function useUploadEngine(projectId: string) {
   const [files, setFiles] = useState<File[]>([]);
+  // A recording is a source too, but it belongs to the recorder that created
+  // it. Keeping it out of `files` prevents a finished recording from jumping
+  // into the separate "Audio files" card and looking as though the app lost it.
+  const [recordings, setRecordings] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<Record<string, string>>({});
   // Per-file transfer percentage (only meaningful while status is "uploading")
@@ -139,7 +143,7 @@ export function useUploadEngine(projectId: string) {
             const file = new File([blob], `recording-${timestamp}.${extForMime(mimeType)}`, {
               type: mimeType,
             });
-            setFiles((prev) => [...prev, file]);
+            setRecordings((prev) => [...prev, file]);
           }
           releaseMicrophone();
         };
@@ -201,7 +205,7 @@ export function useUploadEngine(projectId: string) {
   async function uploadAll() {
     setUploading(true);
 
-    for (const file of files) {
+    for (const file of [...recordings, ...files]) {
       try {
         // Step 1: Get presigned R2 URL. Mobile browsers frequently report
         // file.type as "" for picker files — fall back to octet-stream, which
@@ -331,11 +335,12 @@ export function useUploadEngine(projectId: string) {
     progressEntries.every(([, status]) => status === "done");
 
   const canInitialize =
-    files.length > 0 || youtubeUrl.trim().length > 5 || seconds > 0;
+    files.length > 0 || recordings.length > 0 || youtubeUrl.trim().length > 5;
 
   return {
     // File state
     files,
+    recordings,
     uploading,
     progress,
     uploadPercent,

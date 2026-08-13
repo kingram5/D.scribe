@@ -16,6 +16,7 @@ interface IntakeGridProps {
   seconds: number;
   onToggleRecording: () => void;
   onStopRecording: () => void;
+  recordings: File[];
   // files
   files: File[];
   uploading: boolean;
@@ -59,6 +60,10 @@ function CardTop({ l, r, hot, light }: { l: string; r: string; hot?: boolean; li
       <b style={{ fontWeight: 700, color: hot ? "#C17A47" : "inherit", whiteSpace: "nowrap" }}>{r}</b>
     </header>
   );
+}
+
+function formatRecordingTime(seconds: number) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 const cardBase: React.CSSProperties = {
@@ -146,7 +151,17 @@ export default function IntakeGrid(p: IntakeGridProps) {
       </article>
 
       {/* ── 02 · RECORD — the cassette stays ─────────────────────────────── */}
-      <article className="ds-intake-record" style={{ ...cardBase, background: "var(--ds-paper)", alignItems: "center" }}>
+      <article
+        className="ds-intake-record"
+        data-recording={p.isRecording || undefined}
+        style={{
+          ...cardBase,
+          background: "var(--ds-paper)",
+          alignItems: "center",
+          borderColor: p.isRecording ? "rgba(193,122,71,0.8)" : undefined,
+          boxShadow: p.isRecording ? "0 0 0 3px rgba(193,122,71,0.14)" : undefined,
+        }}
+      >
         <div style={{ alignSelf: "stretch" }}>
           <CardTop l="02 / RECORD LIVE" r={p.isRecording ? "● RECORDING" : "STANDBY"} hot={p.isRecording} />
         </div>
@@ -184,7 +199,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
               Press to record
             </div>
           ) : p.isRecording ? (
-            <div style={{
+            <div role="status" aria-live="polite" style={{
               fontSize: 19,
               fontWeight: 500,
               color: "var(--ds-ink)",
@@ -196,7 +211,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
               gap: 10,
             }}>
               <span className="ds-rec-dot" aria-hidden="true" />
-              Recording — speak naturally
+              Recording {formatRecordingTime(p.seconds)} — tap Stop when you&apos;re done
             </div>
           ) : null}
           {p.recordingError && (
@@ -205,6 +220,45 @@ export default function IntakeGrid(p: IntakeGridProps) {
             </p>
           )}
         </div>
+
+        {p.recordings.length > 0 && (
+          <section
+            className="ds-recorded-files"
+            aria-label="Recorded audio ready to transcribe"
+            style={{
+              alignSelf: "stretch",
+              marginTop: 16,
+              padding: "12px 14px",
+              background: "rgba(193,122,71,0.09)",
+              border: "1px solid rgba(193,122,71,0.28)",
+              borderRadius: 10,
+            }}
+          >
+            <div style={{
+              color: "var(--ds-ink)",
+              fontFamily: "var(--font-geist-mono), monospace",
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+            }}>
+              RECORDED HERE · READY TO TRANSCRIBE
+            </div>
+            {p.recordings.map((file) => (
+              <div key={file.name} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 8,
+                color: "var(--text-secondary)",
+                fontSize: 12,
+                minWidth: 0,
+              }}>
+                <span aria-hidden="true" className="ds-rec-dot" style={{ width: 8, height: 8, animation: "none" }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</span>
+              </div>
+            ))}
+          </section>
+        )}
 
         <div style={{
           marginTop: "auto",

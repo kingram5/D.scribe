@@ -15,6 +15,8 @@ interface SavedBrainstormSession {
   draft: string;
 }
 
+type StudioRetryAction = "start" | "send" | "finish";
+
 function isMessage(value: unknown): value is Message {
   return typeof value === "object" && value !== null &&
     ((value as Message).role === "user" || (value as Message).role === "assistant") &&
@@ -54,6 +56,47 @@ function isAppleMobileDevice() {
   if (typeof navigator === "undefined") return false;
   return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/**
+ * API routes return either { message } or { error }. The prior client only read
+ * `message`, then replaced everything with "Couldn't connect", including an
+ * expired sign-in, rate limit, Ink balance, or an unavailable T.H.E.O service.
+ */
+async function brainstormErrorMessage(res: Response): Promise<string> {
+  let message = "";
+  try {
+    const payload = await res.json() as { message?: unknown; error?: unknown };
+    message = typeof payload.message === "string"
+      ? payload.message
+      : typeof payload.error === "string" ? payload.error : "";
+  } catch {
+    // A proxy error page is not JSON. The status-specific message below is
+    // still more useful than pretending that the user's network failed.
+  }
+
+  if (res.status === 401) return "Your sign-in has expired. Reload this page, sign in again, then send your answer.";
+  if (res.status === 429) {
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    return Number.isFinite(retryAfter) && retryAfter > 0
+      ? `T.H.E.O. needs a short breather. Try again in about ${Math.ceil(retryAfter)} seconds.`
+      : "T.H.E.O. needs a short breather. Please wait a moment, then try again.";
+  }
+  if (res.status === 402) return message || "You are out of Ink for this session. Upgrade your plan to continue brainstorming.";
+  if (res.status === 403) return message || "This account cannot use the brainstorm right now. Check your account access and try again.";
+  if (res.status >= 500) return "T.H.E.O.'s service is temporarily unavailable. Your answer is safe in the box — try again shortly.";
+  return message || `T.H.E.O. could not process that request (HTTP ${res.status}).`;
+}
+
+function brainstormFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  // These browser-level errors carry implementation detail, not an actionable
+  // explanation. Preserve route messages above, but translate mobile network
+  // failures into the recovery the author can actually take.
+  if (/failed to fetch|networkerror|load failed|abort|body stream/i.test(message)) {
+    return "We couldn't reach T.H.E.O. Check your connection, then try again.";
+  }
+  return message || "T.H.E.O. could not be reached right now.";
 }
 
 function useStudioViewport() {
@@ -223,7 +266,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // The studio had no error surface at all: every failure was a console.error or
   // a bare return, so a dead send looked like T.H.E.O repeating himself.
   const [sendError, setSendError] = useState<string | null>(null);
-  const [retryAction, setRetryAction] = useState<"start" | "send" | "finish" | null>(null);
+  const [retryAction, setRetryAction] = useState<StudioRetryAction | null>(null);
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
@@ -231,6 +274,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // about that limitation before an iPhone owner mistakes silent playback for a
   // dead session.
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [ttsFailed, setTtsFailed] = useState(false);
   const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -271,6 +315,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const audioContextInitRef = useRef<Promise<void> | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const sentenceBufferRef = useRef("");
+  // Keeps the one sentence that failed to synthesize so the visible recovery
+  // control can retry it from a user gesture on iOS.
+  const failedTtsTextRef = useRef("");
 
   // Stage presentation state: project audience feeds the interviewer role
   // line; the history drawer holds exchanges older than the rolling two.
@@ -348,6 +395,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         audioContextReadyRef.current = false;
         ttsEnabledRef.current = false;
         setTtsEnabled(false);
+        setTtsFailed(true);
         stopAudio();
         setVoiceNotice("T.H.E.O.'s voice could not start. Continue in text, then tap the speaker to try voice again.");
       });
@@ -356,6 +404,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       audioContextReadyRef.current = false;
       ttsEnabledRef.current = false;
       setTtsEnabled(false);
+      setTtsFailed(true);
       stopAudio();
       setVoiceNotice("T.H.E.O.'s voice is not available in this browser. The session can continue in text.");
       return false;
@@ -385,6 +434,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
       ttsEnabledRef.current = false;
       setTtsEnabled(false);
+      setTtsFailed(true);
       stopAudio();
       setVoiceNotice("T.H.E.O.'s voice stopped before it could play. Continue in text, then tap the speaker to try voice again.");
       return;
@@ -458,16 +508,43 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: next }),
         });
-        if (!res.ok || generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
+        if (!res.ok) {
+          throw new Error(`TTS request failed with HTTP ${res.status}`);
+        }
+        if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
         const buf = await res.arrayBuffer();
+        if (buf.byteLength === 0) throw new Error("TTS returned no audio");
         if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
         audioQueueRef.current.push(buf);
         playNext();
-      } catch { /* TTS is enhancement only — never block chat */ }
+      } catch {
+        // TTS must be optional, but never invisible. A failed request was
+        // swallowed here, which left iPhone users with a slashed speaker and
+        // no explanation or recovery action.
+        ttsEnabledRef.current = false;
+        setTtsEnabled(false);
+        stopAudio();
+        failedTtsTextRef.current = next;
+        setTtsFailed(true);
+        setVoiceNotice("T.H.E.O.'s voice could not be generated. Continue in text, or tap Try voice again to replay this response.");
+      }
       finally { void drain(); }
     };
     void drain();
-  }, [playNext]);
+  }, [playNext, stopAudio]);
+
+  const retryVoice = useCallback(() => {
+    const text = failedTtsTextRef.current;
+    if (!initializeTtsAudio()) return;
+    failedTtsTextRef.current = "";
+    ttsEnabledRef.current = true;
+    setTtsEnabled(true);
+    setTtsFailed(false);
+    setVoiceNotice(isAppleMobileDevice()
+      ? "Voice is on. If you still cannot hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume."
+      : null);
+    if (text) speakSentence(text);
+  }, [initializeTtsAudio, speakSentence]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -648,12 +725,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ messages: initMessages, project_id: projectId }),
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `API error ${res.status}`);
+        throw new Error(await brainstormErrorMessage(res));
       }
 
       const reader = res.body!.getReader();
@@ -717,12 +794,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
     } catch (err) {
       console.error("Brainstorm start error:", err);
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      const isInkError = msg.includes("ink") || msg.includes("402");
+      const msg = brainstormFailureMessage(err);
       setMessages([]);
-      setSendError(isInkError
-        ? "You're out of Ink for this session. Upgrade your plan to continue brainstorming."
-        : "Couldn't connect to the brainstorm session. Please try again.");
+      setSendError(msg || "Couldn't connect to the brainstorm session. Please try again.");
       setRetryAction("start");
     }
 
@@ -760,12 +834,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ messages: apiMessages, project_id: projectId }),
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `API error ${res.status}`);
+        throw new Error(await brainstormErrorMessage(res));
       }
 
       const reader = res.body!.getReader();
@@ -837,7 +911,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // forever, appending unanswered turns to the summarize payload.
       setMessages(messages);
       setInput(text);
-      setSendError("Couldn't reach T.H.E.O. Your answer is back in the box — try again.");
+      const msg = brainstormFailureMessage(err);
+      setSendError(`${msg} Your answer is back in the box — try again.`);
       setRetryAction("send");
       setHandsFree(false);
     }
@@ -1409,6 +1484,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               ttsEnabledRef.current = next && voiceReady;
               if (!next) {
                 stopAudio();
+                setTtsFailed(false);
                 setVoiceNotice(null);
               } else if (voiceReady && isAppleMobileDevice()) {
                 setVoiceNotice("If you do not hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume. The mic pauses while a response is playing; tap the speaker to stop it and keep using text.");
@@ -1428,6 +1504,25 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           >
             {ttsEnabled ? "🔊" : "🔇"}
           </button>
+          {ttsFailed && !ttsEnabled && (
+            <button
+              onClick={retryVoice}
+              className="ds-studio-voice-retry"
+              aria-label="Try T.H.E.O. voice again"
+              style={{
+                background: "none",
+                color: "rgba(249,247,242,0.72)",
+                border: "1px solid rgba(249,247,242,0.18)",
+                borderRadius: 8,
+                padding: "7px 10px",
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Try voice again
+            </button>
+          )}
           <TtsMeter compact />
           {canUndo && (
             <button
@@ -1625,6 +1720,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               }}
             >
               Retry
+            </button>
+          )}
+          {voiceNotice?.includes("Try voice again") && (
+            <button
+              onClick={retryVoice}
+              style={{
+                background: "var(--ds-accent-500)", color: "#fff", border: "none",
+                borderRadius: 100, padding: "6px 16px", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Try voice again
             </button>
           )}
           <button

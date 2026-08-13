@@ -15,6 +15,8 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const chat = () => read("components/upload/BrainstormChat.tsx");
 const css = () => read("app/globals.css");
 const uploadPage = () => read("app/(main)/project/[projectId]/upload/page.tsx");
+const uploadEngine = () => read("app/(main)/project/[projectId]/upload/useUploadEngine.ts");
+const intakeGrid = () => read("components/upload/IntakeGrid.tsx");
 
 describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
   it("persists an unsent draft with messages and still reads legacy array sessions", () => {
@@ -163,6 +165,43 @@ describe("T.H.E.O. M3: studio mobile surface", () => {
     expect(chat()).toMatch(/className="ds-studio-content"[\s\S]*className="ds-studio-history"/);
     expect(css()).toMatch(/\.ds-studio-history\s*\{[\s\S]*inset: 0/);
     expect(chat()).not.toMatch(/top:\s*68/);
+  });
+
+  it("stacks Speak, the answer box, Send, and Finish on a phone", () => {
+    const mobile = css().slice(css().indexOf("@media (max-width: 768px)", css().indexOf(".ds-studio-stage")));
+    expect(mobile).toMatch(/\.ds-studio-composer-form\s*\{[\s\S]{0,180}?flex-direction:\s*column/);
+    expect(mobile).toMatch(/\.ds-studio-mic,[\s\S]{0,120}?width:\s*100%/);
+    expect(mobile).toMatch(/\.ds-studio-send\s*\{[\s\S]{0,100}?width:\s*100%/);
+    expect(mobile).toMatch(/\.ds-studio-title\s*\{[\s\S]{0,180}?white-space:\s*normal/);
+  });
+});
+
+describe("T.H.E.O. iPhone QA: no silent failures", () => {
+  it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {
+    const src = chat();
+    const tts = src.slice(src.indexOf("const speakSentence"), src.indexOf("// Cleanup audio on unmount"));
+    expect(tts).toMatch(/if \(!res\.ok\) \{\s*throw new Error\(`TTS request failed/);
+    expect(tts).toMatch(/failedTtsTextRef\.current = next/);
+    expect(tts).toContain("Try voice again");
+    expect(src).toMatch(/const retryVoice = useCallback/);
+  });
+
+  it("keeps real brainstorm API errors instead of replacing them with a fake connection error", () => {
+    const src = chat();
+    expect(src).toMatch(/async function brainstormErrorMessage/);
+    expect(src).toMatch(/payload\.message[\s\S]{0,150}?payload\.error/);
+    expect(src).toMatch(/credentials:\s*"same-origin"/);
+    expect(src).toMatch(/Your sign-in has expired/);
+    expect(src).toMatch(/T\.H\.E\.O\.'s service is temporarily unavailable/);
+  });
+
+  it("keeps finished recordings in the Record card while uploading them as sources", () => {
+    const engine = uploadEngine();
+    expect(engine).toMatch(/const \[recordings, setRecordings\] = useState<File\[\]>\(\[\]\)/);
+    expect(engine).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
+    expect(engine).toMatch(/for \(const file of \[\.\.\.recordings, \.\.\.files\]\)/);
+    expect(uploadPage()).toMatch(/recordings=\{engine\.recordings\}/);
+    expect(intakeGrid()).toContain("RECORDED HERE · READY TO TRANSCRIBE");
   });
 });
 

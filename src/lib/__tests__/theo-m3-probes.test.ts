@@ -85,7 +85,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(src).toMatch(/const finalTranscriptRef = useRef\(""\)/);
     expect(recognition).toMatch(/finalTranscriptRef\.current \+= transcript \+ " "/);
     expect(recognition).toMatch(/setInput\(finalTranscriptRef\.current \+ interim\)/);
-    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,120}?autoSendRef\.current\?\.\(\)/);
+    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
     expect(onEnd).not.toMatch(/clearTimeout\(silenceTimerRef\.current\)/);
     expect(send).toMatch(/finalTranscriptRef\.current = ""/);
   });

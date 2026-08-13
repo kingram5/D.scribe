@@ -117,7 +117,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,500}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
-    expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);
+    expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{[\s\S]{0,160}?setSpeaking\(false\);[\s\S]{0,40}?return;/);
   });
 });
 

@@ -8,6 +8,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const rawNext = searchParams.get("next") || "/dashboard";
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  const vercelShare = searchParams.get("_vercel_share");
   const authError = searchParams.get("error");
   const errorMessage = searchParams.get("message");
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,7 @@ function LoginContent() {
       const res = await fetch("/api/auth/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, next }),
+        body: JSON.stringify({ email, next, _vercel_share: vercelShare }),
       });
       const data = await res.json().catch(() => ({}));
       setLoading(false);

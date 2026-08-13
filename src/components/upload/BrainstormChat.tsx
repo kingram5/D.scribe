@@ -333,6 +333,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const audioQueueRef = useRef<Array<{ url: string; text: string }>>([]);
   const isPlayingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsUnlockGenerationRef = useRef(0);
+  const ttsUnlockPendingRef = useRef(false);
+  const ttsUnlockReadyRef = useRef<Promise<void> | null>(null);
   const currentAudioUrlRef = useRef<string | null>(null);
   const sentenceBufferRef = useRef("");
   // Keeps the one sentence that failed to synthesize so the visible recovery
@@ -389,10 +392,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const stopAudio = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
+      // Clearing handlers first keeps an intentional reset from reporting a
+      // media error and throwing away the remaining response.
+      audio.onended = null;
+      audio.onerror = null;
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
     }
+    ttsUnlockGenerationRef.current += 1;
+    ttsUnlockPendingRef.current = false;
+    ttsUnlockReadyRef.current = null;
     if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
     currentAudioUrlRef.current = null;
     audioQueueRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
@@ -415,17 +425,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       audio.setAttribute("playsinline", "");
       audio.preload = "auto";
       audioRef.current = audio;
+      const unlockGeneration = ++ttsUnlockGenerationRef.current;
+      ttsUnlockPendingRef.current = true;
       audio.src = TTS_UNLOCK_AUDIO;
-      void audio.play().then(() => {
+      ttsUnlockReadyRef.current = audio.play().then(() => {
+        // Do not let a delayed unlock completion erase a real TTS clip. This
+        // can happen when the user taps retry while an earlier media promise
+        // is still settling.
+        if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
         audio.pause();
         audio.removeAttribute("src");
         audio.load();
       }).catch(() => {
+        if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
         // A rejected unlock is an autoplay restriction, not a user mute or a
         // TTS service failure. Leave voice enabled and give the user a real
         // gesture to try again.
         setTtsFailed(true);
         setVoiceNotice("iPhone needs one more tap before it can play T.H.E.O.'s voice. Tap Try voice again.");
+      }).finally(() => {
+        if (ttsUnlockGenerationRef.current === unlockGeneration) {
+          ttsUnlockPendingRef.current = false;
+        }
       });
       return true;
     } catch {
@@ -441,6 +462,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // TTS helpers — defined before toggleListening to avoid TDZ
   const playNext = useCallback(() => {
     if (isPlayingRef.current) return;
+    // Never overlap the silent gesture unlock with the first real clip. Once
+    // it settles, this same shared element continues with every queued line.
+    if (ttsUnlockPendingRef.current) {
+      void ttsUnlockReadyRef.current?.finally(() => playNext());
+      return;
+    }
     if (!pageVisibleRef.current) {
       audioQueueRef.current = [];
       setSpeaking(false);
@@ -477,7 +504,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       isPlayingRef.current = false;
       if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
       currentAudioUrlRef.current = null;
+      audio.onended = null;
+      audio.onerror = null;
       audio.removeAttribute("src");
+      audio.load();
       playNext();
     };
     const playbackFailed = (message: string) => {

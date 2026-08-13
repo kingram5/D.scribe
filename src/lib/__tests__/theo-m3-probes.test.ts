@@ -101,7 +101,8 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(initialize).toMatch(/audioRef\.current = audio/);
     expect(initialize).toMatch(/audio\.setAttribute\("playsinline", ""\)/);
     expect(initialize).toMatch(/audio\.src = TTS_UNLOCK_AUDIO/);
-    expect(initialize).toMatch(/void audio\.play\(\)\.then\(\(\) => \{\s*audio\.pause\(\)/);
+    expect(initialize).toMatch(/ttsUnlockReadyRef\.current = audio\.play\(\)\.then/);
+    expect(initialize).toMatch(/audio\.src !== TTS_UNLOCK_AUDIO\) return;[\s\S]{0,120}?audio\.pause\(\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
     expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
@@ -184,9 +185,10 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
     const tts = src.slice(src.indexOf("const speakSentence"), src.indexOf("// Cleanup audio on unmount"));
     expect(playback).toMatch(/const audio = audioRef\.current/);
+    expect(playback).toMatch(/if \(ttsUnlockPendingRef\.current\) \{\s*void ttsUnlockReadyRef\.current\?\.finally\(\(\) => playNext\(\)\)/);
     expect(playback).toMatch(/const nextAudio = audioQueueRef\.current\.shift\(\)!/);
     expect(playback).toMatch(/audio\.onended = finishPlayback/);
-    expect(playback).toMatch(/audio\.removeAttribute\("src"\);\s*playNext\(\)/);
+    expect(playback).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\);\s*playNext\(\)/);
     expect(tts).toMatch(/audioQueueRef\.current\.push\(\{\s*url: URL\.createObjectURL[\s\S]*text: next/);
     expect(tts).toMatch(/playNext\(\)/);
   });
@@ -194,7 +196,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
   it("keeps the speaker enabled when a later play is blocked and offers a real retry tap", () => {
     const src = chat();
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    const playbackFailed = playback.slice(playback.indexOf("const playbackFailed"), playback.indexOf("audio.onended"));
+    const playbackFailed = playback.slice(playback.indexOf("const playbackFailed"), playback.indexOf("audio.src = url"));
     expect(playback).toMatch(/\.catch\(\(\) => playbackFailed\("iPhone blocked/);
     expect(playbackFailed).not.toMatch(/ttsEnabledRef\.current = false|setTtsEnabled\(false\)/);
     expect(playbackFailed).toMatch(/failedTtsTextRef\.current = text/);

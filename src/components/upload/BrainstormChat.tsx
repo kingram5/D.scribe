@@ -15,6 +15,8 @@ interface SavedBrainstormSession {
   draft: string;
 }
 
+type StudioRetryAction = "start" | "send" | "finish";
+
 function isMessage(value: unknown): value is Message {
   return typeof value === "object" && value !== null &&
     ((value as Message).role === "user" || (value as Message).role === "assistant") &&
@@ -54,6 +56,63 @@ function isAppleMobileDevice() {
   if (typeof navigator === "undefined") return false;
   return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/**
+ * API routes return either { message } or { error }. The prior client only read
+ * `message`, then replaced everything with "Couldn't connect", including an
+ * expired sign-in, rate limit, Ink balance, or an unavailable T.H.E.O service.
+ */
+async function brainstormErrorMessage(res: Response): Promise<string> {
+  let message = "";
+  try {
+    const payload = await res.json() as { message?: unknown; error?: unknown };
+    message = typeof payload.message === "string"
+      ? payload.message
+      : typeof payload.error === "string" ? payload.error : "";
+  } catch {
+    // A proxy error page is not JSON. The status-specific message below is
+    // still more useful than pretending that the user's network failed.
+  }
+
+  if (res.status === 401) return "HTTP 401 — your sign-in has expired. Reload this page, sign in again, then send your answer.";
+  if (res.status === 429) {
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    return Number.isFinite(retryAfter) && retryAfter > 0
+      ? `HTTP 429 — T.H.E.O. needs a short breather. Try again in about ${Math.ceil(retryAfter)} seconds.`
+      : "HTTP 429 — T.H.E.O. needs a short breather. Please wait a moment, then try again.";
+  }
+  if (res.status === 402) return `HTTP 402 — ${message || "you are out of Ink for this session. Upgrade your plan to continue brainstorming."}`;
+  if (res.status === 403) return `HTTP 403 — ${message || "this account cannot use the brainstorm right now. Check your account access and try again."}`;
+  if (res.status >= 500) return `HTTP ${res.status} — ${message || "T.H.E.O.'s service is temporarily unavailable. Try again shortly."}`;
+  return `HTTP ${res.status} — ${message || "T.H.E.O. could not process that request."}`;
+}
+
+function brainstormFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  // These browser-level errors carry implementation detail, not an actionable
+  // explanation. Preserve route messages above, but translate mobile network
+  // failures into the recovery the author can actually take.
+  if (/no stream/i.test(message)) {
+    return "T.H.E.O. returned HTTP 200 without a response stream. Your answer is safe, so try again.";
+  }
+  if (/failed to fetch|networkerror|load failed|abort|body stream/i.test(message)) {
+    return "We couldn't reach T.H.E.O. Check your connection, then try again.";
+  }
+  return message || "T.H.E.O. could not be reached right now.";
+}
+
+async function ttsErrorMessage(res: Response): Promise<string> {
+  let detail = "";
+  try {
+    const payload = await res.json() as { message?: unknown; error?: unknown };
+    detail = typeof payload.message === "string"
+      ? payload.message
+      : typeof payload.error === "string" ? payload.error : "";
+  } catch {
+    // A non-JSON gateway response still has an actionable HTTP status.
+  }
+  return `T.H.E.O.'s voice returned HTTP ${res.status}${detail ? ` — ${detail}` : ""}`;
 }
 
 function useStudioViewport() {
@@ -223,7 +282,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // The studio had no error surface at all: every failure was a console.error or
   // a bare return, so a dead send looked like T.H.E.O repeating himself.
   const [sendError, setSendError] = useState<string | null>(null);
-  const [retryAction, setRetryAction] = useState<"start" | "send" | "finish" | null>(null);
+  const [retryAction, setRetryAction] = useState<StudioRetryAction | null>(null);
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
@@ -231,6 +290,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // about that limitation before an iPhone owner mistakes silent playback for a
   // dead session.
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [ttsFailed, setTtsFailed] = useState(false);
   const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -256,21 +316,24 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
 
-  // TTS state
+  // TTS state. Keep playback on an HTML media element: iPhone routes media
+  // audio differently from Web Audio, while AudioContext can remain silent
+  // behind the hardware ringer path.
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const ttsEnabledRef = useRef(true);
   // Fetching sentence audio concurrently lets faster later responses jump ahead
-  // of earlier ones. Keep text requests ordered as well as decoded audio.
+  // of earlier ones. Keep text requests ordered as well as media playback.
   const ttsRequestQueueRef = useRef<string[]>([]);
   const ttsRequestInFlightRef = useRef(false);
   const ttsRequestGenerationRef = useRef(0);
-  const audioQueueRef = useRef<ArrayBuffer[]>([]);
+  const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioContextReadyRef = useRef(false);
-  const audioContextInitRef = useRef<Promise<void> | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentAudioUrlRef = useRef<string | null>(null);
   const sentenceBufferRef = useRef("");
+  // Keeps the one sentence that failed to synthesize so the visible recovery
+  // control can retry it from a user gesture on iOS.
+  const failedTtsTextRef = useRef("");
 
   // Stage presentation state: project audience feeds the interviewer role
   // line; the history drawer holds exchanges older than the rolling two.
@@ -320,8 +383,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
   const stopAudio = useCallback(() => {
-    try { currentSourceRef.current?.stop(); } catch { /* ignore */ }
-    currentSourceRef.current = null;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
+    currentAudioUrlRef.current = null;
+    audioQueueRef.current.forEach((url) => URL.revokeObjectURL(url));
     ttsRequestGenerationRef.current += 1;
     ttsRequestQueueRef.current = [];
     audioQueueRef.current = [];
@@ -330,34 +400,22 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setSpeaking(false);
   }, []);
 
-  // This is called synchronously from voice-control click handlers. iOS only
-  // lets Web Audio leave its suspended state from a user gesture; doing this
-  // later in an SSE/TTS callback silently strands playback and hands-free.
+  // This is called synchronously from voice-control click handlers. Use an
+  // actual media element rather than Web Audio so iPhone treats speech as media
+  // output. The <audio playsInline> is also visible in source for QA.
   const initializeTtsAudio = useCallback(() => {
     try {
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) throw new Error("Web Audio is unavailable");
-      const ctx = audioCtxRef.current ?? new Ctx();
-      audioCtxRef.current = ctx;
-      audioContextReadyRef.current = ctx.state === "running";
-      const resume = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
-      audioContextInitRef.current = resume.then(() => {
-        if (ctx.state !== "running") throw new Error("Audio context did not start");
-        audioContextReadyRef.current = true;
-      }).catch(() => {
-        audioContextReadyRef.current = false;
-        ttsEnabledRef.current = false;
-        setTtsEnabled(false);
-        stopAudio();
-        setVoiceNotice("T.H.E.O.'s voice could not start. Continue in text, then tap the speaker to try voice again.");
-      });
+      const audio = audioRef.current ?? new Audio();
+      audio.setAttribute("playsinline", "");
+      audio.preload = "auto";
+      audioRef.current = audio;
       return true;
     } catch {
-      audioContextReadyRef.current = false;
       ttsEnabledRef.current = false;
       setTtsEnabled(false);
+      setTtsFailed(true);
       stopAudio();
-      setVoiceNotice("T.H.E.O.'s voice is not available in this browser. The session can continue in text.");
+      setVoiceNotice("T.H.E.O.'s voice is not available in this browser. Continue in text, then tap Try voice again.");
       return false;
     }
   }, [stopAudio]);
@@ -374,19 +432,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // when it is safe to re-open the mic without recording his own voice.
     if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
 
-    const ctx = audioCtxRef.current;
-    if (!ctx || !audioContextReadyRef.current || ctx.state !== "running") {
-      // A just-clicked Resume can resolve after the first streamed sentence.
-      // Wait for that gesture-bound promise; do not create/resume a context from
-      // this asynchronous callback.
-      if (audioContextInitRef.current && !audioContextReadyRef.current) {
-        void audioContextInitRef.current.then(() => playNext());
-        return;
-      }
+    const audio = audioRef.current;
+    if (!audio) {
       ttsEnabledRef.current = false;
       setTtsEnabled(false);
+      setTtsFailed(true);
       stopAudio();
-      setVoiceNotice("T.H.E.O.'s voice stopped before it could play. Continue in text, then tap the speaker to try voice again.");
+      setVoiceNotice("T.H.E.O.'s voice could not start. Continue in text, then tap Try voice again.");
       return;
     }
 
@@ -400,43 +452,36 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setListening(false);
     }
 
-    isPlayingRef.current = true;
-    setSpeaking(true);
-    const onDecodeFailed = () => {
+    const url = audioQueueRef.current.shift()!;
+    currentAudioUrlRef.current = url;
+    const finishPlayback = () => {
       isPlayingRef.current = false;
-      currentSourceRef.current = null;
+      if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
+      currentAudioUrlRef.current = null;
+      audio.removeAttribute("src");
       playNext();
     };
-    try {
-      const buf = audioQueueRef.current.shift()!;
-      // The decode error callback is mandatory. Without one, a single failed
-      // decode (truncated upstream body, partial mp3) left isPlayingRef and
-      // `speaking` true forever.
-      ctx.decodeAudioData(buf.slice(0), (decoded) => {
-        const src = ctx.createBufferSource();
-        src.buffer = decoded;
-        src.connect(ctx.destination);
-        currentSourceRef.current = src;
-        let finished = false;
-        let endFallback: ReturnType<typeof setTimeout> | null = null;
-        const finishPlayback = () => {
-          if (finished) return;
-          finished = true;
-          if (endFallback) clearTimeout(endFallback);
-          isPlayingRef.current = false;
-          currentSourceRef.current = null;
-          playNext();
-        };
-        src.onended = finishPlayback;
-        // Hardware mute provides no browser signal on iPhone. This fallback is
-        // also the escape hatch if Safari fails to dispatch onended: the nominal
-        // audio duration is enough to release the busy latch and re-open hands-free.
-        endFallback = setTimeout(finishPlayback, Math.max(1000, Math.ceil(decoded.duration * 1000) + 750));
-        try { src.start(); } catch { finishPlayback(); }
-      }, onDecodeFailed);
-    } catch {
-      onDecodeFailed();
-    }
+    const playbackFailed = () => {
+      ttsEnabledRef.current = false;
+      setTtsEnabled(false);
+      setTtsFailed(true);
+      setSpeaking(false);
+      failedTtsTextRef.current ||= "";
+      stopAudio();
+      setVoiceNotice("T.H.E.O.'s voice could not play. Continue in text, then tap Try voice again.");
+    };
+    audio.onended = finishPlayback;
+    audio.onerror = playbackFailed;
+    audio.src = url;
+    isPlayingRef.current = true;
+    setSpeaking(true);
+    void audio.play().then(() => {
+      // We cannot read the Silent switch. Only explain it after this response
+      // returned 200 and the media element actually started playing.
+      if (isAppleMobileDevice()) {
+        setVoiceNotice("Voice is playing. If you still cannot hear T.H.E.O., turn off Silent mode and raise your iPhone media volume.");
+      }
+    }).catch(playbackFailed);
   }, [stopAudio]);
 
   const speakSentence = useCallback((text: string) => {
@@ -458,22 +503,47 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: next }),
         });
-        if (!res.ok || generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
-        const buf = await res.arrayBuffer();
+        if (!res.ok) {
+          throw new Error(await ttsErrorMessage(res));
+        }
         if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
-        audioQueueRef.current.push(buf);
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength === 0) throw new Error("TTS returned no audio");
+        if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
+        audioQueueRef.current.push(URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" })));
         playNext();
-      } catch { /* TTS is enhancement only — never block chat */ }
+      } catch (error) {
+        // TTS must be optional, but never invisible. A failed request was
+        // swallowed here, which left iPhone users with a slashed speaker and
+        // no explanation or recovery action.
+        ttsEnabledRef.current = false;
+        setTtsEnabled(false);
+        stopAudio();
+        failedTtsTextRef.current = next;
+        setTtsFailed(true);
+        const detail = error instanceof Error ? error.message : "T.H.E.O.'s voice could not be generated.";
+        setVoiceNotice(`${detail} Continue in text, or tap Try voice again to replay this response.`);
+      }
       finally { void drain(); }
     };
     void drain();
-  }, [playNext]);
+  }, [playNext, stopAudio]);
+
+  const retryVoice = useCallback(() => {
+    const text = failedTtsTextRef.current;
+    if (!initializeTtsAudio()) return;
+    failedTtsTextRef.current = "";
+    ttsEnabledRef.current = true;
+    setTtsEnabled(true);
+    setTtsFailed(false);
+    setVoiceNotice(null);
+    if (text) speakSentence(text);
+  }, [initializeTtsAudio, speakSentence]);
 
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
       stopAudio();
-      audioCtxRef.current?.close().catch(() => {});
     };
   }, [stopAudio]);
 
@@ -652,9 +722,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `API error ${res.status}`);
+        throw new Error(await brainstormErrorMessage(res));
       }
+      if (!res.body) throw new Error("T.H.E.O. returned no stream.");
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -717,13 +787,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
     } catch (err) {
       console.error("Brainstorm start error:", err);
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      const isInkError = msg.includes("ink") || msg.includes("402");
+      const msg = brainstormFailureMessage(err);
       setMessages([]);
-      setSendError(isInkError
-        ? "You're out of Ink for this session. Upgrade your plan to continue brainstorming."
-        : "Couldn't connect to the brainstorm session. Please try again.");
-      setRetryAction("start");
+      setSendError(msg || "Couldn't connect to the brainstorm session. Please try again.");
+      setRetryAction(/HTTP 401/.test(msg) ? null : "start");
     }
 
     setStreaming(false);
@@ -764,9 +831,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `API error ${res.status}`);
+        throw new Error(await brainstormErrorMessage(res));
       }
+      if (!res.body) throw new Error("T.H.E.O. returned no stream.");
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -837,8 +904,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // forever, appending unanswered turns to the summarize payload.
       setMessages(messages);
       setInput(text);
-      setSendError("Couldn't reach T.H.E.O. Your answer is back in the box — try again.");
-      setRetryAction("send");
+      const msg = brainstormFailureMessage(err);
+      setSendError(`${msg} Your answer is back in the box — try again.`);
+      setRetryAction(/HTTP 401/.test(msg) ? null : "send");
       setHandsFree(false);
     }
 
@@ -1104,9 +1172,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const voiceReady = !on || initializeTtsAudio();
       setTtsEnabled(on && voiceReady);
       ttsEnabledRef.current = on && voiceReady;
-      setVoiceNotice(on && voiceReady && isAppleMobileDevice()
-        ? "If you do not hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume. The mic pauses while a response is playing; tap the speaker to stop it and keep using text."
-        : null);
+      setVoiceNotice(null);
       setShowTtsPrompt(false);
       if (pendingResume) {
         setMessages(savedMessages);
@@ -1377,6 +1443,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           far out of focus so the conversation stays the subject. One CSS rule
           lifts every sibling above it, so the stage markup below is untouched. */}
       <StudioBackdrop />
+      <audio ref={audioRef} playsInline preload="auto" aria-hidden="true" />
       {/* Stage header */}
       <div className="ds-studio-header">
         <button
@@ -1409,9 +1476,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               ttsEnabledRef.current = next && voiceReady;
               if (!next) {
                 stopAudio();
+                setTtsFailed(false);
                 setVoiceNotice(null);
-              } else if (voiceReady && isAppleMobileDevice()) {
-                setVoiceNotice("If you do not hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume. The mic pauses while a response is playing; tap the speaker to stop it and keep using text.");
+              } else if (voiceReady) {
+                setVoiceNotice(null);
               }
             }}
             title={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
@@ -1428,7 +1496,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           >
             {ttsEnabled ? "🔊" : "🔇"}
           </button>
-          <TtsMeter compact />
+          {ttsFailed && !ttsEnabled && (
+            <button
+              onClick={retryVoice}
+              className="ds-studio-voice-retry"
+              aria-label="Try T.H.E.O. voice again"
+              style={{
+                background: "none",
+                color: "rgba(249,247,242,0.72)",
+                border: "1px solid rgba(249,247,242,0.18)",
+                borderRadius: 8,
+                padding: "7px 10px",
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Try voice again
+            </button>
+          )}
+          <div className="ds-studio-tts-meter">
+            <TtsMeter compact />
+          </div>
           {canUndo && (
             <button
               onClick={undoLast}
@@ -1625,6 +1714,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               }}
             >
               Retry
+            </button>
+          )}
+          {voiceNotice?.includes("Try voice again") && (
+            <button
+              onClick={retryVoice}
+              style={{
+                background: "var(--ds-accent-500)", color: "#fff", border: "none",
+                borderRadius: 100, padding: "6px 16px", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Try voice again
             </button>
           )}
           <button

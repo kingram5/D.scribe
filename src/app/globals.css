@@ -470,18 +470,27 @@ input[type=range] {
 @media (max-width: 768px) {
   .ds-studio-header {
     gap: 10px;
+    align-items: stretch;
     padding: calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
   }
+  .ds-studio-exit {
+    align-self: flex-start;
+  }
   .ds-studio-title {
-    flex: 1 1 160px;
+    flex: 1 1 100%;
     margin-left: 0 !important;
     max-width: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
   }
   .ds-studio-actions {
     width: 100%;
     margin-left: 0 !important;
-    justify-content: flex-end;
+    justify-content: flex-start;
     flex-wrap: wrap;
+  }
+  .ds-studio-tts-meter {
+    display: none;
   }
   .ds-studio-conversation {
     padding: 8px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
@@ -494,23 +503,22 @@ input[type=range] {
   .ds-studio-composer {
     padding: 0 max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
-}
-@media (max-width: 500px) {
   .ds-studio-composer-form {
-    display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
     gap: 8px !important;
   }
+  .ds-studio-mic,
   .ds-studio-textarea {
-    grid-column: 2;
+    width: 100%;
     min-width: 0 !important;
   }
-  .ds-studio-composer-form:not(:has(.ds-studio-mic)) .ds-studio-textarea {
-    grid-column: 1 / 3;
+  .ds-studio-send {
+    width: 100% !important;
+    align-self: stretch;
   }
-  .ds-studio-send { grid-column: 3; }
   .ds-studio-finish {
-    grid-column: 1 / -1;
     width: 100%;
   }
 }
@@ -802,6 +810,18 @@ input[type=range] {
 @media (max-width: 900px) {
   .ds-intake { grid-template-columns: 1fr; }
   .ds-intake-record { grid-row: auto; }
+}
+@media (max-width: 768px) {
+  .ds-upload-stage {
+    padding: 6px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)) !important;
+  }
+  .ds-upload-action-bar {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+  .ds-upload-action-bar .transcribe-btn {
+    width: 100%;
+  }
 }
 
 .ds-rec-dot {

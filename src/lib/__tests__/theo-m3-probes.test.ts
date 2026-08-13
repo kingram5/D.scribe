@@ -15,6 +15,8 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const chat = () => read("components/upload/BrainstormChat.tsx");
 const css = () => read("app/globals.css");
 const uploadPage = () => read("app/(main)/project/[projectId]/upload/page.tsx");
+const uploadEngine = () => read("app/(main)/project/[projectId]/upload/useUploadEngine.ts");
+const intakeGrid = () => read("components/upload/IntakeGrid.tsx");
 
 describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
   it("persists an unsent draft with messages and still reads legacy array sessions", () => {
@@ -90,25 +92,23 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(send).toMatch(/finalTranscriptRef\.current = ""/);
   });
 
-  it("starts Web Audio from the voice click and releases a stuck iPhone playback latch", () => {
+  it("plays T.H.E.O. as inline media, not Web Audio, so iPhone uses its media channel", () => {
     const src = chat();
     const initialize = src.slice(src.indexOf("const initializeTtsAudio"), src.indexOf("// TTS helpers"));
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    expect(initialize).toMatch(/new Ctx\(\)/);
-    expect(initialize).toMatch(/ctx\.resume\(\)/);
-    expect(src).toMatch(/function chooseTts\(on: boolean\) \{[\s\S]{0,100}?initializeTtsAudio\(\)/);
-    expect(playback).not.toMatch(/new Ctx\(\)|ctx\.resume\(\)/);
-    expect(playback).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
-    expect(src).toMatch(/ttsEnabledRef\.current = false/);
+    expect(src).toMatch(/<audio ref=\{audioRef\} playsInline preload="auto"/);
+    expect(initialize).toMatch(/audio\.setAttribute\("playsinline", ""\)/);
+    expect(playback).toMatch(/audio\.play\(\)\.then/);
+    expect(src).toMatch(/URL\.createObjectURL/);
+    expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
   });
 
-  it("explains iPhone Silent mode and leaves a silent response able to finish", () => {
+  it("only explains iPhone Silent mode after a successful media response begins", () => {
     const src = chat();
-    expect(src).toMatch(/function isAppleMobileDevice/);
-    expect(src).toContain("Silent mode");
+    const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
+    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,300}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
-    expect(src).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
     expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);
   });
 });
@@ -163,6 +163,75 @@ describe("T.H.E.O. M3: studio mobile surface", () => {
     expect(chat()).toMatch(/className="ds-studio-content"[\s\S]*className="ds-studio-history"/);
     expect(css()).toMatch(/\.ds-studio-history\s*\{[\s\S]*inset: 0/);
     expect(chat()).not.toMatch(/top:\s*68/);
+  });
+
+  it("stacks Speak, the answer box, Send, and Finish on a phone", () => {
+    const mobile = css().slice(css().indexOf("@media (max-width: 768px)", css().indexOf(".ds-studio-stage")));
+    expect(mobile).toMatch(/\.ds-studio-composer-form\s*\{[\s\S]{0,180}?flex-direction:\s*column/);
+    expect(mobile).toMatch(/\.ds-studio-mic,[\s\S]{0,120}?width:\s*100%/);
+    expect(mobile).toMatch(/\.ds-studio-send\s*\{[\s\S]{0,100}?width:\s*100%/);
+    expect(mobile).toMatch(/\.ds-studio-title\s*\{[\s\S]{0,180}?white-space:\s*normal/);
+  });
+});
+
+describe("T.H.E.O. iPhone QA: no silent failures", () => {
+  it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {
+    const src = chat();
+    const tts = src.slice(src.indexOf("const speakSentence"), src.indexOf("// Cleanup audio on unmount"));
+    expect(tts).toMatch(/if \(!res\.ok\) \{\s*throw new Error\(await ttsErrorMessage\(res\)\)/);
+    expect(tts).toMatch(/failedTtsTextRef\.current = next/);
+    expect(tts).toContain("Try voice again");
+    expect(src).toMatch(/const retryVoice = useCallback/);
+    expect(src).toMatch(/async function ttsErrorMessage/);
+    expect(src).toMatch(/T\.H\.E\.O\.'s voice returned HTTP \$\{res\.status\}/);
+  });
+
+  it("keeps real brainstorm API errors instead of replacing them with a fake connection error", () => {
+    const src = chat();
+    expect(src).toMatch(/async function brainstormErrorMessage/);
+    expect(src).toMatch(/payload\.message[\s\S]{0,150}?payload\.error/);
+    expect(src).not.toMatch(/credentials:\s*"same-origin"/);
+    expect(src).toMatch(/HTTP 401 — your sign-in has expired/);
+    expect(src).toMatch(/setRetryAction\(\/HTTP 401\/\.test\(msg\) \? null/);
+    expect(src).toMatch(/if \(!res\.body\) throw new Error\("T\.H\.E\.O\. returned no stream\."\)/);
+    expect(src).toMatch(/T\.H\.E\.O\.'s service is temporarily unavailable/);
+  });
+
+  it("keeps finished recordings in the Record card while uploading them as sources", () => {
+    const engine = uploadEngine();
+    expect(engine).toMatch(/const \[recordings, setRecordings\] = useState<File\[\]>\(\[\]\)/);
+    expect(engine).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
+    expect(engine).toMatch(/for \(const file of \[\.\.\.recordings, \.\.\.files\]\)/);
+    expect(uploadPage()).toMatch(/recordings=\{engine\.recordings\}/);
+    expect(intakeGrid()).toContain("RECORDED HERE · READY TO TRANSCRIBE");
+  });
+
+  it("pauses and resumes the live recorder instead of treating Pause as Stop", () => {
+    const engine = uploadEngine();
+    const tape = read("components/upload/CassetteTape.tsx");
+    expect(engine).toMatch(/mediaRecorderRef\.current\.pause\(\)/);
+    expect(engine).toMatch(/mediaRecorderRef\.current\.resume\(\)/);
+    expect(engine).toMatch(/const \[isPaused, setIsPaused\] = useState\(false\)/);
+    expect(tape).toMatch(/aria-label=\{isRecording \? "Pause recording" : isPaused \? "Resume recording" : "Record"\}/);
+    expect(tape).not.toMatch(/transform:\s*scale\(0\.65\)/);
+  });
+
+  it("keeps a five-second recorded clip under Record and never finalizes it from Pause", () => {
+    const engine = uploadEngine();
+    const toggle = engine.slice(engine.indexOf("const toggleRecording"), engine.indexOf("const stopRecording"));
+    const onStop = engine.slice(engine.indexOf("recorder.onstop"), engine.indexOf("mediaRecorderRef.current = recorder"));
+    expect(toggle).toMatch(/mediaRecorderRef\.current\.pause\(\)/);
+    expect(toggle).not.toMatch(/mediaRecorderRef\.current\.stop\(\)/);
+    expect(onStop).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
+    expect(onStop).not.toMatch(/setFiles\(/);
+    expect(intakeGrid()).toMatch(/p\.recordings\.map/);
+    expect(intakeGrid()).not.toMatch(/p\.files\.map\(\(file\)[\s\S]*RECORDED HERE/);
+  });
+
+  it("uses dynamic viewport height and respects the iPhone safe area for the app bar", () => {
+    expect(read("app/(main)/layout.tsx")).toMatch(/min-height:\s*100dvh !important/);
+    expect(read("app/(main)/layout.tsx")).not.toMatch(/min-height:\s*100vh !important/);
+    expect(read("components/ui/OsBar.tsx")).toMatch(/top:\s*"max\(24px, env\(safe-area-inset-top\)\)"/);
   });
 });
 

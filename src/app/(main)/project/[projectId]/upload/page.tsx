@@ -96,10 +96,12 @@ export default function UploadPage() {
 
           <IntakeGrid
             isRecording={engine.isRecording}
+            isPaused={engine.isPaused}
             recordingError={engine.recordingError}
             seconds={engine.seconds}
             onToggleRecording={engine.toggleRecording}
             onStopRecording={engine.stopRecording}
+            recordings={engine.recordings}
             files={engine.files}
             uploading={engine.uploading}
             uploadPercent={engine.uploadPercent}
@@ -121,7 +123,7 @@ export default function UploadPage() {
           />
 
           {/* Action bar */}
-          <div style={{
+          <div className="ds-upload-action-bar" style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",

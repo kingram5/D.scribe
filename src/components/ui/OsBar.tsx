@@ -16,7 +16,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
     <>
       <div style={{
         position: "fixed",
-        top: 24,
+        top: "max(24px, env(safe-area-inset-top))",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 100,
@@ -89,7 +89,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
       {mobileOpen && (
         <div style={{
           position: "fixed",
-          top: 76,
+          top: "calc(max(24px, env(safe-area-inset-top)) + 52px)",
           left: 16,
           right: 16,
           zIndex: 99,

@@ -5,7 +5,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <>
       <style>{`
         @media (max-width: 768px) {
-          .ds-main-layout { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100vh !important; }
+          .ds-main-layout { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100dvh !important; }
           /* On desktop this shell is viewport-height, so perspective is harmless. On mobile
              the rules above let it grow to content height — and perspective makes it a
              containing block for fixed descendants, which pins the bottom step nav to the

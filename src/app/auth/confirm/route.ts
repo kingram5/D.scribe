@@ -2,14 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { isAllowedEmail } from "@/lib/allowlist";
+import {
+  safeNextPath,
+  safeVercelShareToken,
+  urlOnRequestHost,
+} from "@/lib/auth-redirect";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as "signup" | "email" | null;
-  const rawNext = searchParams.get("next") ?? "/dashboard";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
-  const origin = request.nextUrl.origin;
+  const next = safeNextPath(searchParams.get("next"));
+  const vercelShare = safeVercelShareToken(searchParams.get("_vercel_share"));
 
   if (token_hash && type) {
     const cookieStore = await cookies();
@@ -36,11 +40,14 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!isAllowedEmail(user?.email)) {
         await supabase.auth.signOut();
-        return NextResponse.redirect(`${origin}/unauthorized`);
+        return NextResponse.redirect(urlOnRequestHost(request, "/unauthorized", vercelShare));
       }
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(urlOnRequestHost(request, next, vercelShare));
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth&message=${encodeURIComponent("Email confirmation failed. Please try again.")}`);
+  const loginUrl = urlOnRequestHost(request, "/login", vercelShare);
+  loginUrl.searchParams.set("error", "auth");
+  loginUrl.searchParams.set("message", "Email confirmation failed. Please try again.");
+  return NextResponse.redirect(loginUrl);
 }

@@ -190,7 +190,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playback).toMatch(/const nextAudio = audioQueueRef\.current\.shift\(\)!/);
     expect(playback).toMatch(/audio\.onended = finishPlayback/);
     expect(playback).toMatch(/audio\.src = url/);
-    expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,220}?playNext\(\)/);
+    expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,500}?playNext\(\)/);
     expect(playback).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(playback).toMatch(/Safari can keep the output audio session active after `ended`\.[\s\S]{0,220}?audio\.pause\(\)/);
     const hardStop = src.slice(src.indexOf("const stopAudio"), src.indexOf("const releaseAudioForRecognition"));

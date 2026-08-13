@@ -62,9 +62,9 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: {
     template: "%s | D.scribe",
-    default: "D.scribe — Turn Your Voice Into a Published Book with AI",
+    default: "D.scribe — Write your book as easily as you can talk about it.",
   },
-  description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+  description: "D.scribe helps pastors turn the wisdom they already speak into a book, with a guided path for coaches and speakers, too.",
   openGraph: {
     siteName: "D.scribe",
     type: "website",

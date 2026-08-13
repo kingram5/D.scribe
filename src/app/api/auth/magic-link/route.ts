@@ -5,6 +5,11 @@ import { isDisposableEmail } from "@/lib/disposable-domains";
 import { canonicalizeEmail } from "@/lib/email";
 import { clientIp } from "@/lib/client-ip";
 import { logger } from "@/lib/logger";
+import {
+  magicLinkRedirectUrl,
+  safeNextPath,
+  safeVercelShareToken,
+} from "@/lib/auth-redirect";
 
 // POST /api/auth/magic-link — gated server-side OTP sender.
 // The login page used to call supabase.auth.signInWithOtp directly from the
@@ -18,12 +23,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export async function POST(req: NextRequest) {
   let email = "";
   let next = "/dashboard";
+  let vercelShare: string | null = null;
   try {
     const body = await req.json();
     email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (typeof body.next === "string" && body.next.startsWith("/") && !body.next.startsWith("//")) {
-      next = body.next;
-    }
+    next = safeNextPath(body.next);
+    vercelShare = safeVercelShareToken(
+      body._vercel_share ?? req.nextUrl.searchParams.get("_vercel_share")
+    );
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -60,15 +67,24 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-  const origin = req.nextUrl.origin;
+  const emailRedirectTo = magicLinkRedirectUrl(req, next, vercelShare);
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}` },
+    options: { emailRedirectTo },
   });
 
   if (error) {
     logger.error("magic-link send failed", { route: "/api/auth/magic-link", error, meta: { ip } });
-    // Supabase's own email rate limit lands here too — keep the message generic.
+    if (/redirect|url.*(?:allow|reject)|not allowed/i.test(error.message)) {
+      return NextResponse.json(
+        {
+          error:
+            "This preview is not approved for sign-in yet. Ask the project owner to allow this preview URL in Supabase.",
+        },
+        { status: 400 }
+      );
+    }
+    // Supabase's own email rate limit lands here too — keep other errors generic.
     return NextResponse.json({ error: "Could not send sign-in link — try again shortly" }, { status: 500 });
   }
 

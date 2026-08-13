@@ -85,10 +85,12 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const onEnd = recognition.slice(recognition.indexOf("recognition.onend"), recognition.indexOf("recognitionRef.current = recognition"));
     const send = src.slice(src.indexOf("const sendMessage"), src.indexOf("// Keep autoSendRef"));
     expect(src).toMatch(/const finalTranscriptRef = useRef\(""\)/);
+    expect(src).toMatch(/const awaitingAutoSendRef = useRef\(false\)/);
     expect(recognition).toMatch(/finalTranscriptRef\.current \+= transcript \+ " "/);
     expect(recognition).toMatch(/setInput\(finalTranscriptRef\.current \+ interim\)/);
     expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
     expect(onEnd).not.toMatch(/clearTimeout\(silenceTimerRef\.current\)/);
+    expect(src).toMatch(/if \(!handsFree \|\| listening \|\| streaming \|\| speaking \|\| summarizing \|\| awaitingAutoSendRef\.current\) return/);
     expect(send).toMatch(/finalTranscriptRef\.current = ""/);
   });
 
@@ -103,6 +105,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(initialize).toMatch(/audio\.src = TTS_UNLOCK_AUDIO/);
     expect(initialize).toMatch(/ttsUnlockReadyRef\.current = audio\.play\(\)\.then/);
     expect(initialize).toMatch(/audio\.src !== TTS_UNLOCK_AUDIO\) return;[\s\S]{0,120}?audio\.pause\(\)/);
+    expect(initialize).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
     expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
@@ -111,7 +114,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
   it("only explains iPhone Silent mode after a successful media response begins", () => {
     const src = chat();
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,300}?Silent mode/);
+    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,500}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
     expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);
@@ -188,7 +191,12 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playback).toMatch(/if \(ttsUnlockPendingRef\.current\) \{\s*void ttsUnlockReadyRef\.current\?\.finally\(\(\) => playNext\(\)\)/);
     expect(playback).toMatch(/const nextAudio = audioQueueRef\.current\.shift\(\)!/);
     expect(playback).toMatch(/audio\.onended = finishPlayback/);
-    expect(playback).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\);\s*playNext\(\)/);
+    expect(playback).toMatch(/audio\.src = url/);
+    expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,500}?playNext\(\)/);
+    expect(playback).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    expect(playback).toMatch(/Safari can keep the output audio session active after `ended`\.[\s\S]{0,220}?audio\.pause\(\)/);
+    const hardStop = src.slice(src.indexOf("const stopAudio"), src.indexOf("const releaseAudioForRecognition"));
+    expect(hardStop).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\)/);
     expect(tts).toMatch(/audioQueueRef\.current\.push\(\{\s*url: URL\.createObjectURL[\s\S]*text: next/);
     expect(tts).toMatch(/playNext\(\)/);
   });
@@ -197,11 +205,35 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     const src = chat();
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
     const playbackFailed = playback.slice(playback.indexOf("const playbackFailed"), playback.indexOf("audio.src = url"));
-    expect(playback).toMatch(/\.catch\(\(\) => playbackFailed\("iPhone blocked/);
+    expect(playback).toMatch(/\.catch\(\(\) => \{\s*if \(isCurrentPlayback\(\)\) \{\s*playbackFailed\("iPhone blocked/);
     expect(playbackFailed).not.toMatch(/ttsEnabledRef\.current = false|setTtsEnabled\(false\)/);
     expect(playbackFailed).toMatch(/failedTtsTextRef\.current = text/);
     expect(playbackFailed).toContain("Try voice again");
     expect(src).toMatch(/onClick=\{retryVoice\}/);
+  });
+
+  it("releases playback for hands-free dictation without resetting the unlocked player", () => {
+    const src = chat();
+    const release = src.slice(src.indexOf("const releaseAudioForRecognition"), src.indexOf("const initializeTtsAudio"));
+    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    expect(release).toMatch(/audio\.pause\(\)/);
+    expect(release).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    expect(recognition).toMatch(/if \(isPlayingRef\.current\) releaseAudioForRecognition\(\)/);
+    expect(recognition).not.toMatch(/initializeTtsAudio|playbackFailed/);
+    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
+    expect(recognition).toMatch(/setSendError\(`Hands-free could not start the microphone/);
+  });
+
+  it("ignores stale audio and recognition callbacks instead of clobbering a new turn", () => {
+    const src = chat();
+    const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
+    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    expect(src).toMatch(/const playbackGenerationRef = useRef\(0\)/);
+    expect(playback).toMatch(/const isCurrentPlayback = \(\) =>[\s\S]{0,180}?currentAudioUrlRef\.current === url/);
+    expect(playback).toMatch(/if \(!isCurrentPlayback\(\)\) return;/);
+    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(3);
+    expect(recognition).toMatch(/event\?\.error === "network"/);
+    expect(recognition).toMatch(/Hands-free lost the microphone service/);
   });
 
   it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {

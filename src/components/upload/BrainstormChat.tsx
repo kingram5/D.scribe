@@ -414,6 +414,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setSpeaking(false);
   }, []);
 
+  // This is the non-destructive counterpart to stopAudio for the microphone
+  // path. Pausing releases iOS's active playback session; retaining the source
+  // and never calling load() preserves the element's gesture authorization for
+  // the next TTS response. Use stopAudio only for an explicit hard stop.
+  const releaseAudioForRecognition = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+    }
+    if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
+    currentAudioUrlRef.current = null;
+    audioQueueRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+    ttsRequestGenerationRef.current += 1;
+    ttsRequestQueueRef.current = [];
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    sentenceBufferRef.current = "";
+    setSpeaking(false);
+  }, []);
+
   // This is called synchronously from voice-control click handlers. iOS only
   // authorizes media started inside that user gesture; a later fetch/SSE
   // callback is too late. Keep this one imperative element for the complete
@@ -434,8 +456,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         // is still settling.
         if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
         audio.pause();
-        audio.removeAttribute("src");
-        audio.load();
       }).catch(() => {
         if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
         // A rejected unlock is an autoplay restriction, not a user mute or a
@@ -506,8 +526,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       currentAudioUrlRef.current = null;
       audio.onended = null;
       audio.onerror = null;
-      audio.removeAttribute("src");
-      audio.load();
+      // An ended element is already paused. Keep its source in place so iOS
+      // retains the same unlocked media element for the next queued clip.
       playNext();
     };
     const playbackFailed = (message: string) => {
@@ -680,7 +700,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
 
     recognitionRef.current = recognition;
-    stopAudio(); // stop AI voice when user starts speaking
+    // A normally completed TTS line has already released playback. Only
+    // interrupt an actually-playing line; calling the destructive hard reset
+    // after every answer would discard iOS's TTS authorization before the next
+    // streamed response.
+    if (isPlayingRef.current) releaseAudioForRecognition();
     try {
       recognition.start();
     } catch {
@@ -692,7 +716,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       return;
     }
     setListening(true);
-  }, [stopAudio]);
+  }, [releaseAudioForRecognition]);
 
   const toggleListening = useCallback(() => {
     if (listening || handsFree) {

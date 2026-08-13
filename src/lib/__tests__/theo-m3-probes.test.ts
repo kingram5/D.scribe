@@ -103,6 +103,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(initialize).toMatch(/audio\.src = TTS_UNLOCK_AUDIO/);
     expect(initialize).toMatch(/ttsUnlockReadyRef\.current = audio\.play\(\)\.then/);
     expect(initialize).toMatch(/audio\.src !== TTS_UNLOCK_AUDIO\) return;[\s\S]{0,120}?audio\.pause\(\)/);
+    expect(initialize).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
     expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
@@ -188,7 +189,11 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playback).toMatch(/if \(ttsUnlockPendingRef\.current\) \{\s*void ttsUnlockReadyRef\.current\?\.finally\(\(\) => playNext\(\)\)/);
     expect(playback).toMatch(/const nextAudio = audioQueueRef\.current\.shift\(\)!/);
     expect(playback).toMatch(/audio\.onended = finishPlayback/);
-    expect(playback).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\);\s*playNext\(\)/);
+    expect(playback).toMatch(/audio\.src = url/);
+    expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,220}?playNext\(\)/);
+    expect(playback).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    const hardStop = src.slice(src.indexOf("const stopAudio"), src.indexOf("const releaseAudioForRecognition"));
+    expect(hardStop).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\)/);
     expect(tts).toMatch(/audioQueueRef\.current\.push\(\{\s*url: URL\.createObjectURL[\s\S]*text: next/);
     expect(tts).toMatch(/playNext\(\)/);
   });
@@ -202,6 +207,17 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playbackFailed).toMatch(/failedTtsTextRef\.current = text/);
     expect(playbackFailed).toContain("Try voice again");
     expect(src).toMatch(/onClick=\{retryVoice\}/);
+  });
+
+  it("releases playback for hands-free dictation without resetting the unlocked player", () => {
+    const src = chat();
+    const release = src.slice(src.indexOf("const releaseAudioForRecognition"), src.indexOf("const initializeTtsAudio"));
+    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    expect(release).toMatch(/audio\.pause\(\)/);
+    expect(release).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
+    expect(recognition).toMatch(/if \(isPlayingRef\.current\) releaseAudioForRecognition\(\)/);
+    expect(recognition).not.toMatch(/initializeTtsAudio|playbackFailed/);
+    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
   });
 
   it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {

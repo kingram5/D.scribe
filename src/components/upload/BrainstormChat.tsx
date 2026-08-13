@@ -425,12 +425,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   }, []);
 
   // This is the non-destructive counterpart to stopAudio for the microphone
-  // path. Pausing releases iOS's active playback session; retaining the source
-  // and never calling load() preserves the element's gesture authorization for
-  // the next TTS response. Use stopAudio only for an explicit hard stop.
+  // path. Only interrupt a line that is actively playing. Calling pause() on a
+  // completed iPhone media element can discard the gesture-authorized playback
+  // session that hands-free's next, non-gesture TTS response depends on.
+  // Use stopAudio only for an explicit hard stop.
   const releaseAudioForRecognition = useCallback(() => {
     const audio = audioRef.current;
-    if (audio) {
+    if (audio && isPlayingRef.current) {
       audio.onended = null;
       audio.onerror = null;
       audio.pause();
@@ -543,11 +544,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       isPlayingRef.current = false;
       audio.onended = null;
       audio.onerror = null;
-      // Safari can keep the output audio session active after `ended`. Pause
-      // explicitly before the hands-free effect re-opens recognition, but keep
-      // the source in place so the same element remains gesture-unlocked for
-      // the next queued clip.
-      audio.pause();
+      // `ended` already means this element is not playing. Do not pause, load,
+      // or reset it here: on iPhone that can drop the user-gesture playback
+      // authorization before hands-free auto-send receives the next response.
       playNext();
     };
     const playbackFailed = (message: string) => {
@@ -833,13 +832,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // time so that flicker cannot re-open the mic just as he speaks again.
       if (awaitingAutoSendRef.current || isPlayingRef.current || audioQueueRef.current.length > 0) return;
       // A finished clip stays attached to the unlocked player until another
-      // clip replaces it. Pause that idle session before asking iOS for mic
-      // capture, without resetting or revoking the current source.
-      releaseAudioForRecognition();
+      // clip replaces it. It has already ended, so opening the mic must not
+      // pause or reset the element and lose its iPhone playback authorization.
       startRecognition();
     }, 900);
     return () => clearTimeout(t);
-  }, [handsFree, listening, streaming, speaking, summarizing, releaseAudioForRecognition, startRecognition]);
+  }, [handsFree, listening, streaming, speaking, summarizing, startRecognition]);
 
   // Clean up recognition on unmount
   useEffect(() => {

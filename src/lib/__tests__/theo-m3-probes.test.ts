@@ -194,7 +194,8 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(playback).toMatch(/audio\.src = url/);
     expect(playback).toMatch(/audio\.onended = null;[\s\S]{0,500}?playNext\(\)/);
     expect(playback).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
-    expect(playback).toMatch(/Safari can keep the output audio session active after `ended`\.[\s\S]{0,220}?audio\.pause\(\)/);
+    const finish = playback.slice(playback.indexOf("const finishPlayback"), playback.indexOf("const playbackFailed"));
+    expect(finish).not.toMatch(/audio\.pause\(\)|audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     const hardStop = src.slice(src.indexOf("const stopAudio"), src.indexOf("const releaseAudioForRecognition"));
     expect(hardStop).toMatch(/audio\.removeAttribute\("src"\);\s*audio\.load\(\)/);
     expect(tts).toMatch(/audioQueueRef\.current\.push\(\{\s*url: URL\.createObjectURL[\s\S]*text: next/);
@@ -212,12 +213,12 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(src).toMatch(/onClick=\{retryVoice\}/);
   });
 
-  it("releases playback for hands-free dictation without resetting the unlocked player", () => {
+  it("keeps the completed player unlocked when hands-free re-arms dictation", () => {
     const src = chat();
     const release = src.slice(src.indexOf("const releaseAudioForRecognition"), src.indexOf("const initializeTtsAudio"));
     const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
     const rearm = src.slice(src.indexOf("/* Hands-free re-arm"), src.indexOf("// Clean up recognition on unmount"));
-    expect(release).toMatch(/audio\.pause\(\)/);
+    expect(release).toMatch(/if \(audio && isPlayingRef\.current\) \{[\s\S]{0,180}?audio\.pause\(\)/);
     expect(release).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(release).not.toMatch(/currentAudioUrlRef\.current\) URL\.revokeObjectURL/);
     expect(recognition).toMatch(/if \(isPlayingRef\.current\) releaseAudioForRecognition\(\)/);
@@ -226,7 +227,8 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(recognition).toMatch(/setSendError\(`Hands-free could not start the microphone/);
     expect(recognition).toMatch(/recognition\.onstart[\s\S]{0,500}?recognitionStarted = true/);
     expect(recognition).toMatch(/if \(!recognitionStarted\)[\s\S]{0,240}?Hands-free could not start the microphone/);
-    expect(rearm).toMatch(/releaseAudioForRecognition\(\);\s*startRecognition\(\)/);
+    expect(rearm).not.toMatch(/releaseAudioForRecognition\(\)|audio\.pause\(\)|audio\.load\(\)/);
+    expect(rearm).toMatch(/startRecognition\(\)/);
   });
 
   it("keeps a finished blob live until the next clip replaces audio.src", () => {
@@ -234,7 +236,8 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     const finish = playback.slice(playback.indexOf("const finishPlayback"), playback.indexOf("const playbackFailed"));
     const assignNext = playback.slice(playback.indexOf("audio.src = url"), playback.indexOf("isPlayingRef.current = true"));
     expect(finish).not.toMatch(/URL\.revokeObjectURL|currentAudioUrlRef\.current = null/);
-    expect(finish).toMatch(/audio\.pause\(\);\s*playNext\(\)/);
+    expect(finish).not.toMatch(/audio\.pause\(\)|audio\.load\(\)|audio\.removeAttribute\("src"\)/);
+    expect(finish).toMatch(/playNext\(\)/);
     expect(assignNext).toMatch(
       /audio\.src = url;[\s\S]{0,260}?URL\.revokeObjectURL\(previousAudioUrl\)[\s\S]{0,120}?currentAudioUrlRef\.current = url/,
     );

@@ -278,9 +278,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
      it is on the mic re-arms itself as soon as Theo has finished — the user should never
      have to reach for the button again mid-conversation. */
   const [handsFree, setHandsFree] = useState(false);
-  /* True while TTS audio is actually playing. The queue lives in refs, so state is what
-     lets the resume effect wait for silence instead of transcribing Theo's own voice. */
+  // Recognition callbacks outlive the render that created them. Keep the
+  // session switch in a ref so `onend` can synchronously continue the SAME
+  // recognizer without constructing one from an effect or timer.
+  const handsFreeRef = useRef(false);
+  /* True while TTS audio is actually playing. Recognition remains alive, and
+     this state/ref pair gates its results until T.H.E.O. gives the floor back. */
   const [speaking, setSpeaking] = useState(false);
+  const speakingRef = useRef(false);
+  const streamingRef = useRef(false);
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
   const [savedDraft, setSavedDraft] = useState("");
@@ -320,8 +326,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const finalTranscriptRef = useRef("");
   const hasFinalResultRef = useRef(false);
   // iOS can emit `end` immediately after a final result. Keep the existing
-  // three-second quiet-send window authoritative so the hands-free effect does
-  // not create a competing recognizer before that answer is submitted.
+  // three-second quiet-send window authoritative across same-instance restarts.
   const awaitingAutoSendRef = useRef(false);
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
@@ -421,33 +426,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     sentenceBufferRef.current = "";
-    setSpeaking(false);
-  }, []);
-
-  // This is the non-destructive counterpart to stopAudio for the microphone
-  // path. Only interrupt a line that is actively playing. Calling pause() on a
-  // completed iPhone media element can discard the gesture-authorized playback
-  // session that hands-free's next, non-gesture TTS response depends on.
-  // Use stopAudio only for an explicit hard stop.
-  const releaseAudioForRecognition = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio && isPlayingRef.current) {
-      audio.onended = null;
-      audio.onerror = null;
-      audio.pause();
-    }
-    // Leave the completed clip attached while dictation is open. Revoking the
-    // blob that is still `audio.src` can leave Safari holding a dead media
-    // session, which prevents SpeechRecognition from acquiring the mic. The
-    // next clip revokes it only after replacing `audio.src`; stopAudio remains
-    // the one hard-reset path.
-    playbackGenerationRef.current += 1;
-    audioQueueRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
-    ttsRequestGenerationRef.current += 1;
-    ttsRequestQueueRef.current = [];
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
-    sentenceBufferRef.current = "";
+    speakingRef.current = false;
     setSpeaking(false);
   }, []);
 
@@ -505,12 +484,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
     if (!pageVisibleRef.current) {
       audioQueueRef.current = [];
+      speakingRef.current = false;
       setSpeaking(false);
       return;
     }
-    // Queue drained: Theo has stopped talking. Hands-free mode watches this to know
-    // when it is safe to re-open the mic without recording his own voice.
-    if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
+    // Queue drained: recognition is already alive, so only lift the software
+    // result gate. Never hand the mic back by starting a new recognizer.
+    if (audioQueueRef.current.length === 0) {
+      speakingRef.current = false;
+      setSpeaking(false);
+      return;
+    }
 
     const audio = audioRef.current;
     if (!audio) {
@@ -520,16 +504,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       stopAudio();
       setVoiceNotice("T.H.E.O.'s voice could not start. Continue in text, then tap Try voice again.");
       return;
-    }
-
-    // Close the mic the instant he starts talking. The hands-free effect below
-    // only ever RE-ARMED after he finished; nothing shut the mic while audio was
-    // playing, so an open mic transcribed his own TTS straight back into the
-    // conversation.
-    if (recognitionRef.current) {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      try { recognitionRef.current.stop(); } catch { /* not started */ }
-      setListening(false);
     }
 
     const nextAudio = audioQueueRef.current.shift()!;
@@ -552,6 +526,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     const playbackFailed = (message: string) => {
       if (!isCurrentPlayback()) return;
       setTtsFailed(true);
+      speakingRef.current = false;
       setSpeaking(false);
       failedTtsTextRef.current = text;
       stopAudio();
@@ -567,6 +542,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (previousAudioUrl && previousAudioUrl !== url) URL.revokeObjectURL(previousAudioUrl);
     currentAudioUrlRef.current = url;
     isPlayingRef.current = true;
+    speakingRef.current = true;
     setSpeaking(true);
     void audio.play().then(() => {
       if (!isCurrentPlayback()) return;
@@ -648,21 +624,21 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
   }, [stopAudio]);
 
-  /** Open the mic. Shared by the Speak button and the hands-free auto-resume, so a
-   *  re-armed mic behaves identically to a hand-clicked one. */
+  /** Create the session recognizer from the Speak tap. iOS permits that gesture
+   *  start, then permits the same object to continue its utterance chain from
+   *  `onend`. Effects and timers must never manufacture a fresh start. */
   const startRecognition = useCallback(() => {
     if (!pageVisibleRef.current) return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    // Kill the outgoing instance before replacing it. Overwriting the ref alone
-    // orphaned the old recognizer: it kept transcribing T.H.E.O's TTS with no
-    // handle left to stop it, and its late handlers clobbered the new one's
-    // shared state (silence timer, listening flag).
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort(); } catch { /* not started */ }
-      recognitionRef.current = null;
+    if (!SpeechRecognition) {
+      handsFreeRef.current = false;
+      setHandsFree(false);
+      setSendError("Hands-free speech recognition is not available in this browser. You can keep typing your answers.");
+      return;
     }
+    // One live instance owns the hands-free session. A second Speak callback
+    // must not orphan it or create a competing recognizer.
+    if (recognitionRef.current) return;
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -677,6 +653,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       if (recognitionRef.current !== recognition) return;
+      // Keep the recognizer's utterance chain alive while T.H.E.O. has the
+      // floor, but drop every result. Stopping it here loses iOS's
+      // gesture-authorized chain; software gating prevents echo transcription.
+      if (isPlayingRef.current || speakingRef.current || streamingRef.current) return;
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
@@ -687,11 +667,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           interim = transcript;
         }
       }
-      // Never clobber what the user typed. The mic is closed while T.H.E.O
-      // speaks, so typing during his turn is the natural recovery when
-      // dictation misfires — and then the 900ms re-arm built a fresh recognizer
-      // whose empty transcript overwrote the whole typed answer on its first
-      // stray syllable. Same rule undoLast already follows.
+      // Never clobber what the user typed. Typing during T.H.E.O.'s turn is the
+      // natural recovery when dictation misfires; the persistent recognizer
+      // must not overwrite that answer on its next stray syllable.
       if (typedRef.current) return;
       setInput(finalTranscriptRef.current + interim);
 
@@ -703,8 +681,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         awaitingAutoSendRef.current = true;
         silenceTimerRef.current = setTimeout(() => {
           awaitingAutoSendRef.current = false;
-          recognition.stop();
-          setListening(false);
           // Auto-send via ref (avoids stale closure)
           autoSendRef.current?.();
         }, 3000);
@@ -727,6 +703,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (fatalError) {
         awaitingAutoSendRef.current = false;
         recognitionRef.current = null;
+        handsFreeRef.current = false;
         setHandsFree(false);
         setRetryAction(null);
         // Denial was completely silent, and Safari remembers it — so the second
@@ -745,30 +722,45 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     recognition.onend = () => {
       if (recognitionRef.current !== recognition) return;
-      // iOS fires this after every utterance despite continuous=true. Keep the
-      // three-second timer alive so that final words still auto-send. The
-      // hands-free effect waits for that pending send before it can re-arm.
-      recognitionRef.current = null;
       setListening(false);
       if (!recognitionStarted) {
+        recognitionRef.current = null;
+        handsFreeRef.current = false;
         setHandsFree(false);
         setRetryAction(null);
         setSendError("Hands-free could not start the microphone. Tap Speak to try again, or type your answer.");
+        return;
+      }
+      if (!handsFreeRef.current || !pageVisibleRef.current) {
+        recognitionRef.current = null;
+        return;
+      }
+
+      // iOS ends each utterance even with continuous=true. Continue immediately
+      // from this callback on the SAME gesture-created object. A timer/effect
+      // start creates the silent dead recognizer seen after the first answer.
+      try {
+        recognitionStarted = false;
+        recognition.start();
+        setListening(true);
+      } catch (error) {
+        recognitionRef.current = null;
+        handsFreeRef.current = false;
+        setHandsFree(false);
+        setRetryAction(null);
+        const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+        setSendError(`Hands-free lost the microphone${detail}. Tap Speak to try again, or type your answer.`);
       }
     };
 
     recognitionRef.current = recognition;
-    // A normally completed TTS line has already released playback. Only
-    // interrupt an actually-playing line; calling the destructive hard reset
-    // after every answer would discard iOS's TTS authorization before the next
-    // streamed response.
-    if (isPlayingRef.current) releaseAudioForRecognition();
     try {
       recognition.start();
     } catch (error) {
       // Disarm rather than returning silently: the button would otherwise keep
       // showing an amber "Hands-free" over a dead mic. Real on iOS, where a
       // previous audio session or recognizer has not released yet.
+      handsFreeRef.current = false;
       setHandsFree(false);
       setListening(false);
       if (recognitionRef.current === recognition) recognitionRef.current = null;
@@ -777,7 +769,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       return;
     }
     setListening(true);
-  }, [releaseAudioForRecognition]);
+  }, []);
 
   const toggleListening = useCallback(() => {
     if (listening || handsFree) {
@@ -785,11 +777,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       awaitingAutoSendRef.current = false;
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
-      recognition?.stop();
+      handsFreeRef.current = false;
+      try { recognition?.stop(); } catch { /* not started */ }
       setListening(false);
       setHandsFree(false);
       return;
     }
+    handsFreeRef.current = true;
     setHandsFree(true);
     startRecognition();
   }, [listening, handsFree, startRecognition]);
@@ -807,6 +801,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       awaitingAutoSendRef.current = false;
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
+      handsFreeRef.current = false;
       try { recognition?.stop(); } catch { /* not started */ }
       setListening(false);
       setHandsFree(false);
@@ -820,25 +815,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [handsFree, listening, speaking, stopAudio]);
 
-  /* Hands-free re-arm. The mic is deliberately closed while Theo answers so it cannot
-     transcribe his own TTS voice, so this waits for BOTH halves of his turn to finish:
-     `streaming` false (he has stopped writing) and `speaking` false (the audio queue has
-     drained). The short delay lets the last syllable decay before the mic opens. */
-  useEffect(() => {
-    if (!handsFree || listening || streaming || speaking || summarizing || awaitingAutoSendRef.current) return;
-    const t = setTimeout(() => {
-      // `speaking` goes false every time the audio queue momentarily drains, even
-      // with more sentences still arriving mid-stream. Re-check the refs at fire
-      // time so that flicker cannot re-open the mic just as he speaks again.
-      if (awaitingAutoSendRef.current || isPlayingRef.current || audioQueueRef.current.length > 0) return;
-      // A finished clip stays attached to the unlocked player until another
-      // clip replaces it. It has already ended, so opening the mic must not
-      // pause or reset the element and lose its iPhone playback authorization.
-      startRecognition();
-    }, 900);
-    return () => clearTimeout(t);
-  }, [handsFree, listening, streaming, speaking, summarizing, startRecognition]);
-
   // Clean up recognition on unmount
   useEffect(() => {
     return () => {
@@ -846,13 +822,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       awaitingAutoSendRef.current = false;
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
-      recognition?.stop();
+      handsFreeRef.current = false;
+      try { recognition?.stop(); } catch { /* not started */ }
     };
   }, []);
 
   // Start the conversation — AI sends first message
   const startConversation = useCallback(async () => {
     setStarted(true);
+    streamingRef.current = true;
     setStreaming(true);
     setSendError(null);
     setRetryAction(null);
@@ -940,6 +918,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setRetryAction(/HTTP 401/.test(msg) ? null : "start");
     }
 
+    streamingRef.current = false;
     setStreaming(false);
     inputRef.current?.focus();
   }, [projectId, speakSentence]);
@@ -947,6 +926,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming) return;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
     const userMsg: Message = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
@@ -956,6 +936,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     finalTranscriptRef.current = "";
     hasFinalResultRef.current = false;
     awaitingAutoSendRef.current = false;
+    streamingRef.current = true;
     setStreaming(true);
     setSendError(null);
     setRetryAction(null);
@@ -1055,9 +1036,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const msg = brainstormFailureMessage(err);
       setSendError(`${msg} Your answer is back in the box — try again.`);
       setRetryAction(/HTTP 401/.test(msg) ? null : "send");
+      handsFreeRef.current = false;
       setHandsFree(false);
     }
 
+    streamingRef.current = false;
     setStreaming(false);
     inputRef.current?.focus();
   }, [input, streaming, messages, speakSentence]);
@@ -1967,10 +1950,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <button
             className="ds-studio-send"
             onClick={() => {
-              if (listening) {
-                recognitionRef.current?.stop();
-                setListening(false);
-              }
               sendMessage();
             }}
             disabled={!input.trim() || streaming}

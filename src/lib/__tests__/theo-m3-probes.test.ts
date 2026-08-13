@@ -247,7 +247,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(src).toMatch(/const playbackGenerationRef = useRef\(0\)/);
     expect(playback).toMatch(/const isCurrentPlayback = \(\) =>[\s\S]{0,180}?currentAudioUrlRef\.current === url/);
     expect(playback).toMatch(/if \(!isCurrentPlayback\(\)\) return;/);
-    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(3);
+    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(4);
     expect(recognition).toMatch(/event\?\.error === "network"/);
     expect(recognition).toMatch(/Hands-free lost the microphone service/);
   });

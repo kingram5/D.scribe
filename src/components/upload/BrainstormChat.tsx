@@ -17,6 +17,10 @@ interface SavedBrainstormSession {
 
 type StudioRetryAction = "start" | "send" | "finish";
 
+// A two-sample silent WAV. iOS only grants media playback permission from the
+// tap itself, not from the later TTS fetch or SSE callback.
+const TTS_UNLOCK_AUDIO = "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAAAAAA==";
+
 function isMessage(value: unknown): value is Message {
   return typeof value === "object" && value !== null &&
     ((value as Message).role === "user" || (value as Message).role === "assistant") &&
@@ -326,9 +330,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const ttsRequestQueueRef = useRef<string[]>([]);
   const ttsRequestInFlightRef = useRef(false);
   const ttsRequestGenerationRef = useRef(0);
-  const audioQueueRef = useRef<string[]>([]);
+  const audioQueueRef = useRef<Array<{ url: string; text: string }>>([]);
   const isPlayingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsUnlockGenerationRef = useRef(0);
+  const ttsUnlockPendingRef = useRef(false);
+  const ttsUnlockReadyRef = useRef<Promise<void> | null>(null);
   const currentAudioUrlRef = useRef<string | null>(null);
   const sentenceBufferRef = useRef("");
   // Keeps the one sentence that failed to synthesize so the visible recovery
@@ -385,13 +392,20 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const stopAudio = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
+      // Clearing handlers first keeps an intentional reset from reporting a
+      // media error and throwing away the remaining response.
+      audio.onended = null;
+      audio.onerror = null;
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
     }
+    ttsUnlockGenerationRef.current += 1;
+    ttsUnlockPendingRef.current = false;
+    ttsUnlockReadyRef.current = null;
     if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
     currentAudioUrlRef.current = null;
-    audioQueueRef.current.forEach((url) => URL.revokeObjectURL(url));
+    audioQueueRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
     ttsRequestGenerationRef.current += 1;
     ttsRequestQueueRef.current = [];
     audioQueueRef.current = [];
@@ -400,15 +414,40 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setSpeaking(false);
   }, []);
 
-  // This is called synchronously from voice-control click handlers. Use an
-  // actual media element rather than Web Audio so iPhone treats speech as media
-  // output. The <audio playsInline> is also visible in source for QA.
+  // This is called synchronously from voice-control click handlers. iOS only
+  // authorizes media started inside that user gesture; a later fetch/SSE
+  // callback is too late. Keep this one imperative element for the complete
+  // session — a JSX <audio> mounted after the prompt would be a different,
+  // still-locked element.
   const initializeTtsAudio = useCallback(() => {
     try {
       const audio = audioRef.current ?? new Audio();
       audio.setAttribute("playsinline", "");
       audio.preload = "auto";
       audioRef.current = audio;
+      const unlockGeneration = ++ttsUnlockGenerationRef.current;
+      ttsUnlockPendingRef.current = true;
+      audio.src = TTS_UNLOCK_AUDIO;
+      ttsUnlockReadyRef.current = audio.play().then(() => {
+        // Do not let a delayed unlock completion erase a real TTS clip. This
+        // can happen when the user taps retry while an earlier media promise
+        // is still settling.
+        if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      }).catch(() => {
+        if (ttsUnlockGenerationRef.current !== unlockGeneration || audio.src !== TTS_UNLOCK_AUDIO) return;
+        // A rejected unlock is an autoplay restriction, not a user mute or a
+        // TTS service failure. Leave voice enabled and give the user a real
+        // gesture to try again.
+        setTtsFailed(true);
+        setVoiceNotice("iPhone needs one more tap before it can play T.H.E.O.'s voice. Tap Try voice again.");
+      }).finally(() => {
+        if (ttsUnlockGenerationRef.current === unlockGeneration) {
+          ttsUnlockPendingRef.current = false;
+        }
+      });
       return true;
     } catch {
       ttsEnabledRef.current = false;
@@ -423,6 +462,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // TTS helpers — defined before toggleListening to avoid TDZ
   const playNext = useCallback(() => {
     if (isPlayingRef.current) return;
+    // Never overlap the silent gesture unlock with the first real clip. Once
+    // it settles, this same shared element continues with every queued line.
+    if (ttsUnlockPendingRef.current) {
+      void ttsUnlockReadyRef.current?.finally(() => playNext());
+      return;
+    }
     if (!pageVisibleRef.current) {
       audioQueueRef.current = [];
       setSpeaking(false);
@@ -452,26 +497,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setListening(false);
     }
 
-    const url = audioQueueRef.current.shift()!;
+    const nextAudio = audioQueueRef.current.shift()!;
+    const { url, text } = nextAudio;
     currentAudioUrlRef.current = url;
     const finishPlayback = () => {
       isPlayingRef.current = false;
       if (currentAudioUrlRef.current) URL.revokeObjectURL(currentAudioUrlRef.current);
       currentAudioUrlRef.current = null;
+      audio.onended = null;
+      audio.onerror = null;
       audio.removeAttribute("src");
+      audio.load();
       playNext();
     };
-    const playbackFailed = () => {
-      ttsEnabledRef.current = false;
-      setTtsEnabled(false);
+    const playbackFailed = (message: string) => {
       setTtsFailed(true);
       setSpeaking(false);
-      failedTtsTextRef.current ||= "";
+      failedTtsTextRef.current = text;
       stopAudio();
-      setVoiceNotice("T.H.E.O.'s voice could not play. Continue in text, then tap Try voice again.");
+      setVoiceNotice(`${message} Continue in text, then tap Try voice again.`);
     };
     audio.onended = finishPlayback;
-    audio.onerror = playbackFailed;
+    audio.onerror = () => playbackFailed("T.H.E.O.'s voice could not play.");
     audio.src = url;
     isPlayingRef.current = true;
     setSpeaking(true);
@@ -481,7 +528,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (isAppleMobileDevice()) {
         setVoiceNotice("Voice is playing. If you still cannot hear T.H.E.O., turn off Silent mode and raise your iPhone media volume.");
       }
-    }).catch(playbackFailed);
+    }).catch(() => playbackFailed("iPhone blocked T.H.E.O.'s voice. Tap Try voice again to hear this response."));
   }, [stopAudio]);
 
   const speakSentence = useCallback((text: string) => {
@@ -510,7 +557,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         const buf = await res.arrayBuffer();
         if (buf.byteLength === 0) throw new Error("TTS returned no audio");
         if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
-        audioQueueRef.current.push(URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" })));
+        audioQueueRef.current.push({
+          url: URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" })),
+          text: next,
+        });
         playNext();
       } catch (error) {
         // TTS must be optional, but never invisible. A failed request was
@@ -1443,7 +1493,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           far out of focus so the conversation stays the subject. One CSS rule
           lifts every sibling above it, so the stage markup below is untouched. */}
       <StudioBackdrop />
-      <audio ref={audioRef} playsInline preload="auto" aria-hidden="true" />
       {/* Stage header */}
       <div className="ds-studio-header">
         <button

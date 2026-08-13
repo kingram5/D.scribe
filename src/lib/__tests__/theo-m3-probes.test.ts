@@ -76,6 +76,41 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(src).toMatch(/if \(ttsRequestInFlightRef\.current\) return/);
     expect(src).toMatch(/const next = ttsRequestQueueRef\.current\.shift\(\)/);
   });
+
+  it("keeps an iPhone dictation answer and its three-second auto-send across recognition restarts", () => {
+    const src = chat();
+    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    const onEnd = recognition.slice(recognition.indexOf("recognition.onend"), recognition.indexOf("recognitionRef.current = recognition"));
+    const send = src.slice(src.indexOf("const sendMessage"), src.indexOf("// Keep autoSendRef"));
+    expect(src).toMatch(/const finalTranscriptRef = useRef\(""\)/);
+    expect(recognition).toMatch(/finalTranscriptRef\.current \+= transcript \+ " "/);
+    expect(recognition).toMatch(/setInput\(finalTranscriptRef\.current \+ interim\)/);
+    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
+    expect(onEnd).not.toMatch(/clearTimeout\(silenceTimerRef\.current\)/);
+    expect(send).toMatch(/finalTranscriptRef\.current = ""/);
+  });
+
+  it("starts Web Audio from the voice click and releases a stuck iPhone playback latch", () => {
+    const src = chat();
+    const initialize = src.slice(src.indexOf("const initializeTtsAudio"), src.indexOf("// TTS helpers"));
+    const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
+    expect(initialize).toMatch(/new Ctx\(\)/);
+    expect(initialize).toMatch(/ctx\.resume\(\)/);
+    expect(src).toMatch(/function chooseTts\(on: boolean\) \{[\s\S]{0,100}?initializeTtsAudio\(\)/);
+    expect(playback).not.toMatch(/new Ctx\(\)|ctx\.resume\(\)/);
+    expect(playback).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
+    expect(src).toMatch(/ttsEnabledRef\.current = false/);
+  });
+
+  it("explains iPhone Silent mode and leaves a silent response able to finish", () => {
+    const src = chat();
+    expect(src).toMatch(/function isAppleMobileDevice/);
+    expect(src).toContain("Silent mode");
+    expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
+    expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
+    expect(src).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
+    expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);
+  });
 });
 
 describe("T.H.E.O. M3: small-screen lobby density", () => {

@@ -2,6 +2,8 @@
 
 interface CassetteTapeProps {
   isRecording: boolean;
+  isPaused: boolean;
+  hasRecording: boolean;
   seconds: number;
   onToggleRecording: () => void;
   onStopRecording: () => void;
@@ -15,21 +17,25 @@ function formatTime(s: number) {
 
 export default function CassetteTape({
   isRecording,
+  isPaused,
+  hasRecording,
   seconds,
   onToggleRecording,
   onStopRecording,
 }: CassetteTapeProps) {
-  const status = isRecording ? "Recording" : seconds > 0 ? "Paused" : "Standby";
+  const status = isRecording ? "Recording" : isPaused ? "Paused" : hasRecording ? "Saved" : "Standby";
 
   return (
     <div className="ds-cassette-wrap" style={{ width: "100%", maxWidth: 700 }}>
       <style>{`
         @media (max-width: 768px) {
-          .ds-cassette-wrap { max-width: 100% !important; transform: scale(0.65); transform-origin: top center; margin-bottom: -40px; }
+          .ds-cassette-device { flex-direction: column !important; gap: 16px !important; padding: 16px !important; }
+          .ds-cassette-grille { width: 100% !important; min-height: 88px !important; }
         }
       `}</style>
       {/* Status bar */}
       <div
+        className="ds-cassette-device"
         style={{
           display: "flex",
           alignItems: "center",
@@ -44,7 +50,7 @@ export default function CassetteTape({
               width: 10,
               height: 10,
               borderRadius: "50%",
-              background: isRecording ? "#ef4444" : seconds > 0 ? "#f59e0b" : "#a0978a",
+              background: isRecording ? "#ef4444" : isPaused ? "#f59e0b" : hasRecording ? "#34d399" : "#a0978a",
               boxShadow: isRecording ? "0 0 8px rgba(239,68,68,0.6)" : "none",
               transition: "all 0.3s",
             }}
@@ -55,7 +61,7 @@ export default function CassetteTape({
               fontWeight: 600,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: isRecording ? "#ef4444" : "var(--text-secondary)",
+              color: isRecording ? "#ef4444" : isPaused ? "#a16207" : "var(--text-secondary)",
               fontFamily: "var(--font-manrope), sans-serif",
             }}
           >
@@ -66,7 +72,7 @@ export default function CassetteTape({
           style={{
             fontSize: 16,
             fontFamily: "var(--font-geist-mono), monospace",
-            color: isRecording ? "#ef4444" : "var(--text-tertiary)",
+            color: isRecording ? "#ef4444" : isPaused ? "#a16207" : "var(--text-tertiary)",
             fontWeight: 500,
           }}
         >
@@ -93,6 +99,7 @@ export default function CassetteTape({
 
         {/* Left — Speaker grille */}
         <div
+          className="ds-cassette-grille"
           style={{
             width: "35%",
             minHeight: 280,
@@ -193,7 +200,7 @@ export default function CassetteTape({
                 fontWeight: 600,
               }}
             >
-              {isRecording ? "● REC" : "READY"}
+              {isRecording ? "● REC" : isPaused ? "Ⅱ PAUSED" : hasRecording ? "✓ SAVED" : "READY"}
             </span>
 
             {/* Waveform bars */}
@@ -239,7 +246,7 @@ export default function CassetteTape({
                 cursor: "pointer",
                 borderRadius: 10,
               }}
-              aria-label="Stop"
+              aria-label="Stop and save recording"
             >
               <div
                 style={{
@@ -265,7 +272,7 @@ export default function CassetteTape({
                 cursor: "pointer",
                 borderRadius: 10,
               }}
-              aria-label={isRecording ? "Pause" : "Record"}
+              aria-label={isRecording ? "Pause recording" : isPaused ? "Resume recording" : "Record"}
             >
               <div
                 style={{

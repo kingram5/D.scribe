@@ -12,6 +12,7 @@ import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 interface IntakeGridProps {
   // record
   isRecording: boolean;
+  isPaused: boolean;
   recordingError?: string;
   seconds: number;
   onToggleRecording: () => void;
@@ -163,7 +164,11 @@ export default function IntakeGrid(p: IntakeGridProps) {
         }}
       >
         <div style={{ alignSelf: "stretch" }}>
-          <CardTop l="02 / RECORD LIVE" r={p.isRecording ? "● RECORDING" : "STANDBY"} hot={p.isRecording} />
+          <CardTop
+            l="02 / RECORD LIVE"
+            r={p.isRecording ? "● RECORDING" : p.isPaused ? "PAUSED" : p.recordings.length ? "SAVED" : "STANDBY"}
+            hot={p.isRecording}
+          />
         </div>
         <h3 style={{ ...serifH3, fontSize: 30, textAlign: "center", marginTop: 22 }}>
           Give it your voice, live.
@@ -174,13 +179,15 @@ export default function IntakeGrid(p: IntakeGridProps) {
 
         <CassetteTape
           isRecording={p.isRecording}
+          isPaused={p.isPaused}
+          hasRecording={p.recordings.length > 0}
           seconds={p.seconds}
           onToggleRecording={p.onToggleRecording}
           onStopRecording={p.onStopRecording}
         />
 
         <div style={{ marginTop: 18, textAlign: "center", minHeight: 34 }}>
-          {!p.isRecording && p.seconds === 0 ? (
+          {!p.isRecording && !p.isPaused && p.seconds === 0 ? (
             <div className="ds-record-hint" style={{
               fontSize: 19,
               fontWeight: 500,
@@ -212,6 +219,16 @@ export default function IntakeGrid(p: IntakeGridProps) {
             }}>
               <span className="ds-rec-dot" aria-hidden="true" />
               Recording {formatRecordingTime(p.seconds)} — tap Stop when you&apos;re done
+            </div>
+          ) : p.isPaused ? (
+            <div role="status" aria-live="polite" style={{
+              fontSize: 16,
+              fontWeight: 500,
+              color: "var(--text-secondary)",
+              fontFamily: "var(--font-lora), serif",
+              fontStyle: "italic",
+            }}>
+              Paused at {formatRecordingTime(p.seconds)} — press Record to continue, or Stop to save
             </div>
           ) : null}
           {p.recordingError && (

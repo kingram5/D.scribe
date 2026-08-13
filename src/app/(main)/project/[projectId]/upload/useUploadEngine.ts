@@ -77,6 +77,7 @@ export function useUploadEngine(projectId: string) {
 
   // Recording state with real MediaRecorder
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [recordingError, setRecordingError] = useState("");
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -102,15 +103,27 @@ export function useUploadEngine(projectId: string) {
 
   const toggleRecording = useCallback(async () => {
     if (isRecording) {
-      // Pause — stop the MediaRecorder and timer
+      // Pause without finalizing the file. Stopping here used to run onstop,
+      // move a partial clip into the Upload card, and make "Pause" behave as
+      // an irreversible save button.
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.pause();
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       setIsRecording(false);
+      setIsPaused(true);
+    } else if (isPaused) {
+      if (mediaRecorderRef.current?.state === "paused") {
+        mediaRecorderRef.current.resume();
+        setIsRecording(true);
+        setIsPaused(false);
+        timerRef.current = setInterval(() => {
+          setSeconds((s) => s + 1);
+        }, 1000);
+      }
     } else {
       // Start recording
       setRecordingError("");
@@ -136,7 +149,8 @@ export function useUploadEngine(projectId: string) {
         };
 
         recorder.onstop = () => {
-          // Convert chunks to a File and add to files list
+          // Keep finished clips where they were made. The Audio Files card is
+          // for picked/dropped files; recording belongs to the Record card.
           if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mimeType });
             const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -151,6 +165,7 @@ export function useUploadEngine(projectId: string) {
         mediaRecorderRef.current = recorder;
         recorder.start(1000); // collect data every second
         setIsRecording(true);
+        setIsPaused(false);
         setSeconds(0);
         timerRef.current = setInterval(() => {
           setSeconds((s) => s + 1);
@@ -170,7 +185,7 @@ export function useUploadEngine(projectId: string) {
         console.error("Recording failed to start:", err);
       }
     }
-  }, [isRecording, releaseMicrophone]);
+  }, [isRecording, isPaused, releaseMicrophone]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -181,7 +196,7 @@ export function useUploadEngine(projectId: string) {
       timerRef.current = null;
     }
     setIsRecording(false);
-    setSeconds(0);
+    setIsPaused(false);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -356,6 +371,7 @@ export function useUploadEngine(projectId: string) {
 
     // Recording state
     isRecording,
+    isPaused,
     recordingError,
     seconds,
     toggleRecording,

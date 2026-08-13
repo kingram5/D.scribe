@@ -96,6 +96,7 @@ export default function UploadPage() {
 
           <IntakeGrid
             isRecording={engine.isRecording}
+            isPaused={engine.isPaused}
             recordingError={engine.recordingError}
             seconds={engine.seconds}
             onToggleRecording={engine.toggleRecording}

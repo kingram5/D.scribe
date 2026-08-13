@@ -92,25 +92,23 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(send).toMatch(/finalTranscriptRef\.current = ""/);
   });
 
-  it("starts Web Audio from the voice click and releases a stuck iPhone playback latch", () => {
+  it("plays T.H.E.O. as inline media, not Web Audio, so iPhone uses its media channel", () => {
     const src = chat();
     const initialize = src.slice(src.indexOf("const initializeTtsAudio"), src.indexOf("// TTS helpers"));
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    expect(initialize).toMatch(/new Ctx\(\)/);
-    expect(initialize).toMatch(/ctx\.resume\(\)/);
-    expect(src).toMatch(/function chooseTts\(on: boolean\) \{[\s\S]{0,100}?initializeTtsAudio\(\)/);
-    expect(playback).not.toMatch(/new Ctx\(\)|ctx\.resume\(\)/);
-    expect(playback).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
-    expect(src).toMatch(/ttsEnabledRef\.current = false/);
+    expect(src).toMatch(/<audio ref=\{audioRef\} playsInline preload="auto"/);
+    expect(initialize).toMatch(/audio\.playsInline = true/);
+    expect(playback).toMatch(/audio\.play\(\)\.then/);
+    expect(src).toMatch(/URL\.createObjectURL/);
+    expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
   });
 
-  it("explains iPhone Silent mode and leaves a silent response able to finish", () => {
+  it("only explains iPhone Silent mode after a successful media response begins", () => {
     const src = chat();
-    expect(src).toMatch(/function isAppleMobileDevice/);
-    expect(src).toContain("Silent mode");
+    const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
+    expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,300}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
-    expect(src).toMatch(/setTimeout\(finishPlayback, Math\.max\(1000/);
     expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{ setSpeaking\(false\); return; \}/);
   });
 });
@@ -191,7 +189,9 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(src).toMatch(/async function brainstormErrorMessage/);
     expect(src).toMatch(/payload\.message[\s\S]{0,150}?payload\.error/);
     expect(src).toMatch(/credentials:\s*"same-origin"/);
-    expect(src).toMatch(/Your sign-in has expired/);
+    expect(src).toMatch(/HTTP 401 — your sign-in has expired/);
+    expect(src).toMatch(/setRetryAction\(\/HTTP 401\/\.test\(msg\) \? null/);
+    expect(src).toMatch(/if \(!res\.body\) throw new Error\("T\.H\.E\.O\. returned no stream\."\)/);
     expect(src).toMatch(/T\.H\.E\.O\.'s service is temporarily unavailable/);
   });
 
@@ -202,6 +202,22 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(engine).toMatch(/for \(const file of \[\.\.\.recordings, \.\.\.files\]\)/);
     expect(uploadPage()).toMatch(/recordings=\{engine\.recordings\}/);
     expect(intakeGrid()).toContain("RECORDED HERE · READY TO TRANSCRIBE");
+  });
+
+  it("pauses and resumes the live recorder instead of treating Pause as Stop", () => {
+    const engine = uploadEngine();
+    const tape = read("components/upload/CassetteTape.tsx");
+    expect(engine).toMatch(/mediaRecorderRef\.current\.pause\(\)/);
+    expect(engine).toMatch(/mediaRecorderRef\.current\.resume\(\)/);
+    expect(engine).toMatch(/const \[isPaused, setIsPaused\] = useState\(false\)/);
+    expect(tape).toMatch(/aria-label=\{isRecording \? "Pause recording" : isPaused \? "Resume recording" : "Record"\}/);
+    expect(tape).not.toMatch(/transform:\s*scale\(0\.65\)/);
+  });
+
+  it("uses dynamic viewport height and respects the iPhone safe area for the app bar", () => {
+    expect(read("app/(main)/layout.tsx")).toMatch(/min-height:\s*100dvh !important/);
+    expect(read("app/(main)/layout.tsx")).not.toMatch(/min-height:\s*100vh !important/);
+    expect(read("components/ui/OsBar.tsx")).toMatch(/top:\s*"max\(24px, env\(safe-area-inset-top\)\)"/);
   });
 });
 

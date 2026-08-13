@@ -50,8 +50,15 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "D. scribe | Your Voice, Written",
-  description: "Dictate the draft. Let AI master the manuscript.",
+  title: {
+    template: "%s | D.scribe",
+    default: "D.scribe — Write your book as easily as you can talk about it.",
+  },
+  description: "D.scribe helps pastors turn the wisdom they already speak into a book, with a guided path for coaches and speakers, too.",
+  openGraph: {
+    siteName: "D.scribe",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

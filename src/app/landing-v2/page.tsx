@@ -786,7 +786,7 @@ const LANDING_BOOKS = [
     genre: "Entrepreneurship",
     cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
     snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had. The honest, unglamorous version of building something from nothing, mistake by mistake.",
-    review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about two weekends. Worth every minute.",
+    review: "I kept saying I'd write it all down someday. D.scribe gave me a place to begin.",
   },
 ];
 
@@ -1039,7 +1039,7 @@ export default function LandingV2() {
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <Link href="/pricing" className="lv2-nav-link">Pricing</Link>
           <Link href="/login" className="lv2-nav-link">Sign in</Link>
-          <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 15 }}>→</span></Link>
+          <Link href="/login" className="lv2-pill-cta">Start with a sermon. <span style={{ fontSize: 15 }}>→</span></Link>
         </div>
       </nav>
 
@@ -1083,15 +1083,15 @@ export default function LandingV2() {
 
         {/* Center Tagline */}
         <div className="lv2-hero-tagline">
-          <div className="lv2-tagline-main" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", color: "#F9F7F2", fontWeight: 400, marginBottom: 12 }}>Write your book as easily as you can talk about it.</div>
+          <h1 className="lv2-tagline-main" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", color: "#F9F7F2", fontWeight: 400, margin: 0, marginBottom: 12 }}>Write your book as easily as you can talk about it.</h1>
           <div className="lv2-tagline-sub" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em" }}>The words you already say have a natural place on the page.</div>
         </div>
 
         {/* Left Side Author Content */}
         <div className="lv2-hero-author">
-          <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", margin: 0, textWrap: "balance" }}>
+          <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", margin: 0, textWrap: "balance" }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
-          </h1>
+          </h2>
           <p className="lv2-author-copy" style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
             Your recordings, transcribed and shaped into a manuscript you can make your own. Start with the words you already know.
           </p>
@@ -1114,7 +1114,7 @@ export default function LandingV2() {
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>7 steps</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>From voice to published book</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>A guided path for your book</div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Sounds like you</div>
@@ -1221,7 +1221,7 @@ export default function LandingV2() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 {[
-                  { title: "Your Voice", desc: "AI captures your speaking style — rhythm, vocabulary, pacing — and writes in it." },
+                  { title: "Your Voice", desc: "AI captures your rhythm, vocabulary, and pacing — so the page sounds like you." },
                   { title: "Your Ideas", desc: "Every key point starts from words you’ve already said. You stay in the chair." },
                   { title: "Your Book", desc: "Edit every sentence. Rearrange every chapter. Export when it's ready. It's yours." },
                 ].map((pillar) => (

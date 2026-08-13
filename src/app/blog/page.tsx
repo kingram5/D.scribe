@@ -77,7 +77,7 @@ export default async function BlogIndexPage() {
             <Link href="/pricing" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, color: "#A89F94", textDecoration: "none" }}>Pricing</Link>
             <Link href="/blog" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, color: "#F9F7F2", textDecoration: "none", fontWeight: 600 }}>Blog</Link>
           </div>
-          <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Get Started</Link>
+          <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Start with a sermon.</Link>
         </div>
       </nav>
 

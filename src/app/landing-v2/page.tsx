@@ -1016,19 +1016,18 @@ export default function LandingV2() {
         </div>
 
         {/* Center Tagline */}
-        <div style={{ position: "absolute", top: "54%", left: "50%", transform: "translateX(-50%)", textAlign: "center", width: "100%", zIndex: 2 }}>
-          <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 57, color: "#F9F7F2", fontWeight: 400, marginBottom: 12, marginTop: -30 }}>You talk. <em style={{ fontStyle: "italic", color: "#dd9f19" }}>It writes.</em></div>
-          <div style={{ fontSize: 25, color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em", marginLeft: -1, marginTop: -15 }}>Stop waiting to write your book...</div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: "#bb8f19", letterSpacing: "0.02em" }}>just start talking.</div>
+        <div className="lv2-hero-tagline">
+          <div className="lv2-tagline-main" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", color: "#F9F7F2", fontWeight: 400, marginBottom: 12 }}>Write your book as easily as you can talk about it.</div>
+          <div className="lv2-tagline-sub" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", color: "#ffffff", marginBottom: 4, letterSpacing: "0.02em" }}>The words you already say have a natural place on the page.</div>
         </div>
 
         {/* Left Side Author Content */}
         <div style={{ position: "absolute", top: "47%", left: 80, maxWidth: 420, zIndex: 2 }}>
-          <h2 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
+          <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "clamp(48px, 6vw, 92px)", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", marginBottom: 24, margin: 0, width: 480, marginLeft: -47, marginRight: 0, marginTop: 75 }}>
             There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
-          </h2>
-          <p style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.5)", marginBottom: 20, maxWidth: 320, marginLeft: -50, marginTop: 10, paddingLeft: 0, paddingTop: 0, paddingRight: 0, paddingBottom: 0, marginRight: 0, width: 500 }}>
-            Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
+          </h1>
+          <p className="lv2-author-copy" style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
+            Your recordings, transcribed and shaped into a manuscript you can make your own. Start with the words you already know.
           </p>
           <Link
             href="/login"
@@ -1244,14 +1243,14 @@ export default function LandingV2() {
             fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800,
             lineHeight: 1.1, marginBottom: 12,
           }}>
-            Stop waiting to write<br />
-            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>your book.</span>
+            Bring the book<br />
+            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>you already carry.</span>
           </h2>
           <p style={{
             fontFamily: "var(--font-lora), serif", fontSize: 18,
             color: "#A89F94", maxWidth: 400, margin: "0 auto 40px",
           }}>
-            Just start talking.
+            Let your spoken words lead the way to a page you can shape, refine, and call your own.
           </p>
           <Link href="/login" className="lv2-cta">
             Begin Your Book

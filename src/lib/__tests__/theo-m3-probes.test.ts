@@ -178,17 +178,19 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
   it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {
     const src = chat();
     const tts = src.slice(src.indexOf("const speakSentence"), src.indexOf("// Cleanup audio on unmount"));
-    expect(tts).toMatch(/if \(!res\.ok\) \{\s*throw new Error\(`TTS request failed/);
+    expect(tts).toMatch(/if \(!res\.ok\) \{\s*throw new Error\(await ttsErrorMessage\(res\)\)/);
     expect(tts).toMatch(/failedTtsTextRef\.current = next/);
     expect(tts).toContain("Try voice again");
     expect(src).toMatch(/const retryVoice = useCallback/);
+    expect(src).toMatch(/async function ttsErrorMessage/);
+    expect(src).toMatch(/T\.H\.E\.O\.'s voice returned HTTP \$\{res\.status\}/);
   });
 
   it("keeps real brainstorm API errors instead of replacing them with a fake connection error", () => {
     const src = chat();
     expect(src).toMatch(/async function brainstormErrorMessage/);
     expect(src).toMatch(/payload\.message[\s\S]{0,150}?payload\.error/);
-    expect(src).toMatch(/credentials:\s*"same-origin"/);
+    expect(src).not.toMatch(/credentials:\s*"same-origin"/);
     expect(src).toMatch(/HTTP 401 — your sign-in has expired/);
     expect(src).toMatch(/setRetryAction\(\/HTTP 401\/\.test\(msg\) \? null/);
     expect(src).toMatch(/if \(!res\.body\) throw new Error\("T\.H\.E\.O\. returned no stream\."\)/);
@@ -212,6 +214,18 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(engine).toMatch(/const \[isPaused, setIsPaused\] = useState\(false\)/);
     expect(tape).toMatch(/aria-label=\{isRecording \? "Pause recording" : isPaused \? "Resume recording" : "Record"\}/);
     expect(tape).not.toMatch(/transform:\s*scale\(0\.65\)/);
+  });
+
+  it("keeps a five-second recorded clip under Record and never finalizes it from Pause", () => {
+    const engine = uploadEngine();
+    const toggle = engine.slice(engine.indexOf("const toggleRecording"), engine.indexOf("const stopRecording"));
+    const onStop = engine.slice(engine.indexOf("recorder.onstop"), engine.indexOf("mediaRecorderRef.current = recorder"));
+    expect(toggle).toMatch(/mediaRecorderRef\.current\.pause\(\)/);
+    expect(toggle).not.toMatch(/mediaRecorderRef\.current\.stop\(\)/);
+    expect(onStop).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
+    expect(onStop).not.toMatch(/setFiles\(/);
+    expect(intakeGrid()).toMatch(/p\.recordings\.map/);
+    expect(intakeGrid()).not.toMatch(/p\.files\.map\(\(file\).*RECORDED HERE/s);
   });
 
   it("uses dynamic viewport height and respects the iPhone safe area for the app bar", () => {

@@ -102,6 +102,19 @@ function brainstormFailureMessage(error: unknown): string {
   return message || "T.H.E.O. could not be reached right now.";
 }
 
+async function ttsErrorMessage(res: Response): Promise<string> {
+  let detail = "";
+  try {
+    const payload = await res.json() as { message?: unknown; error?: unknown };
+    detail = typeof payload.message === "string"
+      ? payload.message
+      : typeof payload.error === "string" ? payload.error : "";
+  } catch {
+    // A non-JSON gateway response still has an actionable HTTP status.
+  }
+  return `T.H.E.O.'s voice returned HTTP ${res.status}${detail ? ` — ${detail}` : ""}`;
+}
+
 function useStudioViewport() {
   const [viewport, setViewport] = useState({ height: 0, offsetTop: 0 });
 
@@ -491,7 +504,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           body: JSON.stringify({ text: next }),
         });
         if (!res.ok) {
-          throw new Error(`TTS request failed with HTTP ${res.status}`);
+          throw new Error(await ttsErrorMessage(res));
         }
         if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
         const buf = await res.arrayBuffer();
@@ -499,7 +512,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         if (generation !== ttsRequestGenerationRef.current || !pageVisibleRef.current || !ttsEnabledRef.current) return;
         audioQueueRef.current.push(URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" })));
         playNext();
-      } catch {
+      } catch (error) {
         // TTS must be optional, but never invisible. A failed request was
         // swallowed here, which left iPhone users with a slashed speaker and
         // no explanation or recovery action.
@@ -508,7 +521,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         stopAudio();
         failedTtsTextRef.current = next;
         setTtsFailed(true);
-        setVoiceNotice("T.H.E.O.'s voice could not be generated. Continue in text, or tap Try voice again to replay this response.");
+        const detail = error instanceof Error ? error.message : "T.H.E.O.'s voice could not be generated.";
+        setVoiceNotice(`${detail} Continue in text, or tap Try voice again to replay this response.`);
       }
       finally { void drain(); }
     };
@@ -704,7 +718,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
         body: JSON.stringify({ messages: initMessages, project_id: projectId }),
       });
 
@@ -814,7 +827,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
         body: JSON.stringify({ messages: apiMessages, project_id: projectId }),
       });
 

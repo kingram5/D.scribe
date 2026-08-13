@@ -50,6 +50,12 @@ interface BrainstormChatProps {
   autoStart?: boolean;
 }
 
+function isAppleMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 function useStudioViewport() {
   const [viewport, setViewport] = useState({ height: 0, offsetTop: 0 });
 
@@ -221,6 +227,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
+  // Safari does not expose the hardware Silent switch to web pages. Be honest
+  // about that limitation before an iPhone owner mistakes silent playback for a
+  // dead session.
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const sessionKey = `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -239,6 +249,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // True once the user hand-edits the composer, so a re-armed recognizer cannot
   // overwrite what they typed. Cleared when a turn is sent.
   const typedRef = useRef(false);
+  // iOS ends recognition after each utterance even with continuous=true. This
+  // belongs to the answer, not a particular SpeechRecognition instance.
+  const finalTranscriptRef = useRef("");
+  const hasFinalResultRef = useRef(false);
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSendRef = useRef<(() => void) | null>(null);
 
@@ -253,6 +267,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const audioQueueRef = useRef<ArrayBuffer[]>([]);
   const isPlayingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioContextReadyRef = useRef(false);
+  const audioContextInitRef = useRef<Promise<void> | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const sentenceBufferRef = useRef("");
 
@@ -303,6 +319,49 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const speechSupported = typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
+  const stopAudio = useCallback(() => {
+    try { currentSourceRef.current?.stop(); } catch { /* ignore */ }
+    currentSourceRef.current = null;
+    ttsRequestGenerationRef.current += 1;
+    ttsRequestQueueRef.current = [];
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    sentenceBufferRef.current = "";
+    setSpeaking(false);
+  }, []);
+
+  // This is called synchronously from voice-control click handlers. iOS only
+  // lets Web Audio leave its suspended state from a user gesture; doing this
+  // later in an SSE/TTS callback silently strands playback and hands-free.
+  const initializeTtsAudio = useCallback(() => {
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) throw new Error("Web Audio is unavailable");
+      const ctx = audioCtxRef.current ?? new Ctx();
+      audioCtxRef.current = ctx;
+      audioContextReadyRef.current = ctx.state === "running";
+      const resume = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+      audioContextInitRef.current = resume.then(() => {
+        if (ctx.state !== "running") throw new Error("Audio context did not start");
+        audioContextReadyRef.current = true;
+      }).catch(() => {
+        audioContextReadyRef.current = false;
+        ttsEnabledRef.current = false;
+        setTtsEnabled(false);
+        stopAudio();
+        setVoiceNotice("T.H.E.O.'s voice could not start. Continue in text, then tap the speaker to try voice again.");
+      });
+      return true;
+    } catch {
+      audioContextReadyRef.current = false;
+      ttsEnabledRef.current = false;
+      setTtsEnabled(false);
+      stopAudio();
+      setVoiceNotice("T.H.E.O.'s voice is not available in this browser. The session can continue in text.");
+      return false;
+    }
+  }, [stopAudio]);
+
   // TTS helpers — defined before toggleListening to avoid TDZ
   const playNext = useCallback(() => {
     if (isPlayingRef.current) return;
@@ -314,22 +373,23 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // Queue drained: Theo has stopped talking. Hands-free mode watches this to know
     // when it is safe to re-open the mic without recording his own voice.
     if (audioQueueRef.current.length === 0) { setSpeaking(false); return; }
-    // Everything from here to src.start() runs inside a guard: the latch is set
-    // before the AudioContext is constructed, so any throw (no webkitAudioContext
-    // on old Safari, a closed context) used to strand isPlayingRef/speaking true
-    // for the session — silent TTS, permanently dead hands-free, and later
-    // sentences still fetched and billed for audio nobody hears.
-    isPlayingRef.current = true;
-    setSpeaking(true);
-    // Declared outside the try so the catch can reach it: any throw between the
-    // latch and src.start() has to release the latch and drain the queue, or the
-    // session goes permanently silent with hands-free dead.
-    const onDecodeFailed = () => {
-      isPlayingRef.current = false;
-      currentSourceRef.current = null;
-      playNext();
-    };
-    try {
+
+    const ctx = audioCtxRef.current;
+    if (!ctx || !audioContextReadyRef.current || ctx.state !== "running") {
+      // A just-clicked Resume can resolve after the first streamed sentence.
+      // Wait for that gesture-bound promise; do not create/resume a context from
+      // this asynchronous callback.
+      if (audioContextInitRef.current && !audioContextReadyRef.current) {
+        void audioContextInitRef.current.then(() => playNext());
+        return;
+      }
+      ttsEnabledRef.current = false;
+      setTtsEnabled(false);
+      stopAudio();
+      setVoiceNotice("T.H.E.O.'s voice stopped before it could play. Continue in text, then tap the speaker to try voice again.");
+      return;
+    }
+
     // Close the mic the instant he starts talking. The hands-free effect below
     // only ever RE-ARMED after he finished; nothing shut the mic while audio was
     // playing, so an open mic transcribed his own TTS straight back into the
@@ -339,31 +399,45 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       try { recognitionRef.current.stop(); } catch { /* not started */ }
       setListening(false);
     }
-    const buf = audioQueueRef.current.shift()!;
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = (audioCtxRef.current ??= new Ctx());
-    // A context created outside a gesture can start suspended (iOS). Then
-    // src.start() is silent, onended never fires, and the latch above sticks.
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
-    // The decode error callback is mandatory. Without one, a single failed
-    // decode (truncated upstream body, partial mp3) left isPlayingRef and
-    // `speaking` true forever.
-    ctx.decodeAudioData(buf.slice(0), (decoded) => {
-      const src = ctx.createBufferSource();
-      src.buffer = decoded;
-      src.connect(ctx.destination);
-      currentSourceRef.current = src;
-      src.onended = () => {
-        isPlayingRef.current = false;
-        currentSourceRef.current = null;
-        playNext();
-      };
-      src.start();
-    }, onDecodeFailed);
+
+    isPlayingRef.current = true;
+    setSpeaking(true);
+    const onDecodeFailed = () => {
+      isPlayingRef.current = false;
+      currentSourceRef.current = null;
+      playNext();
+    };
+    try {
+      const buf = audioQueueRef.current.shift()!;
+      // The decode error callback is mandatory. Without one, a single failed
+      // decode (truncated upstream body, partial mp3) left isPlayingRef and
+      // `speaking` true forever.
+      ctx.decodeAudioData(buf.slice(0), (decoded) => {
+        const src = ctx.createBufferSource();
+        src.buffer = decoded;
+        src.connect(ctx.destination);
+        currentSourceRef.current = src;
+        let finished = false;
+        let endFallback: ReturnType<typeof setTimeout> | null = null;
+        const finishPlayback = () => {
+          if (finished) return;
+          finished = true;
+          if (endFallback) clearTimeout(endFallback);
+          isPlayingRef.current = false;
+          currentSourceRef.current = null;
+          playNext();
+        };
+        src.onended = finishPlayback;
+        // Hardware mute provides no browser signal on iPhone. This fallback is
+        // also the escape hatch if Safari fails to dispatch onended: the nominal
+        // audio duration is enough to release the busy latch and re-open hands-free.
+        endFallback = setTimeout(finishPlayback, Math.max(1000, Math.ceil(decoded.duration * 1000) + 750));
+        try { src.start(); } catch { finishPlayback(); }
+      }, onDecodeFailed);
     } catch {
       onDecodeFailed();
     }
-  }, []);
+  }, [stopAudio]);
 
   const speakSentence = useCallback((text: string) => {
     if (!pageVisibleRef.current || !ttsEnabledRef.current || !text.trim()) return;
@@ -395,17 +469,6 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     void drain();
   }, [playNext]);
 
-  const stopAudio = useCallback(() => {
-    try { currentSourceRef.current?.stop(); } catch { /* ignore */ }
-    currentSourceRef.current = null;
-    ttsRequestGenerationRef.current += 1;
-    ttsRequestQueueRef.current = [];
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
-    sentenceBufferRef.current = "";
-    setSpeaking(false);
-  }, []);
-
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -435,16 +498,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    let finalTranscript = "";
-    let hasFinalResult = false;
-
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
-          hasFinalResult = true;
+          finalTranscriptRef.current += transcript + " ";
+          hasFinalResultRef.current = true;
         } else {
           interim = transcript;
         }
@@ -455,13 +515,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // whose empty transcript overwrote the whole typed answer on its first
       // stray syllable. Same rule undoLast already follows.
       if (typedRef.current) return;
-      setInput(finalTranscript + interim);
+      setInput(finalTranscriptRef.current + interim);
 
       // Reset silence timer on every result
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
       // If we have final text and no interim (user stopped talking), start 3s countdown
-      if (hasFinalResult && !interim) {
+      if (hasFinalResultRef.current && !interim) {
         silenceTimerRef.current = setTimeout(() => {
           recognition.stop();
           setListening(false);
@@ -493,7 +553,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
 
     recognition.onend = () => {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      // iOS fires this after every utterance despite continuous=true. Keep the
+      // three-second timer alive so that final words still auto-send; the
+      // hands-free effect can safely re-arm this recognizer in the meantime.
       setListening(false);
     };
 
@@ -677,6 +739,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setMessages(updatedMessages);
     setInput("");
     typedRef.current = false; // turn sent: dictation may own the composer again
+    finalTranscriptRef.current = "";
+    hasFinalResultRef.current = false;
     setStreaming(true);
     setSendError(null);
     setRetryAction(null);
@@ -1037,8 +1101,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // TTS choice modal
   if (showTtsPrompt) {
     function chooseTts(on: boolean) {
-      setTtsEnabled(on);
-      ttsEnabledRef.current = on;
+      const voiceReady = !on || initializeTtsAudio();
+      setTtsEnabled(on && voiceReady);
+      ttsEnabledRef.current = on && voiceReady;
+      setVoiceNotice(on && voiceReady && isAppleMobileDevice()
+        ? "If you do not hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume. The mic pauses while a response is playing; tap the speaker to stop it and keep using text."
+        : null);
       setShowTtsPrompt(false);
       if (pendingResume) {
         setMessages(savedMessages);
@@ -1336,9 +1404,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <button
             onClick={() => {
               const next = !ttsEnabled;
-              setTtsEnabled(next);
-              ttsEnabledRef.current = next;
-              if (!next) stopAudio();
+              const voiceReady = !next || initializeTtsAudio();
+              setTtsEnabled(next && voiceReady);
+              ttsEnabledRef.current = next && voiceReady;
+              if (!next) {
+                stopAudio();
+                setVoiceNotice(null);
+              } else if (voiceReady && isAppleMobileDevice()) {
+                setVoiceNotice("If you do not hear T.H.E.O. on this iPhone, turn off Silent mode and raise the volume. The mic pauses while a response is playing; tap the speaker to stop it and keep using text.");
+              }
             }}
             title={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
             aria-label={ttsEnabled ? "Mute AI voice" : "Unmute AI voice"}
@@ -1512,7 +1586,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       </div>
 
       {/* The studio's only error surface. Everything else was a console.error. */}
-      {(sendError || storageBlocked) && (
+      {(sendError || storageBlocked || voiceNotice) && (
         <div
           role="alert"
           style={{
@@ -1532,7 +1606,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           }}
         >
           <span style={{ flex: 1 }}>
-            {sendError ?? "This browser is blocking storage, so this session won't be saved if you close the tab."}
+            {sendError ?? voiceNotice ?? "This browser is blocking storage, so this session won't be saved if you close the tab."}
           </span>
           {retryAction && (
             <button
@@ -1554,7 +1628,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </button>
           )}
           <button
-            onClick={() => { setSendError(null); setRetryAction(null); setStorageBlocked(false); }}
+            onClick={() => { setSendError(null); setRetryAction(null); setStorageBlocked(false); setVoiceNotice(null); }}
             aria-label="Dismiss"
             style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
           >

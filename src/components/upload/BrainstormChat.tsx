@@ -707,6 +707,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         // Output playback can mute input briefly. The post-playback arm check
         // below only fails if it remains muted after T.H.E.O. gives the floor back.
         setListening(false);
+        if (mutedMicTimerRef.current) clearTimeout(mutedMicTimerRef.current);
+        mutedMicTimerRef.current = setTimeout(() => {
+          mutedMicTimerRef.current = null;
+          if (
+            track.muted &&
+            handsFreeRef.current &&
+            pageVisibleRef.current &&
+            !streamingRef.current &&
+            !speakingRef.current
+          ) {
+            failPersistentMicrophone("The iPhone microphone stopped delivering audio. Tap Speak to reconnect it, or type your answer.");
+          }
+        }, 2000);
       };
       track.onunmute = () => {
         if (mutedMicTimerRef.current) {
@@ -726,20 +739,30 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       await contextReady;
 
       let noiseFloor = 0.008;
+      let unhealthyContextSince = 0;
       vadTimerRef.current = setInterval(() => {
         const activeAnalyser = analyserRef.current;
         const data = analyserDataRef.current;
         const recorder = mediaRecorderRef.current;
+        const hasFloor = handsFreeRef.current &&
+          pageVisibleRef.current &&
+          !streamingRef.current &&
+          !speakingRef.current &&
+          !isPlayingRef.current;
+        if (hasFloor && context.state !== "running") {
+          if (!unhealthyContextSince) unhealthyContextSince = Date.now();
+          if (Date.now() - unhealthyContextSince >= 2000) {
+            failPersistentMicrophone("The iPhone suspended microphone processing after playback. Tap Speak to reconnect it, or type your answer.");
+          }
+          return;
+        }
+        unhealthyContextSince = 0;
         if (
           !activeAnalyser ||
           !data ||
           !recorder ||
           recorder.state !== "recording" ||
-          !handsFreeRef.current ||
-          !pageVisibleRef.current ||
-          streamingRef.current ||
-          speakingRef.current ||
-          isPlayingRef.current
+          !hasFloor
         ) return;
 
         activeAnalyser.getByteTimeDomainData(data);

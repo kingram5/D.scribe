@@ -436,6 +436,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const liveInterimRef = useRef("");
   const pcmQueueRef = useRef<Int16Array[]>([]);
   const pcmNodeRef = useRef<ScriptProcessorNode | null>(null);
+  // Live captions failing must not be invisible (that is how every mic bug on
+  // this feature hid), but it also must not nag on every turn: one on-screen
+  // explanation per session, every incident to the server log.
+  const liveIssueNoticedRef = useRef(false);
   // Live input level, written directly to a DOM node from the meter loop so
   // the author can SEE the mic hearing them without 20 renders a second.
   const micLevelFillRef = useRef<HTMLSpanElement | null>(null);
@@ -824,6 +828,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
   }, [teardownMic]);
 
+  /** Live captions could not run. Tell the author once per session — with the
+   *  actual reason, because that is the only debugging channel a phone test
+   *  has — while making clear hands-free itself still works. */
+  const noteLiveIssue = useCallback((detail: string) => {
+    reportHandsFreeIssue(`live captions unavailable: ${detail}`);
+    if (!handsFreeRef.current || liveIssueNoticedRef.current) return;
+    liveIssueNoticedRef.current = true;
+    setSendError(`Live captions are off — ${detail} Hands-free still works: your words appear right after you pause.`);
+  }, []);
+
   /** Open the live-transcription socket for one spoken turn: fetch a 30-second
    *  token, connect, flush any audio queued while connecting, then paint each
    *  interim result into the composer. Every failure downgrades to the clip
@@ -837,17 +851,27 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     pcmQueueRef.current = [];
 
     let token = "";
+    let failDetail = "";
     try {
       const res = await fetch("/api/brainstorm/stt-token", { method: "POST" });
       if (res.ok) {
         const payload = await res.json() as { access_token?: unknown };
-        if (typeof payload.access_token === "string") token = payload.access_token;
+        if (typeof payload.access_token === "string" && payload.access_token) token = payload.access_token;
+        else failDetail = "the token response was empty.";
+      } else {
+        try {
+          const payload = await res.json() as { error?: unknown };
+          if (typeof payload.error === "string") failDetail = payload.error;
+        } catch { /* non-JSON gateway page */ }
+        failDetail = failDetail || `the token request returned HTTP ${res.status}.`;
       }
-    } catch { /* downgrade below */ }
+    } catch {
+      failDetail = "the token request could not reach the server.";
+    }
     if (turn !== liveTurnRef.current || !handsFreeRef.current) return;
     if (!token) {
       liveStateRef.current = "failed";
-      reportHandsFreeIssue("live STT token fetch failed; turn will use clip transcription");
+      noteLiveIssue(failDetail);
       return;
     }
 
@@ -856,9 +880,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       // Browsers cannot set an Authorization header on a WebSocket; Deepgram
       // accepts the token as a subprotocol pair instead.
       socket = new WebSocket(LIVE_STT_URL, ["bearer", token]);
-    } catch {
+    } catch (error) {
       liveStateRef.current = "failed";
-      reportHandsFreeIssue("live STT socket could not be constructed; turn will use clip transcription");
+      noteLiveIssue(`this browser rejected the live connection${error instanceof Error && error.message ? ` (${error.message})` : ""}.`);
       return;
     }
     socket.binaryType = "arraybuffer";
@@ -897,17 +921,25 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         if (composed) setInput(composed);
       } catch { /* non-JSON frame */ }
     };
-    const downgrade = () => {
+    const downgrade = (detail: string) => {
       // A socket lost mid-turn may hold only half the words. The recorder clip
       // has ALL of them, so the send path falls back rather than sending less
       // than the author said.
       if (turn !== liveTurnRef.current) return;
       if (liveSocketRef.current === socket) liveSocketRef.current = null;
-      if (liveStateRef.current !== "off") liveStateRef.current = "failed";
+      if (liveStateRef.current !== "off") {
+        liveStateRef.current = "failed";
+        noteLiveIssue(detail);
+      }
     };
-    socket.onerror = downgrade;
-    socket.onclose = downgrade;
-  }, []);
+    socket.onerror = () => downgrade("the live connection errored.");
+    // Code 1006 with a token that WAS issued means Deepgram refused the
+    // handshake itself — the single most diagnostic number a phone test can
+    // report back.
+    socket.onclose = (event: CloseEvent) => downgrade(
+      `the live connection closed (code ${event.code}${event.reason ? `: ${event.reason}` : ""}).`,
+    );
+  }, [noteLiveIssue]);
 
   /** One finished clip → Deepgram → composer → auto-send. STT failures keep
    *  the session armed (the next answer can still work); only a dead sign-in

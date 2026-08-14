@@ -48,7 +48,14 @@ export async function POST() {
         userId: user.id,
         meta: { status: res.status, body: body.slice(0, 300) },
       });
-      return NextResponse.json({ error: "Could not authorize live transcription." }, { status: 502 });
+      // Kyle debugs on a phone with no devtools: the client surfaces this
+      // message on screen, so say exactly what to do. Grant needs an API key
+      // with Member (or higher) permissions — plain transcription does not,
+      // which is why clips can work while this fails.
+      const detail = res.status === 403 || res.status === 401
+        ? "Deepgram refused (HTTP " + res.status + "). The DEEPGRAM_API_KEY needs 'Member' permissions — in the Deepgram console, create a new key with Advanced → Member, then update the key in Vercel."
+        : `Deepgram returned HTTP ${res.status}.`;
+      return NextResponse.json({ error: detail }, { status: 502 });
     }
     const payload = await res.json() as { access_token?: unknown; expires_in?: unknown };
     if (typeof payload.access_token !== "string" || !payload.access_token) {

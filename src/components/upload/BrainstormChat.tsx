@@ -59,6 +59,38 @@ const RECORDER_MIME_CANDIDATES = [
   "audio/ogg",
 ];
 
+/* Live words while speaking: the same mic stream ALSO feeds Deepgram's
+   streaming endpoint over a WebSocket, so interim words appear in the
+   composer as they are said — the piece Web Speech used to provide. The
+   socket authorizes with a 30-second server-minted token (never the real
+   key), opens per spoken turn, and is pure display/latency sugar: if it
+   fails, the recorded clip still delivers the whole turn through
+   /api/brainstorm/stt. */
+const LIVE_STT_URL = "wss://api.deepgram.com/v1/listen" +
+  "?model=nova-3&encoding=linear16&sample_rate=16000&channels=1" +
+  "&interim_results=true&smart_format=true&punctuate=true&mip_opt_out=true";
+/* Audio captured while the socket is still connecting is queued so the first
+   words of an answer are never lost. ~1 minute at 16 kHz bounds memory if the
+   handshake stalls. */
+const PCM_QUEUE_MAX_CHUNKS = 700;
+
+/** Fold mic audio down to 16 kHz mono PCM for Deepgram's streaming endpoint —
+ *  phones capture at 44.1/48 kHz, which is bandwidth wasted on speech. */
+function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
+  const ratio = inputRate / 16000;
+  const outLength = Math.floor(input.length / ratio);
+  const out = new Int16Array(outLength);
+  for (let i = 0; i < outLength; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(Math.floor((i + 1) * ratio), input.length);
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += input[j];
+    const sample = sum / Math.max(1, end - start);
+    out[i] = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
+  }
+  return out;
+}
+
 /** Kyle tests on a real iPhone with no devtools attached. Mirror hands-free
  *  failures to the server log so "it's not picking up" is diagnosable after
  *  the fact instead of vanishing with the tab. */
@@ -394,6 +426,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const micReacquireTriedRef = useRef(false);
   const micStartingRef = useRef(false);
   const listeningRef = useRef(false);
+  // ── Live streaming transcription (display while speaking) ──
+  const liveSocketRef = useRef<WebSocket | null>(null);
+  // off → connecting → open; "failed" hands the turn to the clip fallback.
+  const liveStateRef = useRef<"off" | "connecting" | "open" | "failed">("off");
+  // Bumped whenever a turn ends so stale socket callbacks cannot touch a new one.
+  const liveTurnRef = useRef(0);
+  const liveFinalRef = useRef("");
+  const liveInterimRef = useRef("");
+  const pcmQueueRef = useRef<Int16Array[]>([]);
+  const pcmNodeRef = useRef<ScriptProcessorNode | null>(null);
   // Live input level, written directly to a DOM node from the meter loop so
   // the author can SEE the mic hearing them without 20 renders a second.
   const micLevelFillRef = useRef<HTMLSpanElement | null>(null);
@@ -709,6 +751,24 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
   }, [stopAudio]);
 
+  /** End the live-transcription socket for this turn. Purely a display
+   *  channel: closing it never touches the mic stream or the recorder. */
+  const closeLiveSocket = useCallback(() => {
+    liveTurnRef.current += 1; // stale socket callbacks check this and bail
+    const socket = liveSocketRef.current;
+    liveSocketRef.current = null;
+    liveStateRef.current = "off";
+    pcmQueueRef.current = [];
+    liveFinalRef.current = "";
+    liveInterimRef.current = "";
+    if (socket) {
+      try {
+        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "CloseStream" }));
+      } catch { /* closing regardless */ }
+      try { socket.close(); } catch { /* already closed */ }
+    }
+  }, []);
+
   /** Release every capture resource. The ONLY legitimate reasons to reach this
    *  are the user toggling Speak off, backgrounding, unmount, or a real mic
    *  failure — never "T.H.E.O. is about to talk". */
@@ -716,6 +776,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (vadTimerRef.current) {
       clearInterval(vadTimerRef.current);
       vadTimerRef.current = null;
+    }
+    closeLiveSocket();
+    const pcmNode = pcmNodeRef.current;
+    pcmNodeRef.current = null;
+    if (pcmNode) {
+      pcmNode.onaudioprocess = null;
+      try { pcmNode.disconnect(); } catch { /* context may already be closed */ }
     }
     discardSegmentRef.current?.();
     discardSegmentRef.current = null;
@@ -742,7 +809,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     transcribingRef.current = false;
     setTranscribing(false);
     setListening(false);
-  }, []);
+  }, [closeLiveSocket]);
 
   /** A mic problem must end hands-free VISIBLY. It must never touch the
    *  speaker: TTS state is not this function's to change. */
@@ -756,6 +823,91 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       reportHandsFreeIssue(message);
     }
   }, [teardownMic]);
+
+  /** Open the live-transcription socket for one spoken turn: fetch a 30-second
+   *  token, connect, flush any audio queued while connecting, then paint each
+   *  interim result into the composer. Every failure downgrades to the clip
+   *  fallback — live words are never allowed to cost a turn. */
+  const openLiveSocket = useCallback(async () => {
+    if (liveSocketRef.current) return;
+    const turn = ++liveTurnRef.current;
+    liveStateRef.current = "connecting";
+    liveFinalRef.current = "";
+    liveInterimRef.current = "";
+    pcmQueueRef.current = [];
+
+    let token = "";
+    try {
+      const res = await fetch("/api/brainstorm/stt-token", { method: "POST" });
+      if (res.ok) {
+        const payload = await res.json() as { access_token?: unknown };
+        if (typeof payload.access_token === "string") token = payload.access_token;
+      }
+    } catch { /* downgrade below */ }
+    if (turn !== liveTurnRef.current || !handsFreeRef.current) return;
+    if (!token) {
+      liveStateRef.current = "failed";
+      reportHandsFreeIssue("live STT token fetch failed; turn will use clip transcription");
+      return;
+    }
+
+    let socket: WebSocket;
+    try {
+      // Browsers cannot set an Authorization header on a WebSocket; Deepgram
+      // accepts the token as a subprotocol pair instead.
+      socket = new WebSocket(LIVE_STT_URL, ["bearer", token]);
+    } catch {
+      liveStateRef.current = "failed";
+      reportHandsFreeIssue("live STT socket could not be constructed; turn will use clip transcription");
+      return;
+    }
+    socket.binaryType = "arraybuffer";
+    liveSocketRef.current = socket;
+
+    socket.onopen = () => {
+      if (turn !== liveTurnRef.current || liveSocketRef.current !== socket) {
+        try { socket.close(); } catch { /* stale */ }
+        return;
+      }
+      liveStateRef.current = "open";
+      // First words are never lost: everything captured during the handshake
+      // was queued and goes out ahead of the live feed.
+      for (const chunk of pcmQueueRef.current) socket.send(chunk.buffer as ArrayBuffer);
+      pcmQueueRef.current = [];
+    };
+    socket.onmessage = (event) => {
+      if (turn !== liveTurnRef.current) return;
+      try {
+        const data = JSON.parse(String(event.data)) as {
+          type?: string;
+          is_final?: boolean;
+          channel?: { alternatives?: Array<{ transcript?: string }> };
+        };
+        if (data.type !== "Results") return;
+        const text = (data.channel?.alternatives?.[0]?.transcript ?? "").trim();
+        if (data.is_final) {
+          if (text) liveFinalRef.current += (liveFinalRef.current ? " " : "") + text;
+          liveInterimRef.current = "";
+        } else {
+          liveInterimRef.current = text;
+        }
+        // Never clobber a typed answer with dictation.
+        if (typedRef.current) return;
+        const composed = [liveFinalRef.current, liveInterimRef.current].filter(Boolean).join(" ");
+        if (composed) setInput(composed);
+      } catch { /* non-JSON frame */ }
+    };
+    const downgrade = () => {
+      // A socket lost mid-turn may hold only half the words. The recorder clip
+      // has ALL of them, so the send path falls back rather than sending less
+      // than the author said.
+      if (turn !== liveTurnRef.current) return;
+      if (liveSocketRef.current === socket) liveSocketRef.current = null;
+      if (liveStateRef.current !== "off") liveStateRef.current = "failed";
+    };
+    socket.onerror = downgrade;
+    socket.onclose = downgrade;
+  }, []);
 
   /** One finished clip → Deepgram → composer → auto-send. STT failures keep
    *  the session armed (the next answer can still work); only a dead sign-in
@@ -865,7 +1017,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     segmentStartedAtRef.current = Date.now();
     segmentHasSpeechRef.current = false;
     lastVoiceAtRef.current = 0;
-  }, [disarmHandsFree, transcribeSegment]);
+    // Live words for this turn. Failure here never costs the turn — the
+    // recorder clip above is the source of truth.
+    void openLiveSocket();
+  }, [disarmHandsFree, openLiveSocket, transcribeSegment]);
 
   /** Wire a stream into the session: track-loss reporting + the level analyser. */
   const attachStream = useCallback((stream: MediaStream) => {
@@ -886,6 +1041,36 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       source.connect(analyser);
       analyserRef.current = analyser;
       vadDataRef.current = new Uint8Array(analyser.fftSize);
+
+      // Live-words tap: raw PCM off the SAME source, streamed to Deepgram
+      // while a segment records. A processor only runs when wired to the
+      // output, so it goes through a zero gain — unity would echo the mic.
+      const previousPcmNode = pcmNodeRef.current;
+      if (previousPcmNode) {
+        previousPcmNode.onaudioprocess = null;
+        try { previousPcmNode.disconnect(); } catch { /* re-acquire path */ }
+      }
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (event: AudioProcessingEvent) => {
+        if (!handsFreeRef.current || !recorderRef.current) return;
+        const state = liveStateRef.current;
+        if (state !== "connecting" && state !== "open") return;
+        const chunk = downsampleTo16k(event.inputBuffer.getChannelData(0), ctx.sampleRate);
+        const socket = liveSocketRef.current;
+        if (state === "open" && socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(chunk.buffer as ArrayBuffer);
+        } else {
+          const queue = pcmQueueRef.current;
+          queue.push(chunk);
+          if (queue.length > PCM_QUEUE_MAX_CHUNKS) queue.shift();
+        }
+      };
+      const silent = ctx.createGain();
+      silent.gain.value = 0;
+      source.connect(processor);
+      processor.connect(silent);
+      silent.connect(ctx.destination);
+      pcmNodeRef.current = processor;
     }
   }, [disarmHandsFree]);
 
@@ -947,6 +1132,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       trackMutedAtRef.current = 0;
       micReacquireTriedRef.current = false;
       if (recorderRef.current) endSegment("discard");
+      if (liveStateRef.current !== "off") closeLiveSocket();
       if (listeningRef.current) {
         listeningRef.current = false;
         setListening(false);
@@ -1005,18 +1191,38 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     if (segmentHasSpeechRef.current) {
       if (now - lastVoiceAtRef.current >= QUIET_SEND_MS || now - segmentStartedAtRef.current >= MAX_SEGMENT_MS) {
-        // Close the gate BEFORE the async onstop→fetch chain so no new segment
-        // opens mid-round-trip; transcribeSegment always clears this.
-        transcribingRef.current = true;
-        setTranscribing(true);
         listeningRef.current = false;
         setListening(false);
-        endSegment("send");
+        if (liveStateRef.current === "open") {
+          // Live path: the words are already on screen. After 3s of quiet
+          // Deepgram has long since finalized them — send without a round trip.
+          const transcript = [liveFinalRef.current, liveInterimRef.current]
+            .filter(Boolean).join(" ").trim();
+          endSegment("discard"); // the clip is redundant; the live text is the answer
+          closeLiveSocket();
+          if (typedRef.current) {
+            // Typed answer wins; the user sends it themselves.
+          } else if (!transcript) {
+            setSendError("The microphone heard sound but no words came through. Try again, a little closer to the phone — or type your answer.");
+          } else {
+            setInput(transcript);
+            autoSendRef.current?.(transcript);
+          }
+        } else {
+          // Clip fallback (socket failed or never opened): exactly the proven
+          // path. Close the gate BEFORE the async onstop→fetch chain so no new
+          // segment opens mid-round-trip; transcribeSegment always clears this.
+          transcribingRef.current = true;
+          setTranscribing(true);
+          closeLiveSocket();
+          endSegment("send");
+        }
       }
     } else if (now - segmentStartedAtRef.current >= IDLE_SEGMENT_RESET_MS) {
       endSegment("discard");
+      closeLiveSocket();
     }
-  }, [beginSegment, disarmHandsFree, endSegment, reacquireMicrophone]);
+  }, [beginSegment, closeLiveSocket, disarmHandsFree, endSegment, reacquireMicrophone]);
 
   /** Open the hands-free session from the Speak tap. The tap is the only iOS
    *  gesture this feature will ever get, so BOTH the AudioContext and the
@@ -2049,7 +2255,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         {composing && (
           <div style={{ marginTop: 18 }}>
             <div className="ds-label" style={{ color: "rgba(249,247,242,0.45)", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
-              You · {transcribing ? "writing down what you said…" : listening ? "listening — speak when ready" : "typing"}
+              You · {transcribing ? "writing down what you said…" : listening ? (input.trim() ? "live transcript" : "listening — speak when ready") : "typing"}
               {/* Live input level. Kyle's failures read as "not picking up" with
                   no error — this bar is the on-device proof the mic hears him,
                   updated straight from the meter loop without re-rendering. */}

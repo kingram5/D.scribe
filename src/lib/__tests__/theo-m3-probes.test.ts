@@ -76,6 +76,31 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(visibility).toMatch(/teardownMic\(\)/);
   });
 
+  it("streams live words while speaking and falls back to the recorded clip if the socket dies", () => {
+    const src = chat();
+    // Live display comes from Deepgram's streaming endpoint, authorized with a
+    // short-lived server-minted token — never the real key in the browser.
+    expect(src).toMatch(/wss:\/\/api\.deepgram\.com\/v1\/listen/);
+    expect(src).toMatch(/interim_results=true/);
+    expect(src).toMatch(/new WebSocket\(LIVE_STT_URL, \["bearer", token\]\)/);
+    expect(src).not.toMatch(/DEEPGRAM_API_KEY/);
+    // Words spoken during the handshake are queued, not lost.
+    expect(src).toMatch(/pcmQueueRef\.current;[\s\S]{0,80}?queue\.push\(chunk\)/);
+    // The live socket is display sugar: on any failure the recorded clip still
+    // delivers the whole turn through the batch route.
+    expect(src).toMatch(/liveStateRef\.current = "failed"/);
+    expect(src).toMatch(/if \(liveStateRef\.current === "open"\)/);
+    expect(src).toMatch(/endSegment\("send"\)/);
+    // Typing still always beats dictation, live or batch.
+    const live = src.slice(src.indexOf("const openLiveSocket"), src.indexOf("const transcribeSegment"));
+    expect(live).toMatch(/if \(typedRef\.current\) return;/);
+    const tokenRoute = read("app/api/brainstorm/stt-token/route.ts");
+    expect(tokenRoute).toMatch(/requireAuth\(\)/);
+    expect(tokenRoute).toMatch(/checkRateLimit\(user\.id, "brainstorm-stt-token"/);
+    expect(tokenRoute).toMatch(/auth\/grant/);
+    expect(tokenRoute).toMatch(/ttl_seconds: 30/);
+  });
+
   it("transcribes hands-free answers server-side with Deepgram, authenticated and rate-limited", () => {
     const route = read("app/api/brainstorm/stt/route.ts");
     expect(route).toMatch(/requireAuth\(\)/);

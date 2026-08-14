@@ -286,7 +286,7 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     // A discarded segment (gate closed, teardown, background) must never
     // transcribe or send; stale recorder callbacks check the live ref.
     expect(segment).toMatch(/let discarded = false/);
-    expect(segment).toMatch(/if \(discarded \|\| chunks\.length === 0\) return/);
+    expect(segment).toMatch(/if \(discarded\) return/);
     expect(segment).toMatch(/if \(recorderRef\.current === recorder\) recorderRef\.current = null/);
     // Mic loss surfaces text on screen AND in the server log — never silence.
     expect(src).toMatch(/track\.onended = \(\) =>/);

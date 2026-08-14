@@ -808,9 +808,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     discardSegmentRef.current = null;
     recorderRef.current = null;
     segmentHasSpeechRef.current = false;
+    // If stop() cannot run its onstop (recorder already dead), a "send" must
+    // still release the transcribing gate or capture is silently over.
+    let stopped = false;
     try {
-      if (recorder.state !== "inactive") recorder.stop();
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+        stopped = true;
+      }
     } catch { /* already stopped */ }
+    if (!stopped && mode === "send") {
+      transcribingRef.current = false;
+      setTranscribing(false);
+    }
   }, []);
 
   /** Open a recording segment on the existing session stream. */
@@ -840,7 +850,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
     recorder.onstop = () => {
       if (recorderRef.current === recorder) recorderRef.current = null;
-      if (discarded || chunks.length === 0) return;
+      if (discarded) return;
+      // Always route a kept segment through transcribeSegment — even an empty
+      // one — because its finally block is what re-opens the capture gate.
       void transcribeSegment(new Blob(chunks, { type: recorder.mimeType || mimeType || "audio/mp4" }));
     };
     try {

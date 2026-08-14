@@ -23,6 +23,18 @@ type StudioRetryAction = "start" | "send" | "finish";
 // and immediately pause it without leaving output active for recognition.
 const TTS_UNLOCK_AUDIO = "data:audio/wav;base64,UklGRogAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWQAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
 
+// Web Speech cannot reliably reclaim the iOS audio session after media
+// playback. Safari's MediaRecorder does not have that restart restriction as
+// long as the gesture-opened MediaStream tracks remain alive. iOS records MP4;
+// desktop fallbacks are included for iPad browsers that report differently.
+const HANDS_FREE_MIME_CANDIDATES = [
+  "audio/mp4",
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+];
+
 function isMessage(value: unknown): value is Message {
   return typeof value === "object" && value !== null &&
     ((value as Message).role === "user" || (value as Message).role === "assistant") &&
@@ -329,7 +341,27 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // three-second quiet-send window authoritative across same-instance restarts.
   const awaitingAutoSendRef = useRef(false);
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoSendRef = useRef<(() => void) | null>(null);
+  const autoSendRef = useRef<((textOverride?: string) => void) | null>(null);
+
+  // iPhone hands-free uses one gesture-opened MediaStream for the whole
+  // session. Individual MediaRecorders may stop between turns, but these tracks
+  // deliberately stay live while T.H.E.O. talks so Safari never has to grant a
+  // second, non-gesture microphone request.
+  const serverSttRef = useRef(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
+  const recorderMimeRef = useRef("");
+  const recorderGenerationRef = useRef(0);
+  const submittedRecorderGenerationRef = useRef<number | null>(null);
+  const speechDetectedRef = useRef(false);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const analyserDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const micAudioContextRef = useRef<AudioContext | null>(null);
+  const vadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mutedMicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suspendCaptureRef = useRef<(() => void) | null>(null);
+  const resumeCaptureRef = useRef<(() => void) | null>(null);
 
   // TTS state. Keep playback on an HTML media element: iPhone routes media
   // audio differently from Web Audio, while AudioContext can remain silent
@@ -399,9 +431,347 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
   }, [input]);
 
-  // Check for speech recognition support
-  const speechSupported = typeof window !== "undefined" &&
+  // iPhone uses persistent MediaStream + server STT. Other browsers retain the
+  // existing Web Speech path, which provides a lower-latency live transcript
+  // and does not exhibit Safari's playback/capture session conflict.
+  const webSpeechSupported = typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const persistentSpeechSupported = typeof window !== "undefined" &&
+    isAppleMobileDevice() &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    typeof MediaRecorder !== "undefined";
+  const speechSupported = webSpeechSupported || persistentSpeechSupported;
+
+  const releasePersistentMicrophone = useCallback(() => {
+    recorderGenerationRef.current += 1;
+    submittedRecorderGenerationRef.current = null;
+    speechDetectedRef.current = false;
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (mutedMicTimerRef.current) {
+      clearTimeout(mutedMicTimerRef.current);
+      mutedMicTimerRef.current = null;
+    }
+    if (vadTimerRef.current) {
+      clearInterval(vadTimerRef.current);
+      vadTimerRef.current = null;
+    }
+
+    const recorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+      try {
+        if (recorder.state !== "inactive") recorder.stop();
+      } catch { /* already stopped */ }
+    }
+    recorderChunksRef.current = [];
+
+    const stream = micStreamRef.current;
+    micStreamRef.current = null;
+    stream?.getTracks().forEach((track) => {
+      track.onended = null;
+      track.onmute = null;
+      track.onunmute = null;
+      track.stop();
+    });
+
+    analyserRef.current = null;
+    analyserDataRef.current = null;
+    const context = micAudioContextRef.current;
+    micAudioContextRef.current = null;
+    if (context && context.state !== "closed") void context.close().catch(() => {});
+    serverSttRef.current = false;
+    setListening(false);
+  }, []);
+
+  const failPersistentMicrophone = useCallback((message: string) => {
+    releasePersistentMicrophone();
+    handsFreeRef.current = false;
+    setHandsFree(false);
+    setRetryAction(null);
+    setSendError(message);
+  }, [releasePersistentMicrophone]);
+
+  const submitRecordedTurn = useCallback(async (blob: Blob, generation: number) => {
+    if (
+      recorderGenerationRef.current !== generation ||
+      !handsFreeRef.current ||
+      !pageVisibleRef.current
+    ) return;
+
+    try {
+      if (blob.size < 256) throw new Error("The microphone returned an empty recording.");
+      const form = new FormData();
+      form.append("audio", blob, `brainstorm-turn.${blob.type.includes("mp4") ? "m4a" : blob.type.includes("ogg") ? "ogg" : "webm"}`);
+      form.append("project_id", projectId);
+      const res = await fetch("/api/brainstorm/transcribe", { method: "POST", body: form });
+      const payload = await res.json().catch(() => ({})) as { transcript?: unknown; error?: unknown; message?: unknown };
+      if (!res.ok) {
+        const detail = typeof payload.message === "string"
+          ? payload.message
+          : typeof payload.error === "string" ? payload.error : `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+      const transcript = typeof payload.transcript === "string" ? payload.transcript.trim() : "";
+      if (!transcript) {
+        setSendError("I couldn't make out any words. Hands-free is still listening, so please try that answer again.");
+        resumeCaptureRef.current?.();
+        return;
+      }
+      if (
+        recorderGenerationRef.current !== generation ||
+        !handsFreeRef.current ||
+        !pageVisibleRef.current
+      ) return;
+      typedRef.current = false;
+      finalTranscriptRef.current = transcript;
+      hasFinalResultRef.current = true;
+      setInput(transcript);
+      autoSendRef.current?.(transcript);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
+      failPersistentMicrophone(
+        `Hands-free could not transcribe the microphone recording.${detail} Tap Speak to try again, or type your answer.`,
+      );
+    }
+  }, [failPersistentMicrophone, projectId]);
+
+  const finishPersistentTurn = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive" || !speechDetectedRef.current) return;
+    const generation = recorderGenerationRef.current;
+    submittedRecorderGenerationRef.current = generation;
+    speechDetectedRef.current = false;
+    setListening(false);
+    try {
+      recorder.stop();
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+      failPersistentMicrophone(`Hands-free could not finish the recording${detail}. Tap Speak to try again.`);
+    }
+  }, [failPersistentMicrophone]);
+
+  const suspendPersistentCapture = useCallback(() => {
+    if (!serverSttRef.current) return;
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    awaitingAutoSendRef.current = false;
+    speechDetectedRef.current = false;
+    submittedRecorderGenerationRef.current = null;
+    recorderGenerationRef.current += 1;
+    const recorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+      try {
+        if (recorder.state !== "inactive") recorder.stop();
+      } catch { /* already stopped */ }
+    }
+    recorderChunksRef.current = [];
+    setListening(false);
+  }, []);
+
+  const armPersistentCapture = useCallback(() => {
+    if (
+      !serverSttRef.current ||
+      !handsFreeRef.current ||
+      !pageVisibleRef.current ||
+      streamingRef.current ||
+      speakingRef.current ||
+      isPlayingRef.current ||
+      ttsRequestInFlightRef.current ||
+      ttsRequestQueueRef.current.length > 0 ||
+      audioQueueRef.current.length > 0 ||
+      mediaRecorderRef.current
+    ) return;
+
+    const stream = micStreamRef.current;
+    const track = stream?.getAudioTracks()[0];
+    if (!stream || !track || track.readyState !== "live") {
+      failPersistentMicrophone("Hands-free lost the microphone. Tap Speak to reconnect it, or type your answer.");
+      return;
+    }
+    if (track.muted) {
+      if (mutedMicTimerRef.current) clearTimeout(mutedMicTimerRef.current);
+      mutedMicTimerRef.current = setTimeout(() => {
+        mutedMicTimerRef.current = null;
+        if (
+          track.muted &&
+          handsFreeRef.current &&
+          pageVisibleRef.current &&
+          !streamingRef.current &&
+          !speakingRef.current
+        ) {
+          failPersistentMicrophone("The iPhone microphone stayed muted after T.H.E.O. finished. Tap Speak to reconnect it, or type your answer.");
+        }
+      }, 2000);
+      return;
+    }
+
+    try {
+      const generation = recorderGenerationRef.current + 1;
+      recorderGenerationRef.current = generation;
+      submittedRecorderGenerationRef.current = null;
+      recorderChunksRef.current = [];
+      speechDetectedRef.current = false;
+      const mimeType = recorderMimeRef.current;
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (recorderGenerationRef.current === generation && event.data.size > 0) {
+          recorderChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        if (recorderGenerationRef.current === generation) {
+          failPersistentMicrophone("The iPhone stopped recording unexpectedly. Tap Speak to reconnect it, or type your answer.");
+        }
+      };
+      recorder.onstop = () => {
+        if (recorderGenerationRef.current !== generation) return;
+        if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null;
+        const shouldSubmit = submittedRecorderGenerationRef.current === generation;
+        submittedRecorderGenerationRef.current = null;
+        const chunks = recorderChunksRef.current;
+        recorderChunksRef.current = [];
+        if (!shouldSubmit) return;
+        const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || "audio/mp4" });
+        void submitRecordedTurn(blob, generation);
+      };
+      recorder.start(1000);
+      setListening(true);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+      failPersistentMicrophone(`Hands-free could not start recording${detail}. Tap Speak to try again, or type your answer.`);
+    }
+  }, [failPersistentMicrophone, submitRecordedTurn]);
+
+  const maybeResumePersistentCapture = useCallback(() => {
+    if (!serverSttRef.current) return;
+    armPersistentCapture();
+  }, [armPersistentCapture]);
+
+  useEffect(() => {
+    suspendCaptureRef.current = suspendPersistentCapture;
+    resumeCaptureRef.current = maybeResumePersistentCapture;
+  }, [maybeResumePersistentCapture, suspendPersistentCapture]);
+
+  const startPersistentMicrophone = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+        throw new Error("This browser does not support persistent microphone recording.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      if (!handsFreeRef.current || !pageVisibleRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      micStreamRef.current = stream;
+      recorderMimeRef.current = HANDS_FREE_MIME_CANDIDATES.find((candidate) =>
+        MediaRecorder.isTypeSupported(candidate)
+      ) ?? "";
+      serverSttRef.current = true;
+
+      const track = stream.getAudioTracks()[0];
+      if (!track) throw new Error("No audio track was returned.");
+      track.onended = () => {
+        if (handsFreeRef.current && pageVisibleRef.current) {
+          failPersistentMicrophone("The iPhone closed the microphone. Tap Speak to reconnect it, or type your answer.");
+        }
+      };
+      track.onmute = () => {
+        // Output playback can mute input briefly. The post-playback arm check
+        // below only fails if it remains muted after T.H.E.O. gives the floor back.
+        setListening(false);
+      };
+      track.onunmute = () => {
+        if (mutedMicTimerRef.current) {
+          clearTimeout(mutedMicTimerRef.current);
+          mutedMicTimerRef.current = null;
+        }
+        resumeCaptureRef.current?.();
+      };
+
+      const context = new AudioContext();
+      micAudioContextRef.current = context;
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.2;
+      context.createMediaStreamSource(stream).connect(analyser);
+      analyserRef.current = analyser;
+      analyserDataRef.current = new Uint8Array(analyser.fftSize);
+      if (context.state === "suspended") await context.resume();
+
+      let noiseFloor = 0.008;
+      vadTimerRef.current = setInterval(() => {
+        const activeAnalyser = analyserRef.current;
+        const data = analyserDataRef.current;
+        const recorder = mediaRecorderRef.current;
+        if (
+          !activeAnalyser ||
+          !data ||
+          !recorder ||
+          recorder.state !== "recording" ||
+          !handsFreeRef.current ||
+          !pageVisibleRef.current ||
+          streamingRef.current ||
+          speakingRef.current ||
+          isPlayingRef.current
+        ) return;
+
+        activeAnalyser.getByteTimeDomainData(data);
+        let sumSquares = 0;
+        for (let i = 0; i < data.length; i++) {
+          const sample = (data[i] - 128) / 128;
+          sumSquares += sample * sample;
+        }
+        const rms = Math.sqrt(sumSquares / data.length);
+        const speechThreshold = Math.max(0.018, noiseFloor * 2.8);
+        if (rms < speechThreshold) {
+          if (!speechDetectedRef.current) noiseFloor = noiseFloor * 0.95 + rms * 0.05;
+          return;
+        }
+
+        speechDetectedRef.current = true;
+        awaitingAutoSendRef.current = true;
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        // Product contract: three seconds of quiet ends and submits a turn.
+        silenceTimerRef.current = setTimeout(() => {
+          silenceTimerRef.current = null;
+          awaitingAutoSendRef.current = false;
+          finishPersistentTurn();
+        }, 3000);
+      }, 50);
+
+      setSendError(null);
+      maybeResumePersistentCapture();
+    } catch (error) {
+      const denied = error instanceof DOMException &&
+        (error.name === "NotAllowedError" || error.name === "SecurityError");
+      const detail = !denied && error instanceof Error && error.message ? ` (${error.message})` : "";
+      failPersistentMicrophone(
+        denied
+          ? "Microphone access is blocked. On iPhone: tap aA in the address bar, then Website Settings, then Microphone."
+          : `Hands-free could not open the microphone${detail}. Tap Speak to try again, or type your answer.`,
+      );
+    }
+  }, [failPersistentMicrophone, finishPersistentTurn, maybeResumePersistentCapture]);
 
   const stopAudio = useCallback(() => {
     const audio = audioRef.current;
@@ -428,6 +798,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     sentenceBufferRef.current = "";
     speakingRef.current = false;
     setSpeaking(false);
+    resumeCaptureRef.current?.();
   }, []);
 
   // This is called synchronously from voice-control click handlers. iOS only
@@ -493,6 +864,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (audioQueueRef.current.length === 0) {
       speakingRef.current = false;
       setSpeaking(false);
+      resumeCaptureRef.current?.();
       return;
     }
 
@@ -508,6 +880,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     const nextAudio = audioQueueRef.current.shift()!;
     const { url, text } = nextAudio;
+    // The MediaStream stays live, but never record T.H.E.O.'s speaker output.
+    // Stopping only this turn's MediaRecorder does not require a new permission
+    // grant when capture resumes.
+    suspendCaptureRef.current?.();
     const previousAudioUrl = currentAudioUrlRef.current;
     const playbackGeneration = ++playbackGenerationRef.current;
     const isCurrentPlayback = () =>
@@ -567,6 +943,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const next = ttsRequestQueueRef.current.shift();
       if (!next || !pageVisibleRef.current || !ttsEnabledRef.current) {
         ttsRequestInFlightRef.current = false;
+        resumeCaptureRef.current?.();
         return;
       }
       ttsRequestInFlightRef.current = true;
@@ -779,14 +1156,20 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       recognitionRef.current = null;
       handsFreeRef.current = false;
       try { recognition?.stop(); } catch { /* not started */ }
+      releasePersistentMicrophone();
       setListening(false);
       setHandsFree(false);
       return;
     }
     handsFreeRef.current = true;
     setHandsFree(true);
-    startRecognition();
-  }, [listening, handsFree, startRecognition]);
+    setSendError(null);
+    if (isAppleMobileDevice()) {
+      void startPersistentMicrophone();
+    } else {
+      startRecognition();
+    }
+  }, [listening, handsFree, releasePersistentMicrophone, startPersistentMicrophone, startRecognition]);
 
   // A phone call or app switch must not leave either microphone capture or
   // playback alive in the background. Do not auto-reopen the mic on return:
@@ -803,6 +1186,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       recognitionRef.current = null;
       handsFreeRef.current = false;
       try { recognition?.stop(); } catch { /* not started */ }
+      releasePersistentMicrophone();
       setListening(false);
       setHandsFree(false);
       stopAudio();
@@ -813,7 +1197,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [handsFree, listening, speaking, stopAudio]);
+  }, [handsFree, listening, speaking, releasePersistentMicrophone, stopAudio]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -824,8 +1208,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       recognitionRef.current = null;
       handsFreeRef.current = false;
       try { recognition?.stop(); } catch { /* not started */ }
+      releasePersistentMicrophone();
     };
-  }, []);
+  }, [releasePersistentMicrophone]);
 
   // Start the conversation — AI sends first message
   const startConversation = useCallback(async () => {
@@ -920,13 +1305,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     streamingRef.current = false;
     setStreaming(false);
+    resumeCaptureRef.current?.();
     inputRef.current?.focus();
   }, [projectId, speakSentence]);
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
+  const sendMessage = useCallback(async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
     if (!text || streaming) return;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    suspendCaptureRef.current?.();
 
     const userMsg: Message = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
@@ -1038,12 +1425,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setRetryAction(/HTTP 401/.test(msg) ? null : "send");
       handsFreeRef.current = false;
       setHandsFree(false);
+      releasePersistentMicrophone();
     }
 
     streamingRef.current = false;
     setStreaming(false);
+    resumeCaptureRef.current?.();
     inputRef.current?.focus();
-  }, [input, streaming, messages, speakSentence]);
+  }, [input, streaming, messages, releasePersistentMicrophone, speakSentence]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {

@@ -89,3 +89,34 @@ export async function transcribeAudio(
     duration_seconds,
   };
 }
+
+/** Short-utterance transcript for the studio hands-free path. No diarize. */
+export function transcriptFromDeepgramResponse(response: unknown): string {
+  const result = response as {
+    results?: {
+      channels?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
+      utterances?: Array<{ transcript?: string }>;
+    };
+  };
+  const channelText = result?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
+  if (channelText) return channelText;
+  const utterances = result?.results?.utterances ?? [];
+  return utterances.map((u) => u.transcript?.trim() ?? "").filter(Boolean).join(" ").trim();
+}
+
+export async function transcribeUtterance(
+  audioBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const dg = await getClient();
+  const response = await dg.listen.v1.media.transcribeFile(
+    { data: new Uint8Array(audioBuffer), contentType: mimeType },
+    {
+      model: "nova-3",
+      smart_format: true,
+      punctuate: true,
+      mip_opt_out: true,
+    }
+  );
+  return transcriptFromDeepgramResponse(response);
+}

@@ -10,12 +10,13 @@ describe("iPhone persistent hands-free capture", () => {
   it("opens one MediaStream from Speak and keeps its tracks through TTS", () => {
     const src = chat();
     const start = src.slice(src.indexOf("const startPersistentMicrophone"), src.indexOf("const stopAudio"));
+    const arm = src.slice(src.indexOf("const armPersistentCapture"), src.indexOf("const maybeResumePersistentCapture"));
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
 
     expect(start).toMatch(/navigator\.mediaDevices\.getUserMedia/);
     expect(start).toMatch(/micStreamRef\.current = stream/);
-    expect(start).toMatch(/new MediaRecorder\(stream/);
-    expect(start).toMatch(/audio\/mp4/);
+    expect(arm).toMatch(/new MediaRecorder\(stream/);
+    expect(src).toMatch(/HANDS_FREE_MIME_CANDIDATES[\s\S]{0,100}?audio\/mp4/);
     expect(playback).toMatch(/suspendCaptureRef\.current\?\.\(\)/);
     expect(playback).not.toMatch(/micStreamRef[\s\S]{0,100}?getTracks\(\)[\s\S]{0,100}?stop\(\)/);
   });

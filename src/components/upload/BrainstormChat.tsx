@@ -670,6 +670,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         throw new Error("This browser does not support persistent microphone recording.");
       }
+      // Construct and resume the analyser context before the first await while
+      // the Speak click still has user activation. It is input-only, but iOS
+      // can still leave a context created after the permission prompt suspended.
+      const context = new AudioContext();
+      micAudioContextRef.current = context;
+      const contextReady = context.state === "suspended" ? context.resume() : Promise.resolve();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -679,6 +685,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       });
       if (!handsFreeRef.current || !pageVisibleRef.current) {
         stream.getTracks().forEach((track) => track.stop());
+        if (context.state !== "closed") void context.close().catch(() => {});
+        if (micAudioContextRef.current === context) micAudioContextRef.current = null;
         return;
       }
 
@@ -705,18 +713,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           clearTimeout(mutedMicTimerRef.current);
           mutedMicTimerRef.current = null;
         }
+        if (mediaRecorderRef.current?.state === "recording") setListening(true);
         resumeCaptureRef.current?.();
       };
 
-      const context = new AudioContext();
-      micAudioContextRef.current = context;
       const analyser = context.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.2;
       context.createMediaStreamSource(stream).connect(analyser);
       analyserRef.current = analyser;
       analyserDataRef.current = new Uint8Array(analyser.fftSize);
-      if (context.state === "suspended") await context.resume();
+      await contextReady;
 
       let noiseFloor = 0.008;
       vadTimerRef.current = setInterval(() => {
@@ -1432,7 +1439,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     setStreaming(false);
     resumeCaptureRef.current?.();
     inputRef.current?.focus();
-  }, [input, streaming, messages, releasePersistentMicrophone, speakSentence]);
+  }, [input, streaming, messages, projectId, releasePersistentMicrophone, speakSentence]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {
@@ -1593,7 +1600,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setSendError("Couldn't add this session to your sources. Your answers are still here — try again.");
       setRetryAction("finish");
     }
-  }, [messages, projectId, onComplete]);
+  }, [messages, projectId, onComplete, sessionKey]);
 
   const undoLast = useCallback(() => {
     if (streaming || messages.length < 2) return;

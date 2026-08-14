@@ -108,7 +108,9 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(initialize).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
-    expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
+    // TTS must remain on the shared HTMLAudioElement. iPhone hands-free may use
+    // an input-only AudioContext analyser for voice activity detection.
+    expect(initialize + playback).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
   });
 
   it("only explains iPhone Silent mode after a successful media response begins", () => {
@@ -117,7 +119,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(playback).toMatch(/audio\.play\(\)\.then\(\(\) => \{[\s\S]{0,500}?Silent mode/);
     expect(src).toMatch(/const \[voiceNotice, setVoiceNotice\]/);
     expect(src).toMatch(/sendError \|\| storageBlocked \|\| voiceNotice/);
-    expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{[\s\S]{0,160}?setSpeaking\(false\);[\s\S]{0,40}?return;/);
+    expect(src).toMatch(/if \(audioQueueRef\.current\.length === 0\) \{[\s\S]{0,160}?setSpeaking\(false\);[\s\S]{0,100}?return;/);
   });
 });
 

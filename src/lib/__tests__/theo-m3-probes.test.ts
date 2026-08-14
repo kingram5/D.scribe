@@ -68,6 +68,24 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(src).toMatch(/stopAudio\(\)/);
     expect(src).toMatch(/if \(!pageVisibleRef\.current\) return;/);
     expect(src).toMatch(/if \(!pageVisibleRef\.current \|\| !ttsEnabledRef\.current/);
+    // Backgrounding must actually release the hardware: teardown stops every
+    // track, and returning requires an explicit Speak tap.
+    const teardown = src.slice(src.indexOf("const teardownMic"), src.indexOf("const disarmHandsFree"));
+    expect(teardown).toMatch(/getTracks\(\)\.forEach\(\(track\) => \{[\s\S]{0,80}?track\.stop\(\)/);
+    const visibility = src.slice(src.indexOf("const onVisibilityChange"), src.indexOf("// Clean up capture on unmount"));
+    expect(visibility).toMatch(/teardownMic\(\)/);
+  });
+
+  it("transcribes hands-free answers server-side with Deepgram, authenticated and rate-limited", () => {
+    const route = read("app/api/brainstorm/stt/route.ts");
+    expect(route).toMatch(/requireAuth\(\)/);
+    expect(route).toMatch(/checkRateLimit\(user\.id, "brainstorm-stt"/);
+    expect(route).toMatch(/contentType\.startsWith\("audio\/"\)/);
+    expect(route).toMatch(/MAX_AUDIO_BYTES/);
+    expect(route).toMatch(/transcribeUtterance\(audio, contentType\)/);
+    const dg = read("lib/deepgram.ts");
+    expect(dg).toMatch(/export async function transcribeUtterance/);
+    expect(dg).toMatch(/mip_opt_out: true/);
   });
 
   it("serializes TTS sentence requests so later audio cannot overtake earlier audio", () => {
@@ -79,19 +97,19 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(src).toMatch(/const next = ttsRequestQueueRef\.current\.shift\(\)/);
   });
 
-  it("keeps an iPhone dictation answer and its three-second auto-send across same-instance restarts", () => {
+  it("keeps the three-second quiet auto-send and lands the transcript in the composer", () => {
     const src = chat();
-    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
-    const onEnd = recognition.slice(recognition.indexOf("recognition.onend"), recognition.indexOf("recognitionRef.current = recognition"));
-    const send = src.slice(src.indexOf("const sendMessage"), src.indexOf("// Keep autoSendRef"));
-    expect(src).toMatch(/const finalTranscriptRef = useRef\(""\)/);
-    expect(src).toMatch(/const awaitingAutoSendRef = useRef\(false\)/);
-    expect(recognition).toMatch(/finalTranscriptRef\.current \+= transcript \+ " "/);
-    expect(recognition).toMatch(/setInput\(finalTranscriptRef\.current \+ interim\)/);
-    expect(recognition).toMatch(/setTimeout\(\(\) => \{[\s\S]{0,240}?autoSendRef\.current\?\.\(\)/);
-    expect(onEnd).not.toMatch(/clearTimeout\(silenceTimerRef\.current\)/);
-    expect(onEnd).toMatch(/recognition\.start\(\)/);
-    expect(send).toMatch(/finalTranscriptRef\.current = ""/);
+    // Kyle's 3s quiet-send is a hard product requirement; the constant is the
+    // single authority and the meter loop is its only consumer.
+    expect(src).toMatch(/const QUIET_SEND_MS = 3000/);
+    expect(src).toMatch(/now - lastVoiceAtRef\.current >= QUIET_SEND_MS/);
+    // Transcript lands in the composer, then auto-sends without a second tap.
+    expect(src).toMatch(/setInput\(transcript\)/);
+    expect(src).toMatch(/autoSendRef\.current\?\.\(transcript\)/);
+    // The override exists so the send cannot race the composer's render.
+    expect(src).toMatch(/const sendMessage = useCallback\(async \(textOverride\?: string\)/);
+    // A typed answer always beats a returning transcript.
+    expect(src).toMatch(/if \(typedRef\.current\) return;/);
   });
 
   it("creates one inline media element and unlocks it during the voice-choice tap", () => {
@@ -108,7 +126,13 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(initialize).not.toMatch(/audio\.removeAttribute\("src"\)|audio\.load\(\)/);
     expect(playback).toMatch(/audio\.play\(\)\.then/);
     expect(src).toMatch(/URL\.createObjectURL/);
-    expect(src).not.toMatch(/new AudioContext|webkitAudioContext|decodeAudioData/);
+    // Playback must stay on the HTML media element (iPhone routes Web Audio
+    // behind the ringer path). The hands-free ANALYSER may use an
+    // AudioContext, but the TTS pipeline itself must never decode or play
+    // through one.
+    const voicePipeline = src.slice(src.indexOf("const playNext"), src.indexOf("const retryVoice"));
+    expect(voicePipeline).not.toMatch(/AudioContext|decodeAudioData/);
+    expect(src).not.toMatch(/decodeAudioData/);
   });
 
   it("only explains iPhone Silent mode after a successful media response begins", () => {
@@ -213,25 +237,31 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     expect(src).toMatch(/onClick=\{retryVoice\}/);
   });
 
-  it("keeps one recognizer alive through TTS and restarts that same instance only from onend", () => {
+  it("holds one microphone stream through T.H.E.O.'s playback and gates recording only in software", () => {
     const src = chat();
-    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    const onResult = recognition.slice(recognition.indexOf("recognition.onresult"), recognition.indexOf("recognition.onerror"));
-    const onEnd = recognition.slice(recognition.indexOf("recognition.onend"), recognition.indexOf("recognitionRef.current = recognition"));
-    const quietSend = onResult.slice(onResult.indexOf("silenceTimerRef.current = setTimeout"));
+    const tick = src.slice(src.indexOf("const vadTick"), src.indexOf("const startHandsFree"));
+    const start = src.slice(src.indexOf("const startHandsFree"), src.indexOf("const toggleListening"));
 
-    expect(recognition.match(/new SpeechRecognition\(\)/g)).toHaveLength(1);
-    expect(onResult).toMatch(/if \(isPlayingRef\.current \|\| speakingRef\.current \|\| streamingRef\.current\) return/);
-    expect(playback).not.toMatch(/recognition(?:Ref\.current)?\.?stop\(\)/);
-    expect(quietSend).toMatch(/}, 3000\)/);
-    expect(quietSend).not.toMatch(/recognition\.stop\(\)/);
-    expect(onEnd).toMatch(/recognition\.start\(\)/);
-    expect(onEnd).not.toMatch(/new SpeechRecognition/);
-    expect(src).not.toMatch(/setTimeout\(\(\) => \{[\s\S]{0,500}?startRecognition\(\)/);
-    expect(recognition).toMatch(/setSendError\(`Hands-free could not start the microphone/);
-    expect(recognition).toMatch(/recognition\.onstart[\s\S]{0,500}?recognitionStarted = true/);
-    expect(recognition).toMatch(/if \(!recognitionStarted\)[\s\S]{0,240}?Hands-free could not start the microphone/);
+    // Web Speech is gone from this path: seven live rounds (#18–#24) proved it
+    // cannot share the iOS audio session with the TTS element.
+    expect(src).not.toMatch(/new SpeechRecognition|webkitSpeechRecognition/);
+    // One getUserMedia per Speak tap, requested inside the gesture.
+    expect(start.match(/navigator\.mediaDevices\.getUserMedia\(\{/g)).toHaveLength(1);
+    expect(start).toMatch(/echoCancellation: true/);
+    // The TTS pipeline must never touch the capture stream — stopping or
+    // re-requesting it is exactly what iOS punishes.
+    expect(playback).not.toMatch(/getUserMedia|getTracks|MediaRecorder|teardownMic/);
+    // The software gate covers streaming, synthesis in flight, queued clips,
+    // and live playback; only RECORDING is gated, never the stream.
+    expect(tick).toMatch(/!isPlayingRef\.current && !speakingRef\.current && !streamingRef\.current/);
+    expect(tick).toMatch(/ttsRequestQueueRef\.current\.length === 0/);
+    expect(tick).toMatch(/audioQueueRef\.current\.length === 0/);
+    expect(tick).toMatch(/endSegment\("discard"\)/);
+    // A mic that cannot start or capture must fail loudly, not silently.
+    expect(start).toMatch(/Hands-free could not open the microphone/);
+    expect(tick).toMatch(/gave the microphone back muted/);
+    expect(src).toMatch(/const MUTED_MIC_GRACE_MS = 1500/);
   });
 
   it("keeps a finished blob live until the next clip replaces audio.src", () => {
@@ -246,16 +276,22 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     );
   });
 
-  it("ignores stale audio and recognition callbacks instead of clobbering a new turn", () => {
+  it("ignores stale audio and capture callbacks instead of clobbering a new turn", () => {
     const src = chat();
     const playback = src.slice(src.indexOf("const playNext"), src.indexOf("const speakSentence"));
-    const recognition = src.slice(src.indexOf("const startRecognition"), src.indexOf("const toggleListening"));
+    const segment = src.slice(src.indexOf("const beginSegment"), src.indexOf("const attachStream"));
     expect(src).toMatch(/const playbackGenerationRef = useRef\(0\)/);
     expect(playback).toMatch(/const isCurrentPlayback = \(\) =>[\s\S]{0,180}?currentAudioUrlRef\.current === url/);
     expect(playback).toMatch(/if \(!isCurrentPlayback\(\)\) return;/);
-    expect(recognition.match(/if \(recognitionRef\.current !== recognition\) return;/g)).toHaveLength(4);
-    expect(recognition).toMatch(/event\?\.error === "network"/);
-    expect(recognition).toMatch(/Hands-free lost the microphone service/);
+    // A discarded segment (gate closed, teardown, background) must never
+    // transcribe or send; stale recorder callbacks check the live ref.
+    expect(segment).toMatch(/let discarded = false/);
+    expect(segment).toMatch(/if \(discarded \|\| chunks\.length === 0\) return/);
+    expect(segment).toMatch(/if \(recorderRef\.current === recorder\) recorderRef\.current = null/);
+    // Mic loss surfaces text on screen AND in the server log — never silence.
+    expect(src).toMatch(/track\.onended = \(\) =>/);
+    expect(src).toMatch(/function reportHandsFreeIssue/);
+    expect(src).toMatch(/reportHandsFreeIssue\(message\)/);
   });
 
   it("shows a recoverable voice failure instead of swallowing a failed TTS response", () => {

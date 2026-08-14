@@ -89,3 +89,34 @@ export async function transcribeAudio(
     duration_seconds,
   };
 }
+
+/**
+ * One short spoken turn from the hands-free brainstorm studio. Text only — no
+ * diarization, utterances, or word timings — so the response stays small and
+ * the round trip stays inside a conversational pause.
+ */
+export async function transcribeUtterance(
+  audioBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const dg = await getClient();
+
+  const response = await dg.listen.v1.media.transcribeFile(
+    { data: new Uint8Array(audioBuffer), contentType: mimeType },
+    {
+      model: "nova-3",
+      smart_format: true,
+      punctuate: true,
+      // Same retention opt-out as full transcription: brainstorm answers are
+      // the most personal audio in the product.
+      mip_opt_out: true,
+    }
+  );
+
+  const result = response as {
+    results?: {
+      channels?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
+    };
+  };
+  return result?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+}

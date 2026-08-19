@@ -193,7 +193,7 @@ export default function EditorPage() {
         html, body { overflow: hidden; }
         @media (max-width: 768px) {
           html, body { overflow: auto; }
-          .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100vh - 56px) !important; }
+          .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100dvh - 56px) !important; }
           .ds-editor-layout > div:first-child { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 250px !important; overflow-y: auto !important; }
           .ds-editor-layout > div:last-child { min-height: 500px !important; }
           .ds-editor-float-toolbar { display: none !important; }
@@ -202,7 +202,7 @@ export default function EditorPage() {
       `}</style>
       <div className="ds-editor-layout" style={{
         display: "flex",
-        height: "calc(100vh - 56px)",
+        height: "calc(100dvh - 56px)",
         overflow: "hidden",
         background: "var(--env-bg)",
       }}>
@@ -877,7 +877,7 @@ export default function EditorPage() {
           </div>
 
           {/* Paper Area — fills available height, no outer scroll */}
-          <div style={{
+          <div className="ds-paper-area" style={{
             flex: 1,
             overflow: "hidden",
             padding: "20px 80px",
@@ -905,7 +905,7 @@ export default function EditorPage() {
                 minHeight: 0,
               }}>
                 {/* Red margin line */}
-                <div style={{
+                <div className="ds-paper-marginline" style={{
                   position: "absolute",
                   top: 0,
                   bottom: 0,
@@ -915,7 +915,7 @@ export default function EditorPage() {
                   pointerEvents: "none",
                 }} />
                 {/* Second faint margin line */}
-                <div style={{
+                <div className="ds-paper-marginline" style={{
                   position: "absolute",
                   top: 0,
                   bottom: 0,

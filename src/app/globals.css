@@ -485,6 +485,155 @@ input[type=range] {
   nav[aria-label="Pipeline steps"] {
     padding: 0 16px 12px !important;
   }
+
+  /* Upload panel inline padding reduction */
+  .upload-slide-left {
+    padding: 20px 16px !important;
+  }
+  .upload-slide-right {
+    padding: 20px 16px !important;
+  }
+
+  /* Analysis: card padding + voice profile grid collapse */
+  .ds-analyze-card {
+    padding: 0 16px 24px !important;
+  }
+  .ds-voice-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .ds-mindmap-container {
+    height: 320px !important;
+  }
+
+  /* Generate: chapter card footer buttons stack full-width. The action group
+     nests two InkTooltip-wrapped buttons (inline-flex wrappers), so stretch the
+     wrappers too or the buttons collapse to content width. */
+  .ds-chapter-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .ds-chapter-footer-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .ds-chapter-footer-actions > * {
+    width: 100% !important;
+  }
+  .ds-chapter-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Generate/Outline: long chapter titles truncate instead of shoving the
+     word-count badge off the row or wrapping to three lines. */
+  .ds-gen-ch-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Editor paper surface padding */
+  .ds-paper-header {
+    padding: 24px 20px 0 !important;
+    padding-left: 20px !important;
+  }
+  .ds-paper-body {
+    padding: 0 20px 40px !important;
+    padding-left: 20px !important;
+  }
+
+  /* Structure card padding */
+  .ds-structure-card {
+    padding: 24px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  /* GlassCard full-bleed on mobile */
+  .ds-glass-card, [class*="glass-card"] {
+    border-radius: 12px !important;
+  }
+
+  /* Brainstorm chat full width */
+  .brainstorm-input-area {
+    padding: 12px 16px !important;
+  }
+
+  /* Login page */
+  .ds-login-card {
+    padding: 32px 20px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Export page preview cards */
+  .ds-export-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Dashboard: the decorative "D.scribe" waveform is a fixed 420px element
+     anchored at 10vw — it spilled off-screen and collided with the top bar and
+     hero on phones. It is purely ornamental, so drop it on mobile. */
+  .ds-hero-waveform {
+    display: none !important;
+  }
+
+  /* Analysis (post-run) + Outline: their body wrappers hard-code 40px side
+     padding with no class hook, wasting ~80px of a 375px screen. */
+  .ds-analyze-body,
+  .ds-outline-body {
+    padding: 0 16px 24px !important;
+  }
+
+  /* Analysis: the "new key points" banner puts a nowrap CTA beside a two-line
+     message — side by side they crush on a phone. Stack them. */
+  .ds-analyze-banner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .ds-analyze-banner button {
+    width: 100% !important;
+  }
+
+  /* Outline/Analysis: the floating outline-editor toolbar is fixed at bottom:24,
+     which lands on top of the fixed mobile step nav (64px + safe area). Lift it
+     clear of the nav so both stay tappable. */
+  .ds-outline-toolbar {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Outline: enrichment card breathes with less padding on a narrow screen. */
+  .ds-enrich-card {
+    padding: 20px 16px !important;
+  }
+  /* Outline enrichment chapter chips shouldn't stretch to a full line each. */
+  .ds-enrich-chip {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Editor: shrink the paper gutter (was 20px 80px → 160px of horizontal
+     padding), scale down the oversized chapter title, and drop the desktop
+     ruled margin lines that would otherwise slice through the text once the
+     body padding collapses to 20px. */
+  .ds-paper-area {
+    padding: 8px 10px !important;
+  }
+  .ds-paper-header h1 {
+    font-size: 30px !important;
+  }
+  .ds-paper-marginline {
+    display: none !important;
+  }
+
+  /* Ensure nothing overflows horizontally */
+  * {
+    max-width: 100vw;
+  }
 }
 
 /* Content panel — cinematic glass surface */

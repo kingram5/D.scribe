@@ -130,7 +130,7 @@ export default function OutlinePage() {
   // Has chapters — show the outline editor
   return (
     <PageShell projectId={projectId} currentStep="outline">
-      <div style={{ padding: "0 40px 40px" }}>
+      <div className="ds-outline-body" style={{ padding: "0 40px 40px" }}>
         <OutlineEditor
           projectId={projectId}
           initialChapters={chapters}
@@ -139,7 +139,7 @@ export default function OutlinePage() {
         />
 
         {/* Enrichment Quotes Section */}
-        <GlassCard style={{ padding: 32, marginTop: 24 }}>
+        <GlassCard className="ds-enrich-card" style={{ padding: 32, marginTop: 24 }}>
           <PanelTitle>Enrichment Quotes</PanelTitle>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4, marginBottom: 20 }}>
             Find relevant quotes from books, articles, and research to weave into each chapter.
@@ -153,6 +153,7 @@ export default function OutlinePage() {
               return (
                 <button
                   key={ch.id}
+                  className="ds-enrich-chip"
                   onClick={() => setActiveEnrichChapter(isActive ? null : ch.id)}
                   style={{
                     padding: "8px 14px",

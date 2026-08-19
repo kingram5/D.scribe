@@ -332,9 +332,9 @@ export default function GeneratePage() {
                       gap: 8,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       <span style={{ fontSize: "1.2rem" }}>{isActive ? "→" : "•"}</span>
-                      <span style={{ fontSize: "1.1rem" }}>Ch {ch.chapter_number}: {ch.title}</span>
+                      <span className="ds-gen-ch-title" style={{ fontSize: "1.1rem" }}>Ch {ch.chapter_number}: {ch.title}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
@@ -778,42 +778,44 @@ export default function GeneratePage() {
               )}
 
               {/* Footer buttons */}
-              <div style={{ display: "flex", gap: 12 }}>
-                <InkTooltip
-                  label={inkEstimate
-                    ? `~${inkEstimate.total_low}–${inkEstimate.total_high} Ink for all ${inkEstimate.chapter_count} chapters`
-                    : "Ink cost calculated before generating"}
-                  position="top"
-                >
-                  <button
-                    onClick={generateAll}
-                    disabled={isGenerating}
-                    className="nodum-btn"
+              <div className="ds-chapter-footer" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div className="ds-chapter-footer-actions" style={{ display: "flex", gap: 10, flex: 1 }}>
+                  <InkTooltip
+                    label={inkEstimate
+                      ? `~${inkEstimate.total_low}–${inkEstimate.total_high} Ink for all ${inkEstimate.chapter_count} chapters`
+                      : "Ink cost calculated before generating"}
+                    position="top"
                   >
-                    {genAllRunning
-                      ? "Generating..."
-                      : `Generate All ${chapters.length} Chapters`}
-                  </button>
-                </InkTooltip>
-                <InkTooltip
-                  label={inkEstimate && inkEstimate.per_chapter
-                    ? `~${inkEstimate.per_chapter[chapters.findIndex(c => c.id === active.id)] ?? Math.round((inkEstimate.total_low + inkEstimate.total_high) / 2 / inkEstimate.chapter_count * 10) / 10} Ink for this chapter`
-                    : "~5–7 Ink for this chapter"}
-                  position="top"
-                >
-                  <button
-                    onClick={() => regenerateChapter(active.id)}
-                    disabled={isGenerating}
-                    className="nodum-btn"
-                    style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                    <button
+                      onClick={generateAll}
+                      disabled={isGenerating}
+                      className="nodum-btn"
+                    >
+                      {genAllRunning
+                        ? "Generating..."
+                        : `Generate All ${chapters.length} Chapters`}
+                    </button>
+                  </InkTooltip>
+                  <InkTooltip
+                    label={inkEstimate && inkEstimate.per_chapter
+                      ? `~${inkEstimate.per_chapter[chapters.findIndex(c => c.id === active.id)] ?? Math.round((inkEstimate.total_low + inkEstimate.total_high) / 2 / inkEstimate.chapter_count * 10) / 10} Ink for this chapter`
+                      : "~5–7 Ink for this chapter"}
+                    position="top"
                   >
-                    {regenerateJob.isRunning
-                      ? "Regenerating..."
-                      : active.status === "generated"
-                        ? "Regenerate Chapter"
-                        : "Generate Chapter"}
-                  </button>
-                </InkTooltip>
+                    <button
+                      onClick={() => regenerateChapter(active.id)}
+                      disabled={isGenerating}
+                      className="nodum-btn"
+                      style={{ background: "rgba(193,122,71,0.15)", border: "1px solid rgba(193,122,71,0.4)", color: "#C17A47" }}
+                    >
+                      {regenerateJob.isRunning
+                        ? "Regenerating..."
+                        : active.status === "generated"
+                          ? "Regenerate Chapter"
+                          : "Generate Chapter"}
+                    </button>
+                  </InkTooltip>
+                </div>
               </div>
 
               {/* Generate All completed summary */}

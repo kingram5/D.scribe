@@ -414,9 +414,9 @@ export default function AnalysisPage() {
           </span>
         </div>
       )}
-      <div style={{ padding: "0 40px 40px" }}>
+      <div className="ds-analyze-body" style={{ padding: "0 40px 40px" }}>
         {/* Tab bar */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           {[
             { key: "outline" as const, label: `Outline (${data?.chapters?.length || 0} chapters)` },
             { key: "voice" as const, label: "Voice Profile" },
@@ -444,10 +444,11 @@ export default function AnalysisPage() {
 
         {/* Outline tab — interactive mind map editor */}
         {tab === "outline" && hasChapters && unassignedKeyPoints.length > 0 && expandState === "idle" && (
-          <div style={{
+          <div className="ds-analyze-banner" style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 16,
             padding: "14px 20px",
             marginBottom: 16,
             background: "rgba(217,119,6,0.08)",

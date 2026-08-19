@@ -499,9 +499,9 @@ export default function GeneratePage() {
                       gap: 8,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                       <span style={{ fontSize: "1.2rem" }}>{isActive ? "→" : "•"}</span>
-                      <span style={{ fontSize: "1.1rem" }}>Ch {ch.chapter_number}: {ch.title}</span>
+                      <span className="ds-gen-ch-title" style={{ fontSize: "1.1rem" }}>Ch {ch.chapter_number}: {ch.title}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
@@ -1054,7 +1054,7 @@ export default function GeneratePage() {
               )}
 
               {/* Footer buttons — Next Chapter (left) | Generate Chapter (center) | Generate All (right) */}
-              <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+              <div className="ds-chapter-footer" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
                 {/* Left: Next Chapter navigation */}
                 <button
                   onClick={() => nextChapter && setActiveChapter(nextChapter.id)}
@@ -1070,7 +1070,7 @@ export default function GeneratePage() {
                   Next Chapter →
                 </button>
 
-                <div style={{ display: "flex", gap: 10 }}>
+                <div className="ds-chapter-footer-actions" style={{ display: "flex", gap: 10 }}>
                   {/* Center: Generate this chapter */}
                   <InkTooltip
                     label={inkEstimate && inkEstimate.per_chapter

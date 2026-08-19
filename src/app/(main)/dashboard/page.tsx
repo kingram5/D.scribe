@@ -172,7 +172,7 @@ export default function Dashboard() {
 
       {/* Page hero header */}
       {/* Mini waveform — positioned at top-left, parallel with nav bar */}
-      <div style={{ position: "absolute", top: 18, left: "10vw", zIndex: 5 }}>
+      <div className="ds-hero-waveform" style={{ position: "absolute", top: 18, left: "10vw", zIndex: 5 }}>
         <MiniWaveform />
       </div>
 

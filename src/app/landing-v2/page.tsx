@@ -1511,7 +1511,13 @@ export default function LandingV2() {
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
           .lv2-hero-stats { gap: 16px; }
-          .lv2-hero { padding-top: 88px; gap: 20px; }
+          .lv2-hero {
+            padding: 96px 20px 48px !important;
+            gap: 20px;
+            justify-content: flex-start !important;
+            min-height: auto !important;
+          }
+          .lv2-hero-author h2 { margin-top: 0 !important; }
           .lv2-hero-waveform { min-height: 120px; height: 18vh; }
           .lv2-tagline-main { font-size: clamp(24px, 6.5vw, 32px) !important; }
           .lv2-author-cta { font-size: 13px !important; padding: 12px 16px !important; }

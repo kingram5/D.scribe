@@ -244,7 +244,7 @@ function PipelineDashboard() {
   const step = DASH_PIPELINE[active];
 
   return (
-    <div style={{
+    <div className="lv2-pipeline-dash" aria-hidden="true" style={{
       borderRadius: 20,
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",
@@ -252,7 +252,7 @@ function PipelineDashboard() {
       height: 1122,
     }}>
       {/* ── Left panel: timeline ── */}
-      <div style={{
+      <div className="lv2-pipeline-timeline" style={{
         width: "40%",
         background: P.paper,
         padding: "22px 20px",
@@ -957,11 +957,33 @@ export default function LandingV2() {
     }
   }, []);
 
+  // Pause video + waveform animation once the hero scrolls off-screen.
+  useEffect(() => {
+    const video = videoRef.current;
+    const hero = video?.closest("section");
+    if (!video || !hero) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          hero.classList.remove("lv2-offscreen");
+          if (!mq.matches) video.play().catch(() => {});
+        } else {
+          hero.classList.add("lv2-offscreen");
+          video.pause();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(hero);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="landing-v2" style={{ background: "#2C2419", color: "#F9F7F2", minHeight: "100vh" }}>
 
       {/* ─── Navbar ─── */}
-      <nav style={{
+      <nav className="lv2-nav" style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         padding: "0 60px", height: 80,
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -969,19 +991,18 @@ export default function LandingV2() {
         background: scrolled ? "rgba(26,20,14,0.85)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="lv2-nav-brand" style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 42, height: 42, background: "#C17A47", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 24, color: "#1A140E", marginLeft: 5 }}>D.</div>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#F9F7F2", letterSpacing: "0.05em" }}>scribe</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+        <div className="lv2-nav-actions" style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <Link href="/pricing" className="lv2-nav-link">Pricing</Link>
           <Link href="/login" className="lv2-nav-link">Sign in</Link>
-          <Link href="/login" className="lv2-pill-cta">Start with a sermon. <span style={{ fontSize: 15 }}>→</span></Link>
         </div>
       </nav>
 
       {/* ─── Hero Section ─── */}
-      <section style={{ position: "relative", height: "100vh", zIndex: 1, overflow: "hidden" }}>
+      <section className="lv2-hero">
 
         {/* Video background */}
         <video
@@ -992,6 +1013,7 @@ export default function LandingV2() {
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
           autoPlay loop muted playsInline preload="auto"
+          poster="/bg-video-poster.jpg"
           disablePictureInPicture disableRemotePlayback
         >
           <source src="/bg-video-desk.mp4" type="video/mp4" />
@@ -1001,16 +1023,18 @@ export default function LandingV2() {
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
-        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: "100%", textAlign: "center", zIndex: 2, pointerEvents: "none", height: "30vh" }}>
+        <div className="lv2-hero-waveform">
+          <div className="lv2-waveform-halo" />
           <CinematicMurmurWaveform />
         </div>
 
         {/* Sub-hero CTA */}
-        <div style={{ position: "absolute", top: "45%", left: "54%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 24, zIndex: 2 }}>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 46, color: "#ffffff", opacity: 0.9, marginLeft: -176, marginRight: -7, marginTop: 2 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
+        <div className="lv2-hero-subarrow">
+          <span className="lv2-subarrow-script" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "#ffffff", opacity: 0.9 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
           <Link
             href="/login"
-            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", marginLeft: 0, marginTop: 10, display: "inline-flex", alignItems: "center" }}
+            className="lv2-here-cta"
+            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", display: "inline-flex", alignItems: "center", minHeight: 48 }}
           >
             HERE
           </Link>
@@ -1032,28 +1056,29 @@ export default function LandingV2() {
           </p>
           <Link
             href="/login"
-            style={{ display: "inline-flex", alignItems: "center", padding: "8px 29px 10px 7px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", width: 217.844, height: 50, marginLeft: -50, marginRight: 0, marginTop: -57, marginBottom: 12 }}
+            className="lv2-author-cta"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", minHeight: 50 }}
           >
             Upload a sermon. Get your first chapter. <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
           </Link>
         </div>
-
-        {/* Bottom Stats Footer */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "space-around", padding: "40px 80px", paddingLeft: 80, marginTop: -14, background: "linear-gradient(to top, rgba(26, 20, 14, 0.9), transparent)", backdropFilter: "blur(4px)", zIndex: 2 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2, marginLeft: 215, marginTop: 0, marginRight: 1 }}>{"< 10 min"}</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em", marginLeft: 215 }}>Audio to first chapter</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>7 steps</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>A guided path for your book</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Sounds like you</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Voice-Match, not AI polish</div>
-          </div>
-        </div>
       </section>
+
+      {/* Bottom Stats Footer */}
+      <div className="lv2-hero-stats" style={{ display: "flex", flexWrap: "wrap", gap: 24, justifyContent: "space-around", background: "rgba(26, 20, 14, 0.95)", backdropFilter: "blur(4px)" }}>
+        <div className="lv2-stat">
+          <div className="lv2-stat-value" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 2 }}>{"< 10 min"}</div>
+          <div className="lv2-stat-label" style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Audio to first chapter</div>
+        </div>
+        <div className="lv2-stat">
+          <div className="lv2-stat-value" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>7 steps</div>
+          <div className="lv2-stat-label" style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>A guided path for your book</div>
+        </div>
+        <div className="lv2-stat">
+          <div className="lv2-stat-value" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Sounds like you</div>
+          <div className="lv2-stat-label" style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Voice-Match, not AI polish</div>
+        </div>
+      </div>
 
       {/* ─── Pipeline Section ─── */}
       <section style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto" }}>
@@ -1077,7 +1102,7 @@ export default function LandingV2() {
           alignItems: "center",
         }}>
           {/* Left: animated dashboard */}
-          <div style={{ transform: "translateX(-25%)" }}>
+          <div className="lv2-dashboard-wrap" style={{ transform: "translateX(-25%)" }}>
             <FadeSection delay={0.1}>
               <PipelineDashboard />
             </FadeSection>
@@ -1337,52 +1362,54 @@ export default function LandingV2() {
           transform-origin: 0 160px;
         }
 
-        /* Waveform — exact match to main landing cinematic-landing.css */
+        /* Waveform — static halo + lightweight bar animation */
         .landing-v2 .murmur-svg {
           width: 100%;
           height: auto;
           max-height: 35vh;
           display: block;
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 1))
-                  drop-shadow(0 0 15px rgba(240, 168, 120, 0.85))
-                  drop-shadow(0 0 35px rgba(193, 122, 71, 0.7))
-                  drop-shadow(0 0 60px rgba(193, 122, 71, 0.5))
-                  drop-shadow(0 0 100px rgba(193, 122, 71, 0.3))
-                  contrast(1.3) saturate(1.2) brightness(1.1);
+          filter: drop-shadow(0 0 5px rgba(255, 204, 95, 1))
+                  drop-shadow(0 0 14px rgba(250, 172, 55, 0.95))
+                  drop-shadow(0 0 36px rgba(200, 120, 40, 0.7));
           margin: 0 auto;
-          will-change: filter;
           transform: translateZ(0);
         }
+        .landing-v2 .lv2-waveform-halo {
+          position: absolute;
+          inset: -35% -20%;
+          background:
+            radial-gradient(ellipse 30% 28% at 50% 50%,
+              rgba(255, 190, 80, 0.55), transparent 68%),
+            radial-gradient(ellipse 55% 50% at 50% 50%,
+              rgba(195, 120, 40, 0.42), rgba(195, 120, 40, 0.16) 55%, transparent 75%);
+          pointer-events: none;
+        }
         .landing-v2 .bar {
-          fill: #F0A878;
+          fill: #FFC65E;
           transform-box: fill-box;
           transform-origin: center;
           will-change: transform, opacity;
           animation: lv2-murmurWave var(--anim-duration, 2s) cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
           animation-delay: var(--anim-delay, 0s);
-          filter: drop-shadow(0 0 6px rgba(240, 168, 120, 0.75)) brightness(1.15);
         }
+        .landing-v2 .lv2-hero.lv2-offscreen .bar { animation-play-state: paused; }
         @keyframes lv2-murmurWave {
           0%   { transform: scaleY(var(--scale-min, 0.2)); opacity: 0.95; }
           100% { transform: scaleY(var(--scale-max, 1));   opacity: 1; }
         }
 
-        /* Navbar Get Started pill */
-        .lv2-pill-cta {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 12px 32px;
-          background: #C17A47;
-          color: #1A140E;
-          font-size: 20px;
-          font-weight: 700;
-          border-radius: 999px;
-          cursor: pointer;
+        /* Navbar */
+        .lv2-nav-link {
+          font-family: var(--font-playfair), 'Playfair Display', serif;
+          font-size: 17px;
+          font-weight: 500;
+          color: #F9F7F2;
+          opacity: 0.85;
           text-decoration: none;
-          transition: background 0.2s ease;
+          transition: opacity 0.2s ease;
+          white-space: nowrap;
         }
-        .lv2-pill-cta:hover { background: #D98B58; }
+        .lv2-nav-link:hover { opacity: 1; }
 
         /* Final CTA */
         .lv2-cta {
@@ -1417,12 +1444,77 @@ export default function LandingV2() {
         .lbook-static:hover .lbook-cover { transform: none !important; }
         .lbook-static:hover .lbook-glow { opacity: 0 !important; }
 
+        .landing-v2 { overflow-x: hidden; }
+
+        /* ── Hero layout system ──
+           Desktop (≥1280px): layered art direction, absolutely positioned.
+           Below 1280px: single-column flow — the layers stack, nothing collides. */
+        .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
+        .lv2-hero-waveform { pointer-events: none; text-align: center; position: relative; }
+        .lv2-hero-author h2 { font-size: clamp(44px, 6vw, 92px); }
+        .lv2-author-copy { max-width: 42ch; margin: 12px 0 20px; }
+        .lv2-author-cta { max-width: 100%; text-align: center; flex-wrap: wrap; }
+        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
+        .lv2-tagline-main { font-size: clamp(28px, 4vw, 57px); line-height: 1.15; }
+        .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
+        .lv2-stat { text-align: center; flex: 1 1 140px; min-width: 0; }
+        .lv2-stat-value { font-size: clamp(28px, 6vw, 44px) !important; }
+        .lv2-stat-label { font-size: clamp(10px, 2.5vw, 12px) !important; }
+
+        @media (min-width: 1280px) {
+          .lv2-hero { height: 100vh; }
+          .lv2-hero-waveform { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: 100%; height: 30vh; z-index: 2; }
+          .lv2-hero-subarrow { position: absolute; top: 45%; left: 52%; transform: translateX(-50%); display: flex; align-items: center; gap: 24px; z-index: 2; }
+          .lv2-hero-tagline { position: absolute; top: 53%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; max-width: 900px; z-index: 2; padding: 0 24px; box-sizing: border-box; }
+          .lv2-hero-author { position: absolute; top: 47%; left: 33px; max-width: 480px; z-index: 2; }
+          .lv2-hero-author h2 { margin-top: 75px; }
+        }
+
+        @media (max-width: 1279px) {
+          .lv2-hero {
+            min-height: 100svh; height: auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 110px 24px 56px; gap: 28px;
+          }
+          .lv2-hero-waveform { position: relative; width: 100%; height: 22vh; min-height: 140px; order: 0; z-index: 2; }
+          .lv2-hero-author { position: relative; order: 1; z-index: 2; display: flex; flex-direction: column; align-items: center; max-width: 560px; }
+          .lv2-author-copy { margin: 12px auto 20px; }
+          .lv2-hero-tagline { position: relative; order: 2; z-index: 2; max-width: 640px; }
+          .lv2-hero-subarrow { position: relative; order: 3; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 24px; }
+        }
+
+        /* Stats band */
+        .lv2-hero-stats { padding: clamp(24px, 5vw, 40px) clamp(16px, 6vw, 80px); }
+
+        /* Pipeline showcase */
+        .lv2-pipeline-dash { height: 1122px; }
+        @media (max-width: 1279px) {
+          .lv2-dashboard-wrap { transform: none !important; }
+          .lv2-brainstorm-wrap { margin-left: 0 !important; }
+          .lv2-pipeline-dash { height: 900px; }
+          .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 640px !important; margin: 0 auto; }
+          .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .lv2-brainstorm-wrap { display: flex; justify-content: center; }
+        }
+        @media (max-width: 1023px) {
+          .lv2-pipeline-dash { height: auto; min-height: 560px; }
+          .lv2-pipeline-timeline { display: none !important; }
+        }
+
         /* Mobile */
         @media (max-width: 768px) {
-          .landing-v2 nav { padding: 0 20px !important; }
+          .landing-v2 nav.lv2-nav { padding: 0 16px !important; height: 64px !important; }
+          .lv2-nav-actions { gap: 12px !important; }
+          .lv2-nav-link { display: inline; font-size: 15px !important; }
           .lv2-pillars { grid-template-columns: 1fr !important; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .lv2-pipeline-dash { min-height: 480px; }
+          .lv2-hero-stats { gap: 16px; }
+          .lv2-hero { padding-top: 88px; gap: 20px; }
+          .lv2-hero-waveform { min-height: 120px; height: 18vh; }
+          .lv2-tagline-main { font-size: clamp(24px, 6.5vw, 32px) !important; }
+          .lv2-author-cta { font-size: 13px !important; padding: 12px 16px !important; }
         }
 
         @media (prefers-reduced-motion: reduce) {

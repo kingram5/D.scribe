@@ -630,8 +630,11 @@ input[type=range] {
     display: none !important;
   }
 
-  /* Ensure nothing overflows horizontally */
-  * {
+  /* Prevent horizontal scroll in the app shell without breaking landing layout */
+  .paper-theme,
+  .ds-pipeline-grid,
+  .ds-analyze-body,
+  .ds-outline-body {
     max-width: 100vw;
   }
 }

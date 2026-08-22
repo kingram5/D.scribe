@@ -324,8 +324,8 @@ function PipelineDashboard() {
       </div>
 
       {/* ── Right panel: detail card ── */}
-      <div style={{ flex: 1, background: P.inputBg, borderLeft: `1px solid ${P.cardBorder}`, padding: "10px 12px", display: "flex", flexDirection: "column" }}>
-        <div style={{ background: P.cardBg, borderRadius: 22, padding: "18px 20px", border: `1px solid ${P.cardBorder}`, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="lv2-pipeline-detail" style={{ flex: 1, minWidth: 0, background: P.inputBg, borderLeft: `1px solid ${P.cardBorder}`, padding: "10px 12px", display: "flex", flexDirection: "column" }}>
+        <div style={{ background: P.cardBg, borderRadius: 22, padding: "18px 20px", border: `1px solid ${P.cardBorder}`, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
           {/* Progress dots + step counter */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
@@ -347,10 +347,10 @@ function PipelineDashboard() {
 
           {/* Step title + desc */}
           <div style={{ marginBottom: 12, flexShrink: 0 }}>
-            <div style={{ fontFamily: "var(--font-playfair), serif", fontSize: 40, color: P.textPrimary, marginBottom: 5, transition: "all 0.3s" }}>
+            <div className="lv2-pipeline-step-title" style={{ fontFamily: "var(--font-playfair), serif", fontSize: 40, color: P.textPrimary, marginBottom: 5, transition: "all 0.3s" }}>
               {step.label}
             </div>
-            <p style={{ fontSize: 22, color: P.textSec, lineHeight: 1.5, fontFamily: "var(--font-manrope), sans-serif" }}>
+            <p className="lv2-pipeline-step-desc" style={{ fontSize: 22, color: P.textSec, lineHeight: 1.5, fontFamily: "var(--font-manrope), sans-serif" }}>
               {step.desc}
             </p>
           </div>
@@ -556,14 +556,15 @@ function BrainstormMock() {
   const ink    = "#191816";
 
   return (
-    <div style={{
+    <div className="lv2-brainstorm-inner" style={{
       background: paper,
       borderRadius: 20,
       boxShadow: "0 32px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)",
       display: "flex",
       flexDirection: "column",
       height: 650,
-      width: 840,
+      width: "min(840px, 100%)",
+      maxWidth: "100%",
       overflow: "hidden",
       opacity: fading ? 0 : 1,
       transition: "opacity 0.6s ease",
@@ -573,7 +574,7 @@ function BrainstormMock() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "14px 18px",
         borderBottom: `1px solid ${border}`,
-        width: 840,
+        width: "100%",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: ink }}>
@@ -599,7 +600,7 @@ function BrainstormMock() {
       <div ref={messagesRef} style={{
         flex: 1, overflowY: "auto", padding: "16px 20px",
         display: "flex", flexDirection: "column", gap: 12,
-        width: 840,
+        width: "100%",
       }}>
         {displayed.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
@@ -938,6 +939,7 @@ function FadeSection({ children, className = "", delay = 0, style = {} }: { chil
 
 export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -948,6 +950,23 @@ export default function LandingV2() {
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = 1;
+  }, []);
+
+  // Kick off autoplay as early as possible (muted + playsInline satisfies mobile policies).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) return;
+
+    const tryPlay = () => { video.play().catch(() => {}); };
+    tryPlay();
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    return () => {
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+    };
   }, []);
 
   useEffect(() => {
@@ -1007,14 +1026,21 @@ export default function LandingV2() {
         {/* Video background */}
         <video
           ref={videoRef}
+          className="lv2-hero-video"
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
             objectFit: "cover", objectPosition: "center center",
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
-          autoPlay loop muted playsInline preload="auto"
-          poster="/bg-video-poster.jpg"
-          disablePictureInPicture disableRemotePlayback
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          poster={videoPlaying ? undefined : "/bg-video-poster.jpg"}
+          onPlaying={() => setVideoPlaying(true)}
+          disablePictureInPicture
+          disableRemotePlayback
         >
           <source src="/bg-video-desk.mp4" type="video/mp4" />
         </video>
@@ -1081,7 +1107,7 @@ export default function LandingV2() {
       </div>
 
       {/* ─── Pipeline Section ─── */}
-      <section style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto" }}>
+      <section className="lv2-pipeline-section" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto" }}>
         <FadeSection>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
@@ -1108,8 +1134,8 @@ export default function LandingV2() {
             </FadeSection>
           </div>
 
-          {/* Right: step list — shifted left into middle space */}
-          <div style={{ position: "relative", transform: "translateX(-15%)" }}>
+          {/* Right: step list — shifted left into middle space on desktop only */}
+          <div className="lv2-pipeline-steps" style={{ position: "relative", transform: "translateX(-15%)" }}>
             <div style={{
               position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
               background: "rgba(193,122,71,0.2)",
@@ -1148,32 +1174,32 @@ export default function LandingV2() {
       </section>
 
       {/* ─── Human + AI Collaboration ─── */}
-      <section style={{
+      <section className="lv2-humanai-section" style={{
         padding: "96px 40px",
         background: "linear-gradient(to bottom, rgba(193,122,71,0.04), transparent)",
         borderTop: "1px solid rgba(249,247,242,0.06)",
       }}>
-        <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: 80, alignItems: "center" }}>
+        <div className="lv2-humanai-grid" style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: 80, alignItems: "center", maxWidth: 1200, margin: "0 auto" }}>
           {/* Left: text + pillars */}
           <FadeSection>
-            <div>
-              <div style={{
-                fontFamily: "var(--font-lora), serif", fontSize: 26,
+            <div className="lv2-humanai-copy">
+              <div className="lv2-humanai-eyebrow" style={{
+                fontFamily: "var(--font-lora), serif",
                 textTransform: "uppercase", letterSpacing: "0.14em",
                 color: "#C17A47", marginBottom: 16, fontWeight: 600,
               }}>
                 Human + AI
               </div>
-              <h2 style={{
+              <h2 className="lv2-humanai-headline" style={{
                 fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
-                fontSize: "clamp(56px, 8vw, 84px)", fontWeight: 400,
+                fontWeight: 400,
                 lineHeight: 1.2, marginBottom: 24,
               }}>
                 You bring the ideas. You stay in the chair.
               </h2>
-              <p style={{
-                fontFamily: "var(--font-lora), serif", fontSize: 36, lineHeight: 1.7,
-                color: "#A89F94", maxWidth: 1500, marginBottom: 48,
+              <p className="lv2-humanai-lead" style={{
+                fontFamily: "var(--font-lora), serif", lineHeight: 1.7,
+                color: "#A89F94", marginBottom: 48,
               }}>
                 D.&thinsp;scribe doesn&rsquo;t replace your ideas — it listens, learns your voice, and shapes your spoken words into prose that sounds like you wrote it by hand.
               </p>
@@ -1185,10 +1211,10 @@ export default function LandingV2() {
                 ].map((pillar) => (
                   <div key={pillar.title}>
                     <div style={{ width: 32, height: 2, background: "#C17A47", marginBottom: 16, opacity: 0.6 }} />
-                    <h3 style={{ fontFamily: "var(--font-playfair), serif", fontSize: 36, fontWeight: 700, marginBottom: 8 }}>
+                    <h3 className="lv2-humanai-pillar-title" style={{ fontFamily: "var(--font-playfair), serif", fontWeight: 700, marginBottom: 8 }}>
                       {pillar.title}
                     </h3>
-                    <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 30, lineHeight: 1.6, color: "#A89F94" }}>
+                    <p className="lv2-humanai-pillar-desc" style={{ fontFamily: "var(--font-lora), serif", lineHeight: 1.6, color: "#A89F94" }}>
                       {pillar.desc}
                     </p>
                   </div>
@@ -1199,7 +1225,9 @@ export default function LandingV2() {
 
           {/* Right: brainstorm chat mock */}
           <FadeSection delay={0.2}>
-            <BrainstormMock />
+            <div className="lv2-brainstorm-wrap">
+              <BrainstormMock />
+            </div>
           </FadeSection>
         </div>
       </section>
@@ -1486,19 +1514,49 @@ export default function LandingV2() {
         /* Stats band */
         .lv2-hero-stats { padding: clamp(24px, 5vw, 40px) clamp(16px, 6vw, 80px); }
 
+        /* Lower sections — keep mocks inside the viewport */
+        .lv2-pipeline-section,
+        .lv2-humanai-section { overflow-x: hidden; }
+        .lv2-pipeline-dash { width: 100%; max-width: 100%; box-sizing: border-box; }
+        .lv2-dashboard-wrap,
+        .lv2-pipeline-steps { max-width: 100%; }
+
+        /* Human + AI typography — fluid on mobile, editorial on desktop */
+        .lv2-humanai-eyebrow { font-size: clamp(13px, 3vw, 26px); }
+        .lv2-humanai-headline { font-size: clamp(32px, 8vw, 84px); }
+        .lv2-humanai-lead { font-size: clamp(16px, 4.2vw, 36px); max-width: 42ch; }
+        .lv2-humanai-pillar-title { font-size: clamp(22px, 5vw, 36px); }
+        .lv2-humanai-pillar-desc { font-size: clamp(15px, 3.8vw, 30px); }
+        .lv2-humanai-copy { width: 100%; min-width: 0; }
+
+        .lv2-brainstorm-wrap {
+          width: 100%;
+          max-width: 100%;
+          display: flex;
+          justify-content: center;
+          min-width: 0;
+        }
+        .lv2-brainstorm-inner { box-sizing: border-box; }
+
+        /* Hero video — no native controls chrome */
+        .lv2-hero-video { pointer-events: none; object-fit: cover; }
+
         /* Pipeline showcase */
         .lv2-pipeline-dash { height: 1122px; }
         @media (max-width: 1279px) {
           .lv2-dashboard-wrap { transform: none !important; }
+          .lv2-pipeline-steps { transform: none !important; }
           .lv2-brainstorm-wrap { margin-left: 0 !important; }
           .lv2-pipeline-dash { height: 900px; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 640px !important; margin: 0 auto; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
-          .lv2-brainstorm-wrap { display: flex; justify-content: center; }
+          .lv2-pipeline-section { padding: 64px 24px !important; }
+          .lv2-humanai-section { padding: 64px 24px !important; }
         }
         @media (max-width: 1023px) {
           .lv2-pipeline-dash { height: auto; min-height: 560px; }
           .lv2-pipeline-timeline { display: none !important; }
+          .lv2-pipeline-steps { display: none !important; }
         }
 
         /* Mobile */
@@ -1510,6 +1568,13 @@ export default function LandingV2() {
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
+          .lv2-pipeline-section { padding: 48px 16px !important; }
+          .lv2-humanai-section { padding: 48px 16px !important; }
+          .lv2-brainstorm-inner { height: auto; min-height: 520px; max-height: 70vh; }
+          .lv2-humanai-lead { max-width: none; }
+          .lv2-pipeline-step-title { font-size: clamp(26px, 7vw, 40px) !important; }
+          .lv2-pipeline-step-desc { font-size: clamp(14px, 3.8vw, 22px) !important; }
+          .lv2-pipeline-detail { border-left: none !important; }
           .lv2-hero-stats { gap: 16px; }
           .lv2-hero {
             padding: 96px 20px 48px !important;

@@ -519,31 +519,21 @@ function OutlineEditorInner({
 
   // Check if a dropped column overlaps another column (chapter-chapter combine).
   const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
-    const isMobile = layoutModeRef.current === "mobile";
+    // Mobile stacks chapters vertically — overlap-based combine blocks reorder drops.
+    if (layoutModeRef.current === "mobile") return false;
 
     for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
 
-      if (isMobile) {
-        // Mobile chapters share the same x — only treat a deliberate stack as combine.
-        const sourceCenterY = getColumnCenterY(sourceId, sourceCol);
-        const targetCenterY = getColumnCenterY(targetId, targetCol);
-        const stacked = Math.abs(sourceCenterY - targetCenterY) < CHAPTER_HEIGHT * 0.35;
-        if (stacked) {
-          setConfirmCombine({ sourceId, targetId, type: "chapter" });
-          return true;
-        }
-      } else {
-        const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
-        const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
-        if (overlapX && overlapY) {
-          setConfirmCombine({ sourceId, targetId, type: "chapter" });
-          return true;
-        }
+      const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
+      const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
+      if (overlapX && overlapY) {
+        setConfirmCombine({ sourceId, targetId, type: "chapter" });
+        return true;
       }
     }
     return false;
-  }, [getColumnCenterY]);
+  }, []);
 
   const beginChapterDrag = useCallback((chapterId: string, clientX: number, clientY: number) => {
     const col = columnsRef.current.get(chapterId);
@@ -824,14 +814,14 @@ function OutlineEditorInner({
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd);
-    window.addEventListener("touchcancel", handleTouchEnd);
+    window.addEventListener("touchend", handleTouchEnd, { capture: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { capture: true });
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.removeEventListener("touchend", handleTouchEnd, { capture: true });
+      window.removeEventListener("touchcancel", handleTouchEnd, { capture: true });
     };
   }, [clearLongPress, handlePointerMove, handlePointerUp]);
 

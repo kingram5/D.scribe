@@ -604,6 +604,13 @@ input[type=range] {
     bottom: calc(80px + env(safe-area-inset-bottom)) !important;
   }
 
+  /* Outline editor canvas: native touch scroll instead of mouse-only pan/zoom */
+  .ds-outline-canvas--mobile {
+    height: min(62dvh, 520px) !important;
+    min-height: 280px;
+    overscroll-behavior: contain;
+  }
+
   /* Outline: enrichment card breathes with less padding on a narrow screen. */
   .ds-enrich-card {
     padding: 20px 16px !important;

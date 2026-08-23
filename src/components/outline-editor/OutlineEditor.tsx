@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chapter, KeyPoint } from "@/types";
 import { useOutlineState } from "./useOutlineState";
 import {
@@ -14,6 +14,7 @@ import {
   KP_INDENT,
   type ColumnLayout,
   type EdgeDef,
+  type LayoutMode,
   type NoteColor,
 } from "./layout";
 import { ChapterNote } from "./ChapterNode";
@@ -119,6 +120,9 @@ function OutlineEditorInner({
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("desktop");
+  const layoutModeRef = useRef<LayoutMode>("desktop");
+
   // KP drag state — separate from column drag
   const kpDragRef = useRef<KpDragState | null>(null);
   const [nearestColId, setNearestColId] = useState<string | null>(null);
@@ -163,10 +167,31 @@ function OutlineEditorInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => {
+      const mode: LayoutMode = mq.matches ? "mobile" : "desktop";
+      setLayoutMode(mode);
+      layoutModeRef.current = mode;
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (layoutMode === "mobile") {
+      panRef.current = { x: 0, y: 0 };
+      zoomRef.current = 1;
+      setPan({ x: 0, y: 0 });
+      setZoom(1);
+    }
+  }, [layoutMode]);
+
   // Rebuild layout when state changes
   useEffect(() => {
     const sortedChapters = [...state.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
-    const { columns: newCols, edges: newEdges } = buildLayout(sortedChapters, state.keyPoints);
+    const { columns: newCols, edges: newEdges } = buildLayout(sortedChapters, state.keyPoints, layoutMode);
     setColumns(newCols);
     setEdges(newEdges);
 
@@ -176,6 +201,12 @@ function OutlineEditorInner({
     newCols.forEach((col) => {
       const prev = existing.get(col.chapterId);
       if (prev) {
+        if (layoutMode === "mobile") {
+          prev.x = col.x;
+          prev.y = col.y;
+          prev.isDragging = false;
+          prev.targetRotation = prev.baseRotation;
+        }
         newMap.set(col.chapterId, prev);
       } else {
         const baseRot = randomRotation(2);
@@ -193,7 +224,7 @@ function OutlineEditorInner({
     });
     columnsRef.current = newMap;
     setRenderTick((t) => t + 1);
-  }, [state.chapters, state.keyPoints]);
+  }, [state.chapters, state.keyPoints, layoutMode]);
 
   // Physics animation loop
   useEffect(() => {
@@ -264,7 +295,7 @@ function OutlineEditorInner({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state.dirty, state.chapters, state.keyPoints, projectId, dispatch]);
 
-  // Find nearest column to a canvas X position, and compute insertion index from Y
+  // Find nearest column and compute KP insertion index from drag position
   const findNearestColumn = useCallback((canvasX: number, canvasY: number): { chapterId: string; insertIndex: number } | null => {
     let bestDist = Infinity;
     let bestColLayout: ColumnLayout | null = null;
@@ -273,18 +304,42 @@ function OutlineEditorInner({
     for (const col of columns) {
       const colState = columnsRef.current.get(col.chapterId);
       if (!colState) continue;
-      const colCenterX = colState.x + CHAPTER_WIDTH / 2;
-      const dist = Math.abs(canvasX - colCenterX);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestColLayout = col;
-        bestColState = colState;
+
+      if (layoutModeRef.current === "mobile") {
+        const colCenterY = colState.y + col.columnHeight / 2;
+        const dist = Math.abs(canvasY - colCenterY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestColLayout = col;
+          bestColState = colState;
+        }
+      } else {
+        const colCenterX = colState.x + CHAPTER_WIDTH / 2;
+        const dist = Math.abs(canvasX - colCenterX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestColLayout = col;
+          bestColState = colState;
+        }
       }
     }
 
     if (!bestColLayout || !bestColState) return null;
 
-    // Compute insertion index based on Y position within column
+    if (bestColLayout.kpOrientation === "horizontal") {
+      const kpStartX = bestColState.x + KP_INDENT;
+      const relX = canvasX - kpStartX;
+
+      if (relX < 0) {
+        return { chapterId: bestColLayout.chapterId, insertIndex: 0 };
+      }
+
+      const slotWidth = KP_WIDTH + KP_GAP;
+      const idx = Math.round(relX / slotWidth);
+      const clamped = Math.min(idx, bestColLayout.kpIds.length);
+      return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
+    }
+
     const kpStartY = bestColState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET;
     const relY = canvasY - kpStartY;
 
@@ -300,6 +355,7 @@ function OutlineEditorInner({
 
   // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
+    if (layoutModeRef.current === "mobile") return;
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();
@@ -325,9 +381,15 @@ function OutlineEditorInner({
     const colState = columnsRef.current.get(chapterId);
     if (!colState) return;
 
-    // Compute KP's canvas position within the column
-    const kpX = colState.x + KP_INDENT;
-    const kpY = colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET + kpIndex * (KP_HEIGHT + KP_GAP);
+    const colLayout = columns.find((c) => c.chapterId === chapterId);
+    const isHorizontal = colLayout?.kpOrientation === "horizontal";
+
+    const kpX = isHorizontal
+      ? colState.x + KP_INDENT + kpIndex * (KP_WIDTH + KP_GAP)
+      : colState.x + KP_INDENT;
+    const kpY = isHorizontal
+      ? colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET
+      : colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET + kpIndex * (KP_HEIGHT + KP_GAP);
 
     kpDragRef.current = {
       kpId,
@@ -342,12 +404,12 @@ function OutlineEditorInner({
       color,
     };
     setRenderTick((t) => t + 1);
-  }, []);
+  }, [columns]);
 
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
       // Handle panning
-      if (isPanningRef.current) {
+      if (isPanningRef.current && layoutModeRef.current === "desktop") {
         const dx = e.clientX - panStartRef.current.x;
         const dy = e.clientY - panStartRef.current.y;
         const newPan = {
@@ -451,9 +513,10 @@ function OutlineEditorInner({
           // Determine new order from X positions and reorder if changed
           const chapters = stateRef.current.chapters;
           const chapterIds = new Set(chapters.map((ch) => ch.id));
+          const sortAxis = layoutModeRef.current === "mobile" ? "y" : "x";
           const sortedByX = [...columnsRef.current.entries()]
             .filter(([id]) => chapterIds.has(id))
-            .sort(([, a], [, b]) => a.x - b.x)
+            .sort(([, a], [, b]) => (sortAxis === "y" ? a.y - b.y : a.x - b.x))
             .map(([id]) => id);
           const currentOrder = [...chapters]
             .sort((a, b) => a.chapter_number - b.chapter_number)
@@ -506,6 +569,7 @@ function OutlineEditorInner({
 
   // Canvas pan on background drag
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    if (layoutModeRef.current === "mobile") return;
     if (dragRef.current.noteId) return;
     if (kpDragRef.current) return;
     isPanningRef.current = true;
@@ -517,10 +581,10 @@ function OutlineEditorInner({
     };
   }, []);
 
-  // Wheel-to-zoom, anchored to cursor position
+  // Wheel-to-zoom, anchored to cursor position (desktop only)
   useEffect(() => {
     const el = canvasRef.current;
-    if (!el) return;
+    if (!el || layoutMode !== "desktop") return;
 
     function handleWheel(e: WheelEvent) {
       e.preventDefault();
@@ -544,7 +608,26 @@ function OutlineEditorInner({
 
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [layoutMode]);
+
+  const canvasBounds = useMemo(() => {
+    if (columns.length === 0) return { width: 800, height: 600 };
+
+    let maxX = 0;
+    let maxY = 0;
+    for (const col of columns) {
+      const dragCol = columnsRef.current.get(col.chapterId);
+      const x = layoutMode === "mobile" ? col.x : (dragCol?.x ?? col.x);
+      const y = layoutMode === "mobile" ? col.y : (dragCol?.y ?? col.y);
+      maxX = Math.max(maxX, x + col.columnWidth);
+      maxY = Math.max(maxY, y + col.columnHeight);
+    }
+
+    return {
+      width: maxX + 80,
+      height: maxY + 80,
+    };
+  }, [columns, layoutMode]);
 
   // Compute edge path between chapter columns
   function getEdgePath(edge: EdgeDef): string {
@@ -572,24 +655,29 @@ function OutlineEditorInner({
   // Current KP drag state for rendering
   const kpDrag = kpDragRef.current;
 
+  const isMobileLayout = layoutMode === "mobile";
+
   return (
     <div
       ref={canvasRef}
+      className={isMobileLayout ? "ds-outline-canvas ds-outline-canvas--mobile" : "ds-outline-canvas"}
       onMouseDown={handleCanvasMouseDown}
       style={{
         position: "relative",
         width: "100%",
-        height: "calc(100vh - 160px)",
-        overflow: "hidden",
+        height: isMobileLayout ? undefined : "calc(100vh - 160px)",
+        overflow: isMobileLayout ? "auto" : "hidden",
+        WebkitOverflowScrolling: isMobileLayout ? "touch" : undefined,
+        touchAction: isMobileLayout ? "pan-x pan-y" : undefined,
         background: "#f4f1ea",
         backgroundImage: `
           linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
           linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
         `,
-        backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
+        backgroundSize: isMobileLayout ? "40px 40px" : `${40 * zoom}px ${40 * zoom}px`,
+        backgroundPosition: isMobileLayout ? "0 0" : `${pan.x}px ${pan.y}px`,
         borderRadius: "0 0 12px 12px",
-        cursor: isPanningRef.current ? "grabbing" : "grab",
+        cursor: isMobileLayout ? "default" : (isPanningRef.current ? "grabbing" : "grab"),
       }}
     >
       {/* SVG Filters */}
@@ -651,13 +739,13 @@ function OutlineEditorInner({
       {/* Column layer */}
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          position: "relative",
+          width: isMobileLayout ? canvasBounds.width : "100%",
+          height: isMobileLayout ? canvasBounds.height : "100%",
+          minWidth: isMobileLayout ? canvasBounds.width : undefined,
+          minHeight: isMobileLayout ? canvasBounds.height : undefined,
           zIndex: 2,
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transform: isMobileLayout ? undefined : `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: "0 0",
         }}
       >
@@ -671,15 +759,19 @@ function OutlineEditorInner({
           const scale = dragCol.isDragging ? 1.03 : 1;
           const isDropTarget = nearestColId === col.chapterId && kpDrag !== null;
 
+          const colX = isMobileLayout ? col.x : dragCol.x;
+          const colY = isMobileLayout ? col.y : dragCol.y;
+
           return (
             <div
               key={col.chapterId}
               onMouseDown={(e) => handleColumnMouseDown(e, col.chapterId)}
               style={{
                 position: "absolute",
-                left: dragCol.x,
-                top: dragCol.y,
-                transform: `rotate(${dragCol.rotation}deg) scale(${scale})`,
+                left: colX,
+                top: colY,
+                width: col.columnWidth,
+                transform: isMobileLayout ? undefined : `rotate(${dragCol.rotation}deg) scale(${scale})`,
                 zIndex: dragCol.isDragging ? 100 : 10,
                 transition: dragCol.isDragging ? "none" : "transform 0.3s ease-out",
               }}
@@ -715,8 +807,17 @@ function OutlineEditorInner({
                 onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
               />
 
-              {/* Key points stacked below */}
-              <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP }}>
+              {/* Key points — vertical stack on desktop, horizontal row on mobile */}
+              <div
+                style={{
+                  marginTop: KP_TOP_OFFSET,
+                  marginLeft: KP_INDENT,
+                  display: "flex",
+                  flexDirection: col.kpOrientation === "horizontal" ? "row" : "column",
+                  gap: KP_GAP,
+                  flexWrap: col.kpOrientation === "horizontal" ? "nowrap" : undefined,
+                }}
+              >
                 {col.kpIds.map((kpId, kpIndex) => {
                   const kp = state.keyPoints.find((k) => k.id === kpId);
                   if (!kp) return null;

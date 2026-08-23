@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import TipTapEditor, { TipTapSelection, TipTapEditorHandle } from "@/components/editor/TipTapEditor";
 import MagicEditBubble from "@/components/editor/MagicEditBubble";
 import RewritePromptBar from "@/components/editor/RewritePromptBar";
+import CopyrightReadinessBadge from "@/components/editor/CopyrightReadinessBadge";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -713,6 +714,8 @@ export default function EditorPage() {
                 </span>
               </>
             )}
+            <div style={{ width: 1, height: 14, background: "var(--ds-card-border)" }} />
+            <CopyrightReadinessBadge projectId={projectId} />
           </div>
 
           {/* Floating Toolbar — left edge, vertically centered */}

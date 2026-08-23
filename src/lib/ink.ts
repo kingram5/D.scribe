@@ -13,7 +13,8 @@ export type InkOperation =
   | "generate"
   | "rewrite"
   | "coherence"
-  | "enrich";
+  | "enrich"
+  | "disclosure";
 
 export interface InkBalance {
   ink_balance: number;

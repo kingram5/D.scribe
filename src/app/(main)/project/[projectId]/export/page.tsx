@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
+import CopyrightReadinessExportCard from "@/components/export/CopyrightReadinessExportCard";
 
 /* ─── Document Preview SVGs ─── */
 
@@ -120,6 +121,7 @@ export default function ExportPage() {
   const [publishedAuthor, setPublishedAuthor] = useState("");
   const [publishSaving, setPublishSaving] = useState(false);
   const [publishSaved, setPublishSaved] = useState(false);
+  const [projTitle, setProjTitle] = useState("");
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
@@ -129,6 +131,7 @@ export default function ExportPage() {
         setIsPublic(!!data.is_public);
         setPublishedExcerpt(data.published_excerpt || "");
         setPublishedAuthor(data.published_author || "");
+        setProjTitle(data.title || "");
       })
       .catch(() => {});
   }, [projectId]);
@@ -271,6 +274,8 @@ export default function ExportPage() {
             Choose a format and bring your words into the world
           </p>
         </div>
+
+        <CopyrightReadinessExportCard projectId={projectId} bookTitle={projTitle} />
 
         {/* Cards Grid */}
         <style>{`

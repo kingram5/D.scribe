@@ -102,8 +102,9 @@ function buildMobileLayout(
   const edges: EdgeDef[] = [];
   const kpMap = new Map(keyPoints.map((kp) => [kp.id, kp]));
 
-  let cursorY = CANVAS_PADDING;
-  const x = CANVAS_PADDING;
+  const MOBILE_CANVAS_PADDING = 20;
+  let cursorY = MOBILE_CANVAS_PADDING;
+  const x = MOBILE_CANVAS_PADDING;
 
   chapters.forEach((ch, i) => {
     const color = NOTE_COLORS[i % NOTE_COLORS.length];

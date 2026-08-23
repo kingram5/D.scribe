@@ -56,8 +56,9 @@ function randomRotation(range: number) {
   return (Math.random() - 0.5) * 2 * range;
 }
 
-const MOBILE_ZOOM_MIN = 0.5;
+const MOBILE_ZOOM_MIN = 0.25;
 const MOBILE_ZOOM_MAX = 2.5;
+const MOBILE_FRAME_PADDING = 20;
 
 function clampZoom(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -132,6 +133,12 @@ function OutlineEditorInner({
   const rafRef = useRef<number>(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const mobileSpacerRef = useRef<HTMLDivElement>(null);
+  const mobileScaleRef = useRef<HTMLDivElement>(null);
+  const canvasBoundsRef = useRef({ width: 800, height: 600 });
+  const hasMobileFramedRef = useRef(false);
+  const pendingPinchRef = useRef<{ zoom: number; viewportX: number; viewportY: number } | null>(null);
+  const pinchRafRef = useRef(0);
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("desktop");
   const layoutModeRef = useRef<LayoutMode>("desktop");
@@ -195,15 +202,12 @@ function OutlineEditorInner({
 
   useEffect(() => {
     if (layoutMode === "mobile") {
+      hasMobileFramedRef.current = false;
       panRef.current = { x: 0, y: 0 };
-      zoomRef.current = 1;
       setPan({ x: 0, y: 0 });
+    } else {
+      zoomRef.current = 1;
       setZoom(1);
-      const el = canvasRef.current;
-      if (el) {
-        el.scrollLeft = 0;
-        el.scrollTop = 0;
-      }
     }
   }, [layoutMode]);
 
@@ -634,15 +638,43 @@ function OutlineEditorInner({
     const el = canvasRef.current;
     if (!el || layoutMode !== "mobile") return;
 
+    function syncMobileZoomDom(newZoom: number) {
+      const bounds = canvasBoundsRef.current;
+      const spacer = mobileSpacerRef.current;
+      const scaleLayer = mobileScaleRef.current;
+      if (spacer) {
+        spacer.style.width = `${bounds.width * newZoom}px`;
+        spacer.style.height = `${bounds.height * newZoom}px`;
+      }
+      if (scaleLayer) {
+        scaleLayer.style.transform = `scale(${newZoom})`;
+      }
+    }
+
     function applyMobileZoom(newZoom: number, viewportX: number, viewportY: number) {
       const oldZoom = zoomRef.current;
-      if (newZoom === oldZoom) return;
+      if (Math.abs(newZoom - oldZoom) < 0.002) return;
 
       const scale = newZoom / oldZoom;
       el!.scrollLeft = viewportX * (scale - 1) + el!.scrollLeft * scale;
       el!.scrollTop = viewportY * (scale - 1) + el!.scrollTop * scale;
       zoomRef.current = newZoom;
-      setZoom(newZoom);
+      syncMobileZoomDom(newZoom);
+    }
+
+    function flushPendingPinch() {
+      pinchRafRef.current = 0;
+      const pending = pendingPinchRef.current;
+      if (!pending) return;
+      applyMobileZoom(pending.zoom, pending.viewportX, pending.viewportY);
+      pendingPinchRef.current = null;
+    }
+
+    function scheduleMobileZoom(newZoom: number, viewportX: number, viewportY: number) {
+      pendingPinchRef.current = { zoom: newZoom, viewportX, viewportY };
+      if (!pinchRafRef.current) {
+        pinchRafRef.current = requestAnimationFrame(flushPendingPinch);
+      }
     }
 
     function handleTouchStart(e: TouchEvent) {
@@ -669,12 +701,17 @@ function OutlineEditorInner({
       const viewportX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const viewportY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      applyMobileZoom(newZoom, viewportX, viewportY);
+      scheduleMobileZoom(newZoom, viewportX, viewportY);
     }
 
     function handleTouchEnd(e: TouchEvent) {
       if (e.touches.length < 2) {
+        if (pinchRafRef.current) {
+          cancelAnimationFrame(pinchRafRef.current);
+          flushPendingPinch();
+        }
         pinchRef.current = null;
+        setZoom(zoomRef.current);
       }
     }
 
@@ -684,6 +721,7 @@ function OutlineEditorInner({
     el.addEventListener("touchcancel", handleTouchEnd);
 
     return () => {
+      if (pinchRafRef.current) cancelAnimationFrame(pinchRafRef.current);
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
@@ -691,24 +729,87 @@ function OutlineEditorInner({
     };
   }, [layoutMode]);
 
-  const canvasBounds = useMemo(() => {
-    if (columns.length === 0) return { width: 800, height: 600 };
+  const contentBounds = useMemo(() => {
+    if (columns.length === 0) {
+      return { x: 0, y: 0, width: 400, height: 400 };
+    }
 
+    let minX = Infinity;
+    let minY = Infinity;
     let maxX = 0;
     let maxY = 0;
+
     for (const col of columns) {
       const dragCol = columnsRef.current.get(col.chapterId);
       const x = layoutMode === "mobile" ? col.x : (dragCol?.x ?? col.x);
       const y = layoutMode === "mobile" ? col.y : (dragCol?.y ?? col.y);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
       maxX = Math.max(maxX, x + col.columnWidth);
       maxY = Math.max(maxY, y + col.columnHeight);
     }
 
     return {
-      width: maxX + 80,
-      height: maxY + 80,
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
     };
   }, [columns, layoutMode]);
+
+  const canvasBounds = useMemo(() => {
+    const edgePad = layoutMode === "mobile" ? MOBILE_FRAME_PADDING : 80;
+    return {
+      width: contentBounds.width + edgePad * 2,
+      height: contentBounds.height + edgePad * 2,
+    };
+  }, [contentBounds, layoutMode]);
+
+  useEffect(() => {
+    canvasBoundsRef.current = { width: canvasBounds.width, height: canvasBounds.height };
+  }, [canvasBounds]);
+
+  // Frame mobile viewport to show all notes on first open
+  useEffect(() => {
+    if (layoutMode !== "mobile" || columns.length === 0 || hasMobileFramedRef.current) return;
+
+    const el = canvasRef.current;
+    if (!el) return;
+
+    const frame = () => {
+      const pad = MOBILE_FRAME_PADDING;
+      const { x, y, width, height } = contentBounds;
+      const viewW = el.clientWidth;
+      const viewH = el.clientHeight;
+      if (viewW === 0 || viewH === 0) return;
+
+      const fitZoom = clampZoom(
+        Math.min((viewW - pad * 2) / width, (viewH - pad * 2) / height),
+        MOBILE_ZOOM_MIN,
+        1
+      );
+
+      zoomRef.current = fitZoom;
+      setZoom(fitZoom);
+
+      const spacer = mobileSpacerRef.current;
+      const scaleLayer = mobileScaleRef.current;
+      const bounds = canvasBoundsRef.current;
+      if (spacer) {
+        spacer.style.width = `${bounds.width * fitZoom}px`;
+        spacer.style.height = `${bounds.height * fitZoom}px`;
+      }
+      if (scaleLayer) {
+        scaleLayer.style.transform = `scale(${fitZoom})`;
+      }
+
+      el.scrollLeft = Math.max(0, x * fitZoom - pad);
+      el.scrollTop = Math.max(0, y * fitZoom - pad);
+      hasMobileFramedRef.current = true;
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(frame));
+  }, [layoutMode, columns, contentBounds]);
 
   const scaledCanvasBounds = useMemo(() => ({
     width: canvasBounds.width * zoom,
@@ -983,6 +1084,7 @@ function OutlineEditorInner({
 
       {isMobileLayout ? (
         <div
+          ref={mobileSpacerRef}
           style={{
             width: scaledCanvasBounds.width,
             height: scaledCanvasBounds.height,
@@ -990,6 +1092,7 @@ function OutlineEditorInner({
           }}
         >
           <div
+            ref={mobileScaleRef}
             style={{
               width: canvasBounds.width,
               height: canvasBounds.height,
@@ -998,6 +1101,7 @@ function OutlineEditorInner({
               position: "relative",
               background: "#f4f1ea",
               ...gridBackgroundStyle,
+              willChange: "transform",
             }}
           >
             {boardLayers}

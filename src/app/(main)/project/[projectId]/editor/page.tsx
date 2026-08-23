@@ -134,6 +134,139 @@ export default function EditorPage() {
   const chaptersWithContent = chapters.filter(ch => ch.latest_content && ch.latest_content.word_count > 0).length;
   const readingTime = Math.max(1, Math.round(wordCount / 250));
 
+  function renderChapterButton(ch: (Chapter & { latest_content?: ChapterContent }), i: number, variant: "sidebar" | "strip") {
+    const isActive = i === activeIdx;
+    const chNum = String(ch.chapter_number).padStart(2, "0");
+    const chWords = ch.latest_content?.word_count || 0;
+
+    if (variant === "strip") {
+      return (
+        <button
+          key={ch.id}
+          onClick={() => switchChapter(i)}
+          className="ds-editor-chapter-chip"
+          style={{
+            flex: "0 0 auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 14px",
+            borderRadius: 9999,
+            border: isActive ? "1px solid rgba(193,122,71,0.5)" : "1px solid var(--ds-card-border)",
+            background: isActive ? "rgba(193,122,71,0.14)" : "var(--ds-card-bg)",
+            cursor: "pointer",
+            maxWidth: 220,
+          }}
+        >
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: isActive ? "#C17A47" : "var(--text-secondary)",
+            fontFamily: "var(--font-geist-mono), monospace",
+          }}>
+            {chNum}
+          </span>
+          <span style={{
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 500,
+            color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+            fontFamily: "var(--font-manrope), sans-serif",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {ch.title}
+          </span>
+        </button>
+      );
+    }
+
+    return (
+      <div key={ch.id} className="ds-editor-chapter-item" style={{ position: "relative" }}>
+        {i < chapters.length - 1 && (
+          <div className="ds-editor-chapter-line" style={{
+            position: "absolute",
+            left: 19,
+            top: 40,
+            bottom: -8,
+            width: 1,
+            background: "var(--ds-card-border)",
+          }} />
+        )}
+        <button
+          onClick={() => switchChapter(i)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            width: "100%",
+            padding: "10px 12px",
+            marginBottom: 4,
+            borderRadius: 8,
+            border: isActive ? "1px solid rgba(193,122,71,0.4)" : "1px solid transparent",
+            background: isActive ? "rgba(193,122,71,0.12)" : "transparent",
+            cursor: "pointer",
+            textAlign: "left",
+            transition: "all 0.15s ease",
+            position: "relative",
+            zIndex: 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.background = "var(--ds-input-bg)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.background = "transparent";
+            }
+          }}
+        >
+          <div style={{
+            width: 38,
+            height: 38,
+            minWidth: 38,
+            borderRadius: 8,
+            background: isActive ? "rgba(193,122,71,0.2)" : "var(--ds-input-bg)",
+            border: isActive ? "1px solid rgba(193,122,71,0.3)" : "1px solid var(--ds-card-border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 13,
+            fontWeight: 700,
+            color: isActive ? "#C17A47" : "var(--text-secondary)",
+            fontFamily: "var(--font-geist-mono), monospace",
+            transition: "all 0.15s ease",
+          }}>
+            {chNum}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13,
+              fontWeight: isActive ? 600 : 500,
+              color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+              fontFamily: "var(--font-manrope), sans-serif",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              transition: "color 0.15s ease",
+            }}>
+              {ch.title}
+            </div>
+            <div style={{
+              fontSize: 11,
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-geist-mono), monospace",
+              marginTop: 2,
+            }}>
+              {chWords > 0 ? `${chWords.toLocaleString()} words` : "No content"}
+            </div>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   // Convert chapter number to roman numeral
   function toRoman(num: number): string {
     const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
@@ -184,6 +317,8 @@ export default function EditorPage() {
       <style>{`
         @media (min-width: 769px) {
           html, body { overflow: hidden; }
+          .ds-editor-sidebar { overflow: hidden; }
+          .ds-editor-chapter-strip { display: none !important; }
         }
         @media (max-width: 768px) {
           .ds-editor-layout {
@@ -202,6 +337,9 @@ export default function EditorPage() {
             border-right: none !important;
             border-bottom: 1px solid var(--ds-card-border);
           }
+          .ds-editor-chapter-list { display: none !important; }
+          .ds-editor-sidebar-stats { display: none !important; }
+          .ds-editor-chapter-strip { display: flex !important; }
           .ds-editor-main {
             flex: 0 0 auto !important;
             width: 100% !important;
@@ -238,11 +376,10 @@ export default function EditorPage() {
           borderRight: "1px solid var(--ds-card-border)",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
         }}>
 
           {/* Sidebar Header */}
-          <div style={{
+          <div className="ds-editor-sidebar-header" style={{
             padding: "20px 24px 16px",
             borderBottom: "1px solid var(--ds-card-border)",
             display: "flex",
@@ -366,7 +503,7 @@ export default function EditorPage() {
           </div>
 
           {/* Chapter List */}
-          <div style={{
+          <div className="ds-editor-manuscript-label" style={{
             padding: "20px 16px 8px",
           }}>
             <div style={{
@@ -382,108 +519,16 @@ export default function EditorPage() {
             </div>
           </div>
 
-          <div style={{
+          <div className="ds-editor-chapter-list" style={{
             flex: 1,
             overflowY: "auto",
             padding: "0 16px 16px",
           }}>
-            {chapters.map((ch, i) => {
-              const isActive = i === activeIdx;
-              const chNum = String(ch.chapter_number).padStart(2, "0");
-              const chWords = ch.latest_content?.word_count || 0;
-              const isLast = i === chapters.length - 1;
-              return (
-                <div key={ch.id} style={{ position: "relative" }}>
-                  {/* Vertical connecting line */}
-                  {!isLast && (
-                    <div style={{
-                      position: "absolute",
-                      left: 19,
-                      top: 40,
-                      bottom: -8,
-                      width: 1,
-                      background: "var(--ds-card-border)",
-                    }} />
-                  )}
-                  <button
-                    onClick={() => switchChapter(i)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      width: "100%",
-                      padding: "10px 12px",
-                      marginBottom: 4,
-                      borderRadius: 8,
-                      border: isActive ? "1px solid rgba(193,122,71,0.4)" : "1px solid transparent",
-                      background: isActive ? "rgba(193,122,71,0.12)" : "transparent",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.15s ease",
-                      position: "relative",
-                      zIndex: 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = "var(--ds-input-bg)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
-                  >
-                    {/* Chapter number square */}
-                    <div style={{
-                      width: 38,
-                      height: 38,
-                      minWidth: 38,
-                      borderRadius: 8,
-                      background: isActive ? "rgba(193,122,71,0.2)" : "var(--ds-input-bg)",
-                      border: isActive ? "1px solid rgba(193,122,71,0.3)" : "1px solid var(--ds-card-border)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: isActive ? "#C17A47" : "var(--text-secondary)",
-                      fontFamily: "var(--font-geist-mono), monospace",
-                      transition: "all 0.15s ease",
-                    }}>
-                      {chNum}
-                    </div>
-                    {/* Chapter info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13,
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                        fontFamily: "var(--font-manrope), sans-serif",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        transition: "color 0.15s ease",
-                      }}>
-                        {ch.title}
-                      </div>
-                      <div style={{
-                        fontSize: 11,
-                        color: "var(--text-tertiary)",
-                        fontFamily: "var(--font-geist-mono), monospace",
-                        marginTop: 2,
-                      }}>
-                        {chWords > 0 ? `${chWords.toLocaleString()} words` : "No content"}
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              );
-            })}
+            {chapters.map((ch, i) => renderChapterButton(ch, i, "sidebar"))}
           </div>
 
           {/* Manuscript Stats */}
-          <div style={{
+          <div className="ds-editor-sidebar-stats" style={{
             padding: "16px",
             borderTop: "1px solid var(--ds-card-border)",
           }}>
@@ -578,6 +623,30 @@ export default function EditorPage() {
           overflow: "hidden",
           background: "var(--env-bg)",
         }}>
+
+          {/* Mobile chapter strip — sits above manuscript, always tappable */}
+          <div className="ds-editor-chapter-strip" style={{ display: "none" }}>
+            <div style={{
+              padding: "12px 16px 8px",
+              fontSize: 9,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.14em",
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              Chapters
+            </div>
+            <div style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              padding: "0 16px 12px",
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {chapters.map((ch, i) => renderChapterButton(ch, i, "strip"))}
+            </div>
+          </div>
 
           {/* Floating Stats Bar — top center */}
           <div className="ds-editor-stats-bar" style={{

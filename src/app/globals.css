@@ -660,6 +660,31 @@ input[type=range] {
     overflow: visible !important;
   }
 
+  /* Mobile chapter strip lives above the manuscript so it can't be covered */
+  .ds-editor-chapter-strip {
+    display: none;
+  }
+  .ds-editor-chapter-list {
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  @media (max-width: 768px) {
+    .ds-editor-chapter-strip {
+      display: block !important;
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      background: var(--ds-card-bg);
+      border-bottom: 1px solid var(--ds-card-border);
+      flex: 0 0 auto !important;
+    }
+    .ds-editor-chapter-list,
+    .ds-editor-sidebar-stats {
+      display: none !important;
+    }
+  }
+
   /* Prevent horizontal scroll in the app shell without breaking landing layout */
   .paper-theme,
   .ds-pipeline-grid,

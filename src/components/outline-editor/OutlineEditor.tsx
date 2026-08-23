@@ -61,8 +61,8 @@ function randomRotation(range: number) {
 const MOBILE_ZOOM_MIN = 0.25;
 const MOBILE_ZOOM_MAX = 2.5;
 const MOBILE_FRAME_PADDING = 20;
-const LONG_PRESS_MS = 400;
-const LONG_PRESS_CANCEL_PX = 12;
+const LONG_PRESS_MS = 280;
+const LONG_PRESS_CANCEL_PX = 28;
 
 type LongPressPayload =
   | { type: "chapter"; chapterId: string }
@@ -157,6 +157,7 @@ function OutlineEditorInner({
   } | null>(null);
   const columnsListRef = useRef<ColumnLayout[]>([]);
   const isNoteDraggingRef = useRef(false);
+  const lastTouchRef = useRef<{ clientX: number; clientY: number } | null>(null);
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
     if (typeof window === "undefined") return "desktop";
@@ -704,16 +705,18 @@ function OutlineEditorInner({
 
   const handleColumnTouchStart = useCallback((e: React.TouchEvent, chapterId: string) => {
     if (layoutModeRef.current !== "mobile") return;
-    if ((e.target as HTMLElement).contentEditable === "true") return;
     const touch = e.touches[0];
     if (!touch) return;
 
+    lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
     clearLongPress();
     longPressRef.current = {
       timer: setTimeout(() => {
+        const pos = lastTouchRef.current;
         longPressRef.current = null;
+        if (!pos) return;
         navigator.vibrate?.(12);
-        beginChapterDrag(chapterId, touch.clientX, touch.clientY);
+        beginChapterDrag(chapterId, pos.clientX, pos.clientY);
       }, LONG_PRESS_MS),
       startX: touch.clientX,
       startY: touch.clientY,
@@ -743,16 +746,18 @@ function OutlineEditorInner({
     color: NoteColor,
   ) => {
     if (layoutModeRef.current !== "mobile") return;
-    if ((e.target as HTMLElement).contentEditable === "true") return;
     const touch = e.touches[0];
     if (!touch) return;
 
+    lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
     clearLongPress();
     longPressRef.current = {
       timer: setTimeout(() => {
+        const pos = lastTouchRef.current;
         longPressRef.current = null;
+        if (!pos) return;
         navigator.vibrate?.(12);
-        beginKpDrag(kpId, chapterId, kpIndex, color, touch.clientX, touch.clientY);
+        beginKpDrag(kpId, chapterId, kpIndex, color, pos.clientX, pos.clientY);
       }, LONG_PRESS_MS),
       startX: touch.clientX,
       startY: touch.clientY,
@@ -776,6 +781,7 @@ function OutlineEditorInner({
     function handleTouchMove(e: TouchEvent) {
       if (longPressRef.current && e.touches.length === 1) {
         const touch = e.touches[0];
+        lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
         const dx = touch.clientX - longPressRef.current.startX;
         const dy = touch.clientY - longPressRef.current.startY;
         if (Math.hypot(dx, dy) > LONG_PRESS_CANCEL_PX) {
@@ -1136,9 +1142,6 @@ function OutlineEditorInner({
               key={col.chapterId}
               data-outline-chapter={col.chapterId}
               onMouseDown={(e) => handleColumnMouseDown(e, col.chapterId)}
-              onTouchStart={(e) => handleColumnTouchStart(e, col.chapterId)}
-              onTouchEnd={handleNoteTouchEnd}
-              onTouchCancel={handleNoteTouchEnd}
               className={isColumnDragging ? "ds-outline-note--dragging" : undefined}
               style={{
                 position: "absolute",
@@ -1146,11 +1149,10 @@ function OutlineEditorInner({
                 top: colY,
                 width: col.columnWidth,
                 transform: isMobileLayout
-                  ? undefined
+                  ? isColumnDragging ? "scale(1.02)" : undefined
                   : `rotate(${dragCol.rotation}deg) scale(${scale})`,
                 zIndex: isColumnDragging ? 100 : 10,
                 transition: isColumnDragging ? "none" : "transform 0.3s ease-out",
-                touchAction: isMobileLayout ? "pan-x pan-y" : undefined,
               }}
             >
               {/* Column background — subtle grouping indicator */}
@@ -1179,6 +1181,9 @@ function OutlineEditorInner({
                 rotation={dragCol.rotation}
                 isDragging={dragCol.isDragging}
                 keyPointCount={col.kpIds.length}
+                isMobile={isMobileLayout}
+                onDragHandleTouchStart={(e) => handleColumnTouchStart(e, col.chapterId)}
+                onDragHandleTouchEnd={handleNoteTouchEnd}
                 onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
                 onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
                 onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
@@ -1207,21 +1212,20 @@ function OutlineEditorInner({
                       key={kpId}
                       data-outline-kp={kpId}
                       onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
-                      onTouchStart={(e) => handleKpTouchStart(e, kpId, col.chapterId, kpIndex, col.color)}
-                      onTouchEnd={handleNoteTouchEnd}
-                      onTouchCancel={handleNoteTouchEnd}
-                      className={isBeingDragged ? "ds-outline-note--dragging" : undefined}
                       style={{
                         opacity: isBeingDragged ? 0.25 : 1,
                         transition: "opacity 0.15s",
-                        touchAction: isMobileLayout ? "pan-x pan-y" : undefined,
+                        flex: "0 0 auto",
                       }}
                     >
                       <KeyPointNote
                         keyPoint={kp}
                         color={col.color}
                         rotation={0}
-                        isDragging={false}
+                        isDragging={isBeingDragged}
+                        isMobile={isMobileLayout}
+                        onDragHandleTouchStart={(e) => handleKpTouchStart(e, kpId, col.chapterId, kpIndex, col.color)}
+                        onDragHandleTouchEnd={handleNoteTouchEnd}
                         onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
                         onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
                       />

@@ -3,12 +3,16 @@
 import { memo, useState, useRef, useCallback } from "react";
 import type { KeyPoint } from "@/types";
 import type { NoteColor } from "./layout";
+import { OutlineDragHandle } from "./OutlineDragHandle";
 
 interface KeyPointNoteProps {
   keyPoint: KeyPoint;
   color: NoteColor;
   rotation: number;
   isDragging: boolean;
+  isMobile?: boolean;
+  onDragHandleTouchStart?: (e: React.TouchEvent) => void;
+  onDragHandleTouchEnd?: (e: React.TouchEvent) => void;
   onEdit: (field: "title" | "summary", value: string) => void;
   onDelete: () => void;
 }
@@ -18,6 +22,9 @@ function KeyPointNoteComponent({
   color,
   rotation,
   isDragging,
+  isMobile,
+  onDragHandleTouchStart,
+  onDragHandleTouchEnd,
   onEdit,
   onDelete,
 }: KeyPointNoteProps) {
@@ -52,7 +59,7 @@ function KeyPointNoteComponent({
         background: color,
         border: `2px solid ${borderColor}`,
         borderRadius: 3,
-        padding: "12px 12px 12px 14px",
+        padding: isMobile ? "12px 12px 12px 38px" : "12px 12px 12px 14px",
         cursor: isDragging ? "grabbing" : "grab",
         filter: "url(#rough-edge)",
         boxShadow: isDragging
@@ -61,10 +68,20 @@ function KeyPointNoteComponent({
         fontFamily: "'Kalam', cursive",
         position: "relative",
         overflow: "hidden",
-        transition: isDragging ? "none" : "box-shadow 0.2s",
+        transition: isDragging ? "none" : "box-shadow 0.2s, transform 0.15s",
+        transform: isDragging ? "scale(1.04) rotate(-1deg)" : undefined,
         userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
       }}
     >
+      {isMobile && onDragHandleTouchStart && onDragHandleTouchEnd && (
+        <OutlineDragHandle
+          compact
+          onTouchStart={onDragHandleTouchStart}
+          onTouchEnd={onDragHandleTouchEnd}
+        />
+      )}
       {/* Corner fold */}
       <div style={{
         position: "absolute",
@@ -133,6 +150,7 @@ function KeyPointNoteComponent({
           suppressContentEditableWarning
           onBlur={handleTitleBlur}
           onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } }}
           style={{
             fontSize: 13,
@@ -146,6 +164,8 @@ function KeyPointNoteComponent({
             WebkitLineClamp: 4,
             WebkitBoxOrient: "vertical",
             wordBreak: "break-word",
+            WebkitUserSelect: "text",
+            userSelect: "text",
           }}
         >
           {keyPoint.title || "New Key Point"}

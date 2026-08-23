@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useCallback } from "react";
 import type { Chapter } from "@/types";
 import type { NoteColor } from "./layout";
+import { OutlineDragHandle } from "./OutlineDragHandle";
 
 interface ChapterNoteProps {
   chapter: Chapter;
@@ -10,6 +11,9 @@ interface ChapterNoteProps {
   rotation: number;
   isDragging: boolean;
   keyPointCount: number;
+  isMobile?: boolean;
+  onDragHandleTouchStart?: (e: React.TouchEvent) => void;
+  onDragHandleTouchEnd?: (e: React.TouchEvent) => void;
   onEdit: (field: "title" | "summary", value: string) => void;
   onDelete: () => void;
   onAddKeyPoint: () => void;
@@ -30,6 +34,9 @@ function ChapterNoteComponent({
   rotation,
   isDragging,
   keyPointCount,
+  isMobile,
+  onDragHandleTouchStart,
+  onDragHandleTouchEnd,
   onEdit,
   onDelete,
   onAddKeyPoint,
@@ -55,7 +62,7 @@ function ChapterNoteComponent({
         background: color,
         border: `3px solid ${borderColor}`,
         borderRadius: 4,
-        padding: "20px 18px 14px",
+        padding: isMobile ? "20px 18px 14px 44px" : "20px 18px 14px",
         cursor: isDragging ? "grabbing" : "grab",
         filter: "url(#rough-edge)",
         boxShadow: isDragging
@@ -64,10 +71,19 @@ function ChapterNoteComponent({
         fontFamily: "'Kalam', cursive",
         position: "relative",
         overflow: "visible",
-        transition: isDragging ? "none" : "box-shadow 0.2s",
+        transition: isDragging ? "none" : "box-shadow 0.2s, transform 0.15s",
+        transform: isDragging ? "scale(1.03) rotate(-1deg)" : undefined,
         userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
       }}
     >
+      {isMobile && onDragHandleTouchStart && onDragHandleTouchEnd && (
+        <OutlineDragHandle
+          onTouchStart={onDragHandleTouchStart}
+          onTouchEnd={onDragHandleTouchEnd}
+        />
+      )}
       {/* Emoji badge */}
       <div style={{
         position: "absolute",
@@ -128,6 +144,7 @@ function ChapterNoteComponent({
         suppressContentEditableWarning
         onBlur={handleTitleBlur}
         onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } }}
         style={{
           fontSize: 18,
@@ -137,6 +154,8 @@ function ChapterNoteComponent({
           outline: "none",
           cursor: "text",
           minHeight: 24,
+          WebkitUserSelect: "text",
+          userSelect: "text",
         }}
       >
         {chapter.title || "Untitled"}

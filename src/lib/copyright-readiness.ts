@@ -14,8 +14,6 @@
  * opposite directions.
  */
 
-import { computeEditDelta } from "@/lib/edit-diff";
-
 export type ReadinessBand = "mostly_yours" | "mixed" | "mostly_ai";
 
 export type StructureProvenance =
@@ -187,15 +185,7 @@ export function scoreChapter(
 ): ChapterReadiness {
   const orig = firstDraft ?? "";
   const edited = finalText ?? "";
-  // Sentence pairing is a fast path only: exact LCS matches mean the prose
-  // is unchanged. Depth itself is always the uncapped word-level distance so
-  // edit-diff's 30-pair cap cannot under-count a long rewrite.
-  const delta = computeEditDelta(orig, edited);
-  const editDepth =
-    orig === edited ||
-    (delta.stats.sentences_changed === 0 && delta.stats.sentences_total > 0)
-      ? 0
-      : normalizedWordDistance(orig, edited);
+  const editDepth = orig === edited ? 0 : normalizedWordDistance(orig, edited);
 
   let substantiveEdits = 0;
   let cosmeticEdits = 0;

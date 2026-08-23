@@ -42,6 +42,7 @@ export default function CopyrightReadinessExportCard({
   const [office, setOffice] = useState("");
   const [kdp, setKdp] = useState("");
   const [copied, setCopied] = useState<"office" | "kdp" | null>(null);
+  const [evidenceState, setEvidenceState] = useState<"idle" | "working" | "done" | "error">("idle");
 
   const loadReport = useCallback(async () => {
     try {
@@ -96,6 +97,32 @@ export default function CopyrightReadinessExportCard({
       setCopied(which);
       setTimeout(() => setCopied(null), 2000);
     });
+  }
+
+  async function downloadEvidence() {
+    setEvidenceState("working");
+    try {
+      const res = await fetch("/api/export/evidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      if (!res.ok) {
+        setEvidenceState("error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ascii = (bookTitle || "manuscript").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+      a.download = `${ascii || "manuscript"}-authorship-evidence.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setEvidenceState("done");
+    } catch {
+      setEvidenceState("error");
+    }
   }
 
   function handleDownload() {
@@ -196,9 +223,22 @@ export default function CopyrightReadinessExportCard({
             </p>
           )}
         </div>
-        <button onClick={draftDisclosures} disabled={drafting} style={{ ...btn, opacity: drafting ? 0.7 : 1 }}>
-          {drafting ? "Drafting…" : office ? "Redraft my disclosures" : "Draft my disclosures"}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={draftDisclosures} disabled={drafting} style={{ ...btn, opacity: drafting ? 0.7 : 1 }}>
+            {drafting ? "Drafting…" : office ? "Redraft my disclosures" : "Draft my disclosures"}
+          </button>
+          <button
+            onClick={downloadEvidence}
+            disabled={evidenceState === "working"}
+            style={{ ...btn, background: "transparent", border: "1px solid #C17A47", color: "#C17A47", opacity: evidenceState === "working" ? 0.7 : 1 }}
+          >
+            {evidenceState === "working"
+              ? "Building…"
+              : evidenceState === "done"
+                ? "Download evidence again"
+                : "Download evidence bundle"}
+          </button>
+        </div>
       </div>
 
       <p
@@ -214,6 +254,11 @@ export default function CopyrightReadinessExportCard({
 
       {draftError && (
         <p style={{ fontSize: 13, color: "var(--ds-score-bad)", margin: "12px 0 0" }}>{draftError}</p>
+      )}
+      {evidenceState === "error" && (
+        <p style={{ fontSize: 13, color: "var(--ds-score-bad)", margin: "12px 0 0" }}>
+          Couldn&apos;t build the evidence bundle. Try again.
+        </p>
       )}
 
       {(office || kdp) && (

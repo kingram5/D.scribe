@@ -394,7 +394,7 @@ describe("src/ copy guardrails", () => {
     const badge = readFileSync(join(__dirname, "..", "..", "components", "editor", "CopyrightReadinessBadge.tsx"), "utf8");
     expect(api).not.toMatch(/voice-match|voiceMatch|lintAITells/);
     expect(badge).not.toMatch(/voice-match|voiceMatch|lintAITells/);
-    expect(api).toMatch(/scoreBook/);
+    expect(api).toMatch(/loadBookReadiness/);
     expect(badge).toMatch(/Copyright Readiness/);
   });
 });

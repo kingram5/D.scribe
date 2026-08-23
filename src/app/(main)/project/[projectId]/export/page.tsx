@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
 import { useAuth } from "@/hooks/useAuth";
+import CopyrightReadinessExportCard from "@/components/export/CopyrightReadinessExportCard";
 
 /* ─── Document Preview SVGs ─── */
 
@@ -442,6 +443,8 @@ export default function ExportPage() {
             </p>
           </div>
         </div>
+
+        <CopyrightReadinessExportCard projectId={projectId} bookTitle={projTitle} />
 
         {/* Cards Grid */}
         <style>{`

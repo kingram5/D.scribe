@@ -583,7 +583,7 @@ describe("billing: the two sources of truth must not drift", () => {
     const ops = [
       "brainstorm", "brainstorm_summarize", "analyze", "voice_profile",
       "mind_map", "outline", "generate", "foreword", "rewrite",
-      "coherence", "enrich", "style_distill",
+      "coherence", "enrich", "style_distill", "disclosure",
     ] as const;
     for (const op of ops) expect(estimateInkCost(op)).toBeGreaterThan(0);
   });

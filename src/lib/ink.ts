@@ -16,6 +16,7 @@ export type InkOperation =
   | "coherence"
   | "enrich"
   | "style_distill"
+  | "disclosure"
   | "transcribe"
   | "youtube_import";
 
@@ -42,6 +43,7 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   coherence: 2,
   enrich: 1,
   style_distill: 1,
+  disclosure: 1,
   transcribe: 2,
   youtube_import: 2,
 };

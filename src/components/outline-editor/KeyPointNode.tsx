@@ -11,8 +11,8 @@ interface KeyPointNoteProps {
   rotation: number;
   isDragging: boolean;
   isMobile?: boolean;
-  onDragHandleTouchStart?: (e: React.TouchEvent) => void;
-  onDragHandleTouchEnd?: (e: React.TouchEvent) => void;
+  onDragHandlePointerDown?: (e: React.PointerEvent) => void;
+  onDragHandlePointerUp?: (e: React.PointerEvent) => void;
   onEdit: (field: "title" | "summary", value: string) => void;
   onDelete: () => void;
 }
@@ -23,8 +23,8 @@ function KeyPointNoteComponent({
   rotation,
   isDragging,
   isMobile,
-  onDragHandleTouchStart,
-  onDragHandleTouchEnd,
+  onDragHandlePointerDown,
+  onDragHandlePointerUp,
   onEdit,
   onDelete,
 }: KeyPointNoteProps) {
@@ -75,11 +75,11 @@ function KeyPointNoteComponent({
         WebkitTouchCallout: "none",
       }}
     >
-      {isMobile && onDragHandleTouchStart && onDragHandleTouchEnd && (
+      {isMobile && onDragHandlePointerDown && onDragHandlePointerUp && (
         <OutlineDragHandle
           compact
-          onTouchStart={onDragHandleTouchStart}
-          onTouchEnd={onDragHandleTouchEnd}
+          onPointerDown={onDragHandlePointerDown}
+          onPointerUp={onDragHandlePointerUp}
         />
       )}
       {/* Corner fold */}

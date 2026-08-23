@@ -496,6 +496,29 @@ function OutlineEditorInner({
     return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
   }, [columns]);
 
+  const lockMobileCanvasTouch = useCallback(() => {
+    const el = canvasRef.current;
+    if (el) el.style.touchAction = "none";
+  }, []);
+
+  const unlockMobileCanvasTouch = useCallback(() => {
+    const el = canvasRef.current;
+    if (el) el.style.touchAction = "";
+  }, []);
+
+  const getLayoutPositionsForOrder = useCallback((orderedIds: string[]) => {
+    const chapterMap = new Map(stateRef.current.chapters.map((ch) => [ch.id, ch]));
+    const orderedChapters = orderedIds
+      .map((id) => chapterMap.get(id))
+      .filter((ch): ch is Chapter => Boolean(ch));
+    const { columns: layoutCols } = buildLayout(
+      orderedChapters,
+      stateRef.current.keyPoints,
+      "mobile",
+    );
+    return new Map(layoutCols.map((col) => [col.chapterId, { x: col.x, y: col.y }]));
+  }, []);
+
   const getColumnCenterY = useCallback((chapterId: string, col: DragColumn) => {
     const layout = columnsListRef.current.find((c) => c.chapterId === chapterId);
     return col.y + (layout?.columnHeight ?? CHAPTER_HEIGHT) / 2;
@@ -516,6 +539,19 @@ function OutlineEditorInner({
       })
       .map(([id]) => id);
   }, [getColumnCenterY]);
+
+  const applyMobileChapterPreview = useCallback((draggedId: string) => {
+    const sortedIds = getSortedChapterIds();
+    const positions = getLayoutPositionsForOrder(sortedIds);
+    for (const [id, pos] of positions) {
+      if (id === draggedId) continue;
+      const col = columnsRef.current.get(id);
+      if (col && !col.isDragging) {
+        col.x = pos.x;
+        col.y = pos.y;
+      }
+    }
+  }, [getLayoutPositionsForOrder, getSortedChapterIds]);
 
   // Check if a dropped column overlaps another column (chapter-chapter combine).
   const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
@@ -632,6 +668,7 @@ function OutlineEditorInner({
       const canvas = clientToCanvas(clientX, clientY);
       col.x = offsetX + (canvas.x - canvasStartX);
       col.y = offsetY + (canvas.y - canvasStartY);
+      applyMobileChapterPreview(noteId);
     } else {
       const z = zoomRef.current;
       const dx = (clientX - dragRef.current.startX) / z;
@@ -642,10 +679,15 @@ function OutlineEditorInner({
       col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
     }
     setRenderTick((t) => t + 1);
-  }, [clientToCanvas, findNearestColumn]);
+  }, [clientToCanvas, findNearestColumn, applyMobileChapterPreview]);
 
   const handlePointerUp = useCallback(() => {
+    const chapterDragId = dragRef.current.noteId;
+    const kpDragActive = !!kpDragRef.current;
+    if (!chapterDragId && !kpDragActive && !isPanningRef.current) return;
+
     clearLongPress();
+    unlockMobileCanvasTouch();
     isNoteDraggingRef.current = false;
     setIsNoteDragging(false);
 
@@ -704,25 +746,41 @@ function OutlineEditorInner({
           .map((ch) => ch.id);
         const orderChanged = sortedIds.some((id, i) => id !== currentOrder[i]);
         if (orderChanged) {
+          const positions = getLayoutPositionsForOrder(sortedIds);
+          for (const [id, pos] of positions) {
+            const colState = columnsRef.current.get(id);
+            if (colState) {
+              colState.x = pos.x;
+              colState.y = pos.y;
+            }
+          }
           dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedIds });
         } else {
-          const layout = columnsListRef.current.find((c) => c.chapterId === noteId);
-          if (layout) {
-            col.x = layout.x;
-            col.y = layout.y;
+          for (const colLayout of columnsListRef.current) {
+            const colState = columnsRef.current.get(colLayout.chapterId);
+            if (colState) {
+              colState.x = colLayout.x;
+              colState.y = colLayout.y;
+            }
           }
         }
       } else {
-        const layout = columnsListRef.current.find((c) => c.chapterId === noteId);
-        if (layout) {
-          col.x = layout.x;
-          col.y = layout.y;
+        for (const colLayout of columnsListRef.current) {
+          const colState = columnsRef.current.get(colLayout.chapterId);
+          if (colState) {
+            colState.x = colLayout.x;
+            colState.y = colLayout.y;
+          }
         }
       }
     }
     dragRef.current.noteId = null;
     setRenderTick((t) => t + 1);
-  }, [clearLongPress, dispatch, findNearestColumn, checkDropInteraction, getSortedChapterIds]);
+  }, [clearLongPress, dispatch, findNearestColumn, checkDropInteraction, getSortedChapterIds, getLayoutPositionsForOrder, unlockMobileCanvasTouch]);
+
+  const finalizeActiveDrag = useCallback(() => {
+    handlePointerUp();
+  }, [handlePointerUp]);
 
   // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
@@ -732,15 +790,15 @@ function OutlineEditorInner({
     beginChapterDrag(chapterId, e.clientX, e.clientY);
   }, [beginChapterDrag]);
 
-  const handleColumnTouchStart = useCallback((e: React.TouchEvent, chapterId: string) => {
+  const handleColumnPointerDown = useCallback((e: React.PointerEvent, chapterId: string) => {
     if (layoutModeRef.current !== "mobile") return;
-    const touch = e.touches[0];
-    if (!touch) return;
+    if (e.pointerType === "mouse") return;
 
     clearLongPress();
+    lockMobileCanvasTouch();
     navigator.vibrate?.(8);
-    beginChapterDrag(chapterId, touch.clientX, touch.clientY);
-  }, [beginChapterDrag, clearLongPress]);
+    beginChapterDrag(chapterId, e.clientX, e.clientY);
+  }, [beginChapterDrag, clearLongPress, lockMobileCanvasTouch]);
 
   // KP drag handler — starts independent KP drag
   const handleKpMouseDown = useCallback((
@@ -756,25 +814,25 @@ function OutlineEditorInner({
     beginKpDrag(kpId, chapterId, kpIndex, color, e.clientX, e.clientY);
   }, [beginKpDrag]);
 
-  const handleKpTouchStart = useCallback((
-    e: React.TouchEvent,
+  const handleKpPointerDown = useCallback((
+    e: React.PointerEvent,
     kpId: string,
     chapterId: string,
     kpIndex: number,
     color: NoteColor,
   ) => {
     if (layoutModeRef.current !== "mobile") return;
-    const touch = e.touches[0];
-    if (!touch) return;
+    if (e.pointerType === "mouse") return;
 
     clearLongPress();
+    lockMobileCanvasTouch();
     navigator.vibrate?.(8);
-    beginKpDrag(kpId, chapterId, kpIndex, color, touch.clientX, touch.clientY);
-  }, [beginKpDrag, clearLongPress]);
+    beginKpDrag(kpId, chapterId, kpIndex, color, e.clientX, e.clientY);
+  }, [beginKpDrag, clearLongPress, lockMobileCanvasTouch]);
 
-  const handleNoteTouchEnd = useCallback(() => {
-    clearLongPress();
-  }, [clearLongPress]);
+  const handleDragHandlePointerUp = useCallback(() => {
+    finalizeActiveDrag();
+  }, [finalizeActiveDrag]);
 
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
@@ -783,6 +841,18 @@ function OutlineEditorInner({
 
     function handleMouseUp() {
       handlePointerUp();
+    }
+
+    function handlePointerMoveEvent(e: PointerEvent) {
+      if (!kpDragRef.current && !dragRef.current.noteId) return;
+      e.preventDefault();
+      handlePointerMove(e.clientX, e.clientY);
+    }
+
+    function handlePointerUpEvent() {
+      if (kpDragRef.current || dragRef.current.noteId) {
+        handlePointerUp();
+      }
     }
 
     function handleTouchMove(e: TouchEvent) {
@@ -813,12 +883,18 @@ function OutlineEditorInner({
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handlePointerMoveEvent, { passive: false });
+    window.addEventListener("pointerup", handlePointerUpEvent, { capture: true });
+    window.addEventListener("pointercancel", handlePointerUpEvent, { capture: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { capture: true });
     window.addEventListener("touchcancel", handleTouchEnd, { capture: true });
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMoveEvent);
+      window.removeEventListener("pointerup", handlePointerUpEvent, { capture: true });
+      window.removeEventListener("pointercancel", handlePointerUpEvent, { capture: true });
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd, { capture: true });
       window.removeEventListener("touchcancel", handleTouchEnd, { capture: true });
@@ -1193,8 +1269,8 @@ function OutlineEditorInner({
                 isDragging={dragCol.isDragging}
                 keyPointCount={col.kpIds.length}
                 isMobile={isMobileLayout}
-                onDragHandleTouchStart={(e) => handleColumnTouchStart(e, col.chapterId)}
-                onDragHandleTouchEnd={handleNoteTouchEnd}
+                onDragHandlePointerDown={(e) => handleColumnPointerDown(e, col.chapterId)}
+                onDragHandlePointerUp={handleDragHandlePointerUp}
                 onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
                 onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
                 onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
@@ -1235,8 +1311,8 @@ function OutlineEditorInner({
                         rotation={0}
                         isDragging={isBeingDragged}
                         isMobile={isMobileLayout}
-                        onDragHandleTouchStart={(e) => handleKpTouchStart(e, kpId, col.chapterId, kpIndex, col.color)}
-                        onDragHandleTouchEnd={handleNoteTouchEnd}
+                        onDragHandlePointerDown={(e) => handleKpPointerDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                        onDragHandlePointerUp={handleDragHandlePointerUp}
                         onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
                         onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
                       />

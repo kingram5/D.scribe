@@ -12,8 +12,8 @@ interface ChapterNoteProps {
   isDragging: boolean;
   keyPointCount: number;
   isMobile?: boolean;
-  onDragHandleTouchStart?: (e: React.TouchEvent) => void;
-  onDragHandleTouchEnd?: (e: React.TouchEvent) => void;
+  onDragHandlePointerDown?: (e: React.PointerEvent) => void;
+  onDragHandlePointerUp?: (e: React.PointerEvent) => void;
   onEdit: (field: "title" | "summary", value: string) => void;
   onDelete: () => void;
   onAddKeyPoint: () => void;
@@ -35,8 +35,8 @@ function ChapterNoteComponent({
   isDragging,
   keyPointCount,
   isMobile,
-  onDragHandleTouchStart,
-  onDragHandleTouchEnd,
+  onDragHandlePointerDown,
+  onDragHandlePointerUp,
   onEdit,
   onDelete,
   onAddKeyPoint,
@@ -78,10 +78,10 @@ function ChapterNoteComponent({
         WebkitTouchCallout: "none",
       }}
     >
-      {isMobile && onDragHandleTouchStart && onDragHandleTouchEnd && (
+      {isMobile && onDragHandlePointerDown && onDragHandlePointerUp && (
         <OutlineDragHandle
-          onTouchStart={onDragHandleTouchStart}
-          onTouchEnd={onDragHandleTouchEnd}
+          onPointerDown={onDragHandlePointerDown}
+          onPointerUp={onDragHandlePointerUp}
         />
       )}
       {/* Emoji badge */}

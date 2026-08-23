@@ -1,27 +1,41 @@
 "use client";
 
+import { useRef } from "react";
+
 interface OutlineDragHandleProps {
-  onTouchStart: (e: React.TouchEvent) => void;
-  onTouchEnd: (e: React.TouchEvent) => void;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onPointerUp: (e: React.PointerEvent) => void;
   compact?: boolean;
 }
 
-export function OutlineDragHandle({ onTouchStart, onTouchEnd, compact }: OutlineDragHandleProps) {
+export function OutlineDragHandle({ onPointerDown, onPointerUp, compact }: OutlineDragHandleProps) {
+  const handleRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
+      ref={handleRef}
       className={`ds-outline-drag-handle${compact ? " ds-outline-drag-handle--compact" : ""}`}
-      aria-label="Hold to drag and reorder"
-      onTouchStart={(e) => {
+      aria-label="Drag to reorder"
+      onPointerDown={(e) => {
+        if (e.pointerType === "mouse") return;
         e.stopPropagation();
-        onTouchStart(e);
+        e.preventDefault();
+        handleRef.current?.setPointerCapture(e.pointerId);
+        onPointerDown(e);
       }}
-      onTouchEnd={(e) => {
+      onPointerUp={(e) => {
         e.stopPropagation();
-        onTouchEnd(e);
+        if (handleRef.current?.hasPointerCapture(e.pointerId)) {
+          handleRef.current.releasePointerCapture(e.pointerId);
+        }
+        onPointerUp(e);
       }}
-      onTouchCancel={(e) => {
+      onPointerCancel={(e) => {
         e.stopPropagation();
-        onTouchEnd(e);
+        if (handleRef.current?.hasPointerCapture(e.pointerId)) {
+          handleRef.current.releasePointerCapture(e.pointerId);
+        }
+        onPointerUp(e);
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >

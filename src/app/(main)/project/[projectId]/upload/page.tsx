@@ -149,6 +149,7 @@ export default function UploadPage() {
               onClick={handleInitialize}
               disabled={(!engine.canInitialize && !engine.allDone) || engine.uploading}
               className={`transcribe-btn${engine.allDone ? " ds-cta-pulse" : ""}`}
+              data-tut="upload-transcribe"
             >
               {engine.uploading ? "Processing..." : engine.allDone ? "View Transcripts →" : "Transcribe →"}
             </button>

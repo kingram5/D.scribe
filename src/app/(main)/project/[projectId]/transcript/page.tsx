@@ -690,7 +690,7 @@ export default function TranscriptPage() {
               }}>
                 Reading view
               </div>
-              <div role="group" aria-label="Transcript reading view" style={{ display: "flex", gap: 6 }}>
+              <div role="group" aria-label="Transcript reading view" data-tut="transcript-views" style={{ display: "flex", gap: 6 }}>
                 {([["segments", "Segments"], ["full", "Full text"]] as const).map(([key, label]) => {
                   const on = view === key;
                   return (
@@ -733,6 +733,7 @@ export default function TranscriptPage() {
                   setFullEditText(paras.length ? paras.join("\n\n") : (active?.full_text || ""));
                   setFullEditMode(true);
                 }}
+                data-tut="transcript-edit"
                 style={{
                   width: "100%",
                   padding: "10px 0",
@@ -904,7 +905,7 @@ export default function TranscriptPage() {
               </div>
             </div>
           ) : (
-          <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+          <div data-tut="transcript-body" style={{ position: "relative", flex: 1, overflow: "hidden" }}>
             <div
               ref={scrollRef}
               className="lq-scroll"

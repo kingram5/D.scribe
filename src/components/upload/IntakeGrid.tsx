@@ -107,7 +107,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
     <div className="ds-intake">
       {/* ── 01 · BRAINSTORM STUDIO — the featured way in (Kyle 2026-08-09:
              "the brainstorm should really be the primarily featured option") ── */}
-      <article className="ds-intake-brain" style={{
+      <article className="ds-intake-brain" data-tut="upload-brainstorm" style={{
         ...cardBase,
         background: "radial-gradient(circle at 28% 0%, #3A3023 0%, #2C2419 55%, #241D14 100%)",
         border: "1px solid rgba(193,122,71,0.4)",
@@ -154,6 +154,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
       {/* ── 02 · RECORD — the cassette stays ─────────────────────────────── */}
       <article
         className="ds-intake-record"
+        data-tut="upload-record"
         data-recording={p.isRecording || undefined}
         style={{
           ...cardBase,
@@ -297,6 +298,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
 
       {/* ── 02 · AUDIO FILES + the live source ledger ────────────────────── */}
       <article
+        data-tut="upload-files"
         style={{
           ...cardBase,
           ...(p.dragging ? { borderColor: "#C17A47", background: "rgba(193,122,71,0.06)" } : null),
@@ -388,7 +390,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
       </article>
 
       {/* ── 03 · YOUTUBE ─────────────────────────────────────────────────── */}
-      <article style={cardBase}>
+      <article data-tut="upload-youtube" style={cardBase}>
         <CardTop l="04 / YOUTUBE" r="2 INK" hot />
         <h3 style={serifH3}>Bring a public conversation in.</h3>
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>

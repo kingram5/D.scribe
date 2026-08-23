@@ -472,7 +472,7 @@ export default function GeneratePage() {
         flex: 1,
       }}>
         {/* Left sidebar: chapter list — lined paper card */}
-        <div className="lined-paper" style={{ alignSelf: "start", transform: "rotate(-0.5deg)" }}>
+        <div className="lined-paper" data-tut="generate-chapters" style={{ alignSelf: "start", transform: "rotate(-0.5deg)" }}>
           <div className="scribble" style={{ top: 12, right: 15, transform: "rotate(8deg)" }}>
             {allGenerated ? "All done!" : "Writing..."}
           </div>
@@ -519,7 +519,7 @@ export default function GeneratePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <GlassCard style={{ padding: 32 }}>
               {/* Foreword toggle */}
-              <div style={{
+              <div data-tut="generate-foreword" style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -592,7 +592,7 @@ export default function GeneratePage() {
               </div>
 
               {/* Slider */}
-              <div style={{ marginBottom: 24 }}>
+              <div data-tut="generate-freedom" style={{ marginBottom: 24 }}>
                 <style>{`
                   .ds-freedom-slider {
                     -webkit-appearance: none;
@@ -753,7 +753,7 @@ export default function GeneratePage() {
               </div>
 
               {/* Enrichment quotes — interactive */}
-              <div style={{ marginBottom: 24 }}>
+              <div data-tut="generate-quotes" style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <PanelTitle>Enrichment Quotes</PanelTitle>
                   {chapterEnrichments.length > 0 && (
@@ -1054,7 +1054,7 @@ export default function GeneratePage() {
               )}
 
               {/* Footer buttons — Next Chapter (left) | Generate Chapter (center) | Generate All (right) */}
-              <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+              <div data-tut="generate-actions" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
                 {/* Left: Next Chapter navigation */}
                 <button
                   onClick={() => nextChapter && setActiveChapter(nextChapter.id)}

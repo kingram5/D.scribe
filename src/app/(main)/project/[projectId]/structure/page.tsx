@@ -217,7 +217,7 @@ export default function StructurePage() {
           }} />
 
           {/* Target Chapters row */}
-          <div style={{
+          <div data-tut="structure-chapters" style={{
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "space-between",
@@ -297,7 +297,7 @@ export default function StructurePage() {
           </div>
 
           {/* Words per Chapter row */}
-          <div style={{
+          <div data-tut="structure-words" style={{
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "space-between",
@@ -407,7 +407,7 @@ export default function StructurePage() {
           </div>
 
           {/* Audience selector */}
-          <div style={{
+          <div data-tut="structure-audience" style={{
             borderBottom: "1px solid var(--ds-card-border)",
             paddingBottom: 24,
             marginBottom: 32,
@@ -546,6 +546,7 @@ export default function StructurePage() {
           <button
             onClick={commenceMapping}
             disabled={saving}
+            data-tut="structure-commence"
             style={{
               width: "100%",
               display: "flex",

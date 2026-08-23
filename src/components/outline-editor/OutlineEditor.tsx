@@ -583,6 +583,7 @@ function OutlineEditorInner({
     <div
       ref={canvasRef}
       onPointerDown={handleCanvasPointerDown}
+      data-tut="analysis-canvas"
       style={{
         position: "relative",
         width: "100%",

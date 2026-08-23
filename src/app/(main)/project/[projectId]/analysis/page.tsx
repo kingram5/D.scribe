@@ -341,6 +341,7 @@ export default function AnalysisPage() {
               onClick={runAnalysis}
               disabled={analyzing}
               className="nodum-btn"
+              data-tut="analysis-run"
               style={{ justifyContent: "center", opacity: analyzing ? 0.6 : 1, width: "100%" }}
             >
               {analyzing ? "Analyzing..." : "Run Analysis"}
@@ -386,7 +387,7 @@ export default function AnalysisPage() {
       )}
       <div style={{ padding: "0 40px 40px" }}>
         {/* Tab bar */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div data-tut="analysis-tabs" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {[
             { key: "outline" as const, label: `Outline (${data?.chapters?.length || 0} chapters)` },
             { key: "voice" as const, label: "Voice Profile" },

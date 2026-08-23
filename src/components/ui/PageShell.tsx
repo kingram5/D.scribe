@@ -3,6 +3,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getGenerationBusy, subscribeGenerationBusy } from "@/lib/generation-guard";
+import { TUTORIALS } from "@/components/tutorial/tutorial-content";
+import { hasSeenTutorial, markTutorialSeen, isTutorialAutoShowOn } from "@/components/tutorial/tutorial-state";
+import StepTutorialModal from "@/components/tutorial/StepTutorialModal";
+import CoachmarkTour from "@/components/tutorial/CoachmarkTour";
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -106,6 +110,25 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
   const nextStep = currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
   const showStepNav = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
+
+  // Step tutorial: an illustrated intro modal shown automatically on the first
+  // visit to each step (per browser, across projects), re-openable anytime via
+  // the "?" button, with an optional on-page coachmark tour after it.
+  const tutorial = currentStep ? TUTORIALS[currentStep] : undefined;
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (!tutorial || !currentStep) return;
+    if (!isTutorialAutoShowOn() || hasSeenTutorial(currentStep)) return;
+    // Small delay so the page renders under the modal first
+    const t = setTimeout(() => setTutorialOpen(true), 500);
+    return () => clearTimeout(t);
+  }, [tutorial, currentStep]);
+  function closeTutorial(opts?: { startTour?: boolean }) {
+    if (currentStep) markTutorialSeen(currentStep);
+    setTutorialOpen(false);
+    if (opts?.startTour) setTourOpen(true);
+  }
 
   return (
     <div className={`ds-page-shell ${currentStep ? "paper-theme" : ""} ${showStepNav ? "ds-page-shell--stepnav" : ""}`} style={{ position: "relative", zIndex: 10, paddingTop: 88, display: "flex", flexDirection: "column" }}>
@@ -272,6 +295,35 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 </span>
               );
             })}
+            {tutorial && (
+              <button
+                onClick={() => { setTourOpen(false); setTutorialOpen(true); }}
+                title={`How ${currentLabel} works`}
+                aria-label={`Open the guide for the ${currentLabel} step`}
+                style={{
+                  width: 24,
+                  height: 24,
+                  marginLeft: 8,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  border: "1px dashed rgba(193,122,71,0.6)",
+                  background: "rgba(193,122,71,0.08)",
+                  color: "#A05526",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#C17A47"; e.currentTarget.style.color = "#F9F7F2"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(193,122,71,0.08)"; e.currentTarget.style.color = "#A05526"; }}
+              >
+                ?
+              </button>
+            )}
           </div>
 
           {/* Prev / Next controls, in the band (desktop; mobile uses the bottom bar) */}
@@ -527,6 +579,19 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             </div>
           </div>
         </div>
+      )}
+
+      {/* Step guide: intro slides, then the optional on-page spotlight tour */}
+      {tutorialOpen && tutorial && (
+        <StepTutorialModal
+          stepLabel={currentLabel}
+          slides={tutorial.slides}
+          hasTour={tutorial.coachmarks.length > 0}
+          onClose={closeTutorial}
+        />
+      )}
+      {tourOpen && tutorial && (
+        <CoachmarkTour steps={tutorial.coachmarks} onClose={() => setTourOpen(false)} />
       )}
     </div>
   );

@@ -453,6 +453,7 @@ export default function ExportPage() {
         `}</style>
         <div
           className="ds-export-grid"
+          data-tut="export-downloads"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
@@ -597,6 +598,7 @@ export default function ExportPage() {
           {/* Google Docs Card */}
           <div
             style={cardBase}
+            data-tut="export-drive"
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-8px)";
               e.currentTarget.style.borderColor = "#C17A47";

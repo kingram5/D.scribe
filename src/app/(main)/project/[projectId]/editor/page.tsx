@@ -208,7 +208,7 @@ export default function EditorPage() {
       }}>
 
         {/* ===== LEFT SIDEBAR ===== */}
-        <div style={{
+        <div data-tut="editor-chapters" style={{
           width: 340,
           minWidth: 340,
           background: "var(--ds-card-bg)",
@@ -893,7 +893,7 @@ export default function EditorPage() {
               minHeight: 0,
             }}>
               {/* Paper surface — fixed height, flex column */}
-              <div style={{
+              <div data-tut="editor-page" style={{
                 flex: 1,
                 overflow: "hidden",
                 background: "rgba(252,251,248,0.04)",
@@ -1019,7 +1019,7 @@ export default function EditorPage() {
           )}
 
           {/* Bottom bar — rewrite input + save button, always in flow */}
-          <div style={{
+          <div data-tut="editor-rewrite" style={{
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
@@ -1062,6 +1062,7 @@ export default function EditorPage() {
             <button
               onClick={saveContent}
               disabled={saving || !content.trim()}
+              data-tut="editor-save"
               style={{
                 flexShrink: 0,
                 height: 48,

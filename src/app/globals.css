@@ -611,6 +611,11 @@ input[type=range] {
     overscroll-behavior: contain;
   }
 
+  .ds-outline-note--dragging {
+    touch-action: none !important;
+    z-index: 100 !important;
+  }
+
   /* Outline: enrichment card breathes with less padding on a narrow screen. */
   .ds-enrich-card {
     padding: 20px 16px !important;

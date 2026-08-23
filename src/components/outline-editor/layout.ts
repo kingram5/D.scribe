@@ -37,6 +37,17 @@ export type LayoutMode = "desktop" | "mobile";
 
 const MOBILE_ROW_GAP = 36;
 
+/** Sticky note color keyed by chapter id — survives reorder. */
+export function colorForChapter(chapter: Chapter, allChapters: Chapter[]): NoteColor {
+  const stable = [...allChapters].sort((a, b) => {
+    const byCreated = (a.created_at || "").localeCompare(b.created_at || "");
+    if (byCreated !== 0) return byCreated;
+    return a.id.localeCompare(b.id);
+  });
+  const idx = Math.max(0, stable.findIndex((c) => c.id === chapter.id));
+  return NOTE_COLORS[idx % NOTE_COLORS.length];
+}
+
 export function buildLayout(
   chapters: Chapter[],
   keyPoints: KeyPoint[],
@@ -58,8 +69,8 @@ function buildDesktopLayout(
 
   let cursorX = CANVAS_PADDING;
 
-  chapters.forEach((ch, i) => {
-    const color = NOTE_COLORS[i % NOTE_COLORS.length];
+  chapters.forEach((ch) => {
+    const color = colorForChapter(ch, chapters);
     const validKpIds = (ch.key_point_ids || []).filter((id) => kpMap.has(id));
 
     const kpStackHeight = validKpIds.length > 0
@@ -106,8 +117,8 @@ function buildMobileLayout(
   let cursorY = MOBILE_CANVAS_PADDING;
   const x = MOBILE_CANVAS_PADDING;
 
-  chapters.forEach((ch, i) => {
-    const color = NOTE_COLORS[i % NOTE_COLORS.length];
+  chapters.forEach((ch) => {
+    const color = colorForChapter(ch, chapters);
     const validKpIds = (ch.key_point_ids || []).filter((id) => kpMap.has(id));
 
     const kpRowWidth = validKpIds.length > 0

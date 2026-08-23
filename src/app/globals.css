@@ -621,13 +621,43 @@ input[type=range] {
      ruled margin lines that would otherwise slice through the text once the
      body padding collapses to 20px. */
   .ds-paper-area {
-    padding: 8px 10px !important;
+    padding: 12px 12px 24px !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .ds-paper-header {
+    padding: 20px 16px 0 !important;
+    padding-left: 16px !important;
+  }
+  .ds-paper-body {
+    padding: 0 16px 32px !important;
+    padding-left: 16px !important;
+    overflow: visible !important;
   }
   .ds-paper-header h1 {
     font-size: 30px !important;
   }
   .ds-paper-marginline {
     display: none !important;
+  }
+
+  /* Editor: stack sidebar above manuscript; no clipped overlap */
+  .ds-editor-layout {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .ds-editor-sidebar {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .ds-editor-main {
+    position: static !important;
+    overflow: visible !important;
+  }
+  .ds-editor-paper-surface {
+    min-height: 55vh !important;
+    overflow: visible !important;
   }
 
   /* Prevent horizontal scroll in the app shell without breaking landing layout */

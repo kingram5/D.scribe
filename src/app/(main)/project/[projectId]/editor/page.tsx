@@ -182,12 +182,43 @@ export default function EditorPage() {
         </div>
       )}
       <style>{`
-        html, body { overflow: hidden; }
+        @media (min-width: 769px) {
+          html, body { overflow: hidden; }
+        }
         @media (max-width: 768px) {
-          html, body { overflow: auto; }
-          .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100dvh - 56px) !important; }
-          .ds-editor-layout > div:first-child { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 250px !important; overflow-y: auto !important; }
-          .ds-editor-layout > div:last-child { min-height: 500px !important; }
+          .ds-editor-layout {
+            flex-direction: column !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: 0 !important;
+          }
+          .ds-editor-sidebar {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-height: none !important;
+            height: auto !important;
+            flex: 0 0 auto !important;
+            overflow: visible !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--ds-card-border);
+          }
+          .ds-editor-main {
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            position: static !important;
+          }
+          .ds-paper-area {
+            flex: 0 0 auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+          .ds-editor-paper-surface {
+            min-height: 55vh !important;
+            overflow: visible !important;
+          }
           .ds-editor-float-toolbar { display: none !important; }
           .ds-editor-stats-bar { display: none !important; }
         }
@@ -200,7 +231,7 @@ export default function EditorPage() {
       }}>
 
         {/* ===== LEFT SIDEBAR ===== */}
-        <div style={{
+        <div className="ds-editor-sidebar" style={{
           width: 340,
           minWidth: 340,
           background: "var(--ds-card-bg)",
@@ -539,7 +570,7 @@ export default function EditorPage() {
         </div>
 
         {/* ===== MAIN EDITOR AREA ===== */}
-        <div style={{
+        <div className="ds-editor-main" style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -796,8 +827,8 @@ export default function EditorPage() {
               flexDirection: "column",
               minHeight: 0,
             }}>
-              {/* Paper surface — fixed height, flex column */}
-              <div style={{
+              {/* Paper surface — fixed height on desktop, natural flow on mobile */}
+              <div className="ds-editor-paper-surface" style={{
                 flex: 1,
                 overflow: "hidden",
                 background: "rgba(252,251,248,0.04)",
@@ -830,7 +861,7 @@ export default function EditorPage() {
                 }} />
 
                 {/* Chapter Header — static, never scrolls */}
-                <div style={{ flexShrink: 0, padding: "48px 80px 0", paddingLeft: 104 }}>
+                <div className="ds-paper-header" style={{ flexShrink: 0, padding: "48px 80px 0", paddingLeft: 104 }}>
                   <div style={{
                     fontSize: 11,
                     fontWeight: 700,
@@ -864,7 +895,7 @@ export default function EditorPage() {
                 </div>
 
                 {/* Text body — only this scrolls */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "0 80px 60px", paddingLeft: 104, position: "relative" }}>
+                <div className="ds-paper-body" style={{ flex: 1, overflowY: "auto", padding: "0 80px 60px", paddingLeft: 104, position: "relative" }}>
                   <TipTapEditor
                     ref={editorRef}
                     content={content}

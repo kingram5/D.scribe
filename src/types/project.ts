@@ -7,6 +7,8 @@ export interface Project {
   status: "draft" | "in_progress" | "complete" | "erased";
   voice_profile: VoiceProfile | null;
   narrative_tracker: NarrativeTracker | null;
+  /** Outline authorship: AI-accepted, user-edited, or reserved user-authored. */
+  structure_provenance?: "ai_generated_accepted" | "ai_edited" | "user_authored";
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join } from "path";
 import {
   scoreChapter,
   scoreBook,
@@ -361,5 +363,38 @@ describe("copy — effort not outcome, never a legal verdict", () => {
     expect(THIN_CHAPTER_PROMPT(4)).toBe(
       "Chapter 4 is mostly unedited AI draft — add your voice or cut it"
     );
+  });
+});
+
+function walkSrc(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    if (name === "node_modules" || name === ".next") continue;
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) walkSrc(full, out);
+    else if (/\.(ts|tsx|js|jsx)$/.test(name) && !name.includes(".test.")) out.push(full);
+  }
+  return out;
+}
+
+describe("src/ copy guardrails", () => {
+  const files = walkSrc(join(__dirname, "..", ".."));
+
+  it("never uses the word copyrightable anywhere in src/", () => {
+    const hits = files.filter((f) => readFileSync(f, "utf8").toLowerCase().includes("copyrightable"));
+    expect(hits).toEqual([]);
+  });
+
+  it("never uses 'legally protected' anywhere in src/", () => {
+    const hits = files.filter((f) => readFileSync(f, "utf8").toLowerCase().includes("legally protected"));
+    expect(hits).toEqual([]);
+  });
+
+  it("does not share a route or module with Voice-Match", () => {
+    const api = readFileSync(join(__dirname, "..", "..", "app", "api", "copyright-readiness", "route.ts"), "utf8");
+    const badge = readFileSync(join(__dirname, "..", "..", "components", "editor", "CopyrightReadinessBadge.tsx"), "utf8");
+    expect(api).not.toMatch(/voice-match|voiceMatch|lintAITells/);
+    expect(badge).not.toMatch(/voice-match|voiceMatch|lintAITells/);
+    expect(api).toMatch(/scoreBook/);
+    expect(badge).toMatch(/Copyright Readiness/);
   });
 });

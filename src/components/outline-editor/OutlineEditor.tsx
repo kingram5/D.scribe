@@ -344,7 +344,7 @@ function OutlineEditorInner({
     newCols.forEach((col) => {
       const prev = existing.get(col.chapterId);
       if (prev) {
-        if (layoutMode === "mobile") {
+        if (layoutMode === "mobile" && !prev.isDragging) {
           prev.x = col.x;
           prev.y = col.y;
           prev.isDragging = false;
@@ -496,21 +496,54 @@ function OutlineEditorInner({
     return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
   }, [columns]);
 
+  const getColumnCenterY = useCallback((chapterId: string, col: DragColumn) => {
+    const layout = columnsListRef.current.find((c) => c.chapterId === chapterId);
+    return col.y + (layout?.columnHeight ?? CHAPTER_HEIGHT) / 2;
+  }, []);
+
+  const getSortedChapterIds = useCallback(() => {
+    const chapters = stateRef.current.chapters;
+    const chapterIds = new Set(chapters.map((ch) => ch.id));
+    const sortAxis = layoutModeRef.current === "mobile" ? "y" : "x";
+
+    return [...columnsRef.current.entries()]
+      .filter(([id]) => chapterIds.has(id))
+      .sort(([idA, a], [idB, b]) => {
+        if (sortAxis === "y") {
+          return getColumnCenterY(idA, a) - getColumnCenterY(idB, b);
+        }
+        return a.x - b.x;
+      })
+      .map(([id]) => id);
+  }, [getColumnCenterY]);
+
   // Check if a dropped column overlaps another column (chapter-chapter combine).
   const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
+    const isMobile = layoutModeRef.current === "mobile";
+
     for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
 
-      const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
-      const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
-
-      if (overlapX && overlapY) {
-        setConfirmCombine({ sourceId, targetId, type: "chapter" });
-        return true;
+      if (isMobile) {
+        // Mobile chapters share the same x — only treat a deliberate stack as combine.
+        const sourceCenterY = getColumnCenterY(sourceId, sourceCol);
+        const targetCenterY = getColumnCenterY(targetId, targetCol);
+        const stacked = Math.abs(sourceCenterY - targetCenterY) < CHAPTER_HEIGHT * 0.35;
+        if (stacked) {
+          setConfirmCombine({ sourceId, targetId, type: "chapter" });
+          return true;
+        }
+      } else {
+        const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
+        const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
+        if (overlapX && overlapY) {
+          setConfirmCombine({ sourceId, targetId, type: "chapter" });
+          return true;
+        }
       }
     }
     return false;
-  }, []);
+  }, [getColumnCenterY]);
 
   const beginChapterDrag = useCallback((chapterId: string, clientX: number, clientY: number) => {
     const col = columnsRef.current.get(chapterId);
@@ -675,25 +708,31 @@ function OutlineEditorInner({
 
       const combined = checkDropInteraction(noteId, col);
       if (!combined) {
-        const chapters = stateRef.current.chapters;
-        const chapterIds = new Set(chapters.map((ch) => ch.id));
-        const sortAxis = layoutModeRef.current === "mobile" ? "y" : "x";
-        const sortedByX = [...columnsRef.current.entries()]
-          .filter(([id]) => chapterIds.has(id))
-          .sort(([, a], [, b]) => (sortAxis === "y" ? a.y - b.y : a.x - b.x))
-          .map(([id]) => id);
-        const currentOrder = [...chapters]
+        const sortedIds = getSortedChapterIds();
+        const currentOrder = [...stateRef.current.chapters]
           .sort((a, b) => a.chapter_number - b.chapter_number)
           .map((ch) => ch.id);
-        const orderChanged = sortedByX.some((id, i) => id !== currentOrder[i]);
+        const orderChanged = sortedIds.some((id, i) => id !== currentOrder[i]);
         if (orderChanged) {
-          dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedByX });
+          dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedIds });
+        } else {
+          const layout = columnsListRef.current.find((c) => c.chapterId === noteId);
+          if (layout) {
+            col.x = layout.x;
+            col.y = layout.y;
+          }
+        }
+      } else {
+        const layout = columnsListRef.current.find((c) => c.chapterId === noteId);
+        if (layout) {
+          col.x = layout.x;
+          col.y = layout.y;
         }
       }
     }
     dragRef.current.noteId = null;
     setRenderTick((t) => t + 1);
-  }, [clearLongPress, dispatch, findNearestColumn, checkDropInteraction]);
+  }, [clearLongPress, dispatch, findNearestColumn, checkDropInteraction, getSortedChapterIds]);
 
   // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
@@ -708,20 +747,9 @@ function OutlineEditorInner({
     const touch = e.touches[0];
     if (!touch) return;
 
-    lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
     clearLongPress();
-    longPressRef.current = {
-      timer: setTimeout(() => {
-        const pos = lastTouchRef.current;
-        longPressRef.current = null;
-        if (!pos) return;
-        navigator.vibrate?.(12);
-        beginChapterDrag(chapterId, pos.clientX, pos.clientY);
-      }, LONG_PRESS_MS),
-      startX: touch.clientX,
-      startY: touch.clientY,
-      payload: { type: "chapter", chapterId },
-    };
+    navigator.vibrate?.(8);
+    beginChapterDrag(chapterId, touch.clientX, touch.clientY);
   }, [beginChapterDrag, clearLongPress]);
 
   // KP drag handler — starts independent KP drag
@@ -749,20 +777,9 @@ function OutlineEditorInner({
     const touch = e.touches[0];
     if (!touch) return;
 
-    lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
     clearLongPress();
-    longPressRef.current = {
-      timer: setTimeout(() => {
-        const pos = lastTouchRef.current;
-        longPressRef.current = null;
-        if (!pos) return;
-        navigator.vibrate?.(12);
-        beginKpDrag(kpId, chapterId, kpIndex, color, pos.clientX, pos.clientY);
-      }, LONG_PRESS_MS),
-      startX: touch.clientX,
-      startY: touch.clientY,
-      payload: { type: "kp", kpId, chapterId, kpIndex, color },
-    };
+    navigator.vibrate?.(8);
+    beginKpDrag(kpId, chapterId, kpIndex, color, touch.clientX, touch.clientY);
   }, [beginKpDrag, clearLongPress]);
 
   const handleNoteTouchEnd = useCallback(() => {
@@ -971,8 +988,8 @@ function OutlineEditorInner({
 
     for (const col of columns) {
       const dragCol = columnsRef.current.get(col.chapterId);
-      const x = layoutMode === "mobile" ? col.x : (dragCol?.x ?? col.x);
-      const y = layoutMode === "mobile" ? col.y : (dragCol?.y ?? col.y);
+      const x = dragCol?.x ?? col.x;
+      const y = dragCol?.y ?? col.y;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x + col.columnWidth);
@@ -1133,8 +1150,8 @@ function OutlineEditorInner({
           const scale = dragCol.isDragging ? 1.03 : 1;
           const isDropTarget = nearestColId === col.chapterId && kpDrag !== null;
 
-          const colX = isMobileLayout && !dragCol.isDragging ? col.x : dragCol.x;
-          const colY = isMobileLayout && !dragCol.isDragging ? col.y : dragCol.y;
+          const colX = dragCol.x;
+          const colY = dragCol.y;
           const isColumnDragging = dragCol.isDragging;
 
           return (
@@ -1152,7 +1169,11 @@ function OutlineEditorInner({
                   ? isColumnDragging ? "scale(1.02)" : undefined
                   : `rotate(${dragCol.rotation}deg) scale(${scale})`,
                 zIndex: isColumnDragging ? 100 : 10,
-                transition: isColumnDragging ? "none" : "transform 0.3s ease-out",
+                transition: isColumnDragging
+                  ? "none"
+                  : isMobileLayout
+                    ? "left 0.28s ease-out, top 0.28s ease-out, transform 0.28s ease-out"
+                    : "transform 0.3s ease-out",
               }}
             >
               {/* Column background — subtle grouping indicator */}

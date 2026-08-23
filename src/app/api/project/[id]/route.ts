@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
 import { deleteAudioForProjects } from "@/lib/storage-cleanup";
+import { isOutlineChapterMutation, markStructureEdited } from "@/lib/structure-provenance";
 
 // ── Mass-assignment allowlists ───────────────────────────────────────────────
 // Only these columns may be set from a client-supplied PATCH body. Anything else
@@ -131,6 +132,38 @@ export async function PATCH(
   if (body.chapter_id) {
     const { chapter_id } = body;
     const updates = pickAllowed(body, CHAPTER_FIELDS);
+
+    const { data: existing } = await supabase
+      .from("chapters")
+      .select("id, title, summary, sort_order, chapter_number")
+      .eq("id", chapter_id)
+      .eq("project_id", id)
+      .maybeSingle();
+
+    if (!existing) {
+      // Outline ADD_CHAPTER mints a client UUID and PATCHes it. Persist the
+      // new row — that is a user add, so the outline is no longer AI-accepted.
+      const { data, error } = await supabase
+        .from("chapters")
+        .insert({
+          id: chapter_id,
+          project_id: id,
+          title: typeof updates.title === "string" ? updates.title : "New Chapter",
+          summary: typeof updates.summary === "string" ? updates.summary : "",
+          key_point_ids: updates.key_point_ids ?? [],
+          blended_key_point_ids: updates.blended_key_point_ids,
+          target_word_count: updates.target_word_count ?? 3000,
+          status: updates.status ?? "outlined",
+          sort_order: updates.sort_order ?? 0,
+          chapter_number: updates.chapter_number ?? 1,
+        })
+        .select()
+        .single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      await markStructureEdited(id);
+      return NextResponse.json(data);
+    }
+
     const { data, error } = await supabase
       .from("chapters")
       .update(updates)
@@ -139,6 +172,9 @@ export async function PATCH(
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (isOutlineChapterMutation(existing, updates)) {
+      await markStructureEdited(id);
+    }
     return NextResponse.json(data);
   }
 
@@ -184,6 +220,7 @@ export async function PATCH(
     const chId = body.delete_chapter_id;
     const { error } = await supabase.from("chapters").delete().eq("id", chId).eq("project_id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await markStructureEdited(id);
     // Renumber remaining chapters
     const { data: remaining } = await supabase
       .from("chapters")

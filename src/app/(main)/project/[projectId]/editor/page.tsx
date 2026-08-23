@@ -11,6 +11,7 @@ import TipTapEditor, { TipTapSelection, TipTapEditorHandle } from "@/components/
 import MagicEditBubble from "@/components/editor/MagicEditBubble";
 import RewritePromptBar from "@/components/editor/RewritePromptBar";
 import VoiceMatchBadge from "@/components/editor/VoiceMatchBadge";
+import CopyrightReadinessBadge from "@/components/editor/CopyrightReadinessBadge";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -628,6 +629,8 @@ export default function EditorPage() {
                 />
               </>
             )}
+            <div style={{ width: 1, height: 14, background: "var(--ds-card-border)" }} />
+            <CopyrightReadinessBadge projectId={projectId} />
           </div>
 
           {/* Floating Toolbar — left edge, vertically centered */}

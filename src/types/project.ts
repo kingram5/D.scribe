@@ -9,6 +9,8 @@ export interface Project {
   narrative_tracker: NarrativeTracker | null;
   creative_freedom?: number;
   scripture_translation?: string | null;
+  /** Outline authorship: AI-accepted, user-edited, or reserved user-authored. */
+  structure_provenance?: "ai_generated_accepted" | "ai_edited" | "user_authored";
   created_at: string;
   updated_at: string;
 }

@@ -56,6 +56,19 @@ function randomRotation(range: number) {
   return (Math.random() - 0.5) * 2 * range;
 }
 
+const MOBILE_ZOOM_MIN = 0.5;
+const MOBILE_ZOOM_MAX = 2.5;
+
+function clampZoom(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function touchDistance(t1: Touch, t2: Touch) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
+}
+
 function getBorderColor(color: NoteColor) {
   switch (color) {
     case "#fdf5c9": return "rgba(230, 217, 108, 0.3)";
@@ -140,6 +153,7 @@ function OutlineEditorInner({
   const zoomRef = useRef(1);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const pinchRef = useRef<{ initialDistance: number; initialZoom: number } | null>(null);
 
   // Combine dialog
   const [confirmCombine, setConfirmCombine] = useState<{
@@ -185,6 +199,11 @@ function OutlineEditorInner({
       zoomRef.current = 1;
       setPan({ x: 0, y: 0 });
       setZoom(1);
+      const el = canvasRef.current;
+      if (el) {
+        el.scrollLeft = 0;
+        el.scrollTop = 0;
+      }
     }
   }, [layoutMode]);
 
@@ -610,6 +629,68 @@ function OutlineEditorInner({
     return () => el.removeEventListener("wheel", handleWheel);
   }, [layoutMode]);
 
+  // Pinch-to-zoom on mobile (single-finger scroll remains native)
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || layoutMode !== "mobile") return;
+
+    function applyMobileZoom(newZoom: number, viewportX: number, viewportY: number) {
+      const oldZoom = zoomRef.current;
+      if (newZoom === oldZoom) return;
+
+      const scale = newZoom / oldZoom;
+      el!.scrollLeft = viewportX * (scale - 1) + el!.scrollLeft * scale;
+      el!.scrollTop = viewportY * (scale - 1) + el!.scrollTop * scale;
+      zoomRef.current = newZoom;
+      setZoom(newZoom);
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchRef.current = {
+          initialDistance: touchDistance(e.touches[0], e.touches[1]),
+          initialZoom: zoomRef.current,
+        };
+      }
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (!pinchRef.current || e.touches.length < 2) return;
+      e.preventDefault();
+
+      const distance = touchDistance(e.touches[0], e.touches[1]);
+      const newZoom = clampZoom(
+        pinchRef.current.initialZoom * (distance / pinchRef.current.initialDistance),
+        MOBILE_ZOOM_MIN,
+        MOBILE_ZOOM_MAX
+      );
+
+      const rect = el!.getBoundingClientRect();
+      const viewportX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const viewportY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+      applyMobileZoom(newZoom, viewportX, viewportY);
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      if (e.touches.length < 2) {
+        pinchRef.current = null;
+      }
+    }
+
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd);
+    el.addEventListener("touchcancel", handleTouchEnd);
+
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [layoutMode]);
+
   const canvasBounds = useMemo(() => {
     if (columns.length === 0) return { width: 800, height: 600 };
 
@@ -628,6 +709,19 @@ function OutlineEditorInner({
       height: maxY + 80,
     };
   }, [columns, layoutMode]);
+
+  const scaledCanvasBounds = useMemo(() => ({
+    width: canvasBounds.width * zoom,
+    height: canvasBounds.height * zoom,
+  }), [canvasBounds, zoom]);
+
+  const gridBackgroundStyle = {
+    backgroundImage: `
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+    `,
+    backgroundSize: "40px 40px",
+  } as const;
 
   // Compute edge path between chapter columns
   function getEdgePath(edge: EdgeDef): string {
@@ -657,66 +751,24 @@ function OutlineEditorInner({
 
   const isMobileLayout = layoutMode === "mobile";
 
-  return (
-    <div
-      ref={canvasRef}
-      className={isMobileLayout ? "ds-outline-canvas ds-outline-canvas--mobile" : "ds-outline-canvas"}
-      onMouseDown={handleCanvasMouseDown}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: isMobileLayout ? undefined : "calc(100vh - 160px)",
-        overflow: isMobileLayout ? "auto" : "hidden",
-        WebkitOverflowScrolling: isMobileLayout ? "touch" : undefined,
-        touchAction: isMobileLayout ? "pan-x pan-y" : undefined,
-        background: "#f4f1ea",
-        backgroundImage: `
-          linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
-        `,
-        backgroundSize: isMobileLayout ? "40px 40px" : `${40 * zoom}px ${40 * zoom}px`,
-        backgroundPosition: isMobileLayout ? "0 0" : `${pan.x}px ${pan.y}px`,
-        borderRadius: "0 0 12px 12px",
-        cursor: isMobileLayout ? "default" : (isPanningRef.current ? "grabbing" : "grab"),
-      }}
-    >
-      {/* SVG Filters */}
-      <svg style={{ position: "absolute", width: 0, height: 0 }}>
-        <defs>
-          <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
-            <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1.5" result="light">
-              <feDistantLight azimuth="45" elevation="55" />
-            </feDiffuseLighting>
-            <feComposite in="SourceGraphic" in2="light" operator="arithmetic" k1="0" k2="1" k3="0.1" k4="0" />
-          </filter>
-          <filter id="marker-wobble">
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="noise" seed="2" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-          <filter id="rough-edge" x="-2%" y="-2%" width="104%" height="104%">
-            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" result="noise" seed="1" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
-
+  const boardLayers = (
+    <>
       {/* SVG edges layer */}
       <svg
         ref={svgRef}
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          position: isMobileLayout ? "relative" : "absolute",
+          top: isMobileLayout ? undefined : 0,
+          left: isMobileLayout ? undefined : 0,
+          width: isMobileLayout ? canvasBounds.width : "100%",
+          height: isMobileLayout ? canvasBounds.height : "100%",
           pointerEvents: "none",
           zIndex: 1,
         }}
       >
         <g
           filter="url(#marker-wobble)"
-          transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+          transform={isMobileLayout ? undefined : `translate(${pan.x}, ${pan.y}) scale(${zoom})`}
         >
           {edges.map((edge) => {
             const path = getEdgePath(edge);
@@ -739,7 +791,9 @@ function OutlineEditorInner({
       {/* Column layer */}
       <div
         style={{
-          position: "relative",
+          position: isMobileLayout ? "relative" : "absolute",
+          top: isMobileLayout ? undefined : 0,
+          left: isMobileLayout ? undefined : 0,
           width: isMobileLayout ? canvasBounds.width : "100%",
           height: isMobileLayout ? canvasBounds.height : "100%",
           minWidth: isMobileLayout ? canvasBounds.width : undefined,
@@ -878,8 +932,80 @@ function OutlineEditorInner({
           );
         })()}
       </div>
+    </>
+  );
 
-      {/* Combine confirmation */}
+  return (
+    <div
+      ref={canvasRef}
+      className={isMobileLayout ? "ds-outline-canvas ds-outline-canvas--mobile" : "ds-outline-canvas"}
+      onMouseDown={handleCanvasMouseDown}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: isMobileLayout ? undefined : "calc(100vh - 160px)",
+        overflow: isMobileLayout ? "auto" : "hidden",
+        WebkitOverflowScrolling: isMobileLayout ? "touch" : undefined,
+        touchAction: isMobileLayout ? "pan-x pan-y" : undefined,
+        background: "#f4f1ea",
+        backgroundImage: isMobileLayout
+          ? undefined
+          : `
+          linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: isMobileLayout ? undefined : `${40 * zoom}px ${40 * zoom}px`,
+        backgroundPosition: isMobileLayout ? undefined : `${pan.x}px ${pan.y}px`,
+        borderRadius: "0 0 12px 12px",
+        cursor: isMobileLayout ? "default" : (isPanningRef.current ? "grabbing" : "grab"),
+      }}
+    >
+      {/* SVG Filters */}
+      <svg style={{ position: "absolute", width: 0, height: 0 }}>
+        <defs>
+          <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
+            <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1.5" result="light">
+              <feDistantLight azimuth="45" elevation="55" />
+            </feDiffuseLighting>
+            <feComposite in="SourceGraphic" in2="light" operator="arithmetic" k1="0" k2="1" k3="0.1" k4="0" />
+          </filter>
+          <filter id="marker-wobble">
+            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="noise" seed="2" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="rough-edge" x="-2%" y="-2%" width="104%" height="104%">
+            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" result="noise" seed="1" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
+      {isMobileLayout ? (
+        <div
+          style={{
+            width: scaledCanvasBounds.width,
+            height: scaledCanvasBounds.height,
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              width: canvasBounds.width,
+              height: canvasBounds.height,
+              transform: `scale(${zoom})`,
+              transformOrigin: "0 0",
+              position: "relative",
+              background: "#f4f1ea",
+              ...gridBackgroundStyle,
+            }}
+          >
+            {boardLayers}
+          </div>
+        </div>
+      ) : (
+        boardLayers
+      )}
       {confirmCombine && (
         <div style={{
           position: "absolute",

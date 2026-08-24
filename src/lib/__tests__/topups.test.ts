@@ -259,7 +259,7 @@ describe("webhook top-up grant / replay / clawback", () => {
   });
 
   it("grants a voice pack once and ignores a replayed session id", async () => {
-    const { grantTopupPurchase } = await import("@/app/api/stripe/webhook/route");
+    const { grantTopupPurchase } = await import("@/lib/topup-purchases");
     const first = await grantTopupPurchase({
       userId: "user-1",
       sku: "voice_pack",
@@ -283,7 +283,7 @@ describe("webhook top-up grant / replay / clawback", () => {
   });
 
   it("claws back a granted purchase and floors the bucket at 0", async () => {
-    const { grantTopupPurchase, clawbackTopupPurchase } = await import("@/app/api/stripe/webhook/route");
+    const { grantTopupPurchase, clawbackTopupPurchase } = await import("@/lib/topup-purchases");
     await grantTopupPurchase({
       userId: "user-1",
       sku: "ink_pack",

@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
+import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { INTERVIEWER_NAME, interviewerRoleLine } from "@/lib/interviewer";
+import { INK_LIMITS } from "@/lib/tiers";
 
 interface Message {
   role: "user" | "assistant";
@@ -393,6 +395,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
+  const [showVoiceWall, setShowVoiceWall] = useState(false);
+  const [showInkWall, setShowInkWall] = useState(false);
+  const [usageNudge, setUsageNudge] = useState<"tts" | "ink" | null>(null);
+  const [usageNudgeKey, setUsageNudgeKey] = useState<string | null>(null);
   // Safari does not expose the hardware Silent switch to web pages. Be honest
   // about that limitation before an iPhone owner mistakes silent playback for a
   // dead session.
@@ -730,6 +736,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         failedTtsTextRef.current = next;
         setTtsFailed(true);
         const detail = error instanceof Error ? error.message : "T.H.E.O.'s voice could not be generated.";
+        if (/HTTP 402|tts_limit_reached|Monthly voice limit/.test(detail)) {
+          setShowVoiceWall(true);
+        }
         setVoiceNotice(`${detail} Continue in text, or tap Try voice again to replay this response.`);
       }
       finally { void drain(); }
@@ -1437,6 +1446,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setMessages([]);
       setSendError(msg || "Couldn't connect to the brainstorm session. Please try again.");
       setRetryAction(/HTTP 401/.test(msg) ? null : "start");
+      if (/HTTP 402|out of Ink/.test(msg)) setShowInkWall(true);
     }
 
     streamingRef.current = false;
@@ -1556,6 +1566,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const msg = brainstormFailureMessage(err);
       setSendError(`${msg} Your answer is back in the box — try again.`);
       setRetryAction(/HTTP 401/.test(msg) ? null : "send");
+      if (/HTTP 402|out of Ink/.test(msg)) setShowInkWall(true);
       handsFreeRef.current = false;
       setHandsFree(false);
       teardownMic();
@@ -1678,12 +1689,45 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         // server then 403s on every sentence — swallowed silently, so they got
         // total silence with the speaker icon lit and no explanation.
         if (!d) { setTtsAvail("locked"); return; }
-        if (d.tts_limit === 0) setTtsAvail("locked");
-        else if (d.tts_chars_used >= d.tts_limit) setTtsAvail("exhausted");
+        const extraVoice = Number(d.topup_tts_chars ?? 0);
+        if (d.tts_limit === 0 && extraVoice <= 0) setTtsAvail("locked");
+        else if (d.tts_limit > 0 && d.tts_chars_used >= d.tts_limit && extraVoice <= 0) setTtsAvail("exhausted");
         else setTtsAvail("available");
       })
       .catch(() => setTtsAvail("locked"));
   }, [showTtsPrompt]);
+
+  useEffect(() => {
+    if (!started) return;
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/ink/usage").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/ink?history=false").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([usage, ink]) => {
+      if (cancelled) return;
+      const ttsLimit = Number(usage?.tts_limit ?? 0);
+      const ttsUsed = Number(usage?.tts_chars_used ?? 0);
+      const ttsPeriod = String(usage?.tts_period_start ?? "");
+      if (ttsLimit > 0 && ttsUsed / ttsLimit >= 0.85) {
+        const key = `usage_nudge_tts_${ttsPeriod}`;
+        if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+          setUsageNudge("tts");
+          setUsageNudgeKey(key);
+          return;
+        }
+      }
+      const inkLimit = INK_LIMITS[ink?.tier ?? "free"] ?? 10;
+      const inkLeft = Number(ink?.balance ?? 0);
+      if (inkLimit > 0 && (inkLimit - inkLeft) / inkLimit >= 0.85) {
+        const key = `usage_nudge_ink_${ttsPeriod || new Date().toISOString().slice(0, 7)}`;
+        if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+          setUsageNudge("ink");
+          setUsageNudgeKey(key);
+        }
+      }
+    });
+    return () => { cancelled = true; };
+  }, [started]);
 
   const finishBrainstorm = useCallback(async () => {
     // Need at least 2 user messages to have meaningful content
@@ -1861,18 +1905,29 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             {isLocked
               ? "Voice read-back is available on paid plans."
               : isExhausted
-              ? "You've used your monthly voice allowance. Resets at the start of next month."
+              ? "You've used this month's voice. I can still take notes if you type — or add more below."
               : "AI responses can be spoken back to you using your voice allowance. You can toggle this any time."}
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 260 }}>
           {ttsBlocked ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{
               padding: "10px 16px", borderRadius: 8, textAlign: "center",
               background: "rgba(249,247,242,0.06)", border: "1px solid rgba(249,247,242,0.18)",
               fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif",
             }}>
               {isLocked ? "Voice unavailable on your plan" : "Monthly limit reached"}
+            </div>
+            {isExhausted && (
+              <button
+                type="button"
+                className="transcribe-btn"
+                onClick={() => setShowVoiceWall(true)}
+              >
+                Add more voice
+              </button>
+            )}
             </div>
           ) : (
             <button
@@ -1895,6 +1950,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <a href="/pricing" style={{ fontSize: 12, color: "var(--ds-accent)", fontFamily: "var(--font-manrope), sans-serif", textDecoration: "none" }}>
             View plans →
           </a>
+        )}
+        {showVoiceWall && (
+          <InkUpgradeModal reason="tts" onClose={() => setShowVoiceWall(false)} />
         )}
         </div>
       </StudioShell>
@@ -2359,6 +2417,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           <span style={{ flex: 1 }}>
             {sendError ?? voiceNotice ?? "This browser is blocking storage, so this session won't be saved if you close the tab."}
           </span>
+          {sendError && /HTTP 402|out of Ink/.test(sendError) && (
+            <button
+              type="button"
+              onClick={() => setShowInkWall(true)}
+              style={{
+                background: "var(--ds-accent-500)", color: "#fff", border: "none",
+                borderRadius: 100, padding: "6px 16px", fontSize: 12, fontWeight: 600,
+                cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Add more Ink
+            </button>
+          )}
           {retryAction && (
             <button
               onClick={() => {
@@ -2540,6 +2611,63 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </p>
         )}
       </div>
+
+      {showVoiceWall && (
+        <InkUpgradeModal reason="tts" onClose={() => setShowVoiceWall(false)} />
+      )}
+      {showInkWall && (
+        <InkUpgradeModal reason="ink" onClose={() => setShowInkWall(false)} />
+      )}
+      {usageNudge && !showVoiceWall && !showInkWall && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 40,
+            width: "min(28rem, calc(100vw - 2rem))",
+            borderRadius: 12,
+            padding: "12px 16px",
+            background: "rgba(25,24,22,0.96)",
+            border: "1px solid rgba(193,122,71,0.35)",
+            color: "#F9F7F2",
+            fontSize: 13,
+            fontFamily: "var(--font-manrope), sans-serif",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <p style={{ margin: 0, flex: 1, lineHeight: 1.45 }}>
+              {usageNudge === "tts"
+                ? "You're close to this month's voice. I can still take notes if you type — or add more whenever you like."
+                : "You're close to this month's Ink. I can still work with you, and you can add more whenever you like."}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (usageNudgeKey && typeof window !== "undefined") {
+                  window.localStorage.setItem(usageNudgeKey, "1");
+                }
+                setUsageNudge(null);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#C17A47",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+                flexShrink: 0,
+                fontFamily: "var(--font-manrope), sans-serif",
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .ds-stage-cursor {

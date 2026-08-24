@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TIER_LABELS, INK_LIMITS, TIER_COLORS } from "@/lib/tiers";
+import AddMoreButton from "@/components/ui/AddMoreButton";
 
 interface InkData {
   balance: number;
   lifetime_used: number;
   tier: string;
+  topup_ink?: number;
 }
 
 interface TtsData {
@@ -13,9 +16,8 @@ interface TtsData {
   tts_limit: number;
   tts_period_start: string;
   tier: string;
+  topup_tts_chars?: number;
 }
-
-import { TIER_LABELS, INK_LIMITS, TIER_COLORS } from "@/lib/tiers";
 
 export default function UsageWidget() {
   const [ink, setInk] = useState<InkData | null>(null);
@@ -59,7 +61,9 @@ export default function UsageWidget() {
 
   const ttsUsed = tts?.tts_chars_used ?? 0;
   const ttsLimit = tts?.tts_limit ?? 0;
+  const ttsExtra = Number(tts?.topup_tts_chars ?? 0);
   const ttsPct = ttsLimit > 0 ? Math.min(100, (ttsUsed / ttsLimit) * 100) : 0;
+  const inkExtra = Number(ink?.topup_ink ?? 0);
 
   const inkLimit = INK_LIMITS[tier] ?? 10;
   // Ink is reported as REMAINING everywhere, matching the header meter. Showing consumed
@@ -107,6 +111,9 @@ export default function UsageWidget() {
             {ink
               ? (inkLeft >= 100 ? Math.round(inkLeft) : Math.round(inkLeft * 10) / 10).toLocaleString()
               : "—"} / {inkLimit.toLocaleString()}
+            {inkExtra > 0 && (
+              <span style={{ color: "#C17A47", marginLeft: 6 }}>+ {inkExtra.toLocaleString()} extra</span>
+            )}
           </span>
         </div>
         <div style={{ height: 5, background: "rgba(44,36,25,0.08)", borderRadius: 999, overflow: "hidden" }}>
@@ -118,6 +125,9 @@ export default function UsageWidget() {
             transition: "width 0.4s ease",
           }} />
         </div>
+        <div style={{ marginTop: 6 }}>
+          <AddMoreButton sku="ink_pack" />
+        </div>
       </div>
 
       {tier !== "free" && (
@@ -126,6 +136,9 @@ export default function UsageWidget() {
             <span style={{ fontSize: 12, color: "#7A7358", fontWeight: 500 }}>Voice</span>
             <span style={{ fontSize: 12, color: "#7A7358", fontFamily: "var(--font-geist-mono), monospace" }}>
               {ttsUsed.toLocaleString()} / {ttsLimit.toLocaleString()} chars
+              {ttsExtra > 0 && (
+                <span style={{ color: "#C17A47", marginLeft: 6 }}>+ {ttsExtra.toLocaleString()} extra</span>
+              )}
             </span>
           </div>
           <div
@@ -145,6 +158,9 @@ export default function UsageWidget() {
                 transition: "width 0.4s ease",
               }}
             />
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <AddMoreButton sku="voice_pack" />
           </div>
         </div>
       )}

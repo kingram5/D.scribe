@@ -5,6 +5,7 @@ import { getTtsLimit } from "@/lib/tts";
 import { stripFormatMarkers } from "@/lib/export/format-markers";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ttsGateLocked } from "@/lib/topups";
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireAuth();
@@ -27,13 +28,14 @@ export async function POST(req: NextRequest) {
 
   const { data: balance } = await supabase
     .from("ink_balances")
-    .select("tier, tts_chars_used, tts_period_start")
+    .select("tier, tts_chars_used, tts_period_start, topup_tts_chars")
     .eq("user_id", user.id)
     .single();
 
   const tier = balance?.tier ?? "free";
+  const topupTtsChars = Number(balance?.topup_tts_chars ?? 0);
 
-  if (tier === "free" || tier === "starter") {
+  if (ttsGateLocked(tier, topupTtsChars)) {
     return NextResponse.json(
       { error: "tts_locked", message: "Voice is a Pro feature. Upgrade to unlock." },
       { status: 403 }
@@ -58,12 +60,15 @@ export async function POST(req: NextRequest) {
 
   if (!ttsResult.allowed) {
     const limit = getTtsLimit(tier);
+    const topupRemaining = Number(ttsResult.topup_remaining ?? topupTtsChars);
     return NextResponse.json(
       {
         error: "tts_limit_reached",
         message: "Monthly voice limit reached. Upgrade to continue.",
         used: ttsResult.used,
         limit,
+        topup_available: true,
+        topup_remaining: topupRemaining,
       },
       { status: 402 }
     );

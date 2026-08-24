@@ -55,6 +55,7 @@ export interface InkBalance {
   ink_balance: number;
   lifetime_used: number;
   tier: string;
+  topup_ink: number;
 }
 
 export interface InkCheck {
@@ -108,6 +109,7 @@ async function ensureBalance(userId: string): Promise<InkBalance> {
     ink_balance: Number(row.ink_balance),
     lifetime_used: Number(row.lifetime_used),
     tier: row.tier,
+    topup_ink: Number(row.topup_ink ?? 0),
   };
 }
 
@@ -119,21 +121,22 @@ async function ensureBalance(userId: string): Promise<InkBalance> {
 export async function checkInk(userId: string, operation?: InkOperation): Promise<InkCheck> {
   const balance = await ensureBalance(userId);
   const required = operation ? estimateInkCost(operation) : 0;
+  const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
 
-  if (balance.ink_balance <= 0 || balance.ink_balance < required) {
+  if (spendable <= 0 || spendable < required) {
     return {
       allowed: false,
       reason: required > 0
-        ? `This needs about ${required} Ink and you have ${Number(Number(balance.ink_balance).toFixed(2))}. Top up to continue.`
+        ? `This needs about ${required} Ink and you have ${Number(Number(spendable).toFixed(2))}. Top up to continue.`
         : "No Ink remaining. Upgrade your plan to continue.",
-      balance: balance.ink_balance,
+      balance: spendable,
       tier: balance.tier,
     };
   }
 
   return {
     allowed: true,
-    balance: balance.ink_balance,
+    balance: spendable,
     tier: balance.tier,
   };
 }
@@ -146,11 +149,12 @@ export async function checkInk(userId: string, operation?: InkOperation): Promis
 export async function reserveInk(userId: string, operation: InkOperation): Promise<InkCheck> {
   const balance = await ensureBalance(userId);
   const required = estimateInkCost(operation);
-  if (balance.ink_balance < required) {
+  const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
+  if (spendable < required) {
     return {
       allowed: false,
-      reason: `This needs about ${required} Ink and you have ${Number(balance.ink_balance.toFixed(2))}. Top up to continue.`,
-      balance: balance.ink_balance,
+      reason: `This needs about ${required} Ink and you have ${Number(spendable.toFixed(2))}. Top up to continue.`,
+      balance: spendable,
       tier: balance.tier,
     };
   }
@@ -238,6 +242,7 @@ export async function getInkBalance(userId: string) {
     balance: Number(balance.ink_balance),
     lifetime_used: Number(balance.lifetime_used),
     tier: balance.tier,
+    topup_ink: Number(balance.topup_ink ?? 0),
     breakdown,
   };
 }

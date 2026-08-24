@@ -12,6 +12,16 @@ export const TIER_INK: Record<string, number> = {
   premium: 1500,
 };
 
+export const TOPUP_PRICES: Record<string, string> = {
+  voice_pack: process.env.STRIPE_PRICE_VOICE_PACK ?? "",
+  ink_pack: process.env.STRIPE_PRICE_INK_PACK ?? "",
+};
+
+export const TOPUP_GRANTS = {
+  voice_pack: { tts_chars: 20000 },
+  ink_pack: { ink: 200 },
+} as const;
+
 // Lazy client — defers new Stripe() until first actual API call so missing
 // STRIPE_SECRET_KEY doesn't crash the build during static page collection.
 let _client: Stripe | undefined;

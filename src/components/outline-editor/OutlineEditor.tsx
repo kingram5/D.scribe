@@ -835,22 +835,14 @@ function OutlineEditorInner({
   }, [finalizeActiveDrag]);
 
   useEffect(() => {
-    function handleMouseMove(e: MouseEvent) {
-      handlePointerMove(e.clientX, e.clientY);
-    }
-
-    function handleMouseUp() {
-      handlePointerUp();
-    }
-
     function handlePointerMoveEvent(e: PointerEvent) {
-      if (!kpDragRef.current && !dragRef.current.noteId) return;
-      e.preventDefault();
+      if (!kpDragRef.current && !dragRef.current.noteId && !isPanningRef.current) return;
+      if (kpDragRef.current || dragRef.current.noteId) e.preventDefault();
       handlePointerMove(e.clientX, e.clientY);
     }
 
     function handlePointerUpEvent() {
-      if (kpDragRef.current || dragRef.current.noteId) {
+      if (kpDragRef.current || dragRef.current.noteId || isPanningRef.current) {
         handlePointerUp();
       }
     }
@@ -881,8 +873,6 @@ function OutlineEditorInner({
       }
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("pointermove", handlePointerMoveEvent, { passive: false });
     window.addEventListener("pointerup", handlePointerUpEvent, { capture: true });
     window.addEventListener("pointercancel", handlePointerUpEvent, { capture: true });
@@ -890,8 +880,6 @@ function OutlineEditorInner({
     window.addEventListener("touchend", handleTouchEnd, { capture: true });
     window.addEventListener("touchcancel", handleTouchEnd, { capture: true });
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("pointermove", handlePointerMoveEvent);
       window.removeEventListener("pointerup", handlePointerUpEvent, { capture: true });
       window.removeEventListener("pointercancel", handlePointerUpEvent, { capture: true });

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
 import { INTERVIEWER_NAME, interviewerRoleLine } from "@/lib/interviewer";
+import { conversationDigest, manualResearchProbe, researchProbeAt } from "@/lib/research-corpus";
 
 interface Message {
   role: "user" | "assistant";
@@ -398,6 +399,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // dead session.
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [ttsFailed, setTtsFailed] = useState(false);
+  const [researchEnabled, setResearchEnabled] = useState(false);
+  const [researchNote, setResearchNote] = useState<"running" | "found" | null>(null);
+  const researchFiredRef = useRef<Set<number>>(new Set());
+  const researchCompletedRef = useRef(false);
+  const researchCompletedAtRef = useRef<number | null>(null);
+  const researchDisabledRef = useRef(false);
   // True while a finished clip is at Deepgram being turned into text. Gates
   // capture (no new segment mid-round-trip) and labels the stage honestly.
   const [transcribing, setTranscribing] = useState(false);
@@ -1444,6 +1451,46 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     inputRef.current?.focus();
   }, [projectId, speakSentence]);
 
+  const kickResearch = useCallback((turns: number, msgs: Message[], force = false) => {
+    if (researchDisabledRef.current) return;
+    const probe = force
+      ? manualResearchProbe()
+      : researchProbeAt(turns, {
+          completed: researchCompletedRef.current,
+          fired: researchFiredRef.current,
+          completedAtTurns: researchCompletedAtRef.current,
+        });
+    if (!probe) return;
+    if (typeof probe.key === "number") researchFiredRef.current.add(probe.key);
+    setResearchNote("running");
+    void fetch("/api/research/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: projectId,
+        digest: conversationDigest(msgs),
+        force: probe.force,
+      }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (data.disabled) {
+          researchDisabledRef.current = true;
+          setResearchEnabled(false);
+          setResearchNote(null);
+          return;
+        }
+        if (data.done) {
+          researchCompletedRef.current = true;
+          researchCompletedAtRef.current = turns;
+          setResearchNote((data.items_added ?? 0) > 0 ? "found" : null);
+          return;
+        }
+        setResearchNote(null);
+      })
+      .catch(() => setResearchNote(null));
+  }, [projectId]);
+
   // `textOverride` is the hands-free path: a Deepgram transcript lands in the
   // composer and sends in the same breath, without waiting a render for the
   // `input` state (and this closure) to catch up.
@@ -1471,6 +1518,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     let aiText = "";
     let streamFailed = false;
+    let sendOk = false;
 
     try {
       const res = await fetch("/api/brainstorm", {
@@ -1543,6 +1591,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         speakSentence(sentenceBufferRef.current.trim());
         sentenceBufferRef.current = "";
       }
+      sendOk = !streamFailed;
     } catch (err) {
       console.error("Brainstorm error:", err);
       // A silent failure ate the user's words: the composer was cleared before
@@ -1561,10 +1610,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       teardownMic();
     }
 
+    if (sendOk) {
+      const turns = updatedMessages.filter((m) => m.role === "user").length;
+      kickResearch(turns, [...updatedMessages, { role: "assistant", content: aiText }]);
+    }
+
     streamingRef.current = false;
     setStreaming(false);
     inputRef.current?.focus();
-  }, [input, streaming, messages, speakSentence, teardownMic]);
+  }, [input, streaming, messages, speakSentence, teardownMic, kickResearch]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {
@@ -1645,6 +1699,20 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       window.removeEventListener("pagehide", write);
     };
   }, [messages, input, started, sessionKey]);
+
+  useEffect(() => {
+    fetch("/api/research/run")
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((d) => {
+        const on = !!d.enabled;
+        setResearchEnabled(on);
+        researchDisabledRef.current = !on;
+      })
+      .catch(() => {
+        setResearchEnabled(false);
+        researchDisabledRef.current = true;
+      });
+  }, []);
 
   // The max-wait timer intentionally outlives individual message/input renders,
   // but not the studio itself. Otherwise Finish removes the completed session
@@ -2538,6 +2606,46 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               ? "Keep going — a couple more answers before this becomes source material"
               : `${userMessageCount} answers gathered · finish when you're ready`}
           </p>
+        )}
+        {researchEnabled && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            marginTop: 8,
+            flexWrap: "wrap",
+          }}>
+            {researchNote && (
+              <p style={{
+                margin: 0,
+                fontSize: 11,
+                color: "rgba(249,247,242,0.45)",
+                fontFamily: "var(--font-manrope), sans-serif",
+              }}>
+                {researchNote === "running"
+                  ? `${INTERVIEWER_NAME} is gathering more on your topic in the background…`
+                  : `${INTERVIEWER_NAME} found some material for this book.`}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => kickResearch(userMessageCount, messages, true)}
+              disabled={researchNote === "running"}
+              style={{
+                background: "none",
+                border: "none",
+                color: "rgba(249,247,242,0.5)",
+                fontSize: 11,
+                cursor: researchNote === "running" ? "default" : "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              Have {INTERVIEWER_NAME} dig into this topic
+            </button>
+          </div>
         )}
       </div>
 

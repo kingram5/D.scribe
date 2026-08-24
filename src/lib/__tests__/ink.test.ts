@@ -49,6 +49,10 @@ describe("estimateInkCost", () => {
     expect(estimateInkCost("analyze")).toBe(3);
   });
 
+  it("returns 3 for research", () => {
+    expect(estimateInkCost("research")).toBe(3);
+  });
+
   it("returns 1 for enrich (cheapest op)", () => {
     expect(estimateInkCost("enrich")).toBe(1);
   });

@@ -8,13 +8,17 @@ export function enrichPrompt(
   keyPoints: string[],
   audience: Audience,
   translation?: string | null,
-  excludeQuotes?: string[]
+  excludeQuotes?: string[],
+  researched?: Array<{ text: string; attribution?: string | null; source_title: string; source_url: string }>,
 ): string {
   const aud = audience as string;
   const scriptureAudience = aud === "Faith Community" || aud === "Christian Living";
   const transNote = scriptureAudience && translation ? ` Use the ${translation} translation for all scripture.` : "";
   const excludeNote = excludeQuotes && excludeQuotes.length > 0
     ? `\n\nThe writer has ALREADY chosen these quotes — do NOT repeat or closely duplicate them; find genuinely different material:\n${excludeQuotes.map((q) => `- "${q}"`).join("\n")}`
+    : "";
+  const researchedNote = researched && researched.length > 0
+    ? `\n\nVerified researched material from live sources for this book. Prefer these and you may include them among your 6-10 suggestions, marked with their source:\n${researched.map((r) => `- "${r.text}"${r.attribution ? ` — ${r.attribution}` : ""} (${r.source_title}; ${r.source_url})`).join("\n")}`
     : "";
   return `Find enrichment material for this chapter.
 
@@ -38,5 +42,5 @@ For each item, provide:
 
 Return ONLY a valid JSON array. No markdown fencing. CRITICAL for valid JSON: inside quote_text, use curly quotes “ ” for any quotation marks within the text — never raw straight double quotes inside a string value.
 
-IMPORTANT: Only provide quotes and references you are confident are accurately attributed. source_type MUST be exactly one of: book, article, scripture, speech, research. If you are paraphrasing rather than quoting verbatim, keep the correct source_type and add "(paraphrased)" to relevance_note. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}`;
+IMPORTANT: Only provide quotes and references you are confident are accurately attributed. source_type MUST be exactly one of: book, article, scripture, speech, research. If you are paraphrasing rather than quoting verbatim, keep the correct source_type and add "(paraphrased)" to relevance_note. Any scripture reference MUST carry an exact book, chapter, and verse.${excludeNote}${researchedNote}`;
 }

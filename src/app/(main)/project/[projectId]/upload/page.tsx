@@ -6,6 +6,7 @@ import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
+import ResearchCorpusList from "@/components/upload/ResearchCorpusList";
 import { useUploadEngine } from "./useUploadEngine";
 
 export default function UploadPage() {
@@ -121,6 +122,7 @@ export default function UploadPage() {
             onInitialize={handleInitialize}
             onBrainstorm={() => setShowBrainstorm(true)}
           />
+          <ResearchCorpusList projectId={projectId} />
 
           {/* Action bar */}
           <div className="ds-upload-action-bar" style={{

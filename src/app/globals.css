@@ -518,7 +518,8 @@ input[type=range] {
     width: 100% !important;
     align-self: stretch;
   }
-  .ds-studio-finish {
+  .ds-studio-finish,
+  .ds-studio-break {
     width: 100%;
   }
 }

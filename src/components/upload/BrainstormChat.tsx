@@ -4,6 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
 import { INTERVIEWER_NAME, interviewerRoleLine } from "@/lib/interviewer";
+import {
+  BRAINSTORM_LENGTH_NUDGE_TURNS,
+  pickBrainstormResume,
+  userTurnCount,
+  type BrainstormMessage,
+} from "@/lib/brainstorm-session";
 
 interface Message {
   role: "user" | "assistant";
@@ -138,6 +144,11 @@ interface BrainstormChatProps {
    * the voice choice. Without it the user sees a second identical CTA.
    */
   autoStart?: boolean;
+  /**
+   * The upload tile already chose Continue, so skip the second
+   * "Continue where you left off?" prompt and go to the voice choice.
+   */
+  skipResumePrompt?: boolean;
 }
 
 function isAppleMobileDevice() {
@@ -363,7 +374,30 @@ function StudioBackdrop() {
   );
 }
 
-export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered, autoStart }: BrainstormChatProps) {
+function closeServerSession(projectId: string, status: "finished" | "discarded") {
+  void fetch("/api/brainstorm/session", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ project_id: projectId, status }),
+    keepalive: true,
+  }).catch(() => { /* a failed close must never block leaving */ });
+}
+
+function putServerSession(projectId: string, messages: BrainstormMessage[]) {
+  if (messages.length === 0) return Promise.resolve();
+  return fetch("/api/brainstorm/session", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project_id: projectId,
+      messages,
+      turn_count: userTurnCount(messages),
+    }),
+    keepalive: true,
+  }).catch(() => { /* localStorage still holds the draft */ });
+}
+
+export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered, autoStart, skipResumePrompt }: BrainstormChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -392,6 +426,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [retryAction, setRetryAction] = useState<StudioRetryAction | null>(null);
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
+  const [showLeaveGuard, setShowLeaveGuard] = useState(false);
+  const [holdingThought, setHoldingThought] = useState(false);
+  const [lengthNudgeDismissed, setLengthNudgeDismissed] = useState(false);
   const [ttsAvail, setTtsAvail] = useState<"loading" | "available" | "locked" | "exhausted">("loading");
   // Safari does not expose the hardware Silent switch to web pages. Be honest
   // about that limitation before an iPhone owner mistakes silent playback for a
@@ -449,6 +487,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const draftRef = useRef("");
   const startedRef = useRef(false);
   const persistSessionOnUnmountRef = useRef(true);
+  const serverSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Browser interruption can leave a fetch/TTS callback running after the app
   // has been backgrounded. Re-check this mutable flag at the callback boundary,
   // not only in React effects.
@@ -491,7 +530,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const studioViewportStyle = useStudioViewport();
   // Prompt and saving screens own StudioShell's dialog handling. The live
   // stage enables it here so only one Escape/focus-trap listener exists.
-  const dialogRef = useStudioDialog(onBack, started && !showResume && !showTtsPrompt && !summarizing);
+  const requestLeave = useCallback(() => {
+    if (holdingThought || summarizing) return;
+    const userTurns = userTurnCount(messagesRef.current);
+    if (startedRef.current && userTurns >= 1) {
+      setShowLeaveGuard(true);
+      return;
+    }
+    onBack();
+  }, [holdingThought, summarizing, onBack]);
+
+  const dialogRef = useStudioDialog(requestLeave, started && !showResume && !showTtsPrompt && !summarizing && !holdingThought);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/project/${projectId}`)
@@ -1441,6 +1490,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     streamingRef.current = false;
     setStreaming(false);
+    if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
+    serverSyncTimerRef.current = setTimeout(() => {
+      serverSyncTimerRef.current = null;
+      if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
+    }, 400);
     inputRef.current?.focus();
   }, [projectId, speakSentence]);
 
@@ -1563,8 +1617,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
     streamingRef.current = false;
     setStreaming(false);
+    if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
+    serverSyncTimerRef.current = setTimeout(() => {
+      serverSyncTimerRef.current = null;
+      if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
+    }, 400);
     inputRef.current?.focus();
-  }, [input, streaming, messages, speakSentence, teardownMic]);
+  }, [input, streaming, messages, speakSentence, teardownMic, projectId]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {
@@ -1579,35 +1638,51 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     startedRef.current = started;
   }, [started]);
 
-  // autoStart: the lobby was the pre-start screen, so open the voice choice
-  // directly. Reads the saved session itself rather than waiting on showResume,
-  // which is set in a sibling mount effect and would still read false here.
+  // Hydrate from localStorage and the server in parallel. One resume prompt,
+  // fed by whichever copy has more messages (tiebreak: server).
   useEffect(() => {
-    if (!autoStart) return;
-    let hasSaved = false;
-    try {
-      const raw = localStorage.getItem(sessionKey);
-      if (raw) {
-        const saved = parseSavedSession(raw);
-        hasSaved = !!saved && (saved.messages.length >= 2 || !!saved.draft.trim());
-      }
-    } catch {}
-    if (!hasSaved) setShowTtsPrompt(true); // a saved session shows Resume instead
-  }, [autoStart, sessionKey]);
+    let cancelled = false;
 
-  // Load saved session on mount
-  useEffect(() => {
+    let local: SavedBrainstormSession | null = null;
     try {
       const raw = localStorage.getItem(sessionKey);
-      if (raw) {
-        const saved = parseSavedSession(raw);
-        if (saved && (saved.messages.length >= 2 || !!saved.draft.trim())) {
-          setSavedMessages(saved.messages);
-          setSavedDraft(saved.draft);
+      if (raw) local = parseSavedSession(raw);
+    } catch {}
+
+    const applyWinner = (saved: SavedBrainstormSession | null) => {
+      if (cancelled) return;
+      if (saved && (saved.messages.length >= 2 || !!saved.draft.trim())) {
+        setSavedMessages(saved.messages);
+        setSavedDraft(saved.draft);
+        if (skipResumePrompt) {
+          setPendingResume(true);
+          setShowTtsPrompt(true);
+        } else {
           setShowResume(true);
         }
+      } else if (autoStart) {
+        setShowTtsPrompt(true);
       }
-    } catch {}
+      setHydrating(false);
+    };
+
+    fetch(`/api/brainstorm/session?project_id=${encodeURIComponent(projectId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((payload) => {
+        const serverMessages = Array.isArray(payload?.session?.messages)
+          ? (payload.session.messages as unknown[]).filter(isMessage)
+          : [];
+        const server = payload?.session
+          ? { messages: serverMessages, draft: "" }
+          : null;
+        const winner = pickBrainstormResume(server, local);
+        applyWinner(winner ? { messages: winner.messages, draft: winner.draft ?? "" } : null);
+      })
+      .catch(() => {
+        applyWinner(local);
+      });
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1664,8 +1739,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       } catch {
         // The mounted error surface is gone; there is nothing useful to render.
       }
+      if (!streamingRef.current) {
+        void putServerSession(projectId, messagesRef.current);
+      }
     }
-  }, [sessionKey]);
+    if (serverSyncTimerRef.current) {
+      clearTimeout(serverSyncTimerRef.current);
+      serverSyncTimerRef.current = null;
+    }
+  }, [sessionKey, projectId]);
 
   // Fetch TTS availability when modal opens
   useEffect(() => {
@@ -1711,6 +1793,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         // duplicate source material.
         persistSessionOnUnmountRef.current = false;
         try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
+        closeServerSession(projectId, "finished");
         onComplete();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -1756,6 +1839,64 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const canUndo = userMessageCount > 0 && !streaming && !summarizing && messages.length >= 2;
   const canFinish = userMessageCount >= 2 && !streaming && !summarizing;
+  const canTakeABreak = userMessageCount >= 1 && !streaming && !summarizing && !holdingThought;
+
+  const takeABreak = useCallback(async () => {
+    if (serverSyncTimerRef.current) {
+      clearTimeout(serverSyncTimerRef.current);
+      serverSyncTimerRef.current = null;
+    }
+    setShowLeaveGuard(false);
+    setHoldingThought(true);
+    await putServerSession(projectId, messagesRef.current);
+    window.setTimeout(() => { onBack(); }, 900);
+  }, [projectId, onBack]);
+
+  const discardConversation = useCallback((after: () => void) => {
+    persistSessionOnUnmountRef.current = false;
+    if (maxWaitRef.current) {
+      clearTimeout(maxWaitRef.current);
+      maxWaitRef.current = null;
+    }
+    try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
+    closeServerSession(projectId, "discarded");
+    after();
+  }, [projectId, sessionKey]);
+
+  if (hydrating) {
+    return (
+      <StudioShell onExit={onBack} label="Brainstorm studio">
+        <div className="brainstorm-spinner" />
+        <style>{`
+          .brainstorm-spinner {
+            width: 32px;
+            height: 32px;
+            border: 2.5px solid rgba(0,0,0,0.08);
+            border-top-color: var(--ds-accent-500);
+            border-radius: 50%;
+            animation: bspin 0.8s linear infinite;
+          }
+          @keyframes bspin { to { transform: rotate(360deg); } }
+        `}</style>
+      </StudioShell>
+    );
+  }
+
+  if (holdingThought) {
+    return (
+      <StudioShell onExit={onBack} label="Holding your conversation">
+        <p style={{
+          fontFamily: "var(--font-lora), serif",
+          fontStyle: "italic",
+          fontSize: "1.35rem",
+          color: "var(--ds-ink)",
+          textAlign: "center",
+        }}>
+          I&apos;ll hold that thought.
+        </p>
+      </StudioShell>
+    );
+  }
 
   // Resume prompt
   if (showResume) {
@@ -1795,16 +1936,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             className="transcribe-btn"
             style={{ background: "rgba(249,247,242,0.08)", color: "var(--text-secondary)", border: "1px solid rgba(249,247,242,0.22)" }}
             onClick={() => {
-              try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
-              setSavedMessages([]);
-              setSavedDraft("");
-              setInput("");
-              setShowResume(false);
-              // Hand straight to the voice choice. Without this the render falls
-              // through to the un-portaled pre-start screen — a second identical
-              // CTA squeezed in beside the lobby, which is exactly what
-              // `autoStart` exists to prevent.
-              setShowTtsPrompt(true);
+              if (!window.confirm("Start a new conversation? I'll let go of this one.")) return;
+              discardConversation(() => {
+                setSavedMessages([]);
+                setSavedDraft("");
+                setInput("");
+                setShowResume(false);
+                // Hand straight to the voice choice. Without this the render falls
+                // through to the un-portaled pre-start screen — a second identical
+                // CTA squeezed in beside the lobby, which is exactly what
+                // `autoStart` exists to prevent.
+                setShowTtsPrompt(true);
+              });
             }}
           >
             Start New Session
@@ -2099,7 +2242,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       <div className="ds-studio-header">
         <button
           className="ds-studio-exit"
-          onClick={onBack}
+          onClick={requestLeave}
           aria-label="Exit studio"
           style={{
             background: "none",
@@ -2525,7 +2668,68 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           >
             Finish &amp; add to sources
           </button>
+          {canTakeABreak && (
+            <button
+              className="ds-studio-break"
+              type="button"
+              onClick={() => { void takeABreak(); }}
+              style={{
+                background: "none",
+                color: "rgba(249,247,242,0.75)",
+                border: "1px solid rgba(249,247,242,0.22)",
+                borderRadius: 12,
+                height: 52,
+                padding: "0 18px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Take a break
+            </button>
+          )}
         </div>
+        {userMessageCount >= BRAINSTORM_LENGTH_NUDGE_TURNS && !lengthNudgeDismissed && (
+          <div role="status" style={{
+            marginTop: 10,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "rgba(193,122,71,0.14)",
+            border: "1px solid rgba(193,122,71,0.35)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+          }}>
+            <p style={{
+              margin: 0,
+              flex: 1,
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              color: "rgba(249,247,242,0.82)",
+              fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              We&apos;ve covered a lot of ground. Want to finish this into sources and keep going in a fresh conversation? I&apos;ll still be here.
+            </p>
+            <button
+              type="button"
+              onClick={() => setLengthNudgeDismissed(true)}
+              aria-label="Dismiss"
+              style={{
+                background: "none",
+                border: "none",
+                color: "rgba(249,247,242,0.55)",
+                cursor: "pointer",
+                fontSize: 16,
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
         {userMessageCount > 0 && (
           <p style={{
             fontSize: 11,
@@ -2565,6 +2769,100 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           .ds-stage-cursor, .ds-stage-dots { animation: none !important; }
         }
       `}</style>
+      {showLeaveGuard && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Leave the studio?"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(26,22,16,0.72)",
+            padding: 24,
+          }}
+        >
+          <div style={{
+            width: "min(420px, 100%)",
+            background: "#2C2419",
+            border: "1px solid rgba(249,247,242,0.16)",
+            borderRadius: 16,
+            padding: "28px 24px 22px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}>
+            <h2 style={{
+              margin: 0,
+              fontFamily: "var(--font-lora), serif",
+              fontStyle: "italic",
+              fontWeight: 400,
+              fontSize: "1.35rem",
+              color: "#F9F7F2",
+            }}>
+              Want me to hold this conversation?
+            </h2>
+            <p style={{
+              margin: 0,
+              fontSize: 14,
+              lineHeight: 1.55,
+              color: "rgba(249,247,242,0.72)",
+              fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              Take a break and I&apos;ll keep every answer. Discard and I&apos;ll let it go.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                type="button"
+                className="transcribe-btn"
+                onClick={() => { void takeABreak(); }}
+                style={{ width: "100%" }}
+              >
+                Take a break
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeaveGuard(false)}
+                style={{
+                  width: "100%",
+                  height: 46,
+                  borderRadius: 12,
+                  border: "1px solid rgba(249,247,242,0.22)",
+                  background: "none",
+                  color: "#F9F7F2",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!window.confirm("Throw this conversation away? You can always start a new one.")) return;
+                  discardConversation(() => onBack());
+                }}
+                style={{
+                  width: "100%",
+                  height: 46,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "none",
+                  color: "rgba(249,247,242,0.55)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

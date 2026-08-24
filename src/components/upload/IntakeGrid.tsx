@@ -39,6 +39,11 @@ interface IntakeGridProps {
   allDone: boolean;
   onInitialize: () => void;
   onBrainstorm: () => void;
+  pausedBrainstorm?: { turn_count: number; updated_at: string } | null;
+  onContinueBrainstorm?: () => void;
+  onFinishPausedBrainstorm?: () => void;
+  onDiscardPausedBrainstorm?: () => void;
+  finishingPausedBrainstorm?: boolean;
 }
 
 /** Mono label strip across the top of every card: number + name left, state right. */
@@ -113,7 +118,12 @@ export default function IntakeGrid(p: IntakeGridProps) {
         border: "1px solid rgba(193,122,71,0.4)",
         padding: "22px 28px 26px",
       }}>
-        <CardTop l="01 / BRAINSTORM STUDIO" r="● LIVE" hot light />
+        <CardTop
+          l="01 / BRAINSTORM STUDIO"
+          r={p.pausedBrainstorm ? "IN PROGRESS" : "● LIVE"}
+          hot
+          light
+        />
         <div style={{ display: "flex", alignItems: "center", gap: 26, flexWrap: "wrap", marginTop: 12 }}>
           {/* T.H.E.O's live identity: the orange orb sits straight on the brown card, no
               medallion behind it (Kyle 2026-08-09). */}
@@ -122,13 +132,70 @@ export default function IntakeGrid(p: IntakeGridProps) {
           </div>
           <div style={{ flex: 1, minWidth: 260 }}>
             <h3 style={{ ...serifH3, color: "#F9F7F2", fontSize: 30, margin: "0 0 8px" }}>
-              Talk your book into existence.
+              {p.pausedBrainstorm ? "We left something mid-thought." : "Talk your book into existence."}
             </h3>
             <p style={{ fontSize: 14, color: "rgba(249,247,242,0.75)", lineHeight: 1.6, maxWidth: 560, margin: 0 }}>
-              Sit down with T.H.E.O, your ghostwriter — already tuned to this book&apos;s reader.
-              No script, no blank page. He listens for the book inside the way you tell it.
+              {p.pausedBrainstorm
+                ? `Brainstorm in progress — ${p.pausedBrainstorm.turn_count} answer${p.pausedBrainstorm.turn_count === 1 ? "" : "s"}, last touched ${p.pausedBrainstorm.updated_at}.`
+                : "Sit down with T.H.E.O, your ghostwriter — already tuned to this book\u2019s reader. No script, no blank page. He listens for the book inside the way you tell it."}
             </p>
           </div>
+          {p.pausedBrainstorm ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, minWidth: 200 }}>
+              <button
+                type="button"
+                onClick={p.onContinueBrainstorm ?? p.onBrainstorm}
+                style={{
+                  border: "none",
+                  borderRadius: 12,
+                  background: "#C17A47",
+                  color: "#241D14",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  padding: "17px 26px",
+                  cursor: "pointer",
+                  boxShadow: "0 0 24px rgba(193,122,71,0.35)",
+                }}
+              >
+                Continue ↗
+              </button>
+              <button
+                type="button"
+                onClick={p.onFinishPausedBrainstorm}
+                disabled={p.finishingPausedBrainstorm || p.pausedBrainstorm.turn_count < 2}
+                style={{
+                  border: "1px solid rgba(249,247,242,0.28)",
+                  borderRadius: 10,
+                  background: "none",
+                  color: "rgba(249,247,242,0.78)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "10px 14px",
+                  cursor: p.finishingPausedBrainstorm || p.pausedBrainstorm.turn_count < 2 ? "default" : "pointer",
+                  opacity: p.pausedBrainstorm.turn_count < 2 ? 0.45 : 1,
+                }}
+              >
+                {p.finishingPausedBrainstorm ? "Finishing…" : "Finish now"}
+              </button>
+              <button
+                type="button"
+                onClick={p.onDiscardPausedBrainstorm}
+                style={{
+                  border: "none",
+                  background: "none",
+                  color: "rgba(249,247,242,0.5)",
+                  fontFamily: "var(--font-manrope), sans-serif",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  padding: "4px 2px",
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          ) : (
           <button
             type="button"
             onClick={p.onBrainstorm}
@@ -148,6 +215,7 @@ export default function IntakeGrid(p: IntakeGridProps) {
           >
             Enter the studio ↗
           </button>
+          )}
         </div>
       </article>
 

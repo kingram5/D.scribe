@@ -190,36 +190,88 @@ export default function EditorPage() {
         </div>
       )}
       <style>{`
-        html, body { overflow: hidden; }
+        @media (min-width: 769px) {
+          html, body { overflow: hidden; }
+          .ds-editor-sidebar { overflow: hidden; }
+          .ds-editor-chapter-strip { display: none !important; }
+        }
         @media (max-width: 768px) {
           html, body { overflow: auto; }
-          .ds-editor-layout { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: calc(100vh - 56px) !important; }
-          .ds-editor-layout > div:first-child { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 250px !important; overflow-y: auto !important; }
-          .ds-editor-layout > div:last-child { min-height: 500px !important; }
+          .ds-editor-layout {
+            flex-direction: column !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: 0 !important;
+          }
+          .ds-editor-sidebar {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-height: none !important;
+            height: auto !important;
+            flex: 0 0 auto !important;
+            overflow: visible !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--ds-card-border);
+          }
+          .ds-editor-chapter-list { display: none !important; }
+          .ds-editor-sidebar-stats { display: none !important; }
+          .ds-editor-sidebar-brand { display: none !important; }
+          .ds-editor-chapter-strip { display: flex !important; }
+          .ds-editor-main {
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            position: static !important;
+          }
+          .ds-paper-area {
+            flex: 0 0 auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            padding: 4px 4px !important;
+          }
+          .ds-editor-paper-surface {
+            min-height: 55vh !important;
+            overflow: visible !important;
+          }
+          .ds-paper-margin-line { display: none !important; }
+          .ds-paper-header {
+            padding: 22px 14px 0 !important;
+          }
+          .ds-paper-header h1 {
+            font-size: 26px !important;
+          }
+          .ds-paper-body {
+            padding: 0 14px 32px !important;
+          }
+          .ds-editor-project-card {
+            margin: 8px 12px 0 !important;
+            padding: 10px 12px !important;
+          }
           .ds-editor-float-toolbar { display: none !important; }
           .ds-editor-stats-bar { display: none !important; }
         }
       `}</style>
       <div className="ds-editor-layout" style={{
         display: "flex",
-        height: "calc(100vh - 56px)",
+        height: "calc(100dvh - 56px)",
         overflow: "hidden",
         background: "var(--env-bg)",
       }}>
 
         {/* ===== LEFT SIDEBAR ===== */}
-        <div data-tut="editor-chapters" style={{
+        <div className="ds-editor-sidebar" data-tut="editor-chapters" style={{
           width: 340,
           minWidth: 340,
           background: "var(--ds-card-bg)",
           borderRight: "1px solid var(--ds-card-border)",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
         }}>
 
           {/* Sidebar Header */}
-          <div style={{
+          <div className="ds-editor-sidebar-brand" style={{
             padding: "20px 24px 16px",
             borderBottom: "1px solid var(--ds-card-border)",
             display: "flex",
@@ -287,7 +339,7 @@ export default function EditorPage() {
           </div>
 
           {/* Project Card */}
-          <div style={{
+          <div className="ds-editor-project-card" style={{
             margin: "16px 16px 0",
             padding: "14px 16px",
             borderRadius: 10,
@@ -342,7 +394,13 @@ export default function EditorPage() {
             </div>
           </div>
 
-          {/* Chapter List */}
+          {/* Chapter List — desktop only; mobile uses the strip above the paper */}
+          <div className="ds-editor-chapter-list" style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}>
           <div style={{
             padding: "20px 16px 8px",
           }}>
@@ -459,8 +517,10 @@ export default function EditorPage() {
             })}
           </div>
 
+          </div>
+
           {/* Manuscript Stats */}
-          <div style={{
+          <div className="ds-editor-sidebar-stats" style={{
             padding: "16px",
             borderTop: "1px solid var(--ds-card-border)",
           }}>
@@ -548,7 +608,7 @@ export default function EditorPage() {
         </div>
 
         {/* ===== MAIN EDITOR AREA ===== */}
-        <div style={{
+        <div className="ds-editor-main" style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -556,6 +616,79 @@ export default function EditorPage() {
           overflow: "hidden",
           background: "var(--env-bg)",
         }}>
+
+          {/* Mobile chapter strip — above paper so it cannot be covered */}
+          <div className="ds-editor-chapter-strip" style={{
+            display: "none",
+            flexDirection: "column",
+            background: "var(--ds-card-bg)",
+            borderBottom: "1px solid var(--ds-card-border)",
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+          }}>
+            <div style={{
+              padding: "12px 16px 8px",
+              fontSize: 9,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.14em",
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-manrope), sans-serif",
+            }}>
+              Chapters
+            </div>
+            <div style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              padding: "0 16px 12px",
+              WebkitOverflowScrolling: "touch",
+            }}>
+              {chapters.map((ch, i) => {
+                const isActive = i === activeIdx;
+                const chNum = String(ch.chapter_number).padStart(2, "0");
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => switchChapter(i)}
+                    style={{
+                      flex: "0 0 auto",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 14px",
+                      borderRadius: 9999,
+                      border: isActive ? "1px solid rgba(193,122,71,0.5)" : "1px solid var(--ds-card-border)",
+                      background: isActive ? "rgba(193,122,71,0.14)" : "var(--ds-card-bg)",
+                      cursor: "pointer",
+                      maxWidth: 220,
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: isActive ? "#C17A47" : "var(--text-secondary)",
+                      fontFamily: "var(--font-geist-mono), monospace",
+                    }}>
+                      {chNum}
+                    </span>
+                    <span style={{
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                      fontFamily: "var(--font-manrope), sans-serif",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {ch.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Floating Stats Bar — top center */}
           <div className="ds-editor-stats-bar" style={{
@@ -877,7 +1010,7 @@ export default function EditorPage() {
           </div>
 
           {/* Paper Area — fills available height, no outer scroll */}
-          <div style={{
+          <div className="ds-paper-area" style={{
             flex: 1,
             overflow: "hidden",
             padding: "20px 80px",
@@ -893,7 +1026,7 @@ export default function EditorPage() {
               minHeight: 0,
             }}>
               {/* Paper surface — fixed height, flex column */}
-              <div data-tut="editor-page" style={{
+              <div className="ds-editor-paper-surface" data-tut="editor-page" style={{
                 flex: 1,
                 overflow: "hidden",
                 background: "rgba(252,251,248,0.04)",
@@ -905,7 +1038,7 @@ export default function EditorPage() {
                 minHeight: 0,
               }}>
                 {/* Red margin line */}
-                <div style={{
+                <div className="ds-paper-margin-line" style={{
                   position: "absolute",
                   top: 0,
                   bottom: 0,
@@ -915,7 +1048,7 @@ export default function EditorPage() {
                   pointerEvents: "none",
                 }} />
                 {/* Second faint margin line */}
-                <div style={{
+                <div className="ds-paper-margin-line" style={{
                   position: "absolute",
                   top: 0,
                   bottom: 0,

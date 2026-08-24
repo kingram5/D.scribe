@@ -783,14 +783,46 @@ input[type=range] {
     justify-content: center !important;
   }
 
-  /* Editor paper surface padding */
+  /* Editor paper surface — widen usable page width on phones */
+  .ds-paper-area {
+    padding: 4px 4px !important;
+  }
   .ds-paper-header {
-    padding: 24px 20px 0 !important;
-    padding-left: 20px !important;
+    padding: 22px 14px 0 !important;
+    padding-left: 14px !important;
+  }
+  .ds-paper-header h1 {
+    font-size: 26px !important;
+    line-height: 1.2 !important;
   }
   .ds-paper-body {
-    padding: 0 20px 40px !important;
-    padding-left: 20px !important;
+    padding: 0 14px 32px !important;
+    padding-left: 14px !important;
+  }
+  .ds-editor-project-card {
+    margin: 8px 12px 0 !important;
+    padding: 10px 12px !important;
+  }
+  .ds-paper-margin-line {
+    display: none !important;
+  }
+  .ds-tiptap-wrap {
+    padding: 0 2px !important;
+  }
+
+  /* Mobile chapter strip stays above the manuscript and clear of OsBar overlap */
+  .ds-editor-chapter-strip {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--ds-card-bg);
+    border-bottom: 1px solid var(--ds-card-border);
+  }
+  .ds-editor-chapter-list,
+  .ds-editor-sidebar-stats,
+  .ds-editor-sidebar-brand {
+    display: none !important;
   }
 
   /* Structure card padding */

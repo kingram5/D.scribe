@@ -198,10 +198,13 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
     if (!editor) return null;
 
     return (
-      <div style={{
-        padding: "0 24px",
-        boxSizing: "border-box",
-      }}>
+      <div
+        className="ds-tiptap-wrap"
+        style={{
+          padding: "0 24px",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Block-level styles: the global reset zeroes margins, which made
             blockquotes render identically to paragraphs — the toolbar's Quote
             button "did nothing" visually. Book-style indent, no border. */}
@@ -226,6 +229,14 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
             line-height: 1.3;
             margin: 1.2em 0 0.4em;
             text-align: left;
+          }
+          @media (max-width: 768px) {
+            .ds-tiptap-wrap {
+              padding: 0 2px !important;
+            }
+            .ds-tiptap-editor blockquote {
+              margin: 1.25em 1em;
+            }
           }
         `}</style>
         <EditorContent editor={editor} />

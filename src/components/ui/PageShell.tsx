@@ -81,6 +81,27 @@ function useReachedStep(projectId: string | undefined, currentIdx: number): numb
   return Math.max(reached, currentIdx);
 }
 
+function useIsMobile(maxWidth = 768): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [maxWidth]);
+  return isMobile;
+}
+
+function formatBusyMessage(busy: string, isMobile: boolean): string {
+  if (!isMobile) {
+    return `${busy} — leaving this page will lose progress`;
+  }
+  const busySentence = busy.endsWith(".") ? busy : `${busy}.`;
+  const progressNoun = /generat/i.test(busy) ? "generation" : "analysis";
+  return `WARNING: ${busySentence} Do not close this page or lock your phone or ${progressNoun} will lose its progress`;
+}
+
 export default function PageShell({ children, projectId, currentStep, hideFooterNav, disableNextStep, onNextClick, disabledStepKeys }: PageShellProps) {
   const router = useRouter();
   // Leave-guard: while a page reports generation in progress, every navigation
@@ -104,6 +125,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   }
 
   const projectTitle = useProjectTitle(projectId && currentStep ? projectId : undefined);
+  const isMobile = useIsMobile();
   const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
   const reachedIdx = useReachedStep(projectId, currentIdx);
   const currentLabel = currentIdx >= 0 ? STEPS[currentIdx].label : "";
@@ -138,17 +160,27 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           className="ds-header-rail"
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 20,
-            flexWrap: "wrap",
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 10,
             padding: "0 40px 14px",
             margin: "0 0 4px",
             borderBottom: "1px solid var(--ds-divider, rgba(44,36,25,0.08))",
             fontFamily: "var(--font-manrope), sans-serif",
           }}
         >
+          <div
+            className="ds-header-rail__row"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 20,
+              flexWrap: "wrap",
+              width: "100%",
+            }}
+          >
           {/* Back + project identity block */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 auto" }}>
             <Link
               href={`/project/${projectId}`}
               onClick={(e) => guardNav(e, `/project/${projectId}`)}
@@ -194,9 +226,10 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 </span>
               </div>
             </div>
-            {busy && (
+            {!isMobile && busy && (
               <span
                 role="status"
+                className="ds-generation-busy-pill"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -209,15 +242,17 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   border: "1px solid rgba(193,122,71,0.35)",
                   color: "#C17A47",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C17A47", animation: "ds-busy-pulse 1.2s ease-in-out infinite" }} />
-                {busy} — leaving this page will lose progress
+                <span className="ds-generation-busy-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#C17A47" }} />
+                {formatBusyMessage(busy, false)}
               </span>
             )}
             <style>{`
               @keyframes ds-busy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-              @media (prefers-reduced-motion: reduce) { .ds-page-shell [role="status"] span { animation: none !important; } }
+              @media (prefers-reduced-motion: reduce) { .ds-generation-busy-dot { animation: none !important; } }
+              @media (prefers-reduced-motion: no-preference) { .ds-generation-busy-dot { animation: ds-busy-pulse 1.2s ease-in-out infinite; } }
               @media (max-width: 900px) { .ds-header-rail .ds-rail-markers { order: 3; width: 100%; justify-content: flex-start; } }
               @media (max-width: 640px) { .ds-header-rail .ds-rail-marker-num { width: 22px; height: 22px; } }
               @media (max-width: 768px) { .ds-rail-ctl { display: none !important; } }
@@ -409,6 +444,14 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   </Link>
                 )
               )}
+            </div>
+          )}
+          </div>
+
+          {isMobile && busy && (
+            <div role="status" className="ds-generation-busy-banner" aria-live="polite">
+              <span className="ds-generation-busy-dot" aria-hidden />
+              <span>{formatBusyMessage(busy, true)}</span>
             </div>
           )}
         </nav>

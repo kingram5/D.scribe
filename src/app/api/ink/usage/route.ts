@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const { data } = await supabase
     .from("ink_balances")
-    .select("tts_chars_used, tts_period_start, tier")
+    .select("tts_chars_used, tts_period_start, tier, topup_tts_chars, topup_ink")
     .eq("user_id", user.id)
     .single();
 
@@ -25,5 +25,7 @@ export async function GET(req: NextRequest) {
     tts_limit: ttsLimit,
     tts_period_start: ttsPeriodStart,
     tier,
+    topup_tts_chars: Number(data?.topup_tts_chars ?? 0),
+    topup_ink: Number(data?.topup_ink ?? 0),
   });
 }

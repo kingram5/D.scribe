@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { INK_LIMITS } from "@/lib/tiers";
+import AddMoreButton from "@/components/ui/AddMoreButton";
 
 /** Persistent Ink balance in the app chrome: current balance over the monthly
  *  allotment with a thin burn line. Links to Settings for the full breakdown.
@@ -11,6 +12,7 @@ import { INK_LIMITS } from "@/lib/tiers";
 export default function InkBalanceMeter() {
   const [balance, setBalance] = useState<number | null>(null);
   const [tier, setTier] = useState<string>("free");
+  const [topupInk, setTopupInk] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,6 +23,7 @@ export default function InkBalanceMeter() {
           if (cancelled || !d) return;
           if (typeof d.balance === "number") setBalance(d.balance);
           if (typeof d.tier === "string") setTier(d.tier);
+          if (typeof d.topup_ink === "number") setTopupInk(d.topup_ink);
         })
         .catch(() => {});
     load();
@@ -37,34 +40,42 @@ export default function InkBalanceMeter() {
   const shown = balance >= 100 ? Math.round(balance) : Math.round(balance * 10) / 10;
 
   return (
-    <Link
-      href="/settings"
-      title={`${shown} of ${limit} Ink remaining this period`}
-      aria-label={`Ink balance: ${shown} of ${limit} remaining`}
-      style={{ textDecoration: "none", flexShrink: 0, display: "block", minWidth: 76 }}
-    >
-      <span style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-        <span className="ds-label" style={{ fontSize: 9, color: "var(--text-tertiary)" }}>Ink</span>
-        <span style={{
-          fontFamily: "var(--font-lora), serif",
-          fontSize: 14,
-          color: low ? "#B3352C" : "var(--text-primary)",
-          fontVariantNumeric: "tabular-nums",
-          lineHeight: 1,
-        }}>
-          {shown.toLocaleString()}
+    <div style={{ flexShrink: 0, minWidth: 76 }}>
+      <Link
+        href="/settings"
+        title={`${shown} of ${limit} Ink remaining this period`}
+        aria-label={`Ink balance: ${shown} of ${limit} remaining`}
+        style={{ textDecoration: "none", display: "block" }}
+      >
+        <span style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+          <span className="ds-label" style={{ fontSize: 9, color: "var(--text-tertiary)" }}>Ink</span>
+          <span style={{
+            fontFamily: "var(--font-lora), serif",
+            fontSize: 14,
+            color: low ? "#B3352C" : "var(--text-primary)",
+            fontVariantNumeric: "tabular-nums",
+            lineHeight: 1,
+          }}>
+            {shown.toLocaleString()}
+          </span>
+          <span className="ds-label" style={{ fontSize: 9, color: "var(--text-tertiary)" }}>/ {limit.toLocaleString()}</span>
+          {topupInk > 0 && (
+            <span className="ds-label" style={{ fontSize: 9, color: "#C17A47" }}>+ {topupInk.toLocaleString()} extra</span>
+          )}
         </span>
-        <span className="ds-label" style={{ fontSize: 9, color: "var(--text-tertiary)" }}>/ {limit.toLocaleString()}</span>
-      </span>
-      <span style={{ display: "block", height: 2, marginTop: 4, background: "var(--ds-input-border, rgba(44,36,25,0.12))", borderRadius: 1, overflow: "hidden" }}>
-        <span style={{
-          display: "block",
-          height: "100%",
-          width: `${pct * 100}%`,
-          background: low ? "#B3352C" : "#C17A47",
-          borderRadius: 1,
-        }} />
-      </span>
-    </Link>
+        <span style={{ display: "block", height: 2, marginTop: 4, background: "var(--ds-input-border, rgba(44,36,25,0.12))", borderRadius: 1, overflow: "hidden" }}>
+          <span style={{
+            display: "block",
+            height: "100%",
+            width: `${pct * 100}%`,
+            background: low ? "#B3352C" : "#C17A47",
+            borderRadius: 1,
+          }} />
+        </span>
+      </Link>
+      <div style={{ marginTop: 4 }}>
+        <AddMoreButton sku="ink_pack" />
+      </div>
+    </div>
   );
 }

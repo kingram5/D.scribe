@@ -486,6 +486,10 @@ export default function PricingPage() {
           ))}
         </div>
 
+        <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 13, color: "#7A7358", marginTop: 28, textAlign: "center" }}>
+          Need a little more? One-time Ink and voice refills, from $20 — they never expire.
+        </p>
+
         {/* Everything included — shown once, not gated per tier */}
         <div style={{ maxWidth: 760, margin: "56px auto 0", textAlign: "center" }}>
           <p style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C17A47", marginBottom: 20 }}>

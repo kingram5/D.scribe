@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import AddMoreButton from "@/components/ui/AddMoreButton";
 
 interface TtsData {
   tts_chars_used: number;
   tts_limit: number;
   tts_period_start: string;
   tier: string;
+  topup_tts_chars?: number;
 }
 
 export default function TtsMeter({ compact = false }: { compact?: boolean }) {
@@ -36,8 +38,10 @@ export default function TtsMeter({ compact = false }: { compact?: boolean }) {
 
   const used = data.tts_chars_used;
   const limit = data.tts_limit;
+  const extra = Number(data.topup_tts_chars ?? 0);
   const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
   const barColor = pct > 85 ? "#ef4444" : "#B87333";
+  const extraLabel = extra > 0 ? `+ ${extra.toLocaleString()} extra` : null;
 
   if (compact) {
     return (
@@ -82,7 +86,11 @@ export default function TtsMeter({ compact = false }: { compact?: boolean }) {
         }}>
           {used.toLocaleString()}
           <span style={{ fontWeight: 400, opacity: 0.6 }}> / {limit.toLocaleString()}</span>
+          {extraLabel && (
+            <span style={{ fontWeight: 400, color: "#C17A47", marginLeft: 6 }}>{extraLabel}</span>
+          )}
         </span>
+        <AddMoreButton sku="voice_pack" />
       </div>
     );
   }
@@ -117,6 +125,9 @@ export default function TtsMeter({ compact = false }: { compact?: boolean }) {
           }}>
             {used.toLocaleString()}{" "}
             <span style={{ color: "#a0978a", fontWeight: 400 }}>/ {limit.toLocaleString()}</span>
+            {extraLabel && (
+              <span style={{ color: "#C17A47", fontWeight: 500, marginLeft: 6 }}>{extraLabel}</span>
+            )}
           </span>
         </div>
         <div style={{
@@ -140,7 +151,10 @@ export default function TtsMeter({ compact = false }: { compact?: boolean }) {
           marginTop: 8,
           fontFamily: "var(--font-manrope), sans-serif",
         }}>
-          chars / month
+          chars / month{extraLabel ? ` · ${extraLabel}` : ""}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <AddMoreButton sku="voice_pack" />
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { TIER_INK, STRIPE_PRICES } from "@/lib/stripe";
+import { TIER_INK, STRIPE_PRICES, TOPUP_GRANTS } from "@/lib/stripe";
 
 describe("TIER_INK", () => {
   it("starter tier gets 300 Ink", () => {
@@ -32,6 +32,13 @@ describe("TIER_INK", () => {
 
   it("unknown tier returns undefined (not a silent zero)", () => {
     expect(TIER_INK["free"]).toBeUndefined();
+  });
+});
+
+describe("TOPUP_GRANTS", () => {
+  it("voice pack grants 20,000 chars and ink pack grants 200 Ink", () => {
+    expect(TOPUP_GRANTS.voice_pack).toEqual({ tts_chars: 20000 });
+    expect(TOPUP_GRANTS.ink_pack).toEqual({ ink: 200 });
   });
 });
 

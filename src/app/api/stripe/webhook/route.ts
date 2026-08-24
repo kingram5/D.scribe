@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { stripe, TIER_INK } from "@/lib/stripe";
 import { createServerClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
+import { grantTopupPurchase, clawbackTopupPurchase } from "@/lib/topup-purchases";
+import { isTopupSku, renewalRefillPayload } from "@/lib/topups";
 
 export const dynamic = "force-dynamic";
 
@@ -83,9 +85,28 @@ async function handleStripeEvent(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
+    const kind = session.metadata?.kind;
+    const sku = session.metadata?.sku;
     const tier = session.metadata?.tier;
 
-    if (userId && tier && TIER_INK[tier] != null) {
+    if (kind === "topup") {
+      if (!userId || !isTopupSku(sku)) {
+        logger.error("topup checkout.session.completed with unusable metadata — credits NOT granted", {
+          route: "/api/stripe/webhook",
+          meta: { event_id: event.id, session: session.id, user_id: userId ?? "(missing)", sku: sku ?? "(missing)" },
+        });
+      } else {
+        await grantTopupPurchase({
+          userId,
+          sku,
+          stripeSessionId: session.id,
+          paymentIntent: typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null,
+          amountCents: session.amount_total ?? 0,
+        });
+      }
+    } else if (userId && tier && TIER_INK[tier] != null) {
       await activateSubscription(
         userId,
         tier,
@@ -192,10 +213,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       if (balance && TIER_INK[balance.tier] != null) {
         const { error } = await supabase
           .from("ink_balances")
-          .update({
-            ink_balance: TIER_INK[balance.tier],
-            ink_period_start: new Date().toISOString(),
-          })
+          .update(renewalRefillPayload(balance.tier))
           .eq("user_id", balance.user_id);
         if (error) throw new Error(`invoice refill failed: ${error.message}`);
       }
@@ -220,14 +238,13 @@ async function handleStripeEvent(event: Stripe.Event) {
     }
   }
 
-  // Refund or chargeback — revoke paid access entirely.
+  // Refund or chargeback. Top-up packs claw back their own bucket and leave
+  // the subscription wallet alone. Subscription refunds still revoke access.
   if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
     let customerId: string | null = null;
+    let paymentIntent: string | null = null;
     if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
-      // charge.refunded fires for PARTIAL refunds too. The boolean on the
-      // object is only true for a full refund — a $5 goodwill credit on a $99
-      // charge must not zero a paying customer's account.
       const fullyRefunded = charge.refunded === true || charge.amount_refunded >= charge.amount;
       if (!fullyRefunded) {
         logger.warn("Partial refund — entitlement retained", {
@@ -237,12 +254,33 @@ async function handleStripeEvent(event: Stripe.Event) {
         return;
       }
       customerId = charge.customer as string | null;
+      paymentIntent = typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : charge.payment_intent?.id ?? null;
     } else {
       const dispute = event.data.object as Stripe.Dispute;
       const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+      paymentIntent = typeof dispute.payment_intent === "string"
+        ? dispute.payment_intent
+        : dispute.payment_intent?.id ?? null;
       if (chargeId) {
         const charge = await stripe.charges.retrieve(chargeId);
         customerId = charge.customer as string | null;
+        if (!paymentIntent) {
+          paymentIntent = typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id ?? null;
+        }
+      }
+    }
+    if (paymentIntent) {
+      const clawed = await clawbackTopupPurchase(paymentIntent);
+      if (clawed) {
+        logger.warn("Top-up refunded/disputed — clawed back credits", {
+          route: "/api/stripe/webhook",
+          meta: { payment_intent: paymentIntent, type: event.type },
+        });
+        return;
       }
     }
     if (customerId) {

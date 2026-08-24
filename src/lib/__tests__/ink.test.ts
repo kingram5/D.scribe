@@ -28,8 +28,8 @@ import { estimateInkCost, checkInk, reserveInk } from "@/lib/ink";
 // ---------------------------------------------------------------------------
 
 /** Seed the mock so ensureBalance (the ensure_ink_balance RPC) returns a row. */
-function seedBalance(ink_balance: number, tier = "free", lifetime_used = 0) {
-  mockRpc.mockResolvedValue({ data: [{ ink_balance, tier, lifetime_used }], error: null });
+function seedBalance(ink_balance: number, tier = "free", lifetime_used = 0, topup_ink = 0) {
+  mockRpc.mockResolvedValue({ data: [{ ink_balance, tier, lifetime_used, topup_ink }], error: null });
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +116,13 @@ describe("checkInk", () => {
     seedBalance(0.01);
     const result = await checkInk("user-tiny");
     expect(result.allowed).toBe(true);
+  });
+
+  it("allows when monthly Ink is empty but top-up Ink covers the floor", async () => {
+    seedBalance(0, "pro", 0, 200);
+    const result = await checkInk("user-topup", "generate");
+    expect(result.allowed).toBe(true);
+    expect(result.balance).toBe(200);
   });
 
   // --- return shape ---

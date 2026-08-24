@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 
+import AddMoreButton from "@/components/ui/AddMoreButton";
+
 interface InkData {
   balance: number;
   lifetime_used: number;
   tier: string;
   breakdown: Record<string, number>;
+  topup_ink?: number;
 }
 
 const TIER_LIMITS: Record<string, number> = {
@@ -51,8 +54,10 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
 
   const limit = TIER_LIMITS[data.tier] || 10;
   const used = limit - data.balance;
+  const extra = Number(data.topup_ink ?? 0);
   const pct = Math.min((used / limit) * 100, 100);
   const color = pct < 60 ? "#22c55e" : pct < 85 ? "#eab308" : "#ef4444";
+  const extraLabel = extra > 0 ? `+ ${extra.toLocaleString()} extra` : null;
 
   if (compact) {
     return (
@@ -91,7 +96,11 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
           whiteSpace: "nowrap",
         }}>
           {data.balance.toFixed(1)} Ink
+          {extraLabel && (
+            <span style={{ fontWeight: 400, color: "#C17A47", marginLeft: 6 }}>{extraLabel}</span>
+          )}
         </span>
+        <AddMoreButton sku="ink_pack" />
       </div>
     );
   }
@@ -132,6 +141,9 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
             fontFamily: "var(--font-geist-mono), monospace",
           }}>
             {data.balance.toFixed(1)} <span style={{ color: "#a0978a", fontWeight: 400 }}>/ {limit}</span>
+            {extraLabel && (
+              <span style={{ color: "#C17A47", fontWeight: 500, marginLeft: 6 }}>{extraLabel}</span>
+            )}
           </span>
         </div>
 
@@ -166,6 +178,7 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
             fontFamily: "var(--font-manrope), sans-serif",
           }}>
             {TIER_LABELS[data.tier] || data.tier}
+            {extraLabel ? ` · ${extraLabel}` : ""}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 10, color: "#a0978a" }}>
@@ -187,6 +200,9 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
               <path d="M2 4l3 3 3-3" />
             </svg>
           </div>
+        </div>
+        <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+          <AddMoreButton sku="ink_pack" />
         </div>
       </button>
 

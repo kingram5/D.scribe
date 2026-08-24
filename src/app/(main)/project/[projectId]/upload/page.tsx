@@ -7,6 +7,11 @@ import BrainstormChat from "@/components/upload/BrainstormChat";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
 import { useUploadEngine } from "./useUploadEngine";
+import {
+  formatRelativeTouched,
+  type BrainstormMessage,
+  type BrainstormSessionRecord,
+} from "@/lib/brainstorm-session";
 
 export default function UploadPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -16,6 +21,21 @@ export default function UploadPage() {
   // The lobby is the doorway; "Start Brainstorming" opens the studio over it.
   const [chatting, setChatting] = useState(false);
   const [triggerBrainstormFinish, setTriggerBrainstormFinish] = useState(false);
+  const [pausedSession, setPausedSession] = useState<BrainstormSessionRecord | null>(null);
+  const [skipResumePrompt, setSkipResumePrompt] = useState(false);
+  const [finishingPaused, setFinishingPaused] = useState(false);
+
+  const refreshPausedSession = useCallback(() => {
+    fetch(`/api/brainstorm/session?project_id=${encodeURIComponent(projectId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPausedSession((d?.session as BrainstormSessionRecord | null) ?? null))
+      .catch(() => setPausedSession(null));
+  }, [projectId]);
+
+  useEffect(() => {
+    if (chatting || showBrainstorm) return;
+    refreshPausedSession();
+  }, [chatting, showBrainstorm, refreshPausedSession]);
 
   // A studio is an overlay, not a new route. Give it one history entry so a
   // phone Back gesture closes the overlay before it leaves the upload journey.
@@ -119,7 +139,55 @@ export default function UploadPage() {
             canInitialize={engine.canInitialize}
             allDone={engine.allDone}
             onInitialize={handleInitialize}
-            onBrainstorm={() => setShowBrainstorm(true)}
+            onBrainstorm={() => {
+              setSkipResumePrompt(false);
+              setShowBrainstorm(true);
+            }}
+            pausedBrainstorm={pausedSession ? {
+              turn_count: pausedSession.turn_count,
+              updated_at: formatRelativeTouched(pausedSession.updated_at),
+            } : null}
+            onContinueBrainstorm={() => {
+              setSkipResumePrompt(true);
+              setShowBrainstorm(true);
+              setChatting(true);
+            }}
+            finishingPausedBrainstorm={finishingPaused}
+            onFinishPausedBrainstorm={async () => {
+              if (!pausedSession || finishingPaused) return;
+              const messages = (pausedSession.messages ?? []) as BrainstormMessage[];
+              if (messages.filter((m) => m.role === "user").length < 2) return;
+              setFinishingPaused(true);
+              try {
+                const res = await fetch("/api/brainstorm/summarize", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ messages, project_id: projectId }),
+                });
+                if (res.ok) {
+                  void fetch("/api/brainstorm/session", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ project_id: projectId, status: "finished" }),
+                  }).catch(() => {});
+                  try { localStorage.removeItem(`brainstorm_session_${projectId}`); } catch { /* storage blocked */ }
+                  setPausedSession(null);
+                  router.push(`/project/${projectId}/transcript`);
+                }
+              } finally {
+                setFinishingPaused(false);
+              }
+            }}
+            onDiscardPausedBrainstorm={() => {
+              if (!window.confirm("Throw this conversation away? You can always start a new one.")) return;
+              void fetch("/api/brainstorm/session", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ project_id: projectId, status: "discarded" }),
+              }).catch(() => {});
+              try { localStorage.removeItem(`brainstorm_session_${projectId}`); } catch { /* storage blocked */ }
+              setPausedSession(null);
+            }}
           />
 
           {/* Action bar */}
@@ -174,6 +242,7 @@ export default function UploadPage() {
             <BrainstormChat
               projectId={projectId}
               autoStart
+              skipResumePrompt={skipResumePrompt}
               onComplete={() => router.push(`/project/${projectId}/transcript`)}
               onBack={closeStudio}
               triggerFinish={triggerBrainstormFinish}

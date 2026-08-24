@@ -17,7 +17,8 @@ export type InkOperation =
   | "enrich"
   | "style_distill"
   | "transcribe"
-  | "youtube_import";
+  | "youtube_import"
+  | "research";
 
 // Flat vendor-cost rates for the non-token operations. Rough cost parity with
 // the 1-Ink-per-1000-token convention (1 Ink ≈ $0.006-0.009 of vendor spend):
@@ -44,6 +45,7 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   style_distill: 1,
   transcribe: 2,
   youtube_import: 2,
+  research: 3,
 };
 
 /** Estimated minimum Ink cost for an operation (used by the pre-flight gate). */

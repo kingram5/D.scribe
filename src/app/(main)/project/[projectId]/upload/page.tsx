@@ -6,6 +6,7 @@ import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
+import ResearchCorpusList from "@/components/upload/ResearchCorpusList";
 import { useUploadEngine } from "./useUploadEngine";
 import {
   formatRelativeTouched,
@@ -189,6 +190,7 @@ export default function UploadPage() {
               setPausedSession(null);
             }}
           />
+          <ResearchCorpusList projectId={projectId} />
 
           {/* Action bar */}
           <div className="ds-upload-action-bar" style={{

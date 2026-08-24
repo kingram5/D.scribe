@@ -139,13 +139,22 @@ export async function POST(req: NextRequest) {
   const targetWords = chapter.target_word_count || 1500;
   const recommendedQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
 
+  const { data: researched } = await supabase
+    .from("research_items")
+    .select("text, attribution, source_title, source_url")
+    .eq("project_id", chapter.projects.id)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .limit(20);
+
   const promptText = enrichPrompt(
     chapter.title,
     chapter.summary,
     (keyPoints || []).map((kp) => kp.title),
     chapter.projects.audience,
     chapter.projects.scripture_translation,
-    excludeTexts
+    excludeTexts,
+    researched ?? [],
   );
 
   // Responses sometimes include unescaped quotes inside string values, which break

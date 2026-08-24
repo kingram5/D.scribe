@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { createServerClient } from "@/lib/supabase";
 import { brainstormProfileBlock } from "@/lib/audience-profiles";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { formatResearchedSourcesBlock, rankResearchItems, type ResearchItem } from "@/lib/research-corpus";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -131,10 +132,29 @@ export async function POST(req: NextRequest) {
     greetingBlock = `\n\nOPENING GREETING — This is the very first message of the session. Open warmly as Theo, in one or two sentences, before your first question: introduce yourself briefly and show you already know this project.\n${known.length ? known.join("\n") : "Nothing about the author or project is on file yet — keep the greeting warm and generic."}\nShape (adapt, don't recite): "Hey ${firstName || "there"}, Theo here to help you start brainstorming${knownTitle ? ` ${JSON.stringify(knownTitle)}` : " your book"}${knownAudience ? `. I see you're writing for a ${knownAudience} audience` : ""}. Why don't we start with you telling me..."\nThen ask your single opening question. Never invent a name, title, or audience that is not listed above.`;
   }
 
-  const dynamicSystem = firstRealUserMsg
+  let researchBlock = "";
+  if (verifiedProjectId) {
+    const supabase = createServerClient();
+    const { data: researchRows } = await supabase
+      .from("research_items")
+      .select("id, kind, text, attribution, source_title, source_url, source_date, themes, created_at")
+      .eq("project_id", verifiedProjectId)
+      .eq("user_id", user.id)
+      .eq("status", "active");
+    const recentUserText = messages
+      .filter((m: { role: string }) => m.role === "user")
+      .slice(-6)
+      .map((m: { content: string }) => m.content)
+      .join(" ");
+    researchBlock = formatResearchedSourcesBlock(
+      rankResearchItems((researchRows ?? []) as ResearchItem[], recentUserText),
+    );
+  }
+
+  const dynamicSystem = (firstRealUserMsg
     ? baseSystem +
       `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
-    : baseSystem + greetingBlock;
+    : baseSystem + greetingBlock) + researchBlock;
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.

@@ -684,6 +684,54 @@ input[type=range] {
     height: 320px !important;
   }
 
+  /* Outline/Analysis: the floating outline-editor toolbar sits above the mobile step nav. */
+  .ds-outline-toolbar {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Outline editor canvas: native touch scroll instead of mouse-only pan/zoom */
+  .ds-outline-canvas--mobile {
+    height: min(62dvh, 520px) !important;
+    min-height: 280px;
+    overscroll-behavior: contain;
+  }
+
+  .ds-outline-drag-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    color: rgba(0, 0, 0, 0.32);
+    font-size: 20px;
+    line-height: 1;
+    z-index: 6;
+    border-radius: 4px 0 0 4px;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .ds-outline-drag-handle--compact {
+    width: 32px;
+    font-size: 16px;
+  }
+
+  .ds-outline-drag-handle:active {
+    background: rgba(0, 0, 0, 0.08);
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .ds-outline-note--dragging {
+    touch-action: none !important;
+    z-index: 100 !important;
+  }
+
   /* Generate: chapter card footer buttons stack */
   .ds-chapter-footer {
     flex-direction: column !important;

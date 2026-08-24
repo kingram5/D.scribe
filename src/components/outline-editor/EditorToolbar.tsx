@@ -34,7 +34,7 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const isSaving = isDirty || saveStatus === "saving";
   return (
-    <div data-tut="analysis-toolbar" style={{
+    <div className="ds-outline-toolbar" data-tut="analysis-toolbar" style={{
       position: "fixed",
       bottom: 24,
       left: "50%",

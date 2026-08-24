@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chapter, KeyPoint } from "@/types";
 import { useOutlineState } from "./useOutlineState";
 import {
@@ -14,6 +14,7 @@ import {
   KP_INDENT,
   type ColumnLayout,
   type EdgeDef,
+  type LayoutMode,
   type NoteColor,
 } from "./layout";
 import { ChapterNote } from "./ChapterNode";
@@ -48,11 +49,33 @@ interface KpDragState {
   startY: number;
   originX: number;
   originY: number;
+  grabOffsetX: number;
+  grabOffsetY: number;
   color: NoteColor;
 }
 
 function randomRotation(range: number) {
   return (Math.random() - 0.5) * 2 * range;
+}
+
+const MOBILE_ZOOM_MIN = 0.25;
+const MOBILE_ZOOM_MAX = 2.5;
+const MOBILE_FRAME_PADDING = 20;
+const LONG_PRESS_MS = 280;
+const LONG_PRESS_CANCEL_PX = 28;
+
+type LongPressPayload =
+  | { type: "chapter"; chapterId: string }
+  | { type: "kp"; kpId: string; chapterId: string; kpIndex: number; color: NoteColor };
+
+function clampZoom(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function touchDistance(t1: Touch, t2: Touch) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
 }
 
 function getBorderColor(color: NoteColor) {
@@ -114,14 +137,38 @@ function OutlineEditorInner({
     startY: number;
     offsetX: number;
     offsetY: number;
-  }>({ noteId: null, startX: 0, startY: 0, offsetX: 0, offsetY: 0 });
+    canvasStartX: number;
+    canvasStartY: number;
+  }>({ noteId: null, startX: 0, startY: 0, offsetX: 0, offsetY: 0, canvasStartX: 0, canvasStartY: 0 });
   const rafRef = useRef<number>(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const mobileSpacerRef = useRef<HTMLDivElement>(null);
+  const mobileScaleRef = useRef<HTMLDivElement>(null);
+  const canvasBoundsRef = useRef({ width: 800, height: 600 });
+  const hasMobileFramedRef = useRef(false);
+  const pendingPinchRef = useRef<{ zoom: number; viewportX: number; viewportY: number } | null>(null);
+  const pinchRafRef = useRef(0);
+  const longPressRef = useRef<{
+    timer: ReturnType<typeof setTimeout> | null;
+    startX: number;
+    startY: number;
+    payload: LongPressPayload;
+  } | null>(null);
+  const columnsListRef = useRef<ColumnLayout[]>([]);
+  const isNoteDraggingRef = useRef(false);
+  const lastTouchRef = useRef<{ clientX: number; clientY: number } | null>(null);
+
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
+    if (typeof window === "undefined") return "desktop";
+    return window.matchMedia("(max-width: 768px)").matches ? "mobile" : "desktop";
+  });
+  const layoutModeRef = useRef<LayoutMode>("desktop");
 
   // KP drag state — separate from column drag
   const kpDragRef = useRef<KpDragState | null>(null);
   const [nearestColId, setNearestColId] = useState<string | null>(null);
+  const [isNoteDragging, setIsNoteDragging] = useState(false);
 
   // Layout data
   const [columns, setColumns] = useState<ColumnLayout[]>([]);
@@ -136,6 +183,7 @@ function OutlineEditorInner({
   const zoomRef = useRef(1);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const pinchRef = useRef<{ initialDistance: number; initialZoom: number } | null>(null);
 
   // Combine dialog
   const [confirmCombine, setConfirmCombine] = useState<{
@@ -163,10 +211,130 @@ function OutlineEditorInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    layoutModeRef.current = layoutMode;
+  }, [layoutMode]);
+
+  useEffect(() => {
+    columnsListRef.current = columns;
+  }, [columns]);
+
+  const clientToCanvas = useCallback((clientX: number, clientY: number) => {
+    const el = canvasRef.current;
+    if (!el) return { x: clientX, y: clientY };
+
+    const rect = el.getBoundingClientRect();
+    const z = zoomRef.current;
+
+    if (layoutModeRef.current === "mobile") {
+      return {
+        x: (clientX - rect.left + el.scrollLeft) / z,
+        y: (clientY - rect.top + el.scrollTop) / z,
+      };
+    }
+
+    return {
+      x: (clientX - rect.left - panRef.current.x) / z,
+      y: (clientY - rect.top - panRef.current.y) / z,
+    };
+  }, []);
+
+  const syncMobileZoomDom = useCallback((newZoom: number) => {
+    const bounds = canvasBoundsRef.current;
+    const spacer = mobileSpacerRef.current;
+    const scaleLayer = mobileScaleRef.current;
+    if (spacer) {
+      spacer.style.width = `${bounds.width * newZoom}px`;
+      spacer.style.height = `${bounds.height * newZoom}px`;
+    }
+    if (scaleLayer) {
+      scaleLayer.style.transform = `scale(${newZoom})`;
+    }
+  }, []);
+
+  const scrollFirstChapterIntoView = useCallback(() => {
+    const el = canvasRef.current;
+    if (!el) return false;
+
+    const firstChapterId = columnsListRef.current[0]?.chapterId;
+    if (!firstChapterId) return false;
+
+    const note = el.querySelector(`[data-outline-chapter="${firstChapterId}"]`) as HTMLElement | null;
+    if (!note) return false;
+
+    const pad = MOBILE_FRAME_PADDING;
+    const noteRect = note.getBoundingClientRect();
+    const canvasRect = el.getBoundingClientRect();
+
+    el.scrollLeft = Math.max(0, el.scrollLeft + (noteRect.left - canvasRect.left) - pad);
+    el.scrollTop = Math.max(0, el.scrollTop + (noteRect.top - canvasRect.top) - pad);
+    return true;
+  }, []);
+
+  const frameMobileViewport = useCallback(() => {
+    const el = canvasRef.current;
+    const cols = columnsListRef.current;
+    if (!el || cols.length === 0 || layoutModeRef.current !== "mobile") return false;
+
+    const viewW = el.clientWidth;
+    const viewH = el.clientHeight;
+    if (viewW < 40 || viewH < 40) return false;
+
+    const pad = MOBILE_FRAME_PADDING;
+    const firstCol = cols[0];
+    const focusWidth = Math.max(CHAPTER_WIDTH, Math.min(firstCol.columnWidth, viewW));
+    const fitZoom = clampZoom(
+      (viewW - pad * 2) / focusWidth,
+      MOBILE_ZOOM_MIN,
+      1
+    );
+
+    zoomRef.current = fitZoom;
+    setZoom(fitZoom);
+    syncMobileZoomDom(fitZoom);
+
+    requestAnimationFrame(() => {
+      scrollFirstChapterIntoView();
+      requestAnimationFrame(() => scrollFirstChapterIntoView());
+    });
+
+    return true;
+  }, [scrollFirstChapterIntoView, syncMobileZoomDom]);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressRef.current?.timer) {
+      clearTimeout(longPressRef.current.timer);
+    }
+    longPressRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => {
+      const mode: LayoutMode = mq.matches ? "mobile" : "desktop";
+      setLayoutMode(mode);
+      layoutModeRef.current = mode;
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (layoutMode === "mobile") {
+      hasMobileFramedRef.current = false;
+      panRef.current = { x: 0, y: 0 };
+      setPan({ x: 0, y: 0 });
+    } else {
+      zoomRef.current = 1;
+      setZoom(1);
+    }
+  }, [layoutMode]);
+
   // Rebuild layout when state changes
   useEffect(() => {
     const sortedChapters = [...state.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
-    const { columns: newCols, edges: newEdges } = buildLayout(sortedChapters, state.keyPoints);
+    const { columns: newCols, edges: newEdges } = buildLayout(sortedChapters, state.keyPoints, layoutMode);
     setColumns(newCols);
     setEdges(newEdges);
 
@@ -176,6 +344,12 @@ function OutlineEditorInner({
     newCols.forEach((col) => {
       const prev = existing.get(col.chapterId);
       if (prev) {
+        if (layoutMode === "mobile" && !prev.isDragging) {
+          prev.x = col.x;
+          prev.y = col.y;
+          prev.isDragging = false;
+          prev.targetRotation = prev.baseRotation;
+        }
         newMap.set(col.chapterId, prev);
       } else {
         const baseRot = randomRotation(2);
@@ -193,7 +367,7 @@ function OutlineEditorInner({
     });
     columnsRef.current = newMap;
     setRenderTick((t) => t + 1);
-  }, [state.chapters, state.keyPoints]);
+  }, [state.chapters, state.keyPoints, layoutMode]);
 
   // Physics animation loop
   useEffect(() => {
@@ -264,7 +438,7 @@ function OutlineEditorInner({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state.dirty, state.chapters, state.keyPoints, projectId, dispatch]);
 
-  // Find nearest column to a canvas X position, and compute insertion index from Y
+  // Find nearest column and compute KP insertion index from drag position
   const findNearestColumn = useCallback((canvasX: number, canvasY: number): { chapterId: string; insertIndex: number } | null => {
     let bestDist = Infinity;
     let bestColLayout: ColumnLayout | null = null;
@@ -273,18 +447,42 @@ function OutlineEditorInner({
     for (const col of columns) {
       const colState = columnsRef.current.get(col.chapterId);
       if (!colState) continue;
-      const colCenterX = colState.x + CHAPTER_WIDTH / 2;
-      const dist = Math.abs(canvasX - colCenterX);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestColLayout = col;
-        bestColState = colState;
+
+      if (layoutModeRef.current === "mobile") {
+        const colCenterY = colState.y + col.columnHeight / 2;
+        const dist = Math.abs(canvasY - colCenterY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestColLayout = col;
+          bestColState = colState;
+        }
+      } else {
+        const colCenterX = colState.x + CHAPTER_WIDTH / 2;
+        const dist = Math.abs(canvasX - colCenterX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestColLayout = col;
+          bestColState = colState;
+        }
       }
     }
 
     if (!bestColLayout || !bestColState) return null;
 
-    // Compute insertion index based on Y position within column
+    if (bestColLayout.kpOrientation === "horizontal") {
+      const kpStartX = bestColState.x + KP_INDENT;
+      const relX = canvasX - kpStartX;
+
+      if (relX < 0) {
+        return { chapterId: bestColLayout.chapterId, insertIndex: 0 };
+      }
+
+      const slotWidth = KP_WIDTH + KP_GAP;
+      const idx = Math.round(relX / slotWidth);
+      const clamped = Math.min(idx, bestColLayout.kpIds.length);
+      return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
+    }
+
     const kpStartY = bestColState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET;
     const relY = canvasY - kpStartY;
 
@@ -298,201 +496,73 @@ function OutlineEditorInner({
     return { chapterId: bestColLayout.chapterId, insertIndex: clamped };
   }, [columns]);
 
-  // Column drag handler. Pointer Events, not mouse events: browsers synthesise
-  // mouse events for taps but NEVER for touch drags (a finger drag emits
-  // touchmove and scrolls the page), so a mousemove-driven drag simply does
-  // not exist on a phone — and this drag is how chapters get reordered.
-  const handleColumnPointerDown = useCallback((e: React.PointerEvent, chapterId: string) => {
-    if ((e.target as HTMLElement).contentEditable === "true") return;
-    e.preventDefault();
-    e.stopPropagation();
-    const col = columnsRef.current.get(chapterId);
-    if (!col) return;
-    col.isDragging = true;
-    dragRef.current = {
-      noteId: chapterId,
-      startX: e.clientX,
-      startY: e.clientY,
-      offsetX: col.x,
-      offsetY: col.y,
-    };
-    setRenderTick((t) => t + 1);
+  const lockMobileCanvasTouch = useCallback(() => {
+    const el = canvasRef.current;
+    if (el) el.style.touchAction = "none";
   }, []);
 
-  // KP drag handler — starts independent KP drag
-  const handleKpPointerDown = useCallback((e: React.PointerEvent, kpId: string, chapterId: string, kpIndex: number, color: NoteColor) => {
-    if ((e.target as HTMLElement).contentEditable === "true") return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const colState = columnsRef.current.get(chapterId);
-    if (!colState) return;
-
-    // Compute KP's canvas position within the column
-    const kpX = colState.x + KP_INDENT;
-    const kpY = colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET + kpIndex * (KP_HEIGHT + KP_GAP);
-
-    kpDragRef.current = {
-      kpId,
-      fromChapterId: chapterId,
-      fromIndex: kpIndex,
-      x: kpX,
-      y: kpY,
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: kpX,
-      originY: kpY,
-      color,
-    };
-    setRenderTick((t) => t + 1);
+  const unlockMobileCanvasTouch = useCallback(() => {
+    const el = canvasRef.current;
+    if (el) el.style.touchAction = "";
   }, []);
 
-  useEffect(() => {
-    function handleMouseMove(e: PointerEvent) {
-      // Handle panning
-      if (isPanningRef.current) {
-        const dx = e.clientX - panStartRef.current.x;
-        const dy = e.clientY - panStartRef.current.y;
-        const newPan = {
-          x: panStartRef.current.panX + dx,
-          y: panStartRef.current.panY + dy,
-        };
-        panRef.current = newPan;
-        setPan(newPan);
-        return;
-      }
+  const getLayoutPositionsForOrder = useCallback((orderedIds: string[]) => {
+    const chapterMap = new Map(stateRef.current.chapters.map((ch) => [ch.id, ch]));
+    const orderedChapters = orderedIds
+      .map((id) => chapterMap.get(id))
+      .filter((ch): ch is Chapter => Boolean(ch));
+    const { columns: layoutCols } = buildLayout(
+      orderedChapters,
+      stateRef.current.keyPoints,
+      "mobile",
+    );
+    return new Map(layoutCols.map((col) => [col.chapterId, { x: col.x, y: col.y }]));
+  }, []);
 
-      // Handle KP drag
-      if (kpDragRef.current) {
-        const z = zoomRef.current;
-        const dx = (e.clientX - kpDragRef.current.startX) / z;
-        const dy = (e.clientY - kpDragRef.current.startY) / z;
-        kpDragRef.current.x = kpDragRef.current.originX + dx;
-        kpDragRef.current.y = kpDragRef.current.originY + dy;
+  const getColumnCenterY = useCallback((chapterId: string, col: DragColumn) => {
+    const layout = columnsListRef.current.find((c) => c.chapterId === chapterId);
+    return col.y + (layout?.columnHeight ?? CHAPTER_HEIGHT) / 2;
+  }, []);
 
-        // Update nearest column highlight
-        const kpCenterX = kpDragRef.current.x + KP_WIDTH / 2;
-        const kpCenterY = kpDragRef.current.y + KP_HEIGHT / 2;
-        const nearest = findNearestColumn(kpCenterX, kpCenterY);
-        setNearestColId(nearest?.chapterId ?? null);
+  const getSortedChapterIds = useCallback(() => {
+    const chapters = stateRef.current.chapters;
+    const chapterIds = new Set(chapters.map((ch) => ch.id));
+    const sortAxis = layoutModeRef.current === "mobile" ? "y" : "x";
 
-        setRenderTick((t) => t + 1);
-        return;
-      }
-
-      // Handle column drag
-      const { noteId, startX, startY, offsetX, offsetY } = dragRef.current;
-      if (!noteId) return;
-      const col = columnsRef.current.get(noteId);
-      if (!col) return;
-      const z = zoomRef.current;
-      const dx = (e.clientX - startX) / z;
-      const dy = (e.clientY - startY) / z;
-      col.x = offsetX + dx;
-      col.y = offsetY + dy;
-      col.vx = dx;
-      col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
-      setRenderTick((t) => t + 1);
-    }
-
-    function handleMouseUp() {
-      // End panning
-      if (isPanningRef.current) {
-        isPanningRef.current = false;
-        return;
-      }
-
-      // End KP drag — snap to nearest column
-      if (kpDragRef.current) {
-        const kp = kpDragRef.current;
-        const kpCenterX = kp.x + KP_WIDTH / 2;
-        const kpCenterY = kp.y + KP_HEIGHT / 2;
-        const nearest = findNearestColumn(kpCenterX, kpCenterY);
-
-        if (nearest) {
-          if (nearest.chapterId === kp.fromChapterId) {
-            // Reorder within same chapter
-            // Adjust index: if dragging down past original position, account for the gap
-            let newIndex = nearest.insertIndex;
-            if (newIndex > kp.fromIndex) newIndex = Math.max(0, newIndex - 1);
-            if (newIndex !== kp.fromIndex) {
-              dispatch({
-                type: "REORDER_KEY_POINT",
-                chapterId: kp.fromChapterId,
-                keyPointId: kp.kpId,
-                newIndex,
-              });
-            }
-          } else {
-            // Move to different chapter
-            dispatch({
-              type: "MOVE_KEY_POINT",
-              keyPointId: kp.kpId,
-              fromChapterId: kp.fromChapterId,
-              toChapterId: nearest.chapterId,
-              toIndex: nearest.insertIndex,
-            });
-          }
+    return [...columnsRef.current.entries()]
+      .filter(([id]) => chapterIds.has(id))
+      .sort(([idA, a], [idB, b]) => {
+        if (sortAxis === "y") {
+          return getColumnCenterY(idA, a) - getColumnCenterY(idB, b);
         }
+        return a.x - b.x;
+      })
+      .map(([id]) => id);
+  }, [getColumnCenterY]);
 
-        kpDragRef.current = null;
-        setNearestColId(null);
-        setRenderTick((t) => t + 1);
-        return;
+  const applyMobileChapterPreview = useCallback((draggedId: string) => {
+    const sortedIds = getSortedChapterIds();
+    const positions = getLayoutPositionsForOrder(sortedIds);
+    for (const [id, pos] of positions) {
+      if (id === draggedId) continue;
+      const col = columnsRef.current.get(id);
+      if (col && !col.isDragging) {
+        col.x = pos.x;
+        col.y = pos.y;
       }
-
-      // End column drag
-      const { noteId } = dragRef.current;
-      if (!noteId) return;
-      const col = columnsRef.current.get(noteId);
-      if (col) {
-        col.isDragging = false;
-        col.targetRotation = col.baseRotation;
-
-        const combined = checkDropInteraction(noteId, col);
-        if (!combined) {
-          // Determine new order from X positions and reorder if changed
-          const chapters = stateRef.current.chapters;
-          const chapterIds = new Set(chapters.map((ch) => ch.id));
-          const sortedByX = [...columnsRef.current.entries()]
-            .filter(([id]) => chapterIds.has(id))
-            .sort(([, a], [, b]) => a.x - b.x)
-            .map(([id]) => id);
-          const currentOrder = [...chapters]
-            .sort((a, b) => a.chapter_number - b.chapter_number)
-            .map((ch) => ch.id);
-          const orderChanged = sortedByX.some((id, i) => id !== currentOrder[i]);
-          if (orderChanged) {
-            dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedByX });
-          }
-        }
-      }
-      dragRef.current.noteId = null;
-      setRenderTick((t) => t + 1);
     }
-
-    window.addEventListener("pointermove", handleMouseMove);
-    window.addEventListener("pointerup", handleMouseUp);
-    // pointercancel fires when the browser claims the gesture (scroll, zoom,
-    // OS interruption) — treat it as a drop or the drag wedges permanently.
-    window.addEventListener("pointercancel", handleMouseUp);
-    return () => {
-      window.removeEventListener("pointermove", handleMouseMove);
-      window.removeEventListener("pointerup", handleMouseUp);
-      window.removeEventListener("pointercancel", handleMouseUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, findNearestColumn]);
+  }, [getLayoutPositionsForOrder, getSortedChapterIds]);
 
   // Check if a dropped column overlaps another column (chapter-chapter combine).
-  // Returns true if a combine was triggered, false otherwise.
   const checkDropInteraction = useCallback((sourceId: string, sourceCol: DragColumn): boolean => {
+    // Mobile stacks chapters vertically — overlap-based combine blocks reorder drops.
+    if (layoutModeRef.current === "mobile") return false;
+
     for (const [targetId, targetCol] of columnsRef.current) {
       if (targetId === sourceId) continue;
 
       const overlapX = Math.abs(sourceCol.x - targetCol.x) < CHAPTER_WIDTH * 0.6;
       const overlapY = Math.abs(sourceCol.y - targetCol.y) < CHAPTER_HEIGHT * 0.6;
-
       if (overlapX && overlapY) {
         setConfirmCombine({ sourceId, targetId, type: "chapter" });
         return true;
@@ -500,6 +570,336 @@ function OutlineEditorInner({
     }
     return false;
   }, []);
+
+  const beginChapterDrag = useCallback((chapterId: string, clientX: number, clientY: number) => {
+    const col = columnsRef.current.get(chapterId);
+    if (!col) return;
+    const canvas = clientToCanvas(clientX, clientY);
+    col.isDragging = true;
+    isNoteDraggingRef.current = true;
+    setIsNoteDragging(true);
+    dragRef.current = {
+      noteId: chapterId,
+      startX: clientX,
+      startY: clientY,
+      offsetX: col.x,
+      offsetY: col.y,
+      canvasStartX: canvas.x,
+      canvasStartY: canvas.y,
+    };
+    setRenderTick((t) => t + 1);
+  }, [clientToCanvas]);
+
+  const beginKpDrag = useCallback((
+    kpId: string,
+    chapterId: string,
+    kpIndex: number,
+    color: NoteColor,
+    clientX: number,
+    clientY: number,
+  ) => {
+    const colState = columnsRef.current.get(chapterId);
+    if (!colState) return;
+
+    const colLayout = columnsListRef.current.find((c) => c.chapterId === chapterId);
+    const isHorizontal = colLayout?.kpOrientation === "horizontal";
+
+    const kpX = isHorizontal
+      ? colState.x + KP_INDENT + kpIndex * (KP_WIDTH + KP_GAP)
+      : colState.x + KP_INDENT;
+    const kpY = isHorizontal
+      ? colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET
+      : colState.y + CHAPTER_HEIGHT + KP_TOP_OFFSET + kpIndex * (KP_HEIGHT + KP_GAP);
+
+    const canvas = clientToCanvas(clientX, clientY);
+
+    kpDragRef.current = {
+      kpId,
+      fromChapterId: chapterId,
+      fromIndex: kpIndex,
+      x: kpX,
+      y: kpY,
+      startX: clientX,
+      startY: clientY,
+      originX: kpX,
+      originY: kpY,
+      grabOffsetX: canvas.x - kpX,
+      grabOffsetY: canvas.y - kpY,
+      color,
+    };
+    isNoteDraggingRef.current = true;
+    setIsNoteDragging(true);
+    setRenderTick((t) => t + 1);
+  }, [clientToCanvas]);
+
+  const handlePointerMove = useCallback((clientX: number, clientY: number) => {
+    if (isPanningRef.current && layoutModeRef.current === "desktop") {
+      const dx = clientX - panStartRef.current.x;
+      const dy = clientY - panStartRef.current.y;
+      const newPan = {
+        x: panStartRef.current.panX + dx,
+        y: panStartRef.current.panY + dy,
+      };
+      panRef.current = newPan;
+      setPan(newPan);
+      return;
+    }
+
+    if (kpDragRef.current) {
+      const canvas = clientToCanvas(clientX, clientY);
+      kpDragRef.current.x = canvas.x - kpDragRef.current.grabOffsetX;
+      kpDragRef.current.y = canvas.y - kpDragRef.current.grabOffsetY;
+
+      const kpCenterX = kpDragRef.current.x + KP_WIDTH / 2;
+      const kpCenterY = kpDragRef.current.y + KP_HEIGHT / 2;
+      const nearest = findNearestColumn(kpCenterX, kpCenterY);
+      setNearestColId(nearest?.chapterId ?? null);
+
+      setRenderTick((t) => t + 1);
+      return;
+    }
+
+    const { noteId, offsetX, offsetY, canvasStartX, canvasStartY } = dragRef.current;
+    if (!noteId) return;
+    const col = columnsRef.current.get(noteId);
+    if (!col) return;
+
+    if (layoutModeRef.current === "mobile") {
+      const canvas = clientToCanvas(clientX, clientY);
+      col.x = offsetX + (canvas.x - canvasStartX);
+      col.y = offsetY + (canvas.y - canvasStartY);
+      applyMobileChapterPreview(noteId);
+    } else {
+      const z = zoomRef.current;
+      const dx = (clientX - dragRef.current.startX) / z;
+      const dy = (clientY - dragRef.current.startY) / z;
+      col.x = offsetX + dx;
+      col.y = offsetY + dy;
+      col.vx = dx;
+      col.targetRotation = Math.max(-15, Math.min(15, dx * 0.3));
+    }
+    setRenderTick((t) => t + 1);
+  }, [clientToCanvas, findNearestColumn, applyMobileChapterPreview]);
+
+  const handlePointerUp = useCallback(() => {
+    const chapterDragId = dragRef.current.noteId;
+    const kpDragActive = !!kpDragRef.current;
+    if (!chapterDragId && !kpDragActive && !isPanningRef.current) return;
+
+    clearLongPress();
+    unlockMobileCanvasTouch();
+    isNoteDraggingRef.current = false;
+    setIsNoteDragging(false);
+
+    if (isPanningRef.current) {
+      isPanningRef.current = false;
+      return;
+    }
+
+    if (kpDragRef.current) {
+      const kp = kpDragRef.current;
+      const kpCenterX = kp.x + KP_WIDTH / 2;
+      const kpCenterY = kp.y + KP_HEIGHT / 2;
+      const nearest = findNearestColumn(kpCenterX, kpCenterY);
+
+      if (nearest) {
+        if (nearest.chapterId === kp.fromChapterId) {
+          let newIndex = nearest.insertIndex;
+          if (newIndex > kp.fromIndex) newIndex = Math.max(0, newIndex - 1);
+          if (newIndex !== kp.fromIndex) {
+            dispatch({
+              type: "REORDER_KEY_POINT",
+              chapterId: kp.fromChapterId,
+              keyPointId: kp.kpId,
+              newIndex,
+            });
+          }
+        } else {
+          dispatch({
+            type: "MOVE_KEY_POINT",
+            keyPointId: kp.kpId,
+            fromChapterId: kp.fromChapterId,
+            toChapterId: nearest.chapterId,
+            toIndex: nearest.insertIndex,
+          });
+        }
+      }
+
+      kpDragRef.current = null;
+      setNearestColId(null);
+      setRenderTick((t) => t + 1);
+      return;
+    }
+
+    const { noteId } = dragRef.current;
+    if (!noteId) return;
+    const col = columnsRef.current.get(noteId);
+    if (col) {
+      col.isDragging = false;
+      col.targetRotation = col.baseRotation;
+
+      const combined = checkDropInteraction(noteId, col);
+      if (!combined) {
+        const sortedIds = getSortedChapterIds();
+        const currentOrder = [...stateRef.current.chapters]
+          .sort((a, b) => a.chapter_number - b.chapter_number)
+          .map((ch) => ch.id);
+        const orderChanged = sortedIds.some((id, i) => id !== currentOrder[i]);
+        if (orderChanged) {
+          const positions = getLayoutPositionsForOrder(sortedIds);
+          for (const [id, pos] of positions) {
+            const colState = columnsRef.current.get(id);
+            if (colState) {
+              colState.x = pos.x;
+              colState.y = pos.y;
+            }
+          }
+          dispatchRef.current({ type: "REORDER_CHAPTERS", orderedIds: sortedIds });
+        } else {
+          for (const colLayout of columnsListRef.current) {
+            const colState = columnsRef.current.get(colLayout.chapterId);
+            if (colState) {
+              colState.x = colLayout.x;
+              colState.y = colLayout.y;
+            }
+          }
+        }
+      } else {
+        for (const colLayout of columnsListRef.current) {
+          const colState = columnsRef.current.get(colLayout.chapterId);
+          if (colState) {
+            colState.x = colLayout.x;
+            colState.y = colLayout.y;
+          }
+        }
+      }
+    }
+    dragRef.current.noteId = null;
+    setRenderTick((t) => t + 1);
+  }, [clearLongPress, dispatch, findNearestColumn, checkDropInteraction, getSortedChapterIds, getLayoutPositionsForOrder, unlockMobileCanvasTouch]);
+
+  const finalizeActiveDrag = useCallback(() => {
+    handlePointerUp();
+  }, [handlePointerUp]);
+
+  // Column drag handler
+  const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
+    if ((e.target as HTMLElement).contentEditable === "true") return;
+    e.preventDefault();
+    e.stopPropagation();
+    beginChapterDrag(chapterId, e.clientX, e.clientY);
+  }, [beginChapterDrag]);
+
+  const handleColumnPointerDown = useCallback((e: React.PointerEvent, chapterId: string) => {
+    if (layoutModeRef.current !== "mobile") return;
+    if (e.pointerType === "mouse") return;
+
+    clearLongPress();
+    lockMobileCanvasTouch();
+    navigator.vibrate?.(8);
+    beginChapterDrag(chapterId, e.clientX, e.clientY);
+  }, [beginChapterDrag, clearLongPress, lockMobileCanvasTouch]);
+
+  // KP drag handler — starts independent KP drag
+  const handleKpMouseDown = useCallback((
+    e: React.MouseEvent,
+    kpId: string,
+    chapterId: string,
+    kpIndex: number,
+    color: NoteColor,
+  ) => {
+    if ((e.target as HTMLElement).contentEditable === "true") return;
+    e.preventDefault();
+    e.stopPropagation();
+    beginKpDrag(kpId, chapterId, kpIndex, color, e.clientX, e.clientY);
+  }, [beginKpDrag]);
+
+  const handleKpPointerDown = useCallback((
+    e: React.PointerEvent,
+    kpId: string,
+    chapterId: string,
+    kpIndex: number,
+    color: NoteColor,
+  ) => {
+    if (layoutModeRef.current !== "mobile") return;
+    if (e.pointerType === "mouse") return;
+
+    clearLongPress();
+    lockMobileCanvasTouch();
+    navigator.vibrate?.(8);
+    beginKpDrag(kpId, chapterId, kpIndex, color, e.clientX, e.clientY);
+  }, [beginKpDrag, clearLongPress, lockMobileCanvasTouch]);
+
+  const handleDragHandlePointerUp = useCallback(() => {
+    finalizeActiveDrag();
+  }, [finalizeActiveDrag]);
+
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      handlePointerMove(e.clientX, e.clientY);
+    }
+
+    function handleMouseUp() {
+      handlePointerUp();
+    }
+
+    function handlePointerMoveEvent(e: PointerEvent) {
+      if (!kpDragRef.current && !dragRef.current.noteId) return;
+      e.preventDefault();
+      handlePointerMove(e.clientX, e.clientY);
+    }
+
+    function handlePointerUpEvent() {
+      if (kpDragRef.current || dragRef.current.noteId) {
+        handlePointerUp();
+      }
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (longPressRef.current && e.touches.length === 1) {
+        const touch = e.touches[0];
+        lastTouchRef.current = { clientX: touch.clientX, clientY: touch.clientY };
+        const dx = touch.clientX - longPressRef.current.startX;
+        const dy = touch.clientY - longPressRef.current.startY;
+        if (Math.hypot(dx, dy) > LONG_PRESS_CANCEL_PX) {
+          clearLongPress();
+        }
+      }
+
+      if (kpDragRef.current || dragRef.current.noteId) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (touch) handlePointerMove(touch.clientX, touch.clientY);
+      }
+    }
+
+    function handleTouchEnd() {
+      if (kpDragRef.current || dragRef.current.noteId) {
+        handlePointerUp();
+      } else {
+        clearLongPress();
+      }
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("pointermove", handlePointerMoveEvent, { passive: false });
+    window.addEventListener("pointerup", handlePointerUpEvent, { capture: true });
+    window.addEventListener("pointercancel", handlePointerUpEvent, { capture: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { capture: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { capture: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMoveEvent);
+      window.removeEventListener("pointerup", handlePointerUpEvent, { capture: true });
+      window.removeEventListener("pointercancel", handlePointerUpEvent, { capture: true });
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd, { capture: true });
+      window.removeEventListener("touchcancel", handleTouchEnd, { capture: true });
+    };
+  }, [clearLongPress, handlePointerMove, handlePointerUp]);
 
   function handleConfirmCombine() {
     if (!confirmCombine) return;
@@ -512,7 +912,8 @@ function OutlineEditorInner({
   }
 
   // Canvas pan on background drag
-  const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    if (layoutModeRef.current === "mobile") return;
     if (dragRef.current.noteId) return;
     if (kpDragRef.current) return;
     isPanningRef.current = true;
@@ -524,10 +925,10 @@ function OutlineEditorInner({
     };
   }, []);
 
-  // Wheel-to-zoom, anchored to cursor position
+  // Wheel-to-zoom, anchored to cursor position (desktop only)
   useEffect(() => {
     const el = canvasRef.current;
-    if (!el) return;
+    if (!el || layoutMode !== "desktop") return;
 
     function handleWheel(e: WheelEvent) {
       e.preventDefault();
@@ -551,7 +952,179 @@ function OutlineEditorInner({
 
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [layoutMode]);
+
+  // Pinch-to-zoom on mobile (single-finger scroll remains native)
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || layoutMode !== "mobile") return;
+
+    function syncMobileZoomDomLocal(newZoom: number) {
+      syncMobileZoomDom(newZoom);
+    }
+
+    function applyMobileZoom(newZoom: number, viewportX: number, viewportY: number) {
+      const oldZoom = zoomRef.current;
+      if (Math.abs(newZoom - oldZoom) < 0.002) return;
+
+      const scale = newZoom / oldZoom;
+      el!.scrollLeft = viewportX * (scale - 1) + el!.scrollLeft * scale;
+      el!.scrollTop = viewportY * (scale - 1) + el!.scrollTop * scale;
+      zoomRef.current = newZoom;
+      syncMobileZoomDomLocal(newZoom);
+    }
+
+    function flushPendingPinch() {
+      pinchRafRef.current = 0;
+      const pending = pendingPinchRef.current;
+      if (!pending) return;
+      applyMobileZoom(pending.zoom, pending.viewportX, pending.viewportY);
+      pendingPinchRef.current = null;
+    }
+
+    function scheduleMobileZoom(newZoom: number, viewportX: number, viewportY: number) {
+      pendingPinchRef.current = { zoom: newZoom, viewportX, viewportY };
+      if (!pinchRafRef.current) {
+        pinchRafRef.current = requestAnimationFrame(flushPendingPinch);
+      }
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+      if (isNoteDraggingRef.current) return;
+      if (e.touches.length === 2) {
+        pinchRef.current = {
+          initialDistance: touchDistance(e.touches[0], e.touches[1]),
+          initialZoom: zoomRef.current,
+        };
+      }
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (!pinchRef.current || e.touches.length < 2) return;
+      e.preventDefault();
+
+      const distance = touchDistance(e.touches[0], e.touches[1]);
+      const newZoom = clampZoom(
+        pinchRef.current.initialZoom * (distance / pinchRef.current.initialDistance),
+        MOBILE_ZOOM_MIN,
+        MOBILE_ZOOM_MAX
+      );
+
+      const rect = el!.getBoundingClientRect();
+      const viewportX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const viewportY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+      scheduleMobileZoom(newZoom, viewportX, viewportY);
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      if (e.touches.length < 2) {
+        if (pinchRafRef.current) {
+          cancelAnimationFrame(pinchRafRef.current);
+          flushPendingPinch();
+        }
+        pinchRef.current = null;
+        setZoom(zoomRef.current);
+      }
+    }
+
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd);
+    el.addEventListener("touchcancel", handleTouchEnd);
+
+    return () => {
+      if (pinchRafRef.current) cancelAnimationFrame(pinchRafRef.current);
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [layoutMode, syncMobileZoomDom]);
+
+  const contentBounds = useMemo(() => {
+    if (columns.length === 0) {
+      return { x: 0, y: 0, width: 400, height: 400 };
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = 0;
+    let maxY = 0;
+
+    for (const col of columns) {
+      const dragCol = columnsRef.current.get(col.chapterId);
+      const x = dragCol?.x ?? col.x;
+      const y = dragCol?.y ?? col.y;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + col.columnWidth);
+      maxY = Math.max(maxY, y + col.columnHeight);
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }, [columns, layoutMode]);
+
+  const canvasBounds = useMemo(() => {
+    const edgePad = layoutMode === "mobile" ? MOBILE_FRAME_PADDING : 80;
+    return {
+      width: contentBounds.width + edgePad * 2,
+      height: contentBounds.height + edgePad * 2,
+    };
+  }, [contentBounds, layoutMode]);
+
+  useEffect(() => {
+    canvasBoundsRef.current = { width: canvasBounds.width, height: canvasBounds.height };
+  }, [canvasBounds]);
+
+  // Frame mobile viewport when canvas gets real dimensions (tab visible, layout settled)
+  useEffect(() => {
+    if (layoutMode !== "mobile") return;
+
+    const el = canvasRef.current;
+    if (!el) return;
+
+    let frameTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const tryFrame = () => {
+      if (hasMobileFramedRef.current || columnsListRef.current.length === 0) return;
+      if (frameMobileViewport()) {
+        hasMobileFramedRef.current = true;
+      }
+    };
+
+    const observer = new ResizeObserver(() => {
+      if (frameTimer) clearTimeout(frameTimer);
+      frameTimer = setTimeout(tryFrame, 50);
+    });
+
+    observer.observe(el);
+    requestAnimationFrame(() => requestAnimationFrame(tryFrame));
+    frameTimer = setTimeout(tryFrame, 150);
+
+    return () => {
+      observer.disconnect();
+      if (frameTimer) clearTimeout(frameTimer);
+    };
+  }, [layoutMode, columns, frameMobileViewport]);
+
+  const scaledCanvasBounds = useMemo(() => ({
+    width: canvasBounds.width * zoom,
+    height: canvasBounds.height * zoom,
+  }), [canvasBounds, zoom]);
+
+  const gridBackgroundStyle = {
+    backgroundImage: `
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+    `,
+    backgroundSize: "40px 40px",
+  } as const;
 
   // Compute edge path between chapter columns
   function getEdgePath(edge: EdgeDef): string {
@@ -579,67 +1152,26 @@ function OutlineEditorInner({
   // Current KP drag state for rendering
   const kpDrag = kpDragRef.current;
 
-  return (
-    <div
-      ref={canvasRef}
-      onPointerDown={handleCanvasPointerDown}
-      data-tut="analysis-canvas"
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "calc(100vh - 160px)",
-        overflow: "hidden",
-        // The canvas pans and drags; without this the browser claims touch
-        // gestures for scrolling and pointermove never fires.
-        touchAction: "none",
-        background: "#f4f1ea",
-        backgroundImage: `
-          linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
-        `,
-        backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
-        borderRadius: "0 0 12px 12px",
-        cursor: isPanningRef.current ? "grabbing" : "grab",
-      }}
-    >
-      {/* SVG Filters */}
-      <svg style={{ position: "absolute", width: 0, height: 0 }}>
-        <defs>
-          <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
-            <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1.5" result="light">
-              <feDistantLight azimuth="45" elevation="55" />
-            </feDiffuseLighting>
-            <feComposite in="SourceGraphic" in2="light" operator="arithmetic" k1="0" k2="1" k3="0.1" k4="0" />
-          </filter>
-          <filter id="marker-wobble">
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="noise" seed="2" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-          <filter id="rough-edge" x="-2%" y="-2%" width="104%" height="104%">
-            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" result="noise" seed="1" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
+  const isMobileLayout = layoutMode === "mobile";
 
+  const boardLayers = (
+    <>
       {/* SVG edges layer */}
       <svg
         ref={svgRef}
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          position: isMobileLayout ? "relative" : "absolute",
+          top: isMobileLayout ? undefined : 0,
+          left: isMobileLayout ? undefined : 0,
+          width: isMobileLayout ? canvasBounds.width : "100%",
+          height: isMobileLayout ? canvasBounds.height : "100%",
           pointerEvents: "none",
           zIndex: 1,
         }}
       >
         <g
           filter="url(#marker-wobble)"
-          transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+          transform={isMobileLayout ? undefined : `translate(${pan.x}, ${pan.y}) scale(${zoom})`}
         >
           {edges.map((edge) => {
             const path = getEdgePath(edge);
@@ -662,13 +1194,15 @@ function OutlineEditorInner({
       {/* Column layer */}
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          position: isMobileLayout ? "relative" : "absolute",
+          top: isMobileLayout ? undefined : 0,
+          left: isMobileLayout ? undefined : 0,
+          width: isMobileLayout ? canvasBounds.width : "100%",
+          height: isMobileLayout ? canvasBounds.height : "100%",
+          minWidth: isMobileLayout ? canvasBounds.width : undefined,
+          minHeight: isMobileLayout ? canvasBounds.height : undefined,
           zIndex: 2,
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transform: isMobileLayout ? undefined : `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: "0 0",
         }}
       >
@@ -682,17 +1216,30 @@ function OutlineEditorInner({
           const scale = dragCol.isDragging ? 1.03 : 1;
           const isDropTarget = nearestColId === col.chapterId && kpDrag !== null;
 
+          const colX = dragCol.x;
+          const colY = dragCol.y;
+          const isColumnDragging = dragCol.isDragging;
+
           return (
             <div
               key={col.chapterId}
-              onPointerDown={(e) => handleColumnPointerDown(e, col.chapterId)}
+              data-outline-chapter={col.chapterId}
+              onMouseDown={(e) => handleColumnMouseDown(e, col.chapterId)}
+              className={isColumnDragging ? "ds-outline-note--dragging" : undefined}
               style={{
                 position: "absolute",
-                left: dragCol.x,
-                top: dragCol.y,
-                transform: `rotate(${dragCol.rotation}deg) scale(${scale})`,
-                zIndex: dragCol.isDragging ? 100 : 10,
-                transition: dragCol.isDragging ? "none" : "transform 0.3s ease-out",
+                left: colX,
+                top: colY,
+                width: col.columnWidth,
+                transform: isMobileLayout
+                  ? isColumnDragging ? "scale(1.02)" : undefined
+                  : `rotate(${dragCol.rotation}deg) scale(${scale})`,
+                zIndex: isColumnDragging ? 100 : 10,
+                transition: isColumnDragging
+                  ? "none"
+                  : isMobileLayout
+                    ? "left 0.28s ease-out, top 0.28s ease-out, transform 0.28s ease-out"
+                    : "transform 0.3s ease-out",
               }}
             >
               {/* Column background — subtle grouping indicator */}
@@ -721,13 +1268,25 @@ function OutlineEditorInner({
                 rotation={dragCol.rotation}
                 isDragging={dragCol.isDragging}
                 keyPointCount={col.kpIds.length}
+                isMobile={isMobileLayout}
+                onDragHandlePointerDown={(e) => handleColumnPointerDown(e, col.chapterId)}
+                onDragHandlePointerUp={handleDragHandlePointerUp}
                 onEdit={(field, value) => dispatch({ type: "EDIT_CHAPTER", chapterId: chapter.id, field, value })}
                 onDelete={() => dispatch({ type: "DELETE_CHAPTER", chapterId: chapter.id })}
                 onAddKeyPoint={() => dispatch({ type: "ADD_KEY_POINT", chapterId: chapter.id })}
               />
 
-              {/* Key points stacked below */}
-              <div style={{ marginTop: KP_TOP_OFFSET, marginLeft: KP_INDENT, display: "flex", flexDirection: "column", gap: KP_GAP }}>
+              {/* Key points — vertical stack on desktop, horizontal row on mobile */}
+              <div
+                style={{
+                  marginTop: KP_TOP_OFFSET,
+                  marginLeft: KP_INDENT,
+                  display: "flex",
+                  flexDirection: col.kpOrientation === "horizontal" ? "row" : "column",
+                  gap: KP_GAP,
+                  flexWrap: col.kpOrientation === "horizontal" ? "nowrap" : undefined,
+                }}
+              >
                 {col.kpIds.map((kpId, kpIndex) => {
                   const kp = state.keyPoints.find((k) => k.id === kpId);
                   if (!kp) return null;
@@ -738,17 +1297,22 @@ function OutlineEditorInner({
                   return (
                     <div
                       key={kpId}
-                      onPointerDown={(e) => handleKpPointerDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                      data-outline-kp={kpId}
+                      onMouseDown={(e) => handleKpMouseDown(e, kpId, col.chapterId, kpIndex, col.color)}
                       style={{
                         opacity: isBeingDragged ? 0.25 : 1,
                         transition: "opacity 0.15s",
+                        flex: "0 0 auto",
                       }}
                     >
                       <KeyPointNote
                         keyPoint={kp}
                         color={col.color}
                         rotation={0}
-                        isDragging={false}
+                        isDragging={isBeingDragged}
+                        isMobile={isMobileLayout}
+                        onDragHandlePointerDown={(e) => handleKpPointerDown(e, kpId, col.chapterId, kpIndex, col.color)}
+                        onDragHandlePointerUp={handleDragHandlePointerUp}
                         onEdit={(field, value) => dispatch({ type: "EDIT_KEY_POINT", keyPointId: kp.id, field, value })}
                         onDelete={() => dispatch({ type: "DELETE_KEY_POINT", keyPointId: kp.id })}
                       />
@@ -788,8 +1352,83 @@ function OutlineEditorInner({
           );
         })()}
       </div>
+    </>
+  );
 
-      {/* Combine confirmation */}
+  return (
+    <div
+      ref={canvasRef}
+      className={isMobileLayout ? "ds-outline-canvas ds-outline-canvas--mobile" : "ds-outline-canvas"}
+      onMouseDown={handleCanvasMouseDown}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: isMobileLayout ? undefined : "calc(100vh - 160px)",
+        overflow: isMobileLayout ? "auto" : "hidden",
+        WebkitOverflowScrolling: isMobileLayout ? "touch" : undefined,
+        touchAction: isMobileLayout ? (isNoteDragging ? "none" : "pan-x pan-y") : undefined,
+        background: "#f4f1ea",
+        backgroundImage: isMobileLayout
+          ? undefined
+          : `
+          linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: isMobileLayout ? undefined : `${40 * zoom}px ${40 * zoom}px`,
+        backgroundPosition: isMobileLayout ? undefined : `${pan.x}px ${pan.y}px`,
+        borderRadius: "0 0 12px 12px",
+        cursor: isMobileLayout ? "default" : (isPanningRef.current ? "grabbing" : "grab"),
+      }}
+    >
+      {/* SVG Filters */}
+      <svg style={{ position: "absolute", width: 0, height: 0 }}>
+        <defs>
+          <filter id="paper-texture" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
+            <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1.5" result="light">
+              <feDistantLight azimuth="45" elevation="55" />
+            </feDiffuseLighting>
+            <feComposite in="SourceGraphic" in2="light" operator="arithmetic" k1="0" k2="1" k3="0.1" k4="0" />
+          </filter>
+          <filter id="marker-wobble">
+            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="noise" seed="2" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="rough-edge" x="-2%" y="-2%" width="104%" height="104%">
+            <feTurbulence type="turbulence" baseFrequency="0.03" numOctaves="4" result="noise" seed="1" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
+      {isMobileLayout ? (
+        <div
+          ref={mobileSpacerRef}
+          style={{
+            width: scaledCanvasBounds.width,
+            height: scaledCanvasBounds.height,
+            position: "relative",
+          }}
+        >
+          <div
+            ref={mobileScaleRef}
+            style={{
+              width: canvasBounds.width,
+              height: canvasBounds.height,
+              transform: `scale(${zoom})`,
+              transformOrigin: "0 0",
+              position: "relative",
+              background: "#f4f1ea",
+              ...gridBackgroundStyle,
+              willChange: "transform",
+            }}
+          >
+            {boardLayers}
+          </div>
+        </div>
+      ) : (
+        boardLayers
+      )}
       {confirmCombine && (
         <div style={{
           position: "absolute",

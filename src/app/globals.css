@@ -785,19 +785,23 @@ input[type=range] {
 
   /* Editor paper surface — widen usable page width on phones */
   .ds-paper-area {
-    padding: 8px 10px !important;
+    padding: 4px 4px !important;
   }
   .ds-paper-header {
-    padding: 28px 18px 0 !important;
-    padding-left: 18px !important;
+    padding: 22px 14px 0 !important;
+    padding-left: 14px !important;
   }
   .ds-paper-header h1 {
-    font-size: 28px !important;
+    font-size: 26px !important;
     line-height: 1.2 !important;
   }
   .ds-paper-body {
-    padding: 0 18px 40px !important;
-    padding-left: 18px !important;
+    padding: 0 14px 32px !important;
+    padding-left: 14px !important;
+  }
+  .ds-editor-project-card {
+    margin: 8px 12px 0 !important;
+    padding: 10px 12px !important;
   }
   .ds-paper-margin-line {
     display: none !important;

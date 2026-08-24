@@ -229,7 +229,7 @@ export default function EditorPage() {
             height: auto !important;
             min-height: 0 !important;
             overflow: visible !important;
-            padding: 8px 10px !important;
+            padding: 4px 4px !important;
           }
           .ds-editor-paper-surface {
             min-height: 55vh !important;
@@ -237,13 +237,17 @@ export default function EditorPage() {
           }
           .ds-paper-margin-line { display: none !important; }
           .ds-paper-header {
-            padding: 28px 18px 0 !important;
+            padding: 22px 14px 0 !important;
           }
           .ds-paper-header h1 {
-            font-size: 28px !important;
+            font-size: 26px !important;
           }
           .ds-paper-body {
-            padding: 0 18px 40px !important;
+            padding: 0 14px 32px !important;
+          }
+          .ds-editor-project-card {
+            margin: 8px 12px 0 !important;
+            padding: 10px 12px !important;
           }
           .ds-editor-float-toolbar { display: none !important; }
           .ds-editor-stats-bar { display: none !important; }
@@ -335,7 +339,7 @@ export default function EditorPage() {
           </div>
 
           {/* Project Card */}
-          <div style={{
+          <div className="ds-editor-project-card" style={{
             margin: "16px 16px 0",
             padding: "14px 16px",
             borderRadius: 10,

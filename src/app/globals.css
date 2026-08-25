@@ -1074,6 +1074,7 @@ input[type=range] {
     justify-content: center !important;
     align-items: center !important;
     padding: 80px 24px 40px !important;
+    position: relative !important;
   }
 
   /* Hide desktop-layout hero elements */
@@ -1082,39 +1083,42 @@ input[type=range] {
     display: none !important;
   }
 
-  /* Waveform: restore original position */
+  /* Waveform sits in the upper third so the tagline can own the middle */
   .lv2-hero-waveform {
-    top: 18% !important;
-    height: 30vh !important;
-    max-height: none !important;
-  }
-
-  /* Tagline: push it below the waveform (waveform ends ~48% down) */
-  .lv2-hero-tagline {
-    margin-top: 50vh !important;
-  }
-
-  /* Center tagline — reset absolute positioning */
-  .lv2-hero-tagline {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    transform: none !important;
-    text-align: center !important;
+    position: absolute !important;
+    top: 14% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
     width: 100% !important;
-    padding: 0 8px !important;
+    height: 22vh !important;
+    min-height: 120px !important;
+    max-height: 180px !important;
+    z-index: 2 !important;
+  }
+
+  /* Tagline: vertical middle of the first screen — visible on open */
+  .lv2-hero-tagline {
+    position: absolute !important;
+    top: 48% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin-top: 0 !important;
+    text-align: center !important;
+    width: min(100%, 360px) !important;
+    padding: 0 16px !important;
+    z-index: 3 !important;
   }
   .lv2-hero-tagline > div:first-child {
-    font-size: 36px !important;
+    font-size: 34px !important;
     margin-bottom: 8px !important;
     margin-top: 0 !important;
   }
   .lv2-hero-tagline > div:nth-child(2) {
-    font-size: 18px !important;
+    font-size: 17px !important;
     margin-top: 0 !important;
   }
   .lv2-hero-tagline > div:nth-child(3) {
-    font-size: 17px !important;
+    font-size: 16px !important;
   }
 
   /* Stats footer — reset to simple centered row */

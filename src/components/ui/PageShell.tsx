@@ -93,12 +93,18 @@ function useIsMobile(maxWidth = 768): boolean {
   return isMobile;
 }
 
+function busyProgressNoun(busy: string): string {
+  if (/generat/i.test(busy)) return "generation";
+  if (/enrich|quote/i.test(busy)) return "enrichment";
+  return "analysis";
+}
+
 function formatBusyMessage(busy: string, isMobile: boolean): string {
   if (!isMobile) {
     return `${busy} — leaving this page will lose progress`;
   }
   const busySentence = busy.endsWith(".") ? busy : `${busy}.`;
-  const progressNoun = /generat/i.test(busy) ? "generation" : "analysis";
+  const progressNoun = busyProgressNoun(busy);
   return `WARNING: ${busySentence} Do not close this page or lock your phone or ${progressNoun} will lose its progress`;
 }
 

@@ -792,7 +792,7 @@ const LANDING_BOOKS = [
 
 function LandingBook({ title, author, cover, snippet, interactive = true }: { title: string; author: string; cover: string; snippet: string; interactive?: boolean }) {
   return (
-    <div style={{ perspective: 1000, width: BOOK_W, height: BOOK_H, margin: "0 auto", cursor: "default" }}>
+    <div className="lbook-root" style={{ perspective: 1000, width: BOOK_W, height: BOOK_H, margin: "0 auto", cursor: "default" }}>
       <div className={`lbook-wrap${interactive ? "" : " lbook-static"}`} style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d" }}>
         {/* Glow */}
         <div className="lbook-glow" style={{ position: "absolute", bottom: -20, left: 20, right: 20, height: 40, background: "radial-gradient(ellipse, rgba(193,122,71,0.25) 0%, transparent 70%)", opacity: 0, transition: "opacity 0.6s ease", transform: "translateZ(-1px)" }} />
@@ -819,13 +819,13 @@ function LandingBook({ title, author, cover, snippet, interactive = true }: { ti
         {/* Front cover — rotates open on hover */}
         <div className="lbook-cover" style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", transformOrigin: "left center", transition: "transform 0.75s cubic-bezier(0.16,1,0.3,1)" }}>
           {/* Front face */}
-          <div style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 14px 14px 2px", padding: "32px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", backfaceVisibility: "hidden" }}>
+          <div className="lbook-cover-front" style={{ position: "absolute", inset: 0, background: cover, borderRadius: "2px 14px 14px 2px", padding: "32px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", backfaceVisibility: "hidden" }}>
             <div style={{ position: "absolute", inset: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", opacity: 0.04, mixBlendMode: "multiply", pointerEvents: "none" }} />
             <div style={{ position: "absolute", top: 14, left: 14, right: 14, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.3), transparent)" }} />
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ width: 28, height: 1, background: "rgba(193,122,71,0.5)", marginBottom: 18 }} />
-              <h3 style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 22, fontWeight: 500, color: "#F4E8D1", lineHeight: 1.2, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>{title}</h3>
-              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 10 }}>{author}</p>
+              <h3 className="lbook-title" style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 22, fontWeight: 500, color: "#F4E8D1", lineHeight: 1.2, textShadow: "0 1px 3px rgba(0,0,0,0.3)", margin: 0, textWrap: "balance" }}>{title}</h3>
+              <p className="lbook-author" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 10 }}>{author}</p>
             </div>
             <div style={{ position: "absolute", bottom: 14, left: 14, right: 14, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
           </div>
@@ -864,9 +864,9 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
   };
 
   return (
-    <div style={{ position: "relative", padding: "0 80px" }}>
+    <div className="lbook-carousel">
       {/* 3D Stage */}
-      <div style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%", overflowX: "clip" }}>
+      <div className="lbook-stage" style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%", overflowX: "clip" }}>
         {books.map((book, i) => {
           const d = circularOffset(i);
           const isCenter = d === 0;
@@ -930,14 +930,7 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
       </div>
 
       {/* Review card — synced to current book */}
-      <div key={current} className="lbook-review-card" style={{
-        maxWidth: 640, margin: "48px auto 0",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(249,247,242,0.08)",
-        borderRadius: 20,
-        padding: "32px 40px",
-        display: "flex", flexDirection: "column", gap: 16,
-      }}>
+      <div key={current} className="lbook-review-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: "#A89F94", marginBottom: 4, fontFamily: "var(--font-manrope), sans-serif" }}>
@@ -1504,7 +1497,24 @@ export default function LandingV2() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .lbook-review-card { animation: lbook-card-in 0.45s ease-out both; }
+        .lbook-review-card {
+          animation: lbook-card-in 0.45s ease-out both;
+          max-width: 640px;
+          margin: 48px auto 0;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(249,247,242,0.08);
+          border-radius: 20px;
+          padding: 32px 48px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          box-sizing: border-box;
+        }
+
+        .lbook-carousel {
+          position: relative;
+          padding: 0 80px;
+        }
 
         /* Landing books */
         .lbook-wrap:hover .lbook-cover { transform: rotateY(-155deg); }
@@ -1572,6 +1582,13 @@ export default function LandingV2() {
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
           .lv2-hero-stats { gap: 16px; }
+          .lbook-carousel { padding: 0 16px; }
+          .lbook-review-card {
+            max-width: none;
+            width: 100%;
+            margin: 48px 0 0;
+            padding: 32px 28px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

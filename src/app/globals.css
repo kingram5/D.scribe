@@ -1206,7 +1206,7 @@ input[type=range] {
 
   /* Book carousel — wider cover on phones so titles aren't clipped */
   .lbook-carousel {
-    padding: 0 12px !important;
+    padding: 0 16px !important;
   }
   .lbook-stage {
     overflow: visible !important;
@@ -1227,6 +1227,15 @@ input[type=range] {
   }
   .lbook-author {
     font-size: 10px !important;
+  }
+
+  /* Testimonial quote blocks — full width with comfortable side margins */
+  .lbook-review-card {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 48px 0 0 !important;
+    padding: 32px 28px !important;
+    box-sizing: border-box !important;
   }
 
   /* Legacy selector kept for any inline-padded wrappers */

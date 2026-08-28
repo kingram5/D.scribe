@@ -864,7 +864,7 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
   };
 
   return (
-    <div className="lbook-carousel" style={{ position: "relative", padding: "0 80px" }}>
+    <div className="lbook-carousel">
       {/* 3D Stage */}
       <div className="lbook-stage" style={{ position: "relative", height: BOOK_H + 60, perspective: "1400px", perspectiveOrigin: "50% 50%", overflowX: "clip" }}>
         {books.map((book, i) => {
@@ -930,14 +930,7 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
       </div>
 
       {/* Review card — synced to current book */}
-      <div key={current} className="lbook-review-card" style={{
-        maxWidth: 640, margin: "48px auto 0",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(249,247,242,0.08)",
-        borderRadius: 20,
-        padding: "32px 40px",
-        display: "flex", flexDirection: "column", gap: 16,
-      }}>
+      <div key={current} className="lbook-review-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: "#A89F94", marginBottom: 4, fontFamily: "var(--font-manrope), sans-serif" }}>
@@ -1504,7 +1497,24 @@ export default function LandingV2() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .lbook-review-card { animation: lbook-card-in 0.45s ease-out both; }
+        .lbook-review-card {
+          animation: lbook-card-in 0.45s ease-out both;
+          max-width: 640px;
+          margin: 48px auto 0;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(249,247,242,0.08);
+          border-radius: 20px;
+          padding: 32px 48px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          box-sizing: border-box;
+        }
+
+        .lbook-carousel {
+          position: relative;
+          padding: 0 80px;
+        }
 
         /* Landing books */
         .lbook-wrap:hover .lbook-cover { transform: rotateY(-155deg); }
@@ -1572,6 +1582,13 @@ export default function LandingV2() {
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
           .lv2-hero-stats { gap: 16px; }
+          .lbook-carousel { padding: 0 16px; }
+          .lbook-review-card {
+            max-width: none;
+            width: 100%;
+            margin: 48px 0 0;
+            padding: 32px 28px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

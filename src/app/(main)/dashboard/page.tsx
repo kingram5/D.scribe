@@ -80,7 +80,7 @@ function MiniWaveform() {
     `;
   }, []);
 
-  return <div ref={ref} style={{ width: 420, height: 105 }} />;
+  return <div ref={ref} className="ds-mini-waveform" style={{ width: 420, height: 105 }} />;
 }
 
 export default function Dashboard() {
@@ -171,32 +171,39 @@ export default function Dashboard() {
       </div>
 
       {/* Page hero header */}
-      {/* Mini waveform — positioned at top-left, parallel with nav bar */}
-      <div style={{ position: "absolute", top: 18, left: "10vw", zIndex: 5 }}>
-        <MiniWaveform />
-      </div>
+      <div className="ds-dashboard-hero">
+        <div className="ds-dashboard-waveform">
+          <MiniWaveform />
+        </div>
 
-      <div style={{ padding: "48px 40px 20px", maxWidth: 640, position: "relative", zIndex: 1 }} className="ds-hero-header">
-        <h1 style={{
-          fontSize: 48,
-          fontWeight: 400,
-          letterSpacing: "-0.03em",
-          lineHeight: 1.05,
-          color: "#F9F7F2",
-          marginBottom: 16,
-          fontFamily: "var(--font-lora), serif",
-        }}>
-          {firstName ? `${firstName}\u2019s Books` : "Your Books"}
-        </h1>
-        <p style={{ fontSize: 16, color: "#A89F94", lineHeight: 1.6, fontWeight: 400, maxWidth: 440 }}>
-          Your manuscripts, all in one place.
-        </p>
+        <div style={{ padding: "48px 40px 20px", maxWidth: 640, position: "relative", zIndex: 1, width: "100%" }} className="ds-hero-header">
+          <h1 style={{
+            fontSize: 48,
+            fontWeight: 400,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.05,
+            color: "#F9F7F2",
+            marginBottom: 16,
+            fontFamily: "var(--font-lora), serif",
+          }}>
+            {firstName ? `${firstName}\u2019s Books` : "Your Books"}
+          </h1>
+          <p style={{ fontSize: 16, color: "#A89F94", lineHeight: 1.6, fontWeight: 400, maxWidth: 440 }}>
+            Your manuscripts, all in one place.
+          </p>
+        </div>
       </div>
 
       <style>{`
+        .ds-dashboard-waveform {
+          position: absolute;
+          top: 18px;
+          left: 10vw;
+          z-index: 5;
+        }
         @media (max-width: 768px) {
           .ds-dashboard-grid { grid-template-columns: 1fr !important; padding: 0 16px 24px !important; gap: 20px !important; overflow-y: auto !important; }
-          .ds-hero-header { padding: 24px 16px 12px !important; }
+          .ds-hero-header { padding: 12px 16px 12px !important; }
           .ds-hero-header h1 { font-size: 32px !important; }
           .ds-dashboard-grid .lined-paper { transform: none !important; }
         }

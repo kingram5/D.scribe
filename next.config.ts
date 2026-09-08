@@ -20,7 +20,9 @@ const nextConfig: NextConfig = {
     //    below; violations are REPORTED to Sentry (never blocked) so a week of clean
     //    reports proves the allowlist before it is promoted to an enforcing
     //    Content-Security-Policy. Promote by renaming the header key.
-    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? "";
+    // The DSN is public by design (it ships in the client bundle); the fallback keeps CSP reports
+    // flowing even when the env var is unset or carries stray whitespace at build time.
+    const sentryDsn = (process.env.NEXT_PUBLIC_SENTRY_DSN ?? "").trim() || "https://0148486c495a26dc3068b6095aabeeae@o4511312415358976.ingest.us.sentry.io/4511312418373632";
     const dsn = sentryDsn.match(/^https:\/\/([^@]+)@([^/]+)\/(\d+)$/);
     const cspReportUri = dsn ? `https://${dsn[2]}/api/${dsn[3]}/security/?sentry_key=${dsn[1]}` : "";
     const csp = [

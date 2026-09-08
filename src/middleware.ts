@@ -1,8 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/** Inline allowlist check for Edge Runtime compatibility */
+/**
+ * Inline allowlist check for Edge Runtime compatibility. Mirrors src/lib/allowlist.ts:
+ * PUBLIC_SIGNUP=true (the customer-facing switch) admits any signed-in user;
+ * otherwise the ALLOWED_EMAILS beta list applies and an empty list denies everyone.
+ */
 function isAllowedEmail(email: string | undefined | null): boolean {
+  if ((process.env.PUBLIC_SIGNUP ?? "").trim().toLowerCase() === "true") return Boolean(email && email.includes("@"));
   const raw = process.env.ALLOWED_EMAILS ?? "";
   const allowed = new Set(raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
   if (allowed.size === 0) return false;
@@ -10,13 +15,17 @@ function isAllowedEmail(email: string | undefined | null): boolean {
   return allowed.has(email.toLowerCase());
 }
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing"];
+// Public marketing + crawler surfaces. Anything else requires a session (and the gate above).
+// 2026-09-08: /blog, /discover, /sitemap.xml and /robots.txt were missing, so Google was
+// bounced to /login for every one of them.
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/blog", "/discover", "/sitemap.xml", "/robots.txt"];
+const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths, API routes, and the public legal pages
-  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/api/") || pathname.startsWith("/legal/")) {
+  // Allow public paths, API routes, and the public legal / blog pages
+  if (PUBLIC_PATHS.some((p) => pathname === p) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     // For root path, check if user is authenticated → redirect to dashboard
     if (pathname === "/") {
       let response = NextResponse.next({ request: { headers: request.headers } });

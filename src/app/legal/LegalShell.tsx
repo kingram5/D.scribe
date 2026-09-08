@@ -29,6 +29,7 @@ const MONO = "var(--font-geist-mono), monospace";
 export const LEGAL_PAGES = [
   { href: "/legal/terms", label: "Terms of Service" },
   { href: "/legal/privacy", label: "Privacy Policy" },
+  { href: "/legal/refunds", label: "Refunds & Cancellation" },
   { href: "/legal/dmca", label: "DMCA Policy" },
   { href: "/legal/acceptable-use", label: "Acceptable Use" },
 ] as const;

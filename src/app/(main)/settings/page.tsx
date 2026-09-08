@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,6 +73,15 @@ export default function SettingsPage() {
           <h2 style={h2}>Account</h2>
           <p style={sub}>Signed in as <strong style={{ color: "#F9F7F2" }}>{user?.email}</strong>.</p>
           <button onClick={signOut} style={btn()}>Sign out</button>
+          <p style={{ ...sub, marginTop: 16, marginBottom: 0, fontSize: 12.5 }}>
+            <Link href="/legal/terms" style={{ color: "#A89F94" }}>Terms</Link>
+            {" · "}
+            <Link href="/legal/privacy" style={{ color: "#A89F94" }}>Privacy</Link>
+            {" · "}
+            <Link href="/legal/refunds" style={{ color: "#A89F94" }}>Refunds</Link>
+            {" · "}
+            <a href="mailto:kyle@d-scribe.app" style={{ color: "#A89F94" }}>Support</a>
+          </p>
         </div>
 
         {/* Billing */}

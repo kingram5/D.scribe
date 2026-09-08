@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { LegalShell, H2, H3, P, UL, Strong, Note } from "../LegalShell";
+import { LegalShell, H2, H3, P, UL, Strong } from "../LegalShell";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "D.scribe Privacy Policy — what information we collect, how we use it, who we share it with, and the choices you have.",
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "June 1, 2026";
+const LAST_UPDATED = "September 9, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -18,195 +18,171 @@ export default function PrivacyPolicyPage() {
       lastUpdated={LAST_UPDATED}
       currentPath="/legal/privacy"
     >
+      <H2>1. Who we are</H2>
       <P>
-        <Strong>DRAFT — pending launch-readiness verification.</Strong>
-      </P>
-
-      <H2>1. Overview</H2>
-      <P>
-        This Privacy Policy explains what information D.scribe collects, how we use it, who we share it with, and the
-        choices you have.
+        D.scribe (&quot;D.scribe&quot;, &quot;we&quot;, &quot;us&quot;) is a voice-to-manuscript service operated by Kyle
+        Ingram, an individual proprietor based in Dallas, Texas, United States. Questions and requests about this
+        policy go to <Strong>kyle@d-scribe.app</Strong>.
       </P>
       <P>
-        D.scribe is a writing and content-generation service that processes user-uploaded audio, transcripts,
-        manuscript drafts, and related project data.
+        This policy explains what information D.scribe collects, how we use it, who we share it with, and the
+        choices you have. It applies to d-scribe.app and every feature inside the product.
       </P>
 
       <H2>2. Information we collect</H2>
-      <P>We may collect the following categories of information:</P>
-
-      <H3>Information you provide</H3>
+      <H3>Information you give us</H3>
       <UL
         items={[
-          "account details such as email address and profile information;",
-          "content you upload, including audio files, transcripts, notes, chapter outlines, and generated drafts;",
-          "billing and subscription details;",
-          "support messages and feedback;",
-          "consent choices and preferences.",
+          "Account details: your email address, and your name and profile picture if you sign in with Google.",
+          "Your content: audio you record or upload, links you submit for transcription, transcripts, brainstorm conversations with T.H.E.O, notes, outlines, generated chapters, and the edits you make to them.",
+          "Choices about your project, such as the target reader you pick and whether you list a project publicly.",
+          "Support messages and feedback you send us.",
+          "Consent choices for cookies and marketing.",
         ]}
       />
-
-      <H3>Information collected automatically</H3>
+      <H3>Information created while you use the service</H3>
       <UL
         items={[
-          "device and browser information;",
-          "log and error data;",
-          "usage metrics, session data, and feature activity;",
-          "IP address and approximate location derived from network data;",
-          "cookie and tracking information, where enabled and permitted by your consent choices.",
+          "Usage and metering: which features you run, how much Ink and voice time each one uses, and your balance.",
+          "Editing signals: how you change generated text, so the editor can learn your style within your own account (Editorial Memory and Voice-Match).",
+          "Technical data: IP address, browser and device type, pages visited, timestamps, and error reports.",
         ]}
       />
-
-      <H3>Information from third parties</H3>
+      <H3>Information from other services</H3>
       <UL
         items={[
-          "authentication providers;",
-          "payment processors;",
-          "storage providers;",
-          "analytics / observability tools;",
-          "AI and transcription providers;",
-          "advertising platforms, if you consent to marketing pixels.",
+          "Google, if you sign in with Google or connect Google Drive for export.",
+          "Stripe, our payment processor: customer and subscription identifiers, plan, and payment status. We never see or store your full card number.",
         ]}
       />
 
       <H2>3. How we use information</H2>
-      <P>We use information to:</P>
       <UL
         items={[
-          "provide, maintain, and improve the service;",
-          "authenticate users and secure accounts;",
-          "generate transcripts, analyses, outlines, and manuscripts;",
-          "meter usage and bill for paid features;",
-          "detect abuse, fraud, and security issues;",
-          "communicate with you about your account and service changes;",
-          "comply with legal obligations.",
+          "to run the service: transcribe your audio, analyze it, build outlines, draft chapters, and let you edit and export them;",
+          "to personalize output to your voice, using only your own recordings and edits;",
+          "to sign you in, keep your session secure, and protect against abuse (rate limits, fraud checks);",
+          "to meter usage, bill for paid plans and top-ups, and send receipts;",
+          "to send account and service messages, such as sign-in links, billing notices, and changes to these terms;",
+          "to fix bugs and understand how the product is used;",
+          "to comply with the law.",
         ]}
       />
+      <P>We do not sell your personal information or your content, and we do not use your content to train AI models.</P>
 
-      <H2>4. AI and content processing</H2>
+      <H2>4. AI disclosure: how your content is processed</H2>
       <P>
-        Your uploads and prompts may be processed by AI and transcription providers to generate outputs and power
-        features.
+        D.scribe is built on artificial intelligence. Transcripts, analyses, outlines, and chapters are generated by
+        AI models from your recordings and instructions, then shaped by your edits. AI output can be wrong,
+        incomplete, or unsuitable. You are the author: review everything before you publish it.
       </P>
-      <P>
-        We use these providers only to operate the service and do not authorize them to use your content for unrelated
-        purposes beyond their own service terms and settings.
-      </P>
-      <P>
-        <Strong>Important:</Strong> final retention behavior depends on the provider and our configuration. Do not
-        publish any statement about audio retention or training limitations unless it matches the live Deepgram and
-        provider settings in production.
-      </P>
-
-      <H2>5. Subprocessors</H2>
-      <P>We may share data with the following categories of subprocessors to provide the service:</P>
+      <P>To do this work we send parts of your content to specialist providers:</P>
       <UL
         items={[
-          <><Strong>Anthropic</Strong> — AI text generation and related processing</>,
-          <><Strong>Deepgram</Strong> — transcription and speech processing</>,
-          <><Strong>ElevenLabs</Strong> — text-to-speech voice generation</>,
-          <><Strong>Cloudflare R2</Strong> — file storage and delivery</>,
-          <><Strong>Supabase</Strong> — database, authentication, and backend services</>,
-          <><Strong>Stripe</Strong> — billing and subscription processing</>,
-          <><Strong>Sentry</Strong> — error monitoring and debugging</>,
-          <><Strong>TikTok</Strong> — marketing attribution, only if consent is granted</>,
-          <><Strong>LinkedIn</Strong> — marketing attribution, only if consent is granted</>,
+          <><Strong>Anthropic (Claude)</Strong> writes and rewrites text from your transcripts and outlines. Under the API terms we use, Anthropic does not train its models on this content.</>,
+          <><Strong>Deepgram</Strong> transcribes your audio. We have opted out of Deepgram&apos;s Model Improvement Program, so your recordings are not used to improve their models.</>,
+          <><Strong>ElevenLabs</Strong> turns T.H.E.O&apos;s replies into speech during voice brainstorms. Only the text to be spoken is sent.</>,
+          <><Strong>Web research providers</Strong> (Tavily, Brave Search, Supadata) receive only the search queries T.H.E.O forms during brainstorm research, never your recordings.</>,
         ]}
       />
-      <P>This list should be kept current with production usage.</P>
+      <P>
+        Each provider processes data only to deliver its service to us, under its own security and retention
+        terms. We keep this list current and will update it here when a provider changes.
+      </P>
+
+      <H2>5. Service providers (subprocessors)</H2>
+      <UL
+        items={[
+          <><Strong>Vercel</Strong> — hosting and delivery of the application</>,
+          <><Strong>Supabase</Strong> — database and sign-in (servers in the United States)</>,
+          <><Strong>Cloudflare R2</Strong> — private storage for your audio files, served through short-lived signed links</>,
+          <><Strong>Anthropic, Deepgram, ElevenLabs, Tavily, Brave Search, Supadata</Strong> — AI and research processing described in section 4</>,
+          <><Strong>Stripe</Strong> — payments, subscriptions, and invoices</>,
+          <><Strong>Sentry</Strong> — error monitoring</>,
+          <><Strong>Google</Strong> — sign-in with Google, and Google Drive export if you choose to connect it</>,
+          <><Strong>TikTok and LinkedIn</Strong> — advertising measurement pixels, loaded only if you accept marketing cookies</>,
+        ]}
+      />
 
       <H2>6. Cookies and similar technologies</H2>
-      <P>We use cookies and similar technologies for:</P>
+      <P>
+        We use strictly necessary cookies to keep you signed in and to remember your cookie choice. Marketing pixels
+        from TikTok and LinkedIn load only after you click Accept in the cookie banner; you can change that choice
+        at any time by clearing your browser&apos;s site data for d-scribe.app, which shows the banner again.
+      </P>
+
+      <H2>7. When we share information</H2>
       <UL
         items={[
-          "authentication and session management;",
-          "security and load balancing;",
-          "preferences and consent;",
-          "analytics and attribution where permitted.",
-        ]}
-      />
-      <P>
-        Marketing pixels and non-essential analytics should only load after the user has given consent where required
-        by law.
-      </P>
-
-      <H2>7. Sharing of information</H2>
-      <P>We may share information with:</P>
-      <UL
-        items={[
-          "service providers and subprocessors;",
-          "payment processors;",
-          "legal authorities when required by law;",
-          "successors in the event of a corporate transaction;",
-          "others with your direction or consent.",
-        ]}
-      />
-      <P>We do not sell your manuscript content.</P>
-
-      <H2>8. Data retention</H2>
-      <P>
-        We retain information for as long as needed to provide the service, comply with legal obligations, resolve
-        disputes, enforce agreements, and maintain security.
-      </P>
-      <P>
-        Retention periods vary by data type. Some operational logs, backups, and vendor systems may retain data for
-        limited periods even after deletion from the main product database.
-      </P>
-
-      <H2>9. Data deletion and access</H2>
-      <P>
-        You may request access, correction, or deletion of your personal information by contacting support.
-      </P>
-      <P>
-        Because the product uses multiple storage systems, deletion requests may require coordinated removal from the
-        application database, storage buckets, and third-party systems where applicable.
-      </P>
-
-      <H2>10. International transfers</H2>
-      <P>
-        Your information may be processed in countries other than your own. Where required, we rely on appropriate
-        transfer mechanisms or vendor contractual protections.
-      </P>
-
-      <H2>11. Your privacy rights</H2>
-      <P>Depending on where you live, you may have rights to:</P>
-      <UL
-        items={[
-          "access your personal information;",
-          "correct inaccurate information;",
-          "delete personal information;",
-          "object to or restrict certain processing;",
-          "withdraw consent where processing is based on consent;",
-          "appeal certain privacy decisions.",
+          "with the service providers in sections 4 and 5, only as needed to run D.scribe;",
+          "with Google Drive, only when you press Export to Drive on a project you own;",
+          "on the public Discover page, only for projects you have chosen to list publicly, and only the title, description, audience, excerpt, and author name you set;",
+          "when the law requires it, or to protect the rights, safety, and property of D.scribe, our users, or others;",
+          "with a successor if the business is sold or reorganized, under this same policy;",
+          "otherwise only at your direction or with your consent.",
         ]}
       />
 
-      <H2>12. Children&apos;s privacy</H2>
+      <H2>8. How long we keep information</H2>
+      <UL
+        items={[
+          "Your projects, transcripts, chapters, and audio stay in your account until you delete the project or the account.",
+          "Deleting a project removes its audio from storage. Deleting your account removes your projects, audio, transcripts, and profile, and cancels any subscription.",
+          "After account deletion we keep a one-way hash of your email address so free starter Ink cannot be claimed twice. The hash cannot be turned back into your email.",
+          "Stripe keeps billing records for as long as tax and payment rules require.",
+          "Error reports and server logs are kept for up to 90 days.",
+          "Copies may persist in provider backups for a limited period after deletion before they are overwritten.",
+        ]}
+      />
+
+      <H2>9. Your choices and rights</H2>
+      <UL
+        items={[
+          "Export: download any project as PDF or DOCX, or send it to Google Drive, at any time.",
+          "Delete: remove a project from its page, or delete your whole account from Settings → Delete account. Deletion is immediate and cannot be undone.",
+          "Marketing cookies: decline them in the banner, or clear site data to be asked again.",
+          "Google Drive: disconnect D.scribe at any time from your Google Account permissions page.",
+        ]}
+      />
       <P>
-        The service is intended for adults age 18 and older. We do not knowingly collect personal information from
-        children.
+        Depending on where you live, you may also have the right to access, correct, or delete your personal
+        information, to receive a copy of it, to object to or restrict certain processing, to withdraw consent, and
+        to appeal a decision we make about a request. Email <Strong>kyle@d-scribe.app</Strong> from the address on
+        your account and we will respond within 30 days. We will not treat you differently for exercising a right.
       </P>
 
-      <H2>13. Security</H2>
+      <H2>10. International users</H2>
       <P>
-        We use administrative, technical, and organizational measures designed to protect information, but no system is
-        perfectly secure.
+        D.scribe is operated from the United States and your information is processed there. If you use the service
+        from the European Economic Area, the United Kingdom, or elsewhere, your information is transferred to the
+        United States. Our providers rely on recognized transfer mechanisms such as the EU-U.S. Data Privacy
+        Framework and standard contractual clauses.
       </P>
 
-      <H2>14. Changes to this policy</H2>
+      <H2>11. Children</H2>
       <P>
-        We may update this Privacy Policy from time to time. Material changes will be posted with a new effective date.
+        D.scribe is for adults. You must be 18 or older to use it, and we do not knowingly collect information from
+        anyone under 18. If you believe a minor has created an account, email us and we will delete it.
       </P>
 
-      <H2>15. Contact</H2>
+      <H2>12. Security</H2>
       <P>
-        Questions or requests about privacy can be sent to the support contact shown in the product or on the website.
+        Traffic is encrypted in transit. Audio lives in private storage reachable only through short-lived signed
+        links. Database access is scoped to your own account, deleted-account records are hashed, and every AI and
+        sign-in endpoint is rate limited. No system is perfectly secure; if you find a problem, please tell us at
+        <Strong> kyle@d-scribe.app</Strong> so we can fix it.
       </P>
 
-      <Note>
-        Draft note: finalize deletion workflow wording, retention periods, and provider-specific retention/training
-        claims before publication.
-      </Note>
+      <H2>13. Changes to this policy</H2>
+      <P>
+        When we make material changes we will post the new version here with a new date and, for significant
+        changes, tell you by email or in the product before they take effect.
+      </P>
+
+      <H2>14. Contact</H2>
+      <P>
+        Kyle Ingram, D.scribe, Dallas, Texas, United States. <Strong>kyle@d-scribe.app</Strong>.
+      </P>
     </LegalShell>
   );
 }

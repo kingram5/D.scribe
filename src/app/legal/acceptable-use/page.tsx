@@ -5,10 +5,10 @@ export const metadata: Metadata = {
   title: "Acceptable Use Policy",
   description:
     "D.scribe Acceptable Use Policy — prohibited uses, content rules, and how we enforce them.",
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "June 1, 2026";
+const LAST_UPDATED = "September 9, 2026";
 
 export default function AcceptableUsePolicyPage() {
   return (
@@ -18,9 +18,6 @@ export default function AcceptableUsePolicyPage() {
       lastUpdated={LAST_UPDATED}
       currentPath="/legal/acceptable-use"
     >
-      <P>
-        <Strong>DRAFT — companion policy for public launch.</Strong>
-      </P>
 
       <H2>Prohibited use</H2>
       <P>You may not use D.scribe to:</P>

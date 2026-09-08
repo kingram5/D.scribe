@@ -1374,6 +1374,22 @@ export default function LandingV2() {
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
+        <nav aria-label="Legal" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+          {[
+            ["/legal/terms", "Terms"],
+            ["/legal/privacy", "Privacy"],
+            ["/legal/refunds", "Refunds"],
+            ["/legal/acceptable-use", "Acceptable Use"],
+            ["/legal/dmca", "DMCA"],
+          ].map(([href, label]) => (
+            <Link key={href} href={href} style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>{label}</Link>
+          ))}
+          <a href="mailto:kyle@d-scribe.app" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Contact</a>
+        </nav>
+        <span style={{ flexBasis: "100%", fontSize: 12, color: "#7E766C", lineHeight: 1.5 }}>
+          Manuscripts are drafted with AI from your own recordings. You review, edit, and own the result.
+          &copy; {new Date().getFullYear()} D.scribe, Dallas, Texas.
+        </span>
       </footer>
 
       {/* ─── Styles ─── */}

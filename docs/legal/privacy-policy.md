@@ -1,3 +1,5 @@
+> Published 2026-09-09. The live text is the page under `src/app/legal/`; edit there and mirror here.
+
 # D.scribe Privacy Policy
 
 **DRAFT — pending launch-readiness verification.**
@@ -118,4 +120,3 @@ Questions or requests about privacy can be sent to the support contact shown in 
 
 ---
 
-**Draft note:** finalize deletion workflow wording, retention periods, and provider-specific retention/training claims before publication.

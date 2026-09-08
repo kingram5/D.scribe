@@ -5,10 +5,10 @@ export const metadata: Metadata = {
   title: "DMCA Policy",
   description:
     "D.scribe DMCA Policy — how to submit a notice of claimed copyright infringement and our repeat-infringer policy.",
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "June 1, 2026";
+const LAST_UPDATED = "September 9, 2026";
 
 export default function DmcaPolicyPage() {
   return (
@@ -18,9 +18,6 @@ export default function DmcaPolicyPage() {
       lastUpdated={LAST_UPDATED}
       currentPath="/legal/dmca"
     >
-      <P>
-        <Strong>DRAFT — for public launch if public content is available.</Strong>
-      </P>
 
       <H2>Designated DMCA agent</H2>
       <P>

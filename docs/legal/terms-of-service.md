@@ -1,3 +1,5 @@
+> Published 2026-09-09. The live text is the page under `src/app/legal/`; edit there and mirror here.
+
 # D.scribe Terms of Service
 
 **DRAFT — pending launch-readiness verification.**
@@ -101,4 +103,3 @@ Questions about these Terms can be sent to the support contact shown in the prod
 
 ---
 
-**Draft note:** finalize company legal name, support email, effective date, and refund/cancellation linkage before publication.

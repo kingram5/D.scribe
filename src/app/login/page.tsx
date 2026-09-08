@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
@@ -226,6 +228,13 @@ function LoginContent() {
           lineHeight: 1.5,
         }}>
           10 free Ink to start. No payment required.
+        </p>
+        <p style={{ fontSize: 11.5, color: "#A39B7D", textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
+          By continuing you agree to the{" "}
+          <Link href="/legal/terms" style={{ color: "#6B5F4A", textDecoration: "underline" }}>Terms of Service</Link>
+          {" "}and{" "}
+          <Link href="/legal/privacy" style={{ color: "#6B5F4A", textDecoration: "underline" }}>Privacy Policy</Link>.
+          Your book is drafted with AI from your own words.
         </p>
         <p style={{
           fontSize: 11,

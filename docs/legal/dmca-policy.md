@@ -1,3 +1,5 @@
+> Published 2026-09-09. The live text is the page under `src/app/legal/`; edit there and mirror here.
+
 # D.scribe DMCA Policy
 
 **DRAFT — for public launch if public content is available.**

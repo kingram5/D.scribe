@@ -266,7 +266,8 @@ export default function PricingPage() {
             }}
           >
             Every plan includes the full D.scribe toolkit — you just choose the
-            monthly Ink that matches how much you write. Cancel anytime.
+            monthly Ink that matches how much you write. Cancel anytime.{" "}
+            <Link href="/legal/refunds" style={{ color: "#C17A47", textDecoration: "underline" }}>Refund policy</Link>.
           </p>
         </div>
 

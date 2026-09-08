@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { isAllowedEmail } from "@/lib/allowlist";
+import { isAllowedEmail, isPublicSignup } from "@/lib/allowlist";
 
 const ORIGINAL = process.env.ALLOWED_EMAILS;
 
@@ -67,5 +67,37 @@ describe("isAllowedEmail", () => {
   it("returns false for null email input", () => {
     setAllowlist("kyle@d-scribe.app");
     expect(isAllowedEmail(null)).toBe(false);
+  });
+});
+
+describe("PUBLIC_SIGNUP (customer-facing switch, 2026-09-08)", () => {
+  const ORIGINAL_PUBLIC = process.env.PUBLIC_SIGNUP;
+  afterEach(() => {
+    if (ORIGINAL_PUBLIC === undefined) delete process.env.PUBLIC_SIGNUP;
+    else process.env.PUBLIC_SIGNUP = ORIGINAL_PUBLIC;
+  });
+
+  it("opens sign-in to any real email when PUBLIC_SIGNUP=true, even with an empty allowlist", () => {
+    process.env.ALLOWED_EMAILS = "";
+    process.env.PUBLIC_SIGNUP = "true";
+    expect(isAllowedEmail("stranger@example.com")).toBe(true);
+    expect(isPublicSignup()).toBe(true);
+  });
+
+  it("still rejects empty or malformed emails in public mode", () => {
+    process.env.PUBLIC_SIGNUP = "TRUE";
+    expect(isAllowedEmail("")).toBe(false);
+    expect(isAllowedEmail(null)).toBe(false);
+    expect(isAllowedEmail("not-an-email")).toBe(false);
+  });
+
+  it("keeps the beta allowlist when PUBLIC_SIGNUP is anything but true", () => {
+    process.env.ALLOWED_EMAILS = "kyle@d-scribe.app";
+    for (const v of ["false", "1", "yes", ""]) {
+      process.env.PUBLIC_SIGNUP = v;
+      expect(isPublicSignup()).toBe(false);
+      expect(isAllowedEmail("stranger@example.com")).toBe(false);
+      expect(isAllowedEmail("kyle@d-scribe.app")).toBe(true);
+    }
   });
 });

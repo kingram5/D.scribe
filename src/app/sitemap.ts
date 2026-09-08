@@ -37,6 +37,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.8,
     },
+    ...["terms", "privacy", "refunds", "acceptable-use", "dmca"].map((slug) => ({
+      url: `https://d-scribe.app/legal/${slug}`,
+      lastModified: new Date("2026-09-09"),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    })),
     ...blogEntries,
   ];
 }

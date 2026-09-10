@@ -269,6 +269,25 @@ export default function PricingPage() {
             monthly Ink that matches how much you write. Cancel anytime.{" "}
             <Link href="/legal/refunds" style={{ color: "#C17A47", textDecoration: "underline" }}>Refund policy</Link>.
           </p>
+
+          {/* HeyCatch item 5: price anchor against the traditional alternative */}
+          <p
+            style={{
+              fontFamily: "var(--font-playfair), var(--font-lora), serif",
+              fontStyle: "italic",
+              fontSize: "clamp(17px, 2vw, 21px)",
+              color: "#F9F7F2",
+              maxWidth: 640,
+              margin: "36px auto 0",
+              lineHeight: 1.6,
+              padding: "18px 24px",
+              borderTop: "1px solid rgba(193,122,71,0.35)",
+              borderBottom: "1px solid rgba(193,122,71,0.35)",
+            }}
+          >
+            Traditional ghostwriters charge $30,000&ndash;$80,000 and take 12&ndash;24 months.{" "}
+            <span style={{ color: "#F0A878" }}>D.scribe starts at $25/month and delivers your first draft in under an hour.</span>
+          </p>
         </div>
 
         <div
@@ -483,6 +502,37 @@ export default function PricingPage() {
               >
                 Get Started
               </Link>
+
+              {/* HeyCatch item 5: payment trust marks under every tier CTA */}
+              <div
+                aria-label="Secure checkout by Stripe. Apple Pay accepted."
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 14,
+                  marginTop: 14,
+                  fontFamily: "var(--font-inter), var(--font-manrope), sans-serif",
+                  fontSize: 11.5,
+                  color: "#7A7358",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Secure checkout by <strong style={{ color: "#A89F94", fontWeight: 600 }}>Stripe</strong>
+                </span>
+                <span aria-hidden="true" style={{ width: 1, height: 12, background: "rgba(249,247,242,0.15)" }} />
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#A89F94", fontWeight: 600 }}>
+                  <svg width="11" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                  Pay
+                </span>
+              </div>
             </div>
           ))}
         </div>

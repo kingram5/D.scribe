@@ -89,7 +89,9 @@ export async function POST(req: NextRequest) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: STRIPE_PRICES[tier], quantity: 1 }],
-    success_url: `${siteUrl}/dashboard?upgraded=true`,
+    // `plan` lets the dashboard emit HeyCatch subscription_started client-side
+    // (src/components/analytics/CheckoutOutcome.tsx); nothing reads `upgraded`.
+    success_url: `${siteUrl}/dashboard?upgraded=true&plan=${tier}`,
     cancel_url: `${siteUrl}/dashboard`,
     metadata: { user_id: user.id, tier },
   });

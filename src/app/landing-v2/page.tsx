@@ -1083,11 +1083,13 @@ export default function LandingV2() {
 
         {/* Left Side Author Content */}
         <div className="lv2-hero-author">
+          {/* HeyCatch 2026-09-10 item 1: the h1 now names the category and the
+              buyer, and matches the <title>. Copper italic accent kept for brand. */}
           <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", margin: 0, textWrap: "balance" }}>
-            There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
+            Turn Your<br className="lv2-br-desk" /> Voice Into a<br className="lv2-br-desk" /> <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Published<br className="lv2-br-desk" /> Book.</span>
           </h1>
-          <p className="lv2-author-copy" style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
-            Your recordings, transcribed and shaped into a finished manuscript. You speak — D.&thinsp;scribe writes.
+          <p className="lv2-author-copy" style={{ fontSize: 17, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
+            D.&thinsp;scribe transcribes your sermons, coaching calls, and keynotes, then writes your manuscript chapter by chapter in your voice. You talk. It writes.
           </p>
           <Link
             href="/login"
@@ -1543,8 +1545,13 @@ export default function LandingV2() {
            Below 1280px: single-column flow — the layers stack, nothing collides. */
         .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
         .lv2-hero-waveform { pointer-events: none; text-align: center; position: relative; }
-        .lv2-hero-author h1 { font-size: clamp(44px, 6vw, 92px); }
-        .lv2-author-copy { max-width: 42ch; margin: 12px 0 20px; }
+        /* Sized for the six-word headline. On desktop it breaks into four short
+           lines ("Turn Your / Voice Into a / Published / Book.") so the widest
+           line stays left of the centered tagline; below 1280px the breaks are
+           dropped and the headline wraps naturally, centered. */
+        .lv2-hero-author h1 { font-size: clamp(40px, 4.4vw, 66px); }
+        .lv2-br-desk { display: none; }
+        .lv2-author-copy { max-width: 46ch; margin: 14px 0 22px; }
         .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
         .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
         .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
@@ -1556,7 +1563,8 @@ export default function LandingV2() {
           .lv2-hero-subarrow { position: absolute; top: 45%; left: 52%; transform: translateX(-50%); display: flex; align-items: center; gap: 24px; z-index: 2; }
           .lv2-hero-tagline { position: absolute; top: 53%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; }
           .lv2-hero-author { position: absolute; top: 47%; left: 33px; max-width: 480px; z-index: 2; }
-          .lv2-hero-author h1 { margin-top: 75px; }
+          .lv2-hero-author h1 { margin-top: 16px; }
+          .lv2-br-desk { display: inline; }
         }
 
         @media (max-width: 1279px) {

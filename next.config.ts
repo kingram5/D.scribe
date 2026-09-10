@@ -32,12 +32,13 @@ const nextConfig: NextConfig = {
       "frame-ancestors 'none'",
       "form-action 'self' https://checkout.stripe.com https://accounts.google.com",
       // 'unsafe-inline' / 'unsafe-eval' are what Next.js, TipTap and the pixel loaders need today; tighten with nonces later.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://analytics.tiktok.com https://snap.licdn.com https://accounts.google.com",
+      // https://in.heycatch.ai (2026-09-10): the HeyCatch SDK posts events there and loads one helper script from there at runtime.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://analytics.tiktok.com https://snap.licdn.com https://accounts.google.com https://in.heycatch.ai",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: ",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://analytics.tiktok.com https://px.ads.linkedin.com https://www.googleapis.com https://oauth2.googleapis.com https://api.stripe.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://analytics.tiktok.com https://px.ads.linkedin.com https://www.googleapis.com https://oauth2.googleapis.com https://api.stripe.com https://in.heycatch.ai",
       "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accounts.google.com https://docs.google.com",
       "worker-src 'self' blob:",
       "upgrade-insecure-requests",
@@ -54,6 +55,20 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "microphone=(self), camera=(), geolocation=(), payment=(), usb=(), bluetooth=(), display-capture=(), interest-cohort=()" },
           { key: "Content-Security-Policy-Report-Only", value: csp },
         ],
+      },
+    ];
+  },
+  // HeyCatch short links (2026-09-10, rule verbatim from https://heycatch.ai/agents.md):
+  // /x style one-character paths carry the attribution into the query string.
+  // Redirects resolve before middleware in Next's routing order, so the auth
+  // gate never sees /x. `permanent: false` is a 307 in Next.js (temporary,
+  // method-preserving); a literal 302 would need `statusCode: 302` instead.
+  async redirects() {
+    return [
+      {
+        source: '/:l([a-z0-9])',
+        destination: '/?utm_source=heycatch&utm_campaign=:l',
+        permanent: false,
       },
     ];
   },

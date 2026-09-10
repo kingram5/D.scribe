@@ -1074,15 +1074,26 @@ export default function LandingV2() {
           <CinematicMurmurWaveform />
         </div>
 
-        {/* Sub-hero CTA */}
+        {/* Secondary hero CTA (HeyCatch item 6): the old "Your Story Starts → HERE"
+            button duplicated the primary /login CTA. This is a quieter outline
+            link that scrolls to the seven-step section instead. */}
         <div className="lv2-hero-subarrow">
-          <span className="lv2-subarrow-script" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "#ffffff", opacity: 0.9 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
-          <Link
-            href="/login"
-            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", display: "inline-flex", alignItems: "center", minHeight: 48 }}
+          <a
+            href="#how-it-works"
+            className="lv2-hero-secondary"
+            onClick={(e) => {
+              const target = document.getElementById("how-it-works");
+              if (!target) return; // fall back to the plain hash jump
+              e.preventDefault();
+              target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+              history.replaceState(null, "", "#how-it-works");
+            }}
           >
-            HERE
-          </Link>
+            See how it works
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12l7 7 7-7" />
+            </svg>
+          </a>
         </div>
 
         {/* Center Tagline */}
@@ -1130,7 +1141,7 @@ export default function LandingV2() {
         </div>
 
       {/* ─── Pipeline Section ─── */}
-      <section style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto" }}>
+      <section id="how-it-works" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto", scrollMarginTop: 80 }}>
         <FadeSection>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
@@ -1437,8 +1448,6 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
-
         /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
         .circular-text {
           width: 320px;
@@ -1531,6 +1540,36 @@ export default function LandingV2() {
         }
         .lv2-pill-cta:hover { background: #D98B58; }
 
+        /* Secondary hero CTA: outline link, deliberately lower contrast than the
+           filled "Begin Your Book" button so the hero has one primary action. */
+        .lv2-hero-secondary {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 26px;
+          min-height: 48px;
+          border: 1px solid rgba(249,247,242,0.35);
+          border-radius: 999px;
+          background: rgba(26,20,14,0.25);
+          backdrop-filter: blur(6px);
+          color: rgba(249,247,242,0.85);
+          font-family: var(--font-playfair), 'Playfair Display', serif;
+          font-style: italic;
+          font-size: 18px;
+          font-weight: 500;
+          letter-spacing: 0.01em;
+          text-decoration: none;
+          transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+        }
+        .lv2-hero-secondary:hover,
+        .lv2-hero-secondary:focus-visible {
+          border-color: rgba(230,193,139,0.8);
+          color: #E6C18B;
+          background: rgba(26,20,14,0.45);
+        }
+        .lv2-hero-secondary svg { transition: transform 0.2s ease; }
+        .lv2-hero-secondary:hover svg { transform: translateY(2px); }
+
         /* Footer founder block */
         .lv2-founder {
           display: inline-flex;
@@ -1606,7 +1645,6 @@ export default function LandingV2() {
         .lv2-hero-author h1 { font-size: clamp(40px, 4.4vw, 66px); }
         .lv2-br-desk { display: none; }
         .lv2-author-copy { max-width: 46ch; margin: 14px 0 22px; }
-        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
         .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
         .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
         .lv2-tagline-kick { font-size: clamp(16px, 1.8vw, 24px); }

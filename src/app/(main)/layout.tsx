@@ -1,8 +1,10 @@
 import OsBar from "@/components/ui/OsBar";
+import { CheckoutOutcome } from "@/components/analytics/CheckoutOutcome";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <CheckoutOutcome />
       <style>{`
         @media (max-width: 768px) {
           .ds-main-layout { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100dvh !important; }

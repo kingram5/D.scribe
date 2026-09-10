@@ -32,6 +32,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: "https://d-scribe.app/about",
+      lastModified: new Date("2026-09-10"),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: "https://d-scribe.app/blog",
       lastModified: new Date(),
       changeFrequency: "daily",

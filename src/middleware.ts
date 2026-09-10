@@ -18,7 +18,8 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // Public marketing + crawler surfaces. Anything else requires a session (and the gate above).
 // 2026-09-08: /blog, /discover, /sitemap.xml and /robots.txt were missing, so Google was
 // bounced to /login for every one of them.
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/blog", "/discover", "/sitemap.xml", "/robots.txt"];
+// 2026-09-10: /about added (HeyCatch item 2); it used to bounce to /login.
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/sitemap.xml", "/robots.txt"];
 const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/"];
 
 export async function middleware(request: NextRequest) {

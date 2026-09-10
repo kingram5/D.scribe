@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CinematicMurmurWaveform, CinematicCircularText } from "@/components/landing/CinematicClient";
+import { useLandingData } from "@/components/landing/LandingDataContext";
+import { FOUNDER } from "@/lib/founder";
 import "../cinematic-landing.css";
 
 function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
@@ -970,6 +972,7 @@ function FadeSection({ children, className = "", delay = 0, style = {} }: { chil
 export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { founderHeadshot } = useLandingData();
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 50); }
@@ -1373,6 +1376,25 @@ export default function LandingV2() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         flexWrap: "wrap", gap: 16,
       }}>
+        {/* Founder block (HeyCatch item 2). Facts only; Kyle's own note lives on /about. */}
+        <Link href="/about" className="lv2-founder" aria-label={`About ${FOUNDER.name}, founder of D.scribe`}>
+          {founderHeadshot ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={founderHeadshot} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(193,122,71,0.6)", flexShrink: 0 }} />
+          ) : (
+            <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: "50%", border: "1px dashed rgba(193,122,71,0.5)", background: "rgba(193,122,71,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 15, color: "#C17A47", flexShrink: 0 }}>
+              {FOUNDER.initials}
+            </span>
+          )}
+          <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontFamily: "var(--font-playfair), serif", fontSize: 15, color: "#F9F7F2" }}>
+              Built by {FOUNDER.name} in {FOUNDER.location}.
+            </span>
+            <span style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 12.5, color: "#C17A47" }}>
+              Why he built D.scribe &rarr;
+            </span>
+          </span>
+        </Link>
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
@@ -1489,6 +1511,19 @@ export default function LandingV2() {
           transition: background 0.2s ease;
         }
         .lv2-pill-cta:hover { background: #D98B58; }
+
+        /* Footer founder block */
+        .lv2-founder {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          text-decoration: none;
+          flex-basis: 100%;
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(249,247,242,0.06);
+          transition: opacity 0.2s ease;
+        }
+        .lv2-founder:hover { opacity: 0.85; }
 
         /* Final CTA */
         .lv2-cta {

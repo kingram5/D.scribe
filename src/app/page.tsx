@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import LandingPage from "@/app/landing-v2/page";
+import { LandingDataProvider } from "@/components/landing/LandingDataContext";
+import { getLandingData } from "@/lib/landing-data";
+
+// Server data for the landing page refreshes hourly (founder headshot presence,
+// and from HeyCatch item 3 the live usage count).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "D.scribe — Turn Your Voice Into a Published Book with AI",
@@ -80,13 +86,16 @@ const faqSchema = {
   ],
 };
 
-export default function Page() {
+export default async function Page() {
+  const landingData = await getLandingData();
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <LandingPage />
+      <LandingDataProvider value={landingData}>
+        <LandingPage />
+      </LandingDataProvider>
     </>
   );
 }

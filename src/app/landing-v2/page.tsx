@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CinematicMurmurWaveform, CinematicCircularText } from "@/components/landing/CinematicClient";
 import { useLandingData } from "@/components/landing/LandingDataContext";
+import { FAQ_ITEMS } from "@/components/landing/faq";
 import { FOUNDER } from "@/lib/founder";
 import "../cinematic-landing.css";
 
@@ -1343,29 +1344,9 @@ export default function LandingV2() {
           <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 400, fontStyle: "italic", color: "#F9F7F2", textAlign: "center", marginBottom: 60 }}>
             Questions, answered
           </h2>
+          {/* Items live in components/landing/faq.ts, shared with the FAQPage JSON-LD in app/page.tsx (HeyCatch item 8). */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {[
-              {
-                q: "How does D.scribe work?",
-                a: "Upload any audio recording — a sermon, a coaching call, a podcast episode, or a voice memo. D.scribe transcribes it word-for-word, builds a structure based on your chapter targets, analyzes your themes and voice patterns, then generates a full manuscript chapter by chapter. The entire process takes minutes, not months.",
-              },
-              {
-                q: "What audio formats does D.scribe support?",
-                a: "D.scribe accepts MP3, MP4, WAV, M4A, and most common audio and video formats. You can also paste a YouTube link and D.scribe will pull the audio automatically.",
-              },
-              {
-                q: "How does Ink work?",
-                a: "Ink is D.scribe's credit system. Every action that uses AI — transcription, analysis, chapter generation — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 100–200 Ink depending on length. You can always see your balance before taking any action.",
-              },
-              {
-                q: "How long does it take to generate a manuscript?",
-                a: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
-              },
-              {
-                q: "Who is D.scribe for?",
-                a: "D.scribe is built for people who already have something to say — coaches, pastors, speakers, consultants, and experts who think best out loud. If you've been told you should write a book but never had the time or the process to do it, D.scribe is the bridge between your voice and a finished manuscript.",
-              },
-            ].map((item, i) => (
+            {FAQ_ITEMS.map((item, i) => (
               <div key={i} style={{ padding: "28px 0", borderBottom: "1px solid rgba(249,247,242,0.08)", borderTop: i === 0 ? "1px solid rgba(249,247,242,0.08)" : "none" }}>
                 <p style={{ fontFamily: "var(--font-playfair), serif", fontSize: 20, fontWeight: 400, color: "#F9F7F2", marginBottom: 12 }}>{item.q}</p>
                 <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 15, color: "#A89F94", lineHeight: 1.75, margin: 0 }}>{item.a}</p>

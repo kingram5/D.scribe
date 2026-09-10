@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import LandingPage from "@/app/landing-v2/page";
 import { LandingDataProvider } from "@/components/landing/LandingDataContext";
+import { faqSchema as buildFaqSchema } from "@/components/landing/faq";
 import { getLandingData } from "@/lib/landing-data";
 
 // Server data for the landing page refreshes hourly (founder headshot presence,
@@ -45,52 +46,8 @@ const webPageSchema = {
   isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
 };
 
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "How does D.scribe work?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Upload any audio recording — a sermon, a coaching call, a podcast episode, or a voice memo. D.scribe transcribes it word-for-word, builds a structure based on your chapter targets, analyzes your themes and voice patterns, then generates a full manuscript chapter by chapter.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What audio formats does D.scribe support?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "D.scribe accepts MP3, MP4, WAV, M4A, and most common audio and video formats. You can also paste a YouTube link and D.scribe will pull the audio automatically.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How does Ink work?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Ink is D.scribe's credit system. Every action that uses AI — transcription, analysis, chapter generation — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 100–200 Ink depending on length. You can always see your balance before taking any action.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How long does it take to generate a manuscript?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Most users go from upload to a full first draft in under an hour. Transcription takes a few minutes; chapter generation typically runs 2–5 minutes per chapter depending on length.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Who is D.scribe for?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "D.scribe is built for people who already have something to say — coaches, pastors, speakers, consultants, and experts who think best out loud. If you've been told you should write a book but never had the time or the process to do it, D.scribe is the bridge between your voice and a finished manuscript.",
-      },
-    },
-  ],
-};
+// FAQPage JSON-LD is built from the same list the page renders (HeyCatch item 8).
+const faqSchema = buildFaqSchema();
 
 export default async function Page() {
   const landingData = await getLandingData();

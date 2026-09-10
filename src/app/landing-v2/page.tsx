@@ -1056,7 +1056,10 @@ export default function LandingV2() {
       {/* ─── Hero Section ─── */}
       <section className="lv2-hero">
 
-        {/* Video background */}
+        {/* Video background. preload="metadata" (HeyCatch item 9): the 1280x720 /
+            100 KB poster paints first instead of the whole MP4 being pulled ahead
+            of first paint; autoplay still starts the fetch once the element is
+            ready, so the visible behavior is unchanged. */}
         <video
           ref={videoRef}
           style={{
@@ -1064,7 +1067,7 @@ export default function LandingV2() {
             objectFit: "cover", objectPosition: "center center",
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
-          autoPlay loop muted playsInline preload="auto"
+          autoPlay loop muted playsInline preload="metadata"
           poster="/bg-video-poster.jpg"
           disablePictureInPicture disableRemotePlayback
         >

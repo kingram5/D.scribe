@@ -1246,9 +1246,20 @@ export default function LandingV2() {
             </div>
           </FadeSection>
 
-          {/* Right: brainstorm chat mock */}
+          {/* Right: brainstorm chat mock, labeled (HeyCatch item 4) */}
           <FadeSection delay={0.2}>
-            <div className="lv2-brainstorm-wrap" style={{ marginLeft: "-5%" }}>
+            <div className="lv2-brainstorm-wrap" style={{ marginLeft: "-5%", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+              <div className="lv2-brainstorm-label" style={{ width: "min(840px, 100%)" }}>
+                <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C17A47", margin: "0 0 8px" }}>
+                  Spoken brainstorming
+                </p>
+                <h3 style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: "clamp(24px, 2.4vw, 32px)", fontWeight: 400, color: "#F9F7F2", margin: "0 0 6px", lineHeight: 1.2 }}>
+                  Talk it out with your ghostwriter.
+                </h3>
+                <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 17, lineHeight: 1.6, color: "#A89F94", margin: 0 }}>
+                  Spoken AI brainstorming sessions on Pro and Premium.
+                </p>
+              </div>
               <BrainstormMock />
             </div>
           </FadeSection>

@@ -972,7 +972,15 @@ function FadeSection({ children, className = "", delay = 0, style = {} }: { chil
 export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { founderHeadshot } = useLandingData();
+  const { founderHeadshot, booksGenerated } = useLandingData();
+
+  // HeyCatch item 3: one hero stat is a real number from Supabase. Below 100
+  // books the honest framing is the "first 100 authors" invitation; at 100 and
+  // above the live count is shown. Never hard-coded.
+  const USAGE_MILESTONE = 100;
+  const usageStat = booksGenerated !== null && booksGenerated >= USAGE_MILESTONE
+    ? { big: booksGenerated.toLocaleString("en-US"), label: "Books generated with D.scribe" }
+    : { big: "First 100", label: "Join the first 100 authors using D.scribe" };
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 50); }
@@ -1116,8 +1124,8 @@ export default function LandingV2() {
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>From voice to published book</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>Your voice</div>
-            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>AI writes in your style, not its own</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>{usageStat.big}</div>
+            <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>{usageStat.label}</div>
           </div>
         </div>
 

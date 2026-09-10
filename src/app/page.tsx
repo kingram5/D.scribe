@@ -20,6 +20,12 @@ export const metadata: Metadata = {
     siteName: "D.scribe",
     type: "website",
   },
+  // og:image / twitter:image come from ./opengraph-image.tsx and ./twitter-image.tsx (HeyCatch item 7).
+  twitter: {
+    card: "summary_large_image",
+    title: "D.scribe — Turn Your Voice Into a Published Book with AI",
+    description: "Upload any audio, set your structure, and watch AI write your manuscript chapter by chapter — in your voice.",
+  },
 };
 
 const orgSchema = {

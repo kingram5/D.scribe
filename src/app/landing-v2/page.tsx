@@ -269,7 +269,12 @@ function PipelineDashboard() {
   const step = DASH_PIPELINE[active];
 
   return (
-    <div ref={rootRef} className="lv2-pipeline-dash" aria-hidden="true" style={{
+    <div
+      ref={rootRef}
+      className="lv2-pipeline-dash"
+      role="img"
+      aria-label="Animated preview of the D.scribe project dashboard stepping through the seven stages of a book: audio upload, transcription, structure setup, content analysis, chapter generation, manuscript editor, and export."
+      style={{
       borderRadius: 20,
       overflow: "hidden",
       boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.18)",

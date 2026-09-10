@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     siteName: "D.scribe",
     type: "website",
   },
+  // og:image / twitter:image come from ./opengraph-image.tsx and ./twitter-image.tsx (HeyCatch item 7).
+  twitter: {
+    card: "summary_large_image",
+    title: "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+    description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
+  },
 };
 
 const pricingSchema = {
@@ -81,6 +87,34 @@ const INCLUDED_FEATURES = [
   "PDF / DOCX export",
 ];
 
+// Product JSON-LD (HeyCatch item 7): one Product, three monthly Offers built
+// from TIERS so the structured data cannot drift from the cards.
+const productSchema = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: "D.scribe",
+  description: "Voice-to-manuscript software for speakers, pastors, and coaches. Upload recordings, get a transcribed, structured manuscript written chapter by chapter in your voice, then edit and export to PDF or DOCX.",
+  brand: { "@type": "Brand", name: "D.scribe" },
+  url: "https://d-scribe.app/pricing",
+  category: "Software subscription",
+  offers: TIERS.map((tier) => ({
+    "@type": "Offer",
+    name: `${tier.name} plan`,
+    description: `${tier.ink.toLocaleString("en-US")} Ink per month (${tier.books}). ${tier.tagline}`,
+    price: tier.price.toFixed(2),
+    priceCurrency: "USD",
+    url: "https://d-scribe.app/pricing",
+    availability: "https://schema.org/InStock",
+    priceSpecification: {
+      "@type": "UnitPriceSpecification",
+      price: tier.price.toFixed(2),
+      priceCurrency: "USD",
+      billingDuration: 1,
+      unitCode: "MON",
+    },
+  })),
+};
+
 function bonusInkPct(ink: number, price: number): number {
   const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
   return Math.round(((ink / price) / base - 1) * 100);
@@ -91,6 +125,7 @@ export default function PricingPage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
     <div
       style={{
         minHeight: "100vh",

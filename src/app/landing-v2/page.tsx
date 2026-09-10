@@ -1120,7 +1120,7 @@ export default function LandingV2() {
             Turn Your<br className="lv2-br-desk" /> Voice Into a<br className="lv2-br-desk" /> <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Published<br className="lv2-br-desk" /> Book.</span>
           </h1>
           <p className="lv2-author-copy" style={{ fontSize: 17, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
-            D.&thinsp;scribe transcribes your sermons, coaching calls, and keynotes, then writes your manuscript chapter by chapter in your voice. You talk. It writes.
+            D.&thinsp;scribe transcribes your sermons, coaching calls, and keynotes, then writes your manuscript chapter by chapter in your voice.
           </p>
           <Link
             href="/login"

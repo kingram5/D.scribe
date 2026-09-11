@@ -1056,10 +1056,9 @@ export default function LandingV2() {
       {/* ─── Hero Section ─── */}
       <section className="lv2-hero">
 
-        {/* Video background. preload="metadata" (HeyCatch item 9): the 1280x720 /
-            100 KB poster paints first instead of the whole MP4 being pulled ahead
-            of first paint; autoplay still starts the fetch once the element is
-            ready, so the visible behavior is unchanged. */}
+        {/* Video background. preload="auto" (restored 2026-09-10 on Kyle's call):
+            he wants the hero video playing immediately, not the poster holding
+            first. autoplay/loop/muted/playsInline were never changed. */}
         <video
           ref={videoRef}
           style={{
@@ -1067,7 +1066,7 @@ export default function LandingV2() {
             objectFit: "cover", objectPosition: "center center",
             willChange: "transform", transform: "translate3d(0,0,0)",
           }}
-          autoPlay loop muted playsInline preload="metadata"
+          autoPlay loop muted playsInline preload="auto"
           poster="/bg-video-poster.jpg"
           disablePictureInPicture disableRemotePlayback
         >
@@ -1083,26 +1082,17 @@ export default function LandingV2() {
           <CinematicMurmurWaveform />
         </div>
 
-        {/* Secondary hero CTA (HeyCatch item 6): the old "Your Story Starts → HERE"
-            button duplicated the primary /login CTA. This is a quieter outline
-            link that scrolls to the seven-step section instead. */}
+        {/* Sub-hero CTA — restored 2026-09-10 on Kyle's call. He keeps the
+            "Your Story Starts → HERE" pill; the informational link moved to the
+            author CTA below instead. */}
         <div className="lv2-hero-subarrow">
-          <a
-            href="#how-it-works"
-            className="lv2-hero-secondary"
-            onClick={(e) => {
-              const target = document.getElementById("how-it-works");
-              if (!target) return; // fall back to the plain hash jump
-              e.preventDefault();
-              target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-              history.replaceState(null, "", "#how-it-works");
-            }}
+          <span className="lv2-subarrow-script" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "#ffffff", opacity: 0.9 }}>Your Story Starts <span style={{ fontStyle: "normal" }}>→</span></span>
+          <Link
+            href="/login"
+            style={{ padding: "14px 44px", background: "#C17A47", color: "#1A140E", fontSize: 18, fontWeight: 800, borderRadius: 20, textDecoration: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", display: "inline-flex", alignItems: "center", minHeight: 48 }}
           >
-            See how it works
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 5v14M5 12l7 7 7-7" />
-            </svg>
-          </a>
+            HERE
+          </Link>
         </div>
 
         {/* Center Tagline */}
@@ -1114,21 +1104,28 @@ export default function LandingV2() {
 
         {/* Left Side Author Content */}
         <div className="lv2-hero-author">
-          {/* HeyCatch 2026-09-10 item 1: the h1 now names the category and the
-              buyer, and matches the <title>. Copper italic accent kept for brand. */}
+          {/* 2026-09-10: Kyle's call — the original h1 stays. HeyCatch item 1
+              proposed naming the category/buyer here; he keeps the brand line. */}
           <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontWeight: 700, lineHeight: 0.95, color: "#F9F7F2", margin: 0, textWrap: "balance" }}>
-            Turn Your<br className="lv2-br-desk" /> Voice Into a<br className="lv2-br-desk" /> <span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Published<br className="lv2-br-desk" /> Book.</span>
+            There&rsquo;s an<br />Author<br /><span style={{ fontStyle: "italic", fontWeight: 400, color: "#D98B58" }}>Inside You</span>
           </h1>
           <p className="lv2-author-copy" style={{ fontSize: 17, lineHeight: 1.6, color: "rgba(249,247,242,0.72)" }}>
             D.&thinsp;scribe transcribes your sermons, coaching calls, and keynotes, then writes your manuscript chapter by chapter in your voice.
           </p>
-          <Link
-            href="/login"
+          <a
+            href="#how-it-works"
             className="lv2-author-cta"
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "13px 24px", background: "#E6C18B", color: "#1A140E", fontSize: 15, lineHeight: "22px", fontWeight: "bold", borderRadius: 4, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.05em", minHeight: 50 }}
+            onClick={(e) => {
+              const target = document.getElementById("how-it-works");
+              if (!target) return; // fall back to the plain hash jump
+              e.preventDefault();
+              target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+              history.replaceState(null, "", "#how-it-works");
+            }}
           >
-            Begin Your Book <span style={{ marginLeft: 12, fontSize: 18 }}>→</span>
-          </Link>
+            See how it works
+          </a>
         </div>
 
       </section>
@@ -1437,6 +1434,8 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+
         /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
         .circular-text {
           width: 320px;
@@ -1529,36 +1528,6 @@ export default function LandingV2() {
         }
         .lv2-pill-cta:hover { background: #D98B58; }
 
-        /* Secondary hero CTA: outline link, deliberately lower contrast than the
-           filled "Begin Your Book" button so the hero has one primary action. */
-        .lv2-hero-secondary {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 26px;
-          min-height: 48px;
-          border: 1px solid rgba(249,247,242,0.35);
-          border-radius: 999px;
-          background: rgba(26,20,14,0.25);
-          backdrop-filter: blur(6px);
-          color: rgba(249,247,242,0.85);
-          font-family: var(--font-playfair), 'Playfair Display', serif;
-          font-style: italic;
-          font-size: 18px;
-          font-weight: 500;
-          letter-spacing: 0.01em;
-          text-decoration: none;
-          transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
-        }
-        .lv2-hero-secondary:hover,
-        .lv2-hero-secondary:focus-visible {
-          border-color: rgba(230,193,139,0.8);
-          color: #E6C18B;
-          background: rgba(26,20,14,0.45);
-        }
-        .lv2-hero-secondary svg { transition: transform 0.2s ease; }
-        .lv2-hero-secondary:hover svg { transform: translateY(2px); }
-
         /* Footer founder block */
         .lv2-founder {
           display: inline-flex;
@@ -1627,16 +1596,13 @@ export default function LandingV2() {
            Below 1280px: single-column flow — the layers stack, nothing collides. */
         .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
         .lv2-hero-waveform { pointer-events: none; text-align: center; position: relative; }
-        /* Sized for the six-word headline. On desktop it breaks into four short
-           lines ("Turn Your / Voice Into a / Published / Book.") so the widest
-           line stays left of the centered tagline; below 1280px the breaks are
-           dropped and the headline wraps naturally, centered. */
+        /* Original brand headline, restored 2026-09-10. */
         .lv2-hero-author h1 { font-size: clamp(40px, 4.4vw, 66px); }
-        .lv2-br-desk { display: none; }
         .lv2-author-copy { max-width: 46ch; margin: 14px 0 22px; }
         .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
         .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
         .lv2-tagline-kick { font-size: clamp(16px, 1.8vw, 24px); }
+        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
 
         @media (min-width: 1280px) {
           .lv2-hero { height: 100vh; }
@@ -1645,7 +1611,6 @@ export default function LandingV2() {
           .lv2-hero-tagline { position: absolute; top: 53%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; }
           .lv2-hero-author { position: absolute; top: 47%; left: 33px; max-width: 480px; z-index: 2; }
           .lv2-hero-author h1 { margin-top: 16px; }
-          .lv2-br-desk { display: inline; }
         }
 
         @media (max-width: 1279px) {

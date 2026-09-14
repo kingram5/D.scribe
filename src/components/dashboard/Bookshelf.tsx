@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
@@ -99,10 +99,12 @@ function useReachedSteps(ids: string[]): Record<string, number> {
   return reached;
 }
 
-/** Books per plank, from the measured width of the shelf column. */
+/** Books per plank, from the measured width of the shelf column. Measured before
+ *  first paint so a phone never flashes a desktop-width row that pushes the
+ *  page sideways. */
 function usePerShelf(ref: React.RefObject<HTMLDivElement | null>): number {
   const [per, setPer] = useState(4);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const compute = () => {
@@ -397,7 +399,8 @@ const BOOKSHELF_CSS = `
     radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,205,150,0.16), transparent 70%),
     radial-gradient(ellipse 120% 80% at 50% 60%, transparent 50%, rgba(0,0,0,0.45) 100%);
 }
-.bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 24px 40px 72px; }
+.bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 24px 40px 72px; max-width: 100%; }
+.bs-shelf, .bs-row { max-width: 100%; }
 
 /* Header */
 .bs-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; flex-wrap: wrap; margin-bottom: 26px; }
@@ -550,7 +553,7 @@ const BOOKSHELF_CSS = `
 
 @media (max-width: 768px) {
   .bs-root { --bs-book-w: 150px; --bs-book-h: 210px; --bs-gap: 20px; --bs-plank-h: 16px; }
-  .bs-scroll { padding: 12px 16px 96px; overflow: visible; }
+  .bs-scroll { padding: 12px 16px 96px; overflow: visible; overflow-x: clip; }
   .bs-title { font-size: 30px; }
   .bs-header { gap: 16px; }
   .bs-header-left { gap: 16px; }

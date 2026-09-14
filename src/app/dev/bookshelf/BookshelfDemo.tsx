@@ -25,6 +25,19 @@ export default function BookshelfDemo() {
   // Dev harness only: decline non-essential cookies up front so the consent banner
   // (a sibling mounted after this page) does not cover the shelf in screenshots.
   useEffect(() => { if (readConsent() === null) writeConsent({ analytics: false, marketing: false }); }, []);
+  const debug = params.get("debug") === "1";
+  const [measure, setMeasure] = useState("");
+  useEffect(() => {
+    if (!debug) return;
+    const t = setTimeout(() => {
+      const r = (sel: string) => { const el = document.querySelector(sel); if (!el) return `${sel}: none`; const b = el.getBoundingClientRect(); return `${sel}: x=${Math.round(b.left)} w=${Math.round(b.width)}`; };
+      setMeasure([
+        `viewport innerWidth=${window.innerWidth} docScrollW=${document.documentElement.scrollWidth} bodyW=${document.body.clientWidth}`,
+        r(".ds-main-layout"), r(".ds-page-shell"), r(".bs-root"), r(".bs-scroll"), r(".bs-header"), r(".bs-toolbar"), r(".bs-shelves"), r(".bs-shelf"), r(".bs-row-books"), r(".bs-book-slot"),
+      ].join("\n"));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [debug]);
   const all = empty ? [] : MOCK;
   const active = all.filter((b) => b.status !== "erased");
   const books = filter === "all" ? active : all.filter((b) => b.status === filter);
@@ -37,6 +50,7 @@ export default function BookshelfDemo() {
   };
   return (
     <div className="ds-main-layout" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {debug && <pre style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, background: "#000", color: "#0f0", fontSize: 11, margin: 0, padding: 6, whiteSpace: "pre-wrap" }}>{measure || "measuring…"}</pre>}
       <div style={{ height: 44, flex: "none", background: "rgba(20,15,10,0.6)", borderBottom: "1px solid rgba(249,247,242,0.08)" }} />
       <div className="ds-page-shell" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Bookshelf

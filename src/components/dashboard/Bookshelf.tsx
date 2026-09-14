@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import BookReader, { type ReaderStage } from "./BookReader";
+import { ShelfVignette } from "./ShelfVignettes";
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
 // The dashboard as a physical library: a warm linen wall, wood planks, and the
@@ -402,9 +403,9 @@ function Shelf({ perShelf, children, cards, arriveIndex = 0, vignetteSeed = 0 }:
   return (
     <section className="bs-shelf bs-arrive" style={vars} data-seed={vignetteSeed}>
       <div className="bs-row bs-row-books">
-        <span className="bs-end" aria-hidden="true" />
+        <ShelfVignette side="left" seed={vignetteSeed} />
         {children}
-        <span className="bs-end" aria-hidden="true" />
+        <ShelfVignette side="right" seed={vignetteSeed} />
       </div>
       <div className="bs-plank" aria-hidden="true" />
       {cards && (
@@ -543,7 +544,7 @@ const BOOKSHELF_CSS = `
 .bs-root {
   --bs-book-w: 176px;
   --bs-book-h: 246px;
-  --bs-gap: 30px;
+  --bs-gap: 26px;
   --bs-plank-h: 16px;
   --bs-ink: #F9F7F2;
   --bs-ink-soft: #C8C0B4;
@@ -643,7 +644,7 @@ const BOOKSHELF_CSS = `
 
 /* ── The bookcase: dark mahogany like the room's, brass nosing, no cartoon ─ */
 .bs-case {
-  position: relative; margin-top: 26px; padding: 34px 34px 28px; border-radius: 8px;
+  position: relative; margin: 26px auto 0; max-width: 1300px; padding: 34px 34px 28px; border-radius: 8px;
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 54px, rgba(255,215,170,0.035) 54px 55px, transparent 55px 108px),
     linear-gradient(180deg, #2A1A0E 0%, #1F1309 100%);
@@ -665,10 +666,13 @@ const BOOKSHELF_CSS = `
 .bs-case-bottom { left: -8px; right: -8px; bottom: -12px; height: 22px; border-radius: 0 0 4px 4px; background: linear-gradient(180deg, #43290F, #24140A); box-shadow: 0 18px 30px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,215,170,0.2); }
 
 /* Shelves */
-.bs-shelves { display: flex; flex-direction: column; gap: 42px; position: relative; z-index: 2; --bs-ends: 0px; }
+.bs-shelves { display: flex; flex-direction: column; gap: 42px; position: relative; z-index: 2; --bs-ends: 150px; }
 .bs-shelf { position: relative; padding: 0; }
-.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-cols); max-width: 100%; }
-.bs-end, .bs-end-spacer { display: none; }
+.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-ends) var(--bs-cols) var(--bs-ends); max-width: 100%; }
+.bs-end-spacer { display: block; }
+/* The used ends of each shelf: painted cutouts in the room's style */
+.bs-vig { position: relative; height: var(--bs-book-h); align-self: end; z-index: 1; }
+.bs-vig-piece { position: absolute; bottom: -2px; width: auto; transform-origin: 50% 100%; filter: drop-shadow(0 8px 8px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(0,0,0,0.4)); animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(360ms + var(--i, 0) * 70ms); user-select: none; pointer-events: none; }
 .bs-row-books { align-items: end; min-height: calc(var(--bs-book-h) + 18px); position: relative; z-index: 2; }
 .bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; }
 .bs-plank {
@@ -808,7 +812,9 @@ const BOOKSHELF_CSS = `
   .bs-case-side { width: 12px; }
   .bs-case-top { left: -6px; right: -6px; top: -12px; height: 20px; }
   .bs-case-bottom { left: -5px; right: -5px; bottom: -10px; height: 14px; }
-  .bs-shelves { gap: 32px; }
+  .bs-shelves { gap: 32px; --bs-ends: 0px; }
+  .bs-row { grid-template-columns: var(--bs-cols); }
+  .bs-vig, .bs-end-spacer { display: none; }
   .bs-cover { padding: 18px 14px; }
   .bs-cover-title { font-size: 17px; }
   .bs-card-wide { grid-column: 1 / -1; }

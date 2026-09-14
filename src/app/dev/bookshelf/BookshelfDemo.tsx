@@ -72,6 +72,7 @@ export default function BookshelfDemo() {
           quote={{ text: "Write what should not be forgotten.", author: "Isabel Allende" }}
           progressOverride={PROGRESS}
           hoverPreviewId={params.get("hover") ?? undefined}
+          openPreviewId={params.get("open") ?? undefined}
           aside={
             <div className="plate-card" style={{ padding: "12px 16px", background: "#FBF9F3", color: "#2C2419" }}>
               <div className="ds-label">Usage widget renders here</div>

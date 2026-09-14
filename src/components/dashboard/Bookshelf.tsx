@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Knickknack, type KnickknackKind } from "./Knickknacks";
+import BookReader, { type ReaderStage } from "./BookReader";
 
 const MANTLE: KnickknackKind[] = ["lamp", "manuscript", "mic", "inkwell", "coffee", "plant", "candle", "hourglass"];
 
@@ -52,6 +53,8 @@ interface BookshelfProps {
   progressOverride?: Record<string, number>;
   /** Test/preview hook: render this book in its hovered state. */
   hoverPreviewId?: string;
+  /** Test/preview hook: start with this book opened. */
+  openPreviewId?: string;
 }
 
 /** Shelves shown per page before the wooden arrows take over. */
@@ -139,8 +142,21 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export default function Bookshelf(props: BookshelfProps) {
   const {
     ownerName, books, counts, filter, onFilter, eraseMode, onToggleErase, onEraseClick,
-    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId,
+    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId,
   } = props;
+  // Open book (the reader): which one, and where the animation is.
+  const [openBook, setOpenBook] = useState<ShelfBook | null>(() => openPreviewId ? books.find((b) => b.id === openPreviewId) ?? null : null);
+  const [stage, setStage] = useState<ReaderStage>(openPreviewId ? "open" : "zoom");
+  const openIt = (book: ShelfBook) => {
+    setOpenBook(book);
+    setStage("zoom");
+    // Let the lift land, then swing the cover.
+    window.setTimeout(() => setStage("open"), 60);
+  };
+  const closeIt = () => {
+    setStage("closing");
+    window.setTimeout(() => setOpenBook(null), 460);
+  };
   const shelvesRef = useRef<HTMLDivElement>(null);
   const perShelf = usePerShelf(shelvesRef);
   const reached = useReachedSteps(books.map((b) => b.id));
@@ -302,12 +318,25 @@ export default function Bookshelf(props: BookshelfProps) {
                     onEraseClick={onEraseClick}
                     lit={lit === book.id}
                     onHover={setHoverId}
+                    onOpen={openIt}
+                    hidden={openBook?.id === book.id}
                   />
                 );
               })}
             </Shelf>
           ))}
         </div>
+
+        {openBook && (
+          <BookReader
+            book={openBook}
+            cover={COVERS[books.indexOf(openBook) % COVERS.length]}
+            ownerName={ownerName}
+            step={stepFor(openBook, progressOverride, reached)}
+            stage={stage}
+            onClose={closeIt}
+          />
+        )}
 
         {/* Paging: wooden arrows and dots, like a shelf you walk along */}
         {!loading && pageCount > 1 && (
@@ -342,9 +371,9 @@ function Shelf({ perShelf, children, cards, arriveIndex = 0 }: { perShelf: numbe
   );
 }
 
-function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover }: {
+function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover, onOpen, hidden }: {
   book: ShelfBook; cover: string; eraseMode: boolean; erasing: boolean; onEraseClick: (b: ShelfBook) => void;
-  lit: boolean; onHover: (id: string | null) => void;
+  lit: boolean; onHover: (id: string | null) => void; onOpen: (b: ShelfBook) => void; hidden?: boolean;
 }) {
   const hoverProps = {
     onMouseEnter: () => onHover(book.id),
@@ -373,7 +402,18 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover }: {
     );
   }
   return (
-    <Link href={book.href} className={`bs-book-slot${lit ? " is-lit" : ""}`} aria-label={`Open ${book.title}`} {...hoverProps}>
+    <Link
+      href={book.href}
+      className={`bs-book-slot${lit ? " is-lit" : ""}${hidden ? " is-taken" : ""}`}
+      aria-label={`Open ${book.title}`}
+      onClick={(e) => {
+        // Plain click opens the book in the room; modifier clicks keep the browser's own behavior.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen(book);
+      }}
+      {...hoverProps}
+    >
       <div className="bs-book-glow" />
       <div className="bs-book book-hover">
         <div className="bs-back" />
@@ -628,6 +668,9 @@ const BOOKSHELF_CSS = `
 .bs-book-slot:hover .bs-book-glow, .bs-book-slot.is-lit .bs-book-glow { opacity: 1; }
 .bs-book-slot:hover .bs-cover, .bs-book-slot.is-lit .bs-cover { box-shadow: 0 18px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,217,122,0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
 .bs-book-slot:focus-visible .bs-cover { box-shadow: 0 0 0 3px #FFD97A, 0 18px 30px rgba(0,0,0,0.45); }
+/* While a book is open in the room, its slot on the shelf sits empty */
+.bs-book-slot.is-taken .bs-book, .bs-book-slot.is-taken .bs-book-glow { opacity: 0; transition: opacity 200ms ease; }
+.bs-book-slot.is-taken .bs-book-shadow { opacity: 0.25; transform: scaleX(0.7); }
 .bs-back { position: absolute; inset: 0; background: #2C1F15; border-radius: 2px 8px 8px 2px; transform: translateZ(-24px); }
 .bs-pages { position: absolute; top: 4px; bottom: 4px; right: 0; width: 22px; background: linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8); transform: translateZ(-12px) translateX(4px); border-radius: 0 4px 4px 0; box-shadow: inset -1px 0 2px rgba(0,0,0,0.05); }
 .bs-page-line { position: absolute; right: 2px; width: 16px; height: 0.5px; background: rgba(0,0,0,0.05); }

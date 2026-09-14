@@ -241,18 +241,34 @@ export default function Bookshelf(props: BookshelfProps) {
               </p>
             </div>
           </div>
-          {aside && <div className="bs-header-aside">{aside}</div>}
+          {aside && (
+            <div className="bs-header-aside">
+              {/* Chalkboard: the running tally, in chalk, with the usage widget framed inside */}
+              <div className="bs-chalkboard">
+                <div className="bs-chalk-line">
+                  <span className="bs-chalk-n">{counts.all}</span> {counts.all === 1 ? "book" : "books"} on the shelf
+                  <span className="bs-chalk-sep">·</span>
+                  <span className="bs-chalk-n">{counts.in_progress}</span> in the works
+                  <span className="bs-chalk-sep">·</span>
+                  <span className="bs-chalk-n">{counts.complete}</span> finished
+                </div>
+                <div className="bs-chalk-widget">{aside}</div>
+                <div className="bs-chalk-tray"><span className="bs-chalk-stick" /><span className="bs-chalk-stick bs-chalk-stick-2" /></div>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* Toolbar: parchment filter pills + actions */}
         <div className="bs-toolbar" role="tablist" aria-label="Filter books">
           <div className="bs-pills">
-            {pills.map((p) => (
+            {pills.map((p, i) => (
               <button
                 key={p.key}
                 role="tab"
                 aria-selected={filter === p.key}
                 className={`bs-pill${filter === p.key ? " is-active" : ""}`}
+                style={{ ["--i" as string]: i }}
                 onClick={() => onFilter(p.key)}
               >
                 {p.label} <span className="bs-pill-n">{p.n}</span>
@@ -290,8 +306,16 @@ export default function Bookshelf(props: BookshelfProps) {
         {/* Shelves */}
         <div className="bs-shelves" ref={shelvesRef}>
           {loading && (
-            <Shelf perShelf={perShelf}>
-              <div className="bs-loading ds-label">Dusting the shelves&hellip;</div>
+            <Shelf perShelf={perShelf} cards={[
+              ...Array.from({ length: perShelf }).map((_, i) => <div key={i} className="bs-card bs-card-ghost" />),
+              <div key="label" className="bs-loading ds-label">Dusting the shelves&hellip;</div>,
+            ]}>
+              {Array.from({ length: perShelf }).map((_, i) => (
+                <div key={i} className="bs-book-slot bs-book-ghost" style={{ ["--i" as string]: i }}>
+                  <div className="bs-book"><div className="bs-cover bs-cover-ghost" /></div>
+                  <div className="bs-book-shadow" />
+                </div>
+              ))}
             </Shelf>
           )}
 
@@ -333,6 +357,7 @@ export default function Bookshelf(props: BookshelfProps) {
                   step={stepFor(book, progressOverride, reached)}
                   lit={lit === book.id}
                   onHover={setHoverId}
+                  onOpen={eraseMode ? () => onEraseClick(book) : () => openIt(book)}
                 />
               ))}
             >
@@ -474,14 +499,23 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover, onO
   );
 }
 
-function BookCard({ book, step, lit, onHover }: { book: ShelfBook; step: number; lit: boolean; onHover: (id: string | null) => void }) {
+function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step: number; lit: boolean; onHover: (id: string | null) => void; onOpen: () => void }) {
   const stamp = STAMP[book.status];
   const pct = book.status === "complete" ? 100 : Math.round(((step + 0.5) / PIPELINE_STEPS.length) * 100);
   // Fixed locale + zone so the server and the browser print the same string
   // (a runtime-locale date here is a hydration mismatch waiting to happen).
   const date = new Date(book.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   return (
-    <div className={`bs-card${lit ? " is-lit" : ""}`} onMouseEnter={() => onHover(book.id)} onMouseLeave={() => onHover(null)}>
+    <div
+      className={`bs-card${lit ? " is-lit" : ""}`}
+      onMouseEnter={() => onHover(book.id)}
+      onMouseLeave={() => onHover(null)}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${book.title}: open`}
+    >
       <div className="bs-card-head">
         <span className="bs-card-title" title={book.title}>{book.title}</span>
         <span className="bs-card-date">{date}</span>
@@ -642,7 +676,45 @@ const BOOKSHELF_CSS = `
 .bs-title { font-family: var(--font-lora), serif; font-weight: 400; font-size: 44px; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 8px; color: var(--bs-ink); text-shadow: 0 2px 12px rgba(0,0,0,0.45); }
 .bs-quote { font-family: var(--font-lora), serif; font-style: italic; font-size: 14px; line-height: 1.5; color: var(--bs-ink-soft); margin: 0; }
 .bs-quote-author { font-style: normal; font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #A89F94; margin-left: 4px; }
-.bs-header-aside { min-width: 300px; max-width: 380px; flex: 0 1 380px; }
+.bs-header-aside { min-width: 300px; max-width: 400px; flex: 0 1 400px; }
+
+/* Chalkboard: slate in a wooden frame, chalk tally on top, the usage widget inside */
+.bs-chalkboard {
+  position: relative; padding: 14px 14px 18px; border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06), transparent 60%),
+    linear-gradient(180deg, #2E3A35 0%, #26302C 100%);
+  box-shadow: 0 0 0 6px #8E5D31, 0 0 0 7px #4E2E14, 0 14px 28px rgba(0,0,0,0.55), inset 0 0 40px rgba(0,0,0,0.35);
+  animation: bs-drop 700ms var(--bs-spring) both; animation-delay: 220ms;
+}
+.bs-chalkboard::before { content: ""; position: absolute; inset: 0; border-radius: 6px; background-image: ${NOISE}; opacity: 0.12; mix-blend-mode: screen; pointer-events: none; }
+.bs-chalk-line { font-family: var(--font-kalam), 'Kalam', cursive; font-size: 15px; color: rgba(249,247,242,0.85); text-shadow: 0 0 1px rgba(255,255,255,0.5); margin-bottom: 10px; letter-spacing: 0.01em; position: relative; }
+.bs-chalk-n { font-size: 20px; color: #FFE7B8; margin-right: 2px; }
+.bs-chalk-sep { margin: 0 8px; opacity: 0.5; }
+.bs-chalk-widget { position: relative; }
+.bs-chalk-tray { position: absolute; left: 10px; right: 10px; bottom: -13px; height: 8px; border-radius: 0 0 3px 3px; background: linear-gradient(180deg, #A9743F, #74471F); box-shadow: 0 3px 6px rgba(0,0,0,0.5); }
+.bs-chalk-stick { position: absolute; bottom: 5px; left: 16px; width: 26px; height: 5px; border-radius: 3px; background: #F4ECDC; box-shadow: 0 1px 1px rgba(0,0,0,0.4); }
+.bs-chalk-stick-2 { left: 48px; width: 16px; background: #E9B56B; }
+
+/* Everything arrives: the sign drops on its chains, the tally board, the objects, the pills */
+.bs-header-left { animation: bs-drop 800ms var(--bs-spring) both; }
+.bs-sign { animation: bs-sway 6.5s ease-in-out 900ms infinite; }
+.bs-pill { animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(260ms + var(--i, 0) * 45ms); }
+.bs-kk-svg { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(320ms + var(--i, 0) * 60ms); }
+.bs-mantle .bs-plank { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: 280ms; }
+@keyframes bs-drop { 0% { opacity: 0; transform: translateY(-40px); } 100% { opacity: 1; transform: none; } }
+
+/* Loading: ghost books on the plank while the shelf is dusted */
+.bs-book-ghost { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(var(--i, 0) * 80ms); }
+.bs-cover-ghost { background: linear-gradient(160deg, rgba(249,247,242,0.10), rgba(249,247,242,0.04)); border: 1px dashed rgba(249,247,242,0.25); box-shadow: none; overflow: hidden; }
+.bs-cover-ghost::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,214,150,0.14) 50%, transparent 70%); animation: bs-shimmer 1.8s ease-in-out infinite; }
+.bs-card-ghost { min-height: 92px; opacity: 0.45; }
+@keyframes bs-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+/* Keyboard: gold focus rings everywhere something is pressable */
+.bs-pill:focus-visible, .bs-nav:focus-visible, .bs-dot:focus-visible, .bs-card:focus-visible, .bs-ghost-book:focus-visible { outline: 3px solid #FFD97A; outline-offset: 3px; }
+.bs-card { -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.bs-book-slot, .bs-pill, .bs-nav { -webkit-tap-highlight-color: transparent; }
 
 /* Toolbar */
 .bs-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -717,7 +789,7 @@ const BOOKSHELF_CSS = `
 .bs-book-slot:nth-child(3n+2) .bs-book { transform: rotate(-1.1deg); transform-origin: 50% 100%; }
 .bs-book-slot:nth-child(4n+3) .bs-book { transform: rotate(0.9deg); transform-origin: 50% 100%; }
 .bs-loading, .bs-empty-note { grid-column: 1 / -1; justify-self: center; align-self: end; padding-bottom: 28px; color: var(--bs-ink-soft); font-family: var(--font-lora), serif; font-style: italic; font-size: 15px; }
-.bs-loading { font-style: normal; }
+.bs-loading { font-style: normal; align-self: start; padding: 10px 0 0; letter-spacing: 0.14em; }
 
 /* Books (same 3D book as before, now standing on wood) */
 .bs-book-slot { position: relative; display: block; width: var(--bs-book-w); height: var(--bs-book-h); perspective: 1000px; text-decoration: none; outline: none; }
@@ -819,7 +891,9 @@ const BOOKSHELF_CSS = `
   .bs-header { gap: 16px; }
   .bs-header-left { gap: 16px; }
   .bs-sign-board { padding: 8px 12px; }
-  .bs-header-aside { min-width: 0; flex-basis: 100%; }
+  .bs-header-aside { min-width: 0; max-width: none; flex-basis: 100%; }
+  .bs-chalkboard { margin: 0 7px 16px; }
+  .bs-chalk-line { font-size: 14px; }
   .bs-shelves { gap: 34px; }
   .bs-shelf { padding: 0 8px; }
   .bs-cover { padding: 18px 14px; }

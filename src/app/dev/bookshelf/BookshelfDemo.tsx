@@ -68,7 +68,7 @@ export default function BookshelfDemo() {
           onToggleErase={() => setEraseMode((v) => !v)}
           onEraseClick={() => setEraseMode(false)}
           erasingId={null}
-          loading={false}
+          loading={params.get("loading") === "1"}
           quote={{ text: "Write what should not be forgotten.", author: "Isabel Allende" }}
           progressOverride={PROGRESS}
           hoverPreviewId={params.get("hover") ?? undefined}

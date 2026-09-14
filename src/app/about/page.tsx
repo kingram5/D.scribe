@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FOUNDER, FOUNDER_STORY, FOUNDER_STORY_PLACEHOLDER } from "@/lib/founder";
+import { FOUNDER, FOUNDER_STORY } from "@/lib/founder";
 
 /**
  * /about — founder page (HeyCatch 2026-09-10 item 2).
@@ -84,7 +84,6 @@ function Headshot({ src, size }: { src: string | null; size: number }) {
       }}
     >
       <span style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: size * 0.3, color: COLORS.accent, lineHeight: 1 }}>{FOUNDER.initials}</span>
-      <span style={{ fontFamily: SANS, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.faint }}>Headshot pending</span>
     </div>
   );
 }
@@ -190,34 +189,21 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* Kyle's story: his words or an obvious placeholder, never invented copy */}
-          <h2 style={{ fontFamily: SERIF, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 400, fontStyle: "italic", color: COLORS.ink, lineHeight: 1.25, margin: "0 0 16px" }}>
-            Why I built this
-          </h2>
+          {/* Kyle's story: his words, or nothing. Never invented copy, and never an
+              internal placeholder on a public page (fixed 2026-09-10 after the
+              placeholder shipped live). The section stays hidden until he writes it. */}
           {FOUNDER_STORY ? (
-            FOUNDER_STORY.map((para, i) => (
-              <p key={i} style={{ fontFamily: SANS, fontSize: 17, lineHeight: 1.8, color: COLORS.body, margin: "0 0 16px" }}>
-                {para}
-              </p>
-            ))
-          ) : (
-            <div
-              style={{
-                padding: "20px 24px",
-                borderRadius: 12,
-                border: "1px dashed rgba(193,122,71,0.5)",
-                background: "rgba(193,122,71,0.05)",
-                marginBottom: 16,
-              }}
-            >
-              <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.accent, margin: "0 0 8px" }}>
-                Placeholder
-              </p>
-              <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.7, color: COLORS.muted, margin: 0, fontStyle: "italic" }}>
-                {FOUNDER_STORY_PLACEHOLDER}
-              </p>
-            </div>
-          )}
+            <>
+              <h2 style={{ fontFamily: SERIF, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 400, fontStyle: "italic", color: COLORS.ink, lineHeight: 1.25, margin: "0 0 16px" }}>
+                Why I built this
+              </h2>
+              {FOUNDER_STORY.map((para, i) => (
+                <p key={i} style={{ fontFamily: SANS, fontSize: 17, lineHeight: 1.8, color: COLORS.body, margin: "0 0 16px" }}>
+                  {para}
+                </p>
+              ))}
+            </>
+          ) : null}
 
           <div style={{ height: 1, background: COLORS.divider, margin: "40px 0" }} />
 

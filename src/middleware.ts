@@ -24,6 +24,12 @@ const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Local-only preview harnesses (src/app/dev/*) bypass auth in development. The
+  // pages themselves 404 in production, and this branch never runs there.
+  if (process.env.NODE_ENV === "development" && pathname.startsWith("/dev/")) {
+    return NextResponse.next();
+  }
+
   // Allow public paths, API routes, and the public legal / blog pages
   if (PUBLIC_PATHS.some((p) => pathname === p) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     // For root path, check if user is authenticated → redirect to dashboard

@@ -68,7 +68,7 @@ function Headshot({ src, size }: { src: string | null; size: number }) {
   return (
     <div
       role="img"
-      aria-label={`Headshot placeholder for ${FOUNDER.name}`}
+      aria-label={`${FOUNDER.name}, ${FOUNDER.role} of D.scribe`}
       style={{
         width: size,
         height: size,

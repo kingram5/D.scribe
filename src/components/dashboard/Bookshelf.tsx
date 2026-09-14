@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import BookReader, { type ReaderStage } from "./BookReader";
-import { ShelfVignette } from "./ShelfVignettes";
 import TheoPresence from "./TheoPresence";
 
 /** The studio's typing idiom: text arrives a character at a time behind a copper cursor. */
@@ -145,8 +144,7 @@ function usePerShelf(ref: React.RefObject<HTMLDivElement | null>): number {
       const cs = getComputedStyle(el);
       const bookW = parseFloat(cs.getPropertyValue("--bs-book-w")) || 200;
       const gap = parseFloat(cs.getPropertyValue("--bs-gap")) || 40;
-      const ends = parseFloat(cs.getPropertyValue("--bs-ends")) || 0; // the vignette zones at each end
-      const w = el.clientWidth - 24 - (ends ? 2 * (ends + gap) : 0);
+      const w = el.clientWidth - 24;
       setPer(Math.max(1, Math.min(6, Math.floor((w + gap) / (bookW + gap)))));
     };
     compute();
@@ -255,6 +253,7 @@ export default function Bookshelf(props: BookshelfProps) {
 
       <div className="bs-scroll">
         {/* Header: hanging sign + title on the left, usage on the right */}
+        <div className="bs-column">
         {/* Header in the studio's own idiom: wordmark, a mono title line, glass on the right */}
         <header className="bs-header">
           <div className="bs-header-left">
@@ -364,7 +363,6 @@ export default function Bookshelf(props: BookshelfProps) {
               key={`${pageKey}-${r}`}
               perShelf={perShelf}
               arriveIndex={r}
-              vignetteSeed={safePage * SHELVES_PER_PAGE + r}
               cards={row.map((book) => (
                 <BookCard
                   key={book.id}
@@ -397,6 +395,7 @@ export default function Bookshelf(props: BookshelfProps) {
           ))}
         </div>
           <div className="bs-case-bottom" aria-hidden="true" />
+        </div>
         </div>
 
         {!loading && !openBook && (
@@ -433,25 +432,17 @@ export default function Bookshelf(props: BookshelfProps) {
 
 // ── Pieces ─────────────────────────────────────────────────────────────────
 
-function Shelf({ perShelf, children, cards, arriveIndex = 0, vignetteSeed = 0 }: {
-  perShelf: number; children: ReactNode; cards?: ReactNode; arriveIndex?: number; vignetteSeed?: number;
+function Shelf({ perShelf, children, cards, arriveIndex = 0 }: {
+  perShelf: number; children: ReactNode; cards?: ReactNode; arriveIndex?: number;
 }) {
   const vars = { ["--i" as string]: arriveIndex, ["--bs-cols" as string]: `repeat(${perShelf}, var(--bs-book-w))` };
   return (
-    <section className="bs-shelf bs-arrive" style={vars} data-seed={vignetteSeed}>
+    <section className="bs-shelf bs-arrive" style={vars}>
       <div className="bs-row bs-row-books">
-        <ShelfVignette side="left" seed={vignetteSeed} />
         {children}
-        <ShelfVignette side="right" seed={vignetteSeed} />
       </div>
       <div className="bs-plank" aria-hidden="true" />
-      {cards && (
-        <div className="bs-row bs-row-cards">
-          <span className="bs-end-spacer" />
-          {cards}
-          <span className="bs-end-spacer" />
-        </div>
-      )}
+      {cards && <div className="bs-row bs-row-cards">{cards}</div>}
     </section>
   );
 }
@@ -634,7 +625,9 @@ const BOOKSHELF_CSS = `
 .bs-motes-near { filter: blur(0.6px); transform: translate(calc(var(--mx) * -20px), calc(var(--my) * -12px)); transition: transform 700ms var(--bs-soft); }
 @keyframes bs-motes { 0% { background-position: 20px 40px, 130px 200px, 60px 90px; } 100% { background-position: 60px -300px, 90px -320px, 100px -150px; } }
 
-.bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 22px 40px 72px; max-width: 100%; }
+.bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 18px 40px 72px; max-width: 100%; }
+/* Everything hangs off one column the width of the case, so edges line up */
+.bs-column { max-width: 1300px; margin: 0 auto; }
 /* Wide rooms keep the right side clear for THEO */
 @media (min-width: 1500px) { .bs-scroll { padding-right: 330px; } }
 .bs-title-cursor { height: 0.9em; width: 3px; vertical-align: -0.08em; margin-left: 4px; }
@@ -647,27 +640,32 @@ const BOOKSHELF_CSS = `
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
-.bs-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 28px; flex-wrap: wrap; margin-bottom: 22px; animation: bs-drop 700ms var(--bs-spring) both; }
+.bs-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 14px; animation: bs-drop 700ms var(--bs-spring) both; }
 .bs-header-left { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 .bs-brand { flex: none; padding: 6px 2px; }
 .bs-brand-fallback { font-family: var(--font-playfair), serif; font-style: italic; font-size: 34px; color: #F7EBD3; }
 .bs-title-block { max-width: 620px; border-left: 1px solid var(--bs-line); padding-left: 22px; }
 .bs-kicker { color: var(--bs-ink-dim) !important; margin-bottom: 6px; }
 .bs-kicker-dim { color: rgba(249,247,242,0.4); }
-.bs-title { font-family: var(--font-lora), serif; font-weight: 400; font-size: 36px; letter-spacing: -0.02em; line-height: 1.08; margin: 0 0 6px; color: var(--bs-ink); }
+.bs-title { font-family: var(--font-lora), serif; font-weight: 400; font-size: 30px; letter-spacing: -0.02em; line-height: 1.08; margin: 0 0 4px; color: var(--bs-ink); }
 .bs-quote { font-family: var(--font-lora), serif; font-style: italic; font-size: 13.5px; line-height: 1.5; color: var(--bs-ink-soft); margin: 0; }
 .bs-quote-author { font-style: normal; font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(249,247,242,0.45); margin-left: 4px; }
-.bs-header-aside { min-width: 300px; max-width: 400px; flex: 0 1 400px; }
-.bs-board { padding: 12px 14px 14px; }
+.bs-header-aside { min-width: 280px; max-width: 360px; flex: 0 1 360px; }
+.bs-board { padding: 10px 12px 12px; }
 .bs-board-label { color: var(--bs-ink-dim) !important; margin-bottom: 8px; }
 .bs-board-widget { position: relative; }
 
-/* ── Toolbar (the studio's buttons) ───────────────────────────────────── */
-.bs-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
-.bs-pills, .bs-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* ── Toolbar: a glass bar sitting on the case's top rail ───────────────── */
+.bs-toolbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 10px; margin-bottom: 0; border-radius: 12px 12px 0 0; position: relative; z-index: 4;
+  background: var(--bs-glass); border: 1px solid var(--bs-line); border-bottom: 0;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.bs-pills, .bs-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .bs-pill {
-  font-family: var(--font-manrope), sans-serif; font-weight: 600; font-size: 13px; line-height: 1;
-  padding: 11px 14px; border-radius: 12px; cursor: pointer; text-decoration: none;
+  font-family: var(--font-manrope), sans-serif; font-weight: 600; font-size: 12.5px; line-height: 1;
+  padding: 9px 12px; border-radius: 9px; cursor: pointer; text-decoration: none;
   color: var(--bs-ink); background: rgba(249,247,242,0.08); border: 1px solid var(--bs-line-soft);
   transition: transform 220ms var(--bs-spring), background 160ms ease, border-color 160ms ease;
   animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(200ms + var(--i, 0) * 45ms);
@@ -681,15 +679,15 @@ const BOOKSHELF_CSS = `
 .bs-pill-primary:hover { background: #CE8A57; }
 .bs-pill-ghost { background: none; color: var(--bs-ink-dim); border-color: rgba(249,247,242,0.25); }
 .bs-pill-ghost.is-danger { color: #ffb4ad; border-color: #dc2626; background: rgba(220,38,38,0.12); }
-.bs-erase-hint { font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb4ad; margin: 8px 0 0; }
+.bs-erase-hint { font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb4ad; margin: 0; padding: 6px 12px; background: rgba(220,38,38,0.12); border: 1px solid rgba(220,38,38,0.35); border-top: 0; position: relative; z-index: 4; }
 /* THEO's presence chip: the studio's live-mic pulse, in copper */
-.bs-theo-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 0; color: var(--bs-ink-dim) !important; align-self: center; }
+.bs-theo-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; color: var(--bs-ink-dim) !important; align-self: center; }
 .bs-theo-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bs-copper); animation: bs-chip-pulse 2.2s ease-in-out infinite; }
 @keyframes bs-chip-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(193,122,71,0.45); } 50% { box-shadow: 0 0 0 6px rgba(193,122,71,0); } }
 
 /* ── The bookcase: dark mahogany like the room's, brass nosing, no cartoon ─ */
 .bs-case {
-  position: relative; margin: 26px auto 0; max-width: 1300px; padding: 34px 34px 28px; border-radius: 8px;
+  position: relative; margin: 0; padding: 28px 30px 24px; border-radius: 0 0 8px 8px;
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 54px, rgba(255,215,170,0.035) 54px 55px, transparent 55px 108px),
     linear-gradient(180deg, #2A1A0E 0%, #1F1309 100%);
@@ -699,11 +697,11 @@ const BOOKSHELF_CSS = `
 .bs-case::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(250deg, rgba(255,150,60,0.14), transparent 45%); mix-blend-mode: screen; animation: bs-firelight 2.2s ease-in-out infinite alternate; }
 .bs-case-top, .bs-case-bottom, .bs-case-side { position: absolute; z-index: 3; }
 .bs-case-top {
-  left: -10px; right: -10px; top: -14px; height: 26px; border-radius: 4px;
+  left: -10px; right: -10px; top: -8px; height: 22px; border-radius: 4px;
   background: linear-gradient(180deg, #5A3B22 0%, #43290F 55%, #2E1A0A 100%);
   box-shadow: 0 14px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,215,170,0.35), inset 0 -3px 0 rgba(0,0,0,0.35);
 }
-.bs-case-top::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; height: 8px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #6B4A2C, #4A2F16); }
+.bs-case-top::before { content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 6px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #6B4A2C, #4A2F16); }
 .bs-case-top::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 5px; height: 1px; background: rgba(217,164,92,0.5); }
 .bs-case-side { top: 2px; bottom: 2px; width: 24px; background: linear-gradient(90deg, #4A2F16, #3A2211 60%, #2A1608); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35); }
 .bs-case-side-l { left: 0; border-radius: 3px 0 0 3px; box-shadow: inset -3px 0 0 rgba(0,0,0,0.35), inset 1px 0 0 rgba(255,215,170,0.2); }
@@ -711,13 +709,9 @@ const BOOKSHELF_CSS = `
 .bs-case-bottom { left: -8px; right: -8px; bottom: -12px; height: 22px; border-radius: 0 0 4px 4px; background: linear-gradient(180deg, #43290F, #24140A); box-shadow: 0 18px 30px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,215,170,0.2); }
 
 /* Shelves */
-.bs-shelves { display: flex; flex-direction: column; gap: 42px; position: relative; z-index: 2; --bs-ends: 150px; }
+.bs-shelves { display: flex; flex-direction: column; gap: 36px; position: relative; z-index: 2; }
 .bs-shelf { position: relative; padding: 0; }
-.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-ends) var(--bs-cols) var(--bs-ends); max-width: 100%; }
-.bs-end-spacer { display: block; }
-/* The used ends of each shelf: painted cutouts in the room's style */
-.bs-vig { position: relative; height: var(--bs-book-h); align-self: end; z-index: 1; }
-.bs-vig-piece { position: absolute; bottom: -2px; width: auto; transform-origin: 50% 100%; filter: drop-shadow(0 8px 8px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(0,0,0,0.4)); animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(360ms + var(--i, 0) * 70ms); user-select: none; pointer-events: none; }
+.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-cols); max-width: 100%; }
 .bs-row-books { align-items: end; min-height: calc(var(--bs-book-h) + 18px); position: relative; z-index: 2; }
 .bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; }
 .bs-plank {
@@ -885,13 +879,11 @@ const BOOKSHELF_CSS = `
   .bs-header-left { gap: 14px; }
   .bs-title-block { border-left: 0; padding-left: 0; }
   .bs-header-aside { min-width: 0; max-width: none; flex-basis: 100%; }
-  .bs-case { padding: 22px 14px 18px; margin-top: 18px; }
+  .bs-case { padding: 20px 12px 16px; }
   .bs-case-side { width: 12px; }
-  .bs-case-top { left: -6px; right: -6px; top: -12px; height: 20px; }
+  .bs-case-top { left: -6px; right: -6px; top: -8px; height: 18px; }
   .bs-case-bottom { left: -5px; right: -5px; bottom: -10px; height: 14px; }
-  .bs-shelves { gap: 32px; --bs-ends: 0px; }
-  .bs-row { grid-template-columns: var(--bs-cols); }
-  .bs-vig, .bs-end-spacer { display: none; }
+  .bs-shelves { gap: 30px; }
   .bs-cover { padding: 18px 14px; }
   .bs-cover-title { font-size: 17px; }
   .bs-card-wide { grid-column: 1 / -1; }

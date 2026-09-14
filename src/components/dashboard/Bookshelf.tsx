@@ -181,8 +181,10 @@ export default function Bookshelf(props: BookshelfProps) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (window.matchMedia("(hover: none)").matches) return;
     let raf = 0;
-    const onMove = (e: MouseEvent) => {
-      if (raf) return;
+    // Pointer events, not mouse events: this is decoration that follows a hovering
+    // pointer (mouse or pen), never an interaction, and touch never reaches it.
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch" || raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         const mx = (e.clientX / window.innerWidth) * 2 - 1;
@@ -191,8 +193,8 @@ export default function Bookshelf(props: BookshelfProps) {
         el.style.setProperty("--my", my.toFixed(3));
       });
     };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => { window.removeEventListener("mousemove", onMove); if (raf) cancelAnimationFrame(raf); };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => { window.removeEventListener("pointermove", onMove); if (raf) cancelAnimationFrame(raf); };
   }, []);
   const isEmptyLibrary = !loading && counts.all === 0 && filter === "all";
   const isEmptyFilter = !loading && books.length === 0 && !isEmptyLibrary;

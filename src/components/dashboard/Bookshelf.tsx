@@ -62,13 +62,15 @@ const SHELVES_PER_PAGE = 2;
 
 export const PIPELINE_STEPS = ["Upload", "Transcript", "Structure", "Analysis", "Generate", "Editor", "Export"];
 
+const LEATHER = (hi: string, mid: string, lo: string) =>
+  `radial-gradient(ellipse at 28% 18%, rgba(255,235,200,0.18) 0%, transparent 42%), linear-gradient(160deg, ${hi} 0%, ${mid} 45%, ${lo} 100%)`;
 const COVERS = [
-  "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
-  "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
-  "linear-gradient(160deg, #6B5A42 0%, #4A3D2C 40%, #352B1F 100%)",
-  "linear-gradient(160deg, #8B3D50 0%, #6B2D3E 40%, #4A1F2C 100%)",
-  "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
-  "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
+  LEATHER("#8A3A30", "#6E2A2A", "#3E1615"), // oxblood
+  LEATHER("#2F5A46", "#244235", "#142720"), // forest
+  LEATHER("#2E4A66", "#223449", "#121D2B"), // navy
+  LEATHER("#7A5030", "#5A3A22", "#31200F"), // saddle brown
+  LEATHER("#5E3A5E", "#4A2A47", "#2A1628"), // plum
+  LEATHER("#5C5A38", "#4A4A2E", "#2A2A18"), // olive
 ];
 
 const NOISE =
@@ -452,7 +454,7 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover, onO
   return (
     <Link
       href={book.href}
-      className={`bs-book-slot${lit ? " is-lit" : ""}${hidden ? " is-taken" : ""}`}
+      className={`bs-book-slot${lit ? " is-lit" : ""}${hidden ? " is-taken" : ""}${book.status === "complete" ? " is-done" : ""}`}
       aria-label={`Open ${book.title}`}
       onClick={(e) => {
         // Plain click opens the book in the room; modifier clicks keep the browser's own behavior.
@@ -485,6 +487,7 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover, onO
           <div className="bs-cover-rule bs-cover-rule-bottom" />
           {book.status === "draft" && <div className="bs-cover-dim" />}
           {book.status === "in_progress" && <div className="bs-cover-strip" />}
+          {book.status === "complete" && <span className="bs-cover-seal" aria-hidden="true">❦</span>}
         </div>
       </div>
       <div className="bs-book-shadow" />
@@ -720,17 +723,49 @@ const BOOKSHELF_CSS = `
 .bs-pages { position: absolute; top: 4px; bottom: 4px; right: 0; width: 22px; background: linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8); transform: translateZ(-12px) translateX(4px); border-radius: 0 4px 4px 0; box-shadow: inset -1px 0 2px rgba(0,0,0,0.05); }
 .bs-page-line { position: absolute; right: 2px; width: 16px; height: 0.5px; background: rgba(0,0,0,0.05); }
 .bs-spine { position: absolute; left: -12px; top: 0; bottom: 0; width: 24px; background: linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0.18) 30%, rgba(255,255,255,0.05) 70%, rgba(0,0,0,0.12)); transform: rotateY(90deg); transform-origin: right center; border-radius: 4px 0 0 4px; }
-.bs-spine-rule { position: absolute; left: 4px; right: 4px; height: 1px; background: rgba(217,164,92,0.4); }
-.bs-cover { position: absolute; inset: 0; border-radius: 2px 12px 12px 2px; padding: 26px 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06); overflow: hidden; }
-.bs-cover-grain { position: absolute; inset: 0; background-image: ${NOISE}; opacity: 0.06; mix-blend-mode: multiply; pointer-events: none; }
-.bs-cover-rule { position: absolute; left: 12px; right: 12px; height: 1px; background: linear-gradient(to right, transparent, rgba(217,164,92,0.45), transparent); }
-.bs-cover-rule-top { top: 12px; } .bs-cover-rule-bottom { bottom: 12px; }
+.bs-spine-rule { position: absolute; left: 3px; right: 3px; height: 3px; border-radius: 2px; background: linear-gradient(180deg, rgba(255,235,200,0.25), rgba(0,0,0,0.35)); box-shadow: 0 1px 0 rgba(217,164,92,0.35); }
+/* Leather-bound: grain in the hide, a tooled gilt frame, a hinge strip by the spine */
+.bs-cover { position: absolute; inset: 0; border-radius: 3px 10px 10px 3px; padding: 30px 18px 24px 26px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,235,200,0.12), inset -1px 0 0 rgba(0,0,0,0.25); overflow: hidden; }
+.bs-cover-grain { position: absolute; inset: 0; background-image: ${NOISE}; opacity: 0.16; mix-blend-mode: overlay; pointer-events: none; }
+.bs-cover::before {
+  /* the hinge: a darker strip where the boards meet the spine */
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 13px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,0.42), rgba(0,0,0,0.12) 60%, rgba(255,235,200,0.06) 85%, rgba(0,0,0,0.2));
+}
+.bs-cover::after {
+  /* gilt frame: double tooled line with corner flourishes */
+  content: ""; position: absolute; inset: 9px 9px 9px 19px; pointer-events: none; border-radius: 2px;
+  border: 1px solid rgba(217,164,92,0.55);
+  box-shadow: inset 0 0 0 3px transparent, inset 0 0 0 4px rgba(217,164,92,0.3);
+  background:
+    radial-gradient(circle at 0 0, rgba(217,164,92,0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 100% 0, rgba(217,164,92,0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 0 100%, rgba(217,164,92,0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 100% 100%, rgba(217,164,92,0.9) 0 2px, transparent 3px);
+}
+.bs-cover-rule { position: absolute; left: 24px; right: 14px; height: 1px; background: linear-gradient(to right, transparent, rgba(217,164,92,0.5), transparent); }
+.bs-cover-rule-top { top: 18px; } .bs-cover-rule-bottom { bottom: 18px; }
 .bs-cover-body { position: relative; z-index: 1; }
-.bs-cover-dash { width: 24px; height: 1px; background: rgba(217,164,92,0.65); margin-bottom: 14px; }
-.bs-cover-title { font-family: var(--font-playfair), var(--font-lora), serif; font-style: italic; font-size: 19px; font-weight: 500; color: #F4E8D1; line-height: 1.2; margin: 0 0 8px; text-shadow: 0 1px 3px rgba(0,0,0,0.4); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.bs-cover-audience { font-family: var(--font-geist-mono), monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.45); margin: 0; }
-.bs-cover-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.22); border-radius: inherit; pointer-events: none; }
-.bs-cover-strip { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: var(--bs-copper); border-radius: 0 0 10px 2px; pointer-events: none; }
+.bs-cover-dash { width: 26px; height: 1px; background: linear-gradient(90deg, #C9A25C, #F7E2B0, #C9A25C); margin-bottom: 14px; box-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+.bs-cover-title {
+  font-family: var(--font-playfair), var(--font-lora), serif; font-style: italic; font-size: 19px; font-weight: 500; line-height: 1.2; margin: 0 0 8px;
+  background-image: linear-gradient(170deg, #F7E2B0 0%, #E3C27E 35%, #C9A25C 60%, #F4D69C 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.65));
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bs-cover-audience { font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(217,164,92,0.75); margin: 0; text-shadow: 0 1px 0 rgba(0,0,0,0.6); }
+.bs-cover-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.26); border-radius: inherit; pointer-events: none; }
+/* In progress: a silk ribbon bookmark hangs out of the top edge */
+.bs-cover-strip {
+  position: absolute; top: -2px; right: 22px; width: 11px; height: 58px; pointer-events: none; z-index: 2;
+  background: linear-gradient(90deg, #A8572E, #D98B58 45%, #A8572E); border-radius: 0 0 1px 1px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+  box-shadow: 2px 3px 6px rgba(0,0,0,0.5);
+}
+/* Finished: gilded page edges and a small gold fleuron */
+.bs-book-slot.is-done .bs-pages { background: linear-gradient(to right, #C9A25C, #F4D69C 30%, #E3C27E 70%, #B88A44); }
+.bs-cover-seal { position: absolute; right: 14px; bottom: 12px; font-size: 15px; color: #E3C27E; text-shadow: 0 1px 0 rgba(0,0,0,0.6); z-index: 2; }
 .bs-erase-overlay { position: absolute; inset: 0; background: rgba(220,38,38,0.65); border-radius: 2px 12px 12px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #fff; }
 .bs-erase-glyph { font-size: 28px; } .bs-erase-title { font-size: 11px; font-weight: 700; text-align: center; padding: 0 12px; }
 

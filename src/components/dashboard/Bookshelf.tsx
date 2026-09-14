@@ -4,6 +4,27 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import Link from "next/link";
 import BookReader, { type ReaderStage } from "./BookReader";
 import { ShelfVignette } from "./ShelfVignettes";
+import TheoPresence from "./TheoPresence";
+
+/** The studio's typing idiom: text arrives a character at a time behind a copper cursor. */
+function useTyped(text: string, startMs = 700, cps = 28): { shown: string; done: boolean } {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setN(text.length); return; }
+    setN(0);
+    let i = 0;
+    let timer = 0;
+    const start = window.setTimeout(() => {
+      timer = window.setInterval(() => {
+        i += 1;
+        setN(i);
+        if (i >= text.length) window.clearInterval(timer);
+      }, 1000 / cps);
+    }, startMs);
+    return () => { window.clearTimeout(start); if (timer) window.clearInterval(timer); };
+  }, [text, startMs, cps]);
+  return { shown: text.slice(0, n), done: n >= text.length };
+}
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
 // The dashboard as a physical library: a warm linen wall, wood planks, and the
@@ -202,6 +223,12 @@ export default function Bookshelf(props: BookshelfProps) {
   const isEmptyLibrary = !loading && counts.all === 0 && filter === "all";
   const isEmptyFilter = !loading && books.length === 0 && !isEmptyLibrary;
 
+  const title = useTyped("Where were we?");
+  // The book THEO offers to pick up: the most recently touched one that is not finished.
+  const pickUp = books
+    .filter((b) => b.status === "draft" || b.status === "in_progress")
+    .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))[0];
+
   if (stylesOnly) return <style>{BOOKSHELF_CSS}</style>;
 
   const pills: { key: ShelfFilter; label: string; n: number }[] = [
@@ -237,7 +264,10 @@ export default function Bookshelf(props: BookshelfProps) {
                 {ownerName ? `${ownerName}’s library` : "Your library"}
                 <span className="bs-kicker-dim"> · {counts.all} {counts.all === 1 ? "book" : "books"} · {counts.in_progress} in the works · {counts.complete} finished</span>
               </div>
-              <h1 className="bs-title">Where were we?</h1>
+              <h1 className="bs-title">
+                {title.shown}
+                {!title.done && <span className="ds-stage-cursor bs-title-cursor" aria-hidden="true" />}
+              </h1>
               <p className="bs-quote">
                 &ldquo;{quote.text}&rdquo; <span className="bs-quote-author">&mdash; {quote.author}</span>
               </p>
@@ -367,6 +397,10 @@ export default function Bookshelf(props: BookshelfProps) {
         </div>
           <div className="bs-case-bottom" aria-hidden="true" />
         </div>
+
+        {!loading && !openBook && (
+          <TheoPresence ownerName={ownerName} pickUp={pickUp ? { title: pickUp.title, href: `${pickUp.href}/upload` } : null} />
+        )}
 
         {openBook && (
           <BookReader
@@ -600,6 +634,9 @@ const BOOKSHELF_CSS = `
 @keyframes bs-motes { 0% { background-position: 20px 40px, 130px 200px, 60px 90px; } 100% { background-position: 60px -300px, 90px -320px, 100px -150px; } }
 
 .bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 22px 40px 72px; max-width: 100%; }
+/* Wide rooms keep the right side clear for THEO */
+@media (min-width: 1500px) { .bs-scroll { padding-right: 330px; } }
+.bs-title-cursor { height: 0.9em; width: 3px; vertical-align: -0.08em; margin-left: 4px; }
 
 /* ── Glass (the studio's panels) ──────────────────────────────────────── */
 .bs-glass {

@@ -114,7 +114,7 @@ export default function Dashboard() {
         erasingId={erasingId}
         loading={loading}
         quote={WORKSPACE_QUOTES[quoteIdx]}
-        brand={<Wordmark variant="underline" />}
+        brand={<Wordmark variant="underline" width={390} />}
         aside={<UsageWidget />}
       />
 

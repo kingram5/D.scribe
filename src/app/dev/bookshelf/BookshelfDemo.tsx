@@ -97,7 +97,7 @@ export default function BookshelfDemo() {
           loading={params.get("loading") === "1"}
           quote={{ text: "Write what should not be forgotten.", author: "Isabel Allende" }}
           progressOverride={PROGRESS}
-          brand={<Wordmark variant={logo} />}
+          brand={<Wordmark variant={logo} width={390} />}
           hoverPreviewId={params.get("hover") ?? undefined}
           openPreviewId={params.get("open") ?? undefined}
           aside={

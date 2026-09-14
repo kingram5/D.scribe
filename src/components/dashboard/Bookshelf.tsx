@@ -341,7 +341,9 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick }: {
 function BookCard({ book, step }: { book: ShelfBook; step: number }) {
   const stamp = STAMP[book.status];
   const pct = book.status === "complete" ? 100 : Math.round(((step + 0.5) / PIPELINE_STEPS.length) * 100);
-  const date = new Date(book.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // Fixed locale + zone so the server and the browser print the same string
+  // (a runtime-locale date here is a hydration mismatch waiting to happen).
+  const date = new Date(book.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   return (
     <div className="bs-card">
       <div className="bs-card-head">

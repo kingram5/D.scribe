@@ -50,7 +50,12 @@ interface BookshelfProps {
   brand?: ReactNode;
   /** Test/preview hook: pipeline step reached per book id (0-6). Falls back to localStorage. */
   progressOverride?: Record<string, number>;
+  /** Test/preview hook: render this book in its hovered state. */
+  hoverPreviewId?: string;
 }
+
+/** Shelves shown per page before the wooden arrows take over. */
+const SHELVES_PER_PAGE = 2;
 
 export const PIPELINE_STEPS = ["Upload", "Transcript", "Structure", "Analysis", "Generate", "Editor", "Export"];
 
@@ -134,12 +139,22 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export default function Bookshelf(props: BookshelfProps) {
   const {
     ownerName, books, counts, filter, onFilter, eraseMode, onToggleErase, onEraseClick,
-    erasingId, loading, quote, aside, brand, progressOverride,
+    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId,
   } = props;
   const shelvesRef = useRef<HTMLDivElement>(null);
   const perShelf = usePerShelf(shelvesRef);
   const reached = useReachedSteps(books.map((b) => b.id));
-  const rows = chunk(books, perShelf);
+  const allRows = chunk(books, perShelf);
+  const pageCount = Math.max(1, Math.ceil(allRows.length / SHELVES_PER_PAGE));
+  const [page, setPage] = useState(0);
+  const [pageKey, setPageKey] = useState(0); // bumps to replay the arrive animation
+  const safePage = Math.min(page, pageCount - 1);
+  const rows = allRows.slice(safePage * SHELVES_PER_PAGE, safePage * SHELVES_PER_PAGE + SHELVES_PER_PAGE);
+  const goto = (p: number) => { setPage(Math.max(0, Math.min(pageCount - 1, p))); setPageKey((k) => k + 1); };
+  // A new filter starts at the first shelf.
+  useEffect(() => { setPage(0); }, [filter]);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const lit = hoverPreviewId ?? hoverId;
   const isEmptyLibrary = !loading && counts.all === 0 && filter === "all";
   const isEmptyFilter = !loading && books.length === 0 && !isEmptyLibrary;
 
@@ -262,25 +277,50 @@ export default function Bookshelf(props: BookshelfProps) {
 
           {!loading && rows.map((row, r) => (
             <Shelf
-              key={r}
+              key={`${pageKey}-${r}`}
               perShelf={perShelf}
+              arriveIndex={r}
               cards={row.map((book) => (
-                <BookCard key={book.id} book={book} step={stepFor(book, progressOverride, reached)} />
-              ))}
-            >
-              {row.map((book, i) => (
-                <Book
+                <BookCard
                   key={book.id}
                   book={book}
-                  cover={COVERS[(r * perShelf + i) % COVERS.length]}
-                  eraseMode={eraseMode}
-                  erasing={erasingId === book.id}
-                  onEraseClick={onEraseClick}
+                  step={stepFor(book, progressOverride, reached)}
+                  lit={lit === book.id}
+                  onHover={setHoverId}
                 />
               ))}
+            >
+              {row.map((book, i) => {
+                const globalIdx = (safePage * SHELVES_PER_PAGE + r) * perShelf + i;
+                return (
+                  <Book
+                    key={book.id}
+                    book={book}
+                    cover={COVERS[globalIdx % COVERS.length]}
+                    eraseMode={eraseMode}
+                    erasing={erasingId === book.id}
+                    onEraseClick={onEraseClick}
+                    lit={lit === book.id}
+                    onHover={setHoverId}
+                  />
+                );
+              })}
             </Shelf>
           ))}
         </div>
+
+        {/* Paging: wooden arrows and dots, like a shelf you walk along */}
+        {!loading && pageCount > 1 && (
+          <nav className="bs-pager" aria-label="Shelf pages">
+            <button className="bs-nav" onClick={() => goto(safePage - 1)} disabled={safePage === 0} aria-label="Previous shelves">{"‹"}</button>
+            <div className="bs-dots" role="tablist">
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <button key={i} role="tab" aria-selected={i === safePage} className={`bs-dot${i === safePage ? " on" : ""}`} onClick={() => goto(i)} aria-label={`Shelf page ${i + 1}`} />
+              ))}
+            </div>
+            <button className="bs-nav" onClick={() => goto(safePage + 1)} disabled={safePage === pageCount - 1} aria-label="Next shelves">{"›"}</button>
+          </nav>
+        )}
       </div>
     </div>
   );
@@ -288,10 +328,10 @@ export default function Bookshelf(props: BookshelfProps) {
 
 // ── Pieces ─────────────────────────────────────────────────────────────────
 
-function Shelf({ perShelf, children, cards }: { perShelf: number; children: ReactNode; cards?: ReactNode }) {
+function Shelf({ perShelf, children, cards, arriveIndex = 0 }: { perShelf: number; children: ReactNode; cards?: ReactNode; arriveIndex?: number }) {
   const cols = { gridTemplateColumns: `repeat(${perShelf}, var(--bs-book-w))` };
   return (
-    <section className="bs-shelf">
+    <section className="bs-shelf bs-arrive" style={{ ["--i" as string]: arriveIndex }}>
       <div className="bs-row bs-row-books" style={cols}>{children}</div>
       <div className="bs-plank" aria-hidden="true">
         <span className="bs-bracket bs-bracket-l" />
@@ -302,9 +342,16 @@ function Shelf({ perShelf, children, cards }: { perShelf: number; children: Reac
   );
 }
 
-function Book({ book, cover, eraseMode, erasing, onEraseClick }: {
+function Book({ book, cover, eraseMode, erasing, onEraseClick, lit, onHover }: {
   book: ShelfBook; cover: string; eraseMode: boolean; erasing: boolean; onEraseClick: (b: ShelfBook) => void;
+  lit: boolean; onHover: (id: string | null) => void;
 }) {
+  const hoverProps = {
+    onMouseEnter: () => onHover(book.id),
+    onMouseLeave: () => onHover(null),
+    onFocus: () => onHover(book.id),
+    onBlur: () => onHover(null),
+  };
   if (eraseMode) {
     return (
       <div
@@ -326,7 +373,8 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick }: {
     );
   }
   return (
-    <Link href={book.href} className="bs-book-slot" aria-label={`Open ${book.title}`}>
+    <Link href={book.href} className={`bs-book-slot${lit ? " is-lit" : ""}`} aria-label={`Open ${book.title}`} {...hoverProps}>
+      <div className="bs-book-glow" />
       <div className="bs-book book-hover">
         <div className="bs-back" />
         <div className="bs-pages">
@@ -356,14 +404,14 @@ function Book({ book, cover, eraseMode, erasing, onEraseClick }: {
   );
 }
 
-function BookCard({ book, step }: { book: ShelfBook; step: number }) {
+function BookCard({ book, step, lit, onHover }: { book: ShelfBook; step: number; lit: boolean; onHover: (id: string | null) => void }) {
   const stamp = STAMP[book.status];
   const pct = book.status === "complete" ? 100 : Math.round(((step + 0.5) / PIPELINE_STEPS.length) * 100);
   // Fixed locale + zone so the server and the browser print the same string
   // (a runtime-locale date here is a hydration mismatch waiting to happen).
   const date = new Date(book.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   return (
-    <div className="bs-card">
+    <div className={`bs-card${lit ? " is-lit" : ""}`} onMouseEnter={() => onHover(book.id)} onMouseLeave={() => onHover(null)}>
       <div className="bs-card-head">
         <span className="bs-card-title" title={book.title}>{book.title}</span>
         <span className="bs-card-date">{date}</span>
@@ -401,9 +449,34 @@ const BOOKSHELF_CSS = `
   --bs-copper: #C17A47;
   --bs-parchment: #F4ECDC;
   --bs-parchment-edge: #D9C7A3;
+  --bs-spring: cubic-bezier(0.2, 1.35, 0.3, 1);
+  --bs-soft: cubic-bezier(0.22, 0.8, 0.2, 1);
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
   color: var(--bs-ink);
 }
+@media (prefers-reduced-motion: reduce) {
+  .bs-root *, .bs-root *::before, .bs-root *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* Shelves arrive with a spring pop, staggered top to bottom */
+.bs-arrive { animation: bs-pop 640ms var(--bs-spring) both; animation-delay: calc(var(--i, 0) * 110ms); }
+@keyframes bs-pop { 0% { opacity: 0; transform: translateY(18px) scale(0.96); } 100% { opacity: 1; transform: none; } }
+
+/* Pager: wooden arrow buttons and dots */
+.bs-pager { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 34px; }
+.bs-nav {
+  width: 52px; height: 52px; border: 0; border-radius: 50%; cursor: pointer; padding: 0 0 5px;
+  font: 800 34px/1 var(--font-manrope), sans-serif; color: #3a2410;
+  background: radial-gradient(circle at 35% 30%, #ffe8b8, #e9b56b 70%, #c98a44);
+  box-shadow: 0 0 0 3px #4E2E14, 0 8px 18px rgba(0,0,0,0.55), inset 0 -3px 0 #a86a2c;
+  transition: transform 220ms var(--bs-spring), opacity 200ms;
+}
+.bs-nav:hover { transform: scale(1.08); }
+.bs-nav:active { transform: scale(0.94); }
+.bs-nav:disabled { opacity: 0.35; cursor: default; transform: none; }
+.bs-dots { display: flex; gap: 8px; }
+.bs-dot { width: 10px; height: 10px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: rgba(249,247,242,0.35); box-shadow: 0 0 0 2px rgba(0,0,0,0.35); transition: transform 220ms var(--bs-spring), background 200ms; }
+.bs-dot.on { background: #FFD97A; transform: scale(1.25); }
 .bs-wall { position: fixed; inset: 0; z-index: 0; background: #2C2419; overflow: hidden; }
 .bs-wall-weave {
   position: absolute; inset: 0; opacity: 0.9;
@@ -535,16 +608,26 @@ const BOOKSHELF_CSS = `
 .bs-loading { font-style: normal; }
 
 /* Books (same 3D book as before, now standing on wood) */
-.bs-book-slot { position: relative; display: block; width: var(--bs-book-w); height: var(--bs-book-h); perspective: 1000px; text-decoration: none; }
+.bs-book-slot { position: relative; display: block; width: var(--bs-book-w); height: var(--bs-book-h); perspective: 1000px; text-decoration: none; outline: none; }
 .bs-book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
-.book-hover { transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
-.bs-book-slot:hover .book-hover { transform: rotateY(-18deg) rotateX(3deg) translateY(-10px); }
+.book-hover { transition: transform 520ms var(--bs-spring); }
+/* Lift: the book comes off the shelf toward you with a spring, like being picked up */
+.bs-book-slot:hover .book-hover, .bs-book-slot.is-lit .book-hover { transform: translateY(-22px) translateZ(30px) rotateY(-16deg) rotateX(4deg) scale(1.04) !important; }
 .bs-book-shadow {
   position: absolute; left: 12px; right: 12px; bottom: -6px; height: 16px; border-radius: 50%;
   background: radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%); z-index: 0;
-  transition: transform 0.6s cubic-bezier(0.16,1,0.3,1), opacity 0.6s ease;
+  transition: transform 520ms var(--bs-spring), opacity 520ms ease;
 }
-.bs-book-slot:hover .bs-book-shadow { transform: translateY(8px) scaleX(1.08); opacity: 0.8; }
+.bs-book-slot:hover .bs-book-shadow, .bs-book-slot.is-lit .bs-book-shadow { transform: translateY(10px) scaleX(1.18); opacity: 0.55; }
+/* Warm glow that wakes up under a lifted book */
+.bs-book-glow {
+  position: absolute; left: -30px; right: -30px; top: -20px; bottom: -14px; border-radius: 50%; pointer-events: none; z-index: -1;
+  background: radial-gradient(ellipse at 50% 70%, rgba(226,155,109,0.38) 0%, rgba(193,122,71,0.14) 40%, transparent 70%);
+  opacity: 0; transition: opacity 420ms ease;
+}
+.bs-book-slot:hover .bs-book-glow, .bs-book-slot.is-lit .bs-book-glow { opacity: 1; }
+.bs-book-slot:hover .bs-cover, .bs-book-slot.is-lit .bs-cover { box-shadow: 0 18px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,217,122,0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
+.bs-book-slot:focus-visible .bs-cover { box-shadow: 0 0 0 3px #FFD97A, 0 18px 30px rgba(0,0,0,0.45); }
 .bs-back { position: absolute; inset: 0; background: #2C1F15; border-radius: 2px 8px 8px 2px; transform: translateZ(-24px); }
 .bs-pages { position: absolute; top: 4px; bottom: 4px; right: 0; width: 22px; background: linear-gradient(to right, #E8E0D0, #F4F1E8 30%, #EDE8DC 70%, #E0D8C8); transform: translateZ(-12px) translateX(4px); border-radius: 0 4px 4px 0; box-shadow: inset -1px 0 2px rgba(0,0,0,0.05); }
 .bs-page-line { position: absolute; right: 2px; width: 16px; height: 0.5px; background: rgba(0,0,0,0.05); }
@@ -586,6 +669,16 @@ const BOOKSHELF_CSS = `
 .bs-card::before { content: ""; position: absolute; inset: 0; border-radius: 6px; background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent 45%); pointer-events: none; }
 .bs-card::after { content: ""; position: absolute; inset: 0; background-image: ${NOISE}; opacity: 0.045; mix-blend-mode: multiply; pointer-events: none; }
 .bs-card > * { position: relative; z-index: 1; }
+.bs-card { transition: transform 420ms var(--bs-spring), box-shadow 300ms ease; cursor: default; }
+.bs-card.is-lit { transform: translateY(-4px); box-shadow: 3px 3px 0 rgba(0,0,0,0.35), 0 0 0 1px #FFD97A, 0 14px 26px rgba(0,0,0,0.4); }
+.bs-card.is-lit .bs-progress-track i { filter: brightness(1.08); }
+
+/* Knick-knacks wobble when poked */
+.bs-kk { transition: transform 300ms var(--bs-spring); }
+.bs-kk:hover { animation: bs-wobble 700ms var(--bs-spring); }
+@keyframes bs-wobble { 0% { transform: rotate(0); } 25% { transform: rotate(-6deg) translateY(-6px); } 55% { transform: rotate(5deg) translateY(-3px); } 80% { transform: rotate(-2deg); } 100% { transform: rotate(0); } }
+.bs-pill { transition: transform 220ms var(--bs-spring), box-shadow 160ms ease, background 160ms ease; }
+.bs-pill:hover { transform: translateY(-2px) scale(1.03); }
 .bs-card-wide { grid-column: 1 / -1; justify-self: center; width: min(100%, 520px); }
 .bs-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .bs-card-title { font-family: var(--font-lora), serif; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

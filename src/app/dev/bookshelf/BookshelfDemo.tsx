@@ -13,9 +13,14 @@ const MOCK: ShelfBook[] = [
   { id: "e", title: "Notes From the Back Row", audience: "Memoir & Biography", status: "draft", updated_at: "2026-09-01T14:00:00Z", href: "#" },
   { id: "f", title: "The Long Table", audience: "General", status: "in_progress", updated_at: "2026-09-10T14:00:00Z", href: "#" },
   { id: "g", title: "What the Kitchen Knew", audience: "Memoir & Biography", status: "complete", updated_at: "2026-07-22T14:00:00Z", href: "#" },
+  { id: "h", title: "Ordinary Miracles", audience: "Faith Community", status: "draft", updated_at: "2026-08-14T14:00:00Z", href: "#" },
+  { id: "i", title: "Ninety Days of Saying No", audience: "Self-Help", status: "in_progress", updated_at: "2026-08-19T14:00:00Z", href: "#" },
+  { id: "j", title: "The Founder's Kitchen Table", audience: "Business/Leadership", status: "in_progress", updated_at: "2026-09-02T14:00:00Z", href: "#" },
+  { id: "k", title: "Letters I Never Mailed", audience: "Memoir & Biography", status: "draft", updated_at: "2026-06-30T14:00:00Z", href: "#" },
+  { id: "l", title: "A Short Theology of Rest", audience: "Faith Community", status: "complete", updated_at: "2026-05-11T14:00:00Z", href: "#" },
 ];
 
-const PROGRESS: Record<string, number> = { a: 3, c: 0, d: 4, e: 1, f: 5 };
+const PROGRESS: Record<string, number> = { a: 3, c: 0, d: 4, e: 1, f: 5, h: 0, i: 2, j: 4, k: 1 };
 
 export default function BookshelfDemo() {
   const params = useSearchParams();
@@ -66,6 +71,7 @@ export default function BookshelfDemo() {
           loading={false}
           quote={{ text: "Write what should not be forgotten.", author: "Isabel Allende" }}
           progressOverride={PROGRESS}
+          hoverPreviewId={params.get("hover") ?? undefined}
           aside={
             <div className="plate-card" style={{ padding: "12px 16px", background: "#FBF9F3", color: "#2C2419" }}>
               <div className="ds-label">Usage widget renders here</div>

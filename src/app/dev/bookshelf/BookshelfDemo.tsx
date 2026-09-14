@@ -13,10 +13,7 @@ function LogoGallery() {
       {WORDMARK_VARIANTS.map((v) => (
         <div key={v} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <div className="bs-root" style={{ display: "block" }}>
-            <div className="bs-sign" style={{ animation: "none" }}>
-              <span className="bs-chain bs-chain-l" /><span className="bs-chain bs-chain-r" />
-              <div className="bs-sign-board"><Wordmark variant={v} width={280} /></div>
-            </div>
+            <div className="bs-glass" style={{ padding: "18px 26px" }}><Wordmark variant={v} width={280} /></div>
           </div>
           <div className="ds-label" style={{ color: "#C8C0B4" }}>{v}</div>
         </div>

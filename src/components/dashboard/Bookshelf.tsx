@@ -2,6 +2,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { Knickknack, type KnickknackKind } from "./Knickknacks";
+
+const MANTLE: KnickknackKind[] = ["lamp", "manuscript", "mic", "inkwell", "coffee", "plant", "candle", "hourglass"];
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
 // The dashboard as a physical library: a warm linen wall, wood planks, and the
@@ -208,6 +211,21 @@ export default function Bookshelf(props: BookshelfProps) {
         </div>
         {eraseMode && <p className="bs-erase-hint">Pick a book to move it to the Erased shelf.</p>}
 
+        {/* Mantle: the writer's desk, kept on the shelf above the books */}
+        <section className="bs-mantle" aria-hidden="true">
+          <div className="bs-mantle-row">
+            {MANTLE.map((k, i) => (
+              <div key={k} className={`bs-kk bs-kk-${k}`} style={{ ["--i" as string]: i }}>
+                <Knickknack kind={k} className="bs-kk-svg" />
+              </div>
+            ))}
+          </div>
+          <div className="bs-plank bs-plank-mantle">
+            <span className="bs-bracket bs-bracket-l" />
+            <span className="bs-bracket bs-bracket-r" />
+          </div>
+        </section>
+
         {/* Shelves */}
         <div className="bs-shelves" ref={shelvesRef}>
           {loading && (
@@ -395,6 +413,12 @@ const BOOKSHELF_CSS = `
     linear-gradient(180deg, #3A2F21 0%, #2C2419 45%, #221B12 100%);
 }
 .bs-wall-noise { position: absolute; inset: 0; background-image: ${NOISE}; opacity: 0.07; mix-blend-mode: overlay; }
+.bs-wall-noise::after {
+  /* faint copper ornaments pressed into the linen: quill nibs, ink drops, asterisks */
+  content: ""; position: absolute; inset: 0; opacity: 0.16;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='%23C17A47' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M40 60 l0 -14 M33 53 l14 0 M35 48 l10 10 M45 48 l-10 10'/%3E%3Cpath d='M250 40 c-6 10 -6 18 0 22 c6 -4 6 -12 0 -22z'/%3E%3Cpath d='M120 250 c14 -22 30 -34 46 -40 c-10 14 -22 30 -40 44z M124 246 l-8 8'/%3E%3Cpath d='M280 200 l0 -10 M275 195 l10 0'/%3E%3Cpath d='M70 290 c-5 8 -5 14 0 17 c5 -3 5 -9 0 -17z'/%3E%3Cpath d='M200 120 l0 -12 M194 114 l12 0 M196 110 l8 8 M204 110 l-8 8'/%3E%3C/svg%3E");
+  background-size: 320px 320px;
+}
 .bs-wall-light {
   position: absolute; inset: 0;
   background:
@@ -480,6 +504,33 @@ const BOOKSHELF_CSS = `
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
 .bs-bracket-l { left: 6%; } .bs-bracket-r { right: 6%; }
+/* Top face of the plank, seen from slightly above: a lighter lip that reads as depth */
+.bs-plank::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -7px; height: 8px; border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #D9A570 0%, #C48A52 100%);
+  box-shadow: inset 0 1px 0 rgba(255,235,200,0.6);
+}
+
+/* Mantle shelf with the writer's things */
+.bs-mantle { position: relative; margin: 26px 0 0; padding: 0 24px; }
+.bs-mantle-row { display: flex; justify-content: space-around; align-items: flex-end; height: 112px; padding: 0 4%; position: relative; z-index: 2; }
+.bs-kk { width: 96px; height: 96px; transform-origin: 50% 100%; }
+.bs-kk-svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.45)); }
+.bs-kk-lamp { width: 112px; height: 112px; }
+.bs-kk-mic { width: 104px; height: 104px; }
+.bs-kk-inkwell, .bs-kk-coffee { width: 84px; height: 84px; }
+.bs-kk-hourglass { width: 78px; height: 78px; }
+.bs-plank-mantle { top: 112px; }
+.bs-mantle + .bs-shelves { margin-top: 96px; }
+.kk-steam { animation: kk-steam 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.kk-steam-2 { animation-delay: 0.7s; } .kk-steam-3 { animation-delay: 1.4s; }
+@keyframes kk-steam { 0% { opacity: 0; transform: translateY(4px) scale(0.9); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px) scale(1.15); } }
+.kk-flame { transform-origin: 50px 40px; animation: kk-flame 1.6s ease-in-out infinite alternate; }
+@keyframes kk-flame { 0% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(1.06, 0.94) rotate(2deg); } 100% { transform: scale(0.96, 1.08) rotate(-1deg); } }
+
+/* Books lean a little, the way a real shelf settles */
+.bs-book-slot:nth-child(3n+2) .bs-book { transform: rotate(-1.1deg); transform-origin: 50% 100%; }
+.bs-book-slot:nth-child(4n+3) .bs-book { transform: rotate(0.9deg); transform-origin: 50% 100%; }
 .bs-loading, .bs-empty-note { grid-column: 1 / -1; justify-self: center; align-self: end; padding-bottom: 28px; color: var(--bs-ink-soft); font-family: var(--font-lora), serif; font-style: italic; font-size: 15px; }
 .bs-loading { font-style: normal; }
 
@@ -568,5 +619,12 @@ const BOOKSHELF_CSS = `
   .bs-card-wide { grid-column: 1 / -1; }
   .bs-steps { grid-template-columns: 1fr; }
   .bs-bracket-l { left: 4%; } .bs-bracket-r { right: 4%; }
+  .bs-mantle { padding: 0 8px; margin-top: 18px; }
+  .bs-mantle-row { height: 80px; padding: 0; }
+  .bs-kk { width: 66px; height: 66px; }
+  .bs-kk-lamp, .bs-kk-hourglass, .bs-kk-manuscript, .bs-kk-plant { display: none; }
+  .bs-kk-mic { width: 72px; height: 72px; }
+  .bs-plank-mantle { top: 80px; }
+  .bs-mantle + .bs-shelves { margin-top: 70px; }
 }
 `;

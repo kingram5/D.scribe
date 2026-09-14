@@ -300,6 +300,7 @@ export default function Bookshelf(props: BookshelfProps) {
             ))}
           </div>
           <div className="bs-actions">
+            <span className="bs-theo-chip ds-label" aria-label="THEO is available"><i className="bs-theo-chip-dot" />THEO is in</span>
             <Link href="/project/new" className="bs-pill bs-pill-primary">+ New book</Link>
             <button
               className={`bs-pill bs-pill-ghost${eraseMode ? " is-danger" : ""}`}
@@ -681,6 +682,10 @@ const BOOKSHELF_CSS = `
 .bs-pill-ghost { background: none; color: var(--bs-ink-dim); border-color: rgba(249,247,242,0.25); }
 .bs-pill-ghost.is-danger { color: #ffb4ad; border-color: #dc2626; background: rgba(220,38,38,0.12); }
 .bs-erase-hint { font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb4ad; margin: 8px 0 0; }
+/* THEO's presence chip: the studio's live-mic pulse, in copper */
+.bs-theo-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 0; color: var(--bs-ink-dim) !important; align-self: center; }
+.bs-theo-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bs-copper); animation: bs-chip-pulse 2.2s ease-in-out infinite; }
+@keyframes bs-chip-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(193,122,71,0.45); } 50% { box-shadow: 0 0 0 6px rgba(193,122,71,0); } }
 
 /* ── The bookcase: dark mahogany like the room's, brass nosing, no cartoon ─ */
 .bs-case {

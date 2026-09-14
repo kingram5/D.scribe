@@ -63,8 +63,9 @@ export default function TheoPresence({ ownerName, pickUp }: TheoPresenceProps) {
 }
 
 const CSS = `
-.bs-theo { position: fixed; right: 12px; bottom: 0; width: 320px; z-index: 2; pointer-events: none; display: none; }
-@media (min-width: 1500px) { .bs-theo { display: block; } }
+/* Wide rooms: THEO stands at the right with his line at his shoulder. Narrower
+   ones keep his line as a glass note above the shelves and skip the figure. */
+.bs-theo { position: fixed; right: 12px; bottom: 0; width: 320px; z-index: 2; pointer-events: none; }
 .bs-theo-figure { position: relative; width: 320px; height: 440px; animation: bs-theo-in 900ms cubic-bezier(0.22, 0.8, 0.2, 1) both; animation-delay: 500ms; }
 @keyframes bs-theo-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 .bs-theo-media { position: absolute; left: 50%; bottom: -6px; height: 100%; width: auto; transform: translateX(-50%); display: block; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.6)) brightness(0.96); mask-image: linear-gradient(180deg, #000 0%, #000 84%, transparent 100%); -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 84%, transparent 100%); }
@@ -81,4 +82,12 @@ const CSS = `
 .bs-theo-go { display: inline-block; margin-top: 6px; color: #E29B6D; font-family: var(--font-manrope), sans-serif; font-weight: 700; font-size: 13px; text-decoration: none; }
 .bs-theo-go:hover { text-decoration: underline; }
 @keyframes bs-theo-pop { 0% { opacity: 0; transform: translateY(10px) scale(0.96); } 100% { opacity: 1; transform: none; } }
+/* Narrower rooms: no figure; his line pins bottom-right as a glass note. Declared
+   last so it wins over the wide-room placement above. */
+@media (max-width: 1499px) {
+  .bs-theo { right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); pointer-events: auto; }
+  .bs-theo-figure { display: none; }
+  .bs-theo-line { position: static; width: auto; }
+  .bs-theo-line::after { display: none; }
+}
 `;

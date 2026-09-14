@@ -171,6 +171,29 @@ export default function Bookshelf(props: BookshelfProps) {
   useEffect(() => { setPage(0); }, [filter]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const lit = hoverPreviewId ?? hoverId;
+
+  // Parallax: the wall layers drift a few pixels against the mouse so the room has
+  // depth. Written to CSS variables on the root, throttled to one frame.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(hover: none)").matches) return;
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const mx = (e.clientX / window.innerWidth) * 2 - 1;
+        const my = (e.clientY / window.innerHeight) * 2 - 1;
+        el.style.setProperty("--mx", mx.toFixed(3));
+        el.style.setProperty("--my", my.toFixed(3));
+      });
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => { window.removeEventListener("mousemove", onMove); if (raf) cancelAnimationFrame(raf); };
+  }, []);
   const isEmptyLibrary = !loading && counts.all === 0 && filter === "all";
   const isEmptyFilter = !loading && books.length === 0 && !isEmptyLibrary;
 
@@ -183,14 +206,21 @@ export default function Bookshelf(props: BookshelfProps) {
   ];
 
   return (
-    <div className="bs-root">
+    <div className="bs-root" ref={rootRef}>
       <style>{BOOKSHELF_CSS}</style>
 
-      {/* The wall: warm linen, lit from above, vignetted at the edges. */}
+      {/* The wall: warm linen, lit from above, vignetted at the edges, with the
+          room's air in front of it (light beams, dust). */}
       <div className="bs-wall" aria-hidden="true">
         <div className="bs-wall-weave" />
         <div className="bs-wall-noise" />
         <div className="bs-wall-light" />
+        <div className="bs-beams">
+          <div className="bs-beam bs-beam-1" />
+          <div className="bs-beam bs-beam-2" />
+        </div>
+        <div className="bs-motes bs-motes-far" />
+        <div className="bs-motes bs-motes-near" />
       </div>
 
       <div className="bs-scroll">
@@ -538,6 +568,48 @@ const BOOKSHELF_CSS = `
     radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,205,150,0.16), transparent 70%),
     radial-gradient(ellipse 120% 80% at 50% 60%, transparent 50%, rgba(0,0,0,0.45) 100%);
 }
+/* ── Ambient: beams, dust, parallax ───────────────────────────────────── */
+.bs-root { --mx: 0; --my: 0; }
+.bs-wall-noise::after { transform: translate(calc(var(--mx) * -6px), calc(var(--my) * -4px)); transition: transform 600ms var(--bs-soft); }
+.bs-beams { position: absolute; inset: -10%; pointer-events: none; mix-blend-mode: screen; transform: translate(calc(var(--mx) * -14px), calc(var(--my) * -8px)); transition: transform 900ms var(--bs-soft); }
+.bs-beam {
+  position: absolute; top: -20%; height: 150%; width: 22%; filter: blur(28px); opacity: 0.55;
+  background: linear-gradient(180deg, rgba(255,214,150,0.55) 0%, rgba(255,196,120,0.18) 45%, transparent 85%);
+  transform-origin: 50% 0; animation: bs-beam 14s ease-in-out infinite alternate;
+}
+.bs-beam-1 { left: 14%; transform: rotate(16deg); }
+.bs-beam-2 { left: 46%; width: 14%; opacity: 0.32; transform: rotate(20deg); animation-delay: -6s; animation-duration: 18s; }
+@keyframes bs-beam { 0% { opacity: 0.35; } 50% { opacity: 0.62; } 100% { opacity: 0.4; } }
+.bs-motes {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.8;
+  background-image:
+    radial-gradient(circle, rgba(255,230,190,0.9) 0 1.2px, transparent 2px),
+    radial-gradient(circle, rgba(255,230,190,0.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle, rgba(255,230,190,0.5) 0 0.8px, transparent 1.6px);
+  background-size: 260px 340px, 420px 520px, 180px 240px;
+  background-position: 20px 40px, 130px 200px, 60px 90px;
+  animation: bs-motes 38s linear infinite;
+}
+.bs-motes-far { opacity: 0.35; animation-duration: 64s; transform: translate(calc(var(--mx) * -10px), calc(var(--my) * -6px)); transition: transform 900ms var(--bs-soft); }
+.bs-motes-near { filter: blur(0.6px); transform: translate(calc(var(--mx) * -26px), calc(var(--my) * -16px)); transition: transform 700ms var(--bs-soft); }
+@keyframes bs-motes { 0% { background-position: 20px 40px, 130px 200px, 60px 90px; } 100% { background-position: 60px -300px, 90px -320px, 100px -150px; } }
+
+/* The sign hangs, and hanging things move */
+.bs-sign { transform-origin: 50% 0; animation: bs-sway 6.5s ease-in-out infinite; }
+.bs-sign:hover { animation: bs-swing 1.8s var(--bs-spring); }
+@keyframes bs-sway { 0% { transform: rotate(-0.9deg); } 50% { transform: rotate(0.9deg); } 100% { transform: rotate(-0.9deg); } }
+@keyframes bs-swing { 0% { transform: rotate(0); } 20% { transform: rotate(-5deg); } 55% { transform: rotate(3.5deg); } 80% { transform: rotate(-1.5deg); } 100% { transform: rotate(0); } }
+
+/* Light on the mantle: the lamp's pool and the candle's halo */
+.bs-kk { position: relative; }
+.bs-kk-lamp::after, .bs-kk-candle::after {
+  content: ""; position: absolute; left: 50%; pointer-events: none; border-radius: 50%; mix-blend-mode: screen;
+}
+.bs-kk-lamp::after { bottom: -6px; width: 260px; height: 120px; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 100%, rgba(255,214,150,0.32), rgba(255,196,120,0.08) 55%, transparent 72%); animation: bs-lamp 5s ease-in-out infinite alternate; }
+.bs-kk-candle::after { top: 8px; width: 170px; height: 170px; transform: translateX(-50%); background: radial-gradient(circle, rgba(255,190,110,0.32), rgba(255,160,80,0.08) 50%, transparent 70%); animation: bs-halo 1.1s ease-in-out infinite alternate; }
+@keyframes bs-lamp { 0% { opacity: 0.85; } 100% { opacity: 1; } }
+@keyframes bs-halo { 0% { opacity: 0.7; transform: translateX(-50%) scale(0.96); } 100% { opacity: 1; transform: translateX(-50%) scale(1.05); } }
+
 .bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 24px 40px 72px; max-width: 100%; }
 .bs-shelf, .bs-row { max-width: 100%; }
 

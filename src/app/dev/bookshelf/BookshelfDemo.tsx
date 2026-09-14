@@ -3,7 +3,27 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Bookshelf, { type ShelfBook, type ShelfFilter } from "@/components/dashboard/Bookshelf";
+import Wordmark, { WORDMARK_VARIANTS, type WordmarkVariant } from "@/components/dashboard/Wordmark";
 import { readConsent, writeConsent } from "@/lib/consent";
+
+/** ?logos=1: every wordmark reading on its own sign, side by side, for picking. */
+function LogoGallery() {
+  return (
+    <div style={{ minHeight: "100dvh", background: "#2C2419", padding: 40, display: "flex", flexWrap: "wrap", gap: 48, alignItems: "flex-start", justifyContent: "center" }}>
+      {WORDMARK_VARIANTS.map((v) => (
+        <div key={v} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <div className="bs-root" style={{ display: "block" }}>
+            <div className="bs-sign" style={{ animation: "none" }}>
+              <span className="bs-chain bs-chain-l" /><span className="bs-chain bs-chain-r" />
+              <div className="bs-sign-board"><Wordmark variant={v} width={280} /></div>
+            </div>
+          </div>
+          <div className="ds-label" style={{ color: "#C8C0B4" }}>{v}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const MOCK: ShelfBook[] = [
   { id: "a", title: "The Weight of a Quiet Yes", audience: "Faith Community", status: "in_progress", updated_at: "2026-09-12T14:00:00Z", href: "#" },
@@ -44,6 +64,7 @@ export default function BookshelfDemo() {
     return () => clearTimeout(t);
   }, [debug]);
   const all = empty ? [] : MOCK;
+  const logo = (params.get("logo") as WordmarkVariant | null) ?? "underline";
   const active = all.filter((b) => b.status !== "erased");
   const books = filter === "all" ? active : all.filter((b) => b.status === filter);
   const counts = {
@@ -53,6 +74,14 @@ export default function BookshelfDemo() {
     complete: all.filter((b) => b.status === "complete").length,
     erased: 0,
   };
+  if (params.get("logos") === "1") {
+    return (
+      <>
+        <Bookshelf ownerName="" books={[]} counts={{ all: 0, draft: 0, in_progress: 0, complete: 0, erased: 0 }} filter="all" onFilter={() => {}} eraseMode={false} onToggleErase={() => {}} onEraseClick={() => {}} erasingId={null} loading={false} quote={{ text: "", author: "" }} stylesOnly />
+        <LogoGallery />
+      </>
+    );
+  }
   return (
     <div className="ds-main-layout" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {debug && <pre style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, background: "#000", color: "#0f0", fontSize: 11, margin: 0, padding: 6, whiteSpace: "pre-wrap" }}>{measure || "measuring…"}</pre>}
@@ -71,6 +100,7 @@ export default function BookshelfDemo() {
           loading={params.get("loading") === "1"}
           quote={{ text: "Write what should not be forgotten.", author: "Isabel Allende" }}
           progressOverride={PROGRESS}
+          brand={<Wordmark variant={logo} />}
           hoverPreviewId={params.get("hover") ?? undefined}
           openPreviewId={params.get("open") ?? undefined}
           aside={

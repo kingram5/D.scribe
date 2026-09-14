@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Project } from "@/types";
 import PageShell from "@/components/ui/PageShell";
 import UsageWidget from "@/components/ui/UsageWidget";
 import Bookshelf, { type ShelfBook, type ShelfFilter } from "@/components/dashboard/Bookshelf";
+import Wordmark from "@/components/dashboard/Wordmark";
 import { useAuth } from "@/hooks/useAuth";
 
 // ── Rotating quotes ────────────────────────────────────────────────────────
@@ -40,50 +41,6 @@ const WORKSPACE_QUOTES: { text: string; author: string }[] = [
   { text: "Amateurs sit and wait for inspiration; the rest of us just get up and go to work.", author: "Stephen King" },
   { text: "We write to taste life twice, in the moment and in retrospect.", author: "Anaïs Nin" },
 ];
-
-/** The D.scribe wordmark, painted with a living waveform. Lives on the hanging sign. */
-function MiniWaveform() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const numBars = 80;
-    const vw = 500;
-    const vh = 120;
-    const bw = vw / numBars;
-    const gap = 1;
-
-    let rects = "";
-    for (let i = 0; i < numBars; i++) {
-      const x = i * bw;
-      const n = i / numBars;
-      const slow = Math.sin(n * Math.PI * 2);
-      const fast = Math.sin(n * Math.PI * 8) * 0.4;
-      const noise = (Math.random() - 0.5) * 0.2;
-      const combined = (slow + fast + noise) / 1.5;
-      const delay = n * -3.2;
-      const dur = 1.5 + Math.random() * 1.5;
-      const sMin = 0.05 + Math.abs(fast) * 0.3;
-      const sMax = 0.5 + Math.abs(combined) * 0.5;
-      rects += `<rect class="mini-bar" x="${x}" y="0" width="${bw - gap}" height="100%" style="--d:${delay}s;--dur:${dur}s;--smin:${sMin};--smax:${sMax}" />`;
-    }
-
-    el.innerHTML = `
-      <style>
-        .mini-bar { fill: #F4E8D1; transform-box: fill-box; transform-origin: center; animation: miniWave var(--dur, 2s) cubic-bezier(0.4,0,0.2,1) infinite alternate; animation-delay: var(--d, 0s); }
-        @keyframes miniWave { 0% { transform: scaleY(var(--smin, 0.2)); opacity: 0.8; } 100% { transform: scaleY(var(--smax, 1)); opacity: 1; } }
-      </style>
-      <svg viewBox="0 0 ${vw} ${vh}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));">
-        <defs><clipPath id="miniMask"><text x="50%" y="65%" text-anchor="middle" alignment-baseline="middle" font-family="var(--font-playfair),'Playfair Display',serif" font-style="italic" font-weight="500" font-size="100px" letter-spacing="-0.02em">D. scribe</text></clipPath></defs>
-        <g clip-path="url(#miniMask)">${rects}</g>
-      </svg>
-    `;
-  }, []);
-
-  return <div ref={ref} className="ds-mini-waveform" style={{ width: 260, height: 64 }} />;
-}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -157,7 +114,7 @@ export default function Dashboard() {
         erasingId={erasingId}
         loading={loading}
         quote={WORKSPACE_QUOTES[quoteIdx]}
-        brand={<MiniWaveform />}
+        brand={<Wordmark variant="underline" />}
         aside={<UsageWidget />}
       />
 

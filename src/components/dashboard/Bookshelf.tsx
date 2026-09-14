@@ -2,10 +2,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Knickknack, type KnickknackKind } from "./Knickknacks";
 import BookReader, { type ReaderStage } from "./BookReader";
-
-const MANTLE: KnickknackKind[] = ["lamp", "manuscript", "mic", "inkwell", "coffee", "plant", "candle", "hourglass"];
+import { ShelfVignette } from "./ShelfVignettes";
+import Fireplace from "./Fireplace";
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
 // The dashboard as a physical library: a warm linen wall, wood planks, and the
@@ -55,6 +54,8 @@ interface BookshelfProps {
   hoverPreviewId?: string;
   /** Test/preview hook: start with this book opened. */
   openPreviewId?: string;
+  /** Render only the stylesheet (for galleries that reuse the sign styles). */
+  stylesOnly?: boolean;
 }
 
 /** Shelves shown per page before the wooden arrows take over. */
@@ -122,7 +123,8 @@ function usePerShelf(ref: React.RefObject<HTMLDivElement | null>): number {
       const cs = getComputedStyle(el);
       const bookW = parseFloat(cs.getPropertyValue("--bs-book-w")) || 200;
       const gap = parseFloat(cs.getPropertyValue("--bs-gap")) || 40;
-      const w = el.clientWidth - 48;
+      const ends = parseFloat(cs.getPropertyValue("--bs-ends")) || 0; // the vignette zones at each end
+      const w = el.clientWidth - 24 - (ends ? 2 * (ends + gap) : 0);
       setPer(Math.max(1, Math.min(6, Math.floor((w + gap) / (bookW + gap)))));
     };
     compute();
@@ -142,7 +144,7 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export default function Bookshelf(props: BookshelfProps) {
   const {
     ownerName, books, counts, filter, onFilter, eraseMode, onToggleErase, onEraseClick,
-    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId,
+    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId, stylesOnly,
   } = props;
   // Open book (the reader): which one, and where the animation is.
   const [openBook, setOpenBook] = useState<ShelfBook | null>(() => openPreviewId ? books.find((b) => b.id === openPreviewId) ?? null : null);
@@ -199,6 +201,8 @@ export default function Bookshelf(props: BookshelfProps) {
   const isEmptyLibrary = !loading && counts.all === 0 && filter === "all";
   const isEmptyFilter = !loading && books.length === 0 && !isEmptyLibrary;
 
+  if (stylesOnly) return <style>{BOOKSHELF_CSS}</style>;
+
   const pills: { key: ShelfFilter; label: string; n: number }[] = [
     { key: "all", label: "All", n: counts.all },
     { key: "draft", label: "Draft", n: counts.draft },
@@ -223,7 +227,9 @@ export default function Bookshelf(props: BookshelfProps) {
         </div>
         <div className="bs-motes bs-motes-far" />
         <div className="bs-motes bs-motes-near" />
+        <div className="bs-firelight" />
       </div>
+      <Fireplace />
 
       <div className="bs-scroll">
         {/* Header: hanging sign + title on the left, usage on the right */}
@@ -290,22 +296,11 @@ export default function Bookshelf(props: BookshelfProps) {
         </div>
         {eraseMode && <p className="bs-erase-hint">Pick a book to move it to the Erased shelf.</p>}
 
-        {/* Mantle: the writer's desk, kept on the shelf above the books */}
-        <section className="bs-mantle" aria-hidden="true">
-          <div className="bs-mantle-row">
-            {MANTLE.map((k, i) => (
-              <div key={k} className={`bs-kk bs-kk-${k}`} style={{ ["--i" as string]: i }}>
-                <Knickknack kind={k} className="bs-kk-svg" />
-              </div>
-            ))}
-          </div>
-          <div className="bs-plank bs-plank-mantle">
-            <span className="bs-bracket bs-bracket-l" />
-            <span className="bs-bracket bs-bracket-r" />
-          </div>
-        </section>
-
-        {/* Shelves */}
+        {/* The bookcase: a piece of furniture, not planks on a wall */}
+        <div className="bs-case">
+          <div className="bs-case-top" aria-hidden="true" />
+          <div className="bs-case-side bs-case-side-l" aria-hidden="true" />
+          <div className="bs-case-side bs-case-side-r" aria-hidden="true" />
         <div className="bs-shelves" ref={shelvesRef}>
           {loading && (
             <Shelf perShelf={perShelf} cards={[
@@ -352,6 +347,7 @@ export default function Bookshelf(props: BookshelfProps) {
               key={`${pageKey}-${r}`}
               perShelf={perShelf}
               arriveIndex={r}
+              vignetteSeed={safePage * SHELVES_PER_PAGE + r}
               cards={row.map((book) => (
                 <BookCard
                   key={book.id}
@@ -382,6 +378,8 @@ export default function Bookshelf(props: BookshelfProps) {
               })}
             </Shelf>
           ))}
+        </div>
+          <div className="bs-case-bottom" aria-hidden="true" />
         </div>
 
         {openBook && (
@@ -414,16 +412,25 @@ export default function Bookshelf(props: BookshelfProps) {
 
 // ── Pieces ─────────────────────────────────────────────────────────────────
 
-function Shelf({ perShelf, children, cards, arriveIndex = 0 }: { perShelf: number; children: ReactNode; cards?: ReactNode; arriveIndex?: number }) {
-  const cols = { gridTemplateColumns: `repeat(${perShelf}, var(--bs-book-w))` };
+function Shelf({ perShelf, children, cards, arriveIndex = 0, vignetteSeed = 0 }: {
+  perShelf: number; children: ReactNode; cards?: ReactNode; arriveIndex?: number; vignetteSeed?: number;
+}) {
+  const vars = { ["--i" as string]: arriveIndex, ["--bs-cols" as string]: `repeat(${perShelf}, var(--bs-book-w))` };
   return (
-    <section className="bs-shelf bs-arrive" style={{ ["--i" as string]: arriveIndex }}>
-      <div className="bs-row bs-row-books" style={cols}>{children}</div>
-      <div className="bs-plank" aria-hidden="true">
-        <span className="bs-bracket bs-bracket-l" />
-        <span className="bs-bracket bs-bracket-r" />
+    <section className="bs-shelf bs-arrive" style={vars}>
+      <div className="bs-row bs-row-books">
+        <ShelfVignette side="left" seed={vignetteSeed} />
+        {children}
+        <ShelfVignette side="right" seed={vignetteSeed} />
       </div>
-      {cards && <div className="bs-row bs-row-cards" style={cols}>{cards}</div>}
+      <div className="bs-plank" aria-hidden="true" />
+      {cards && (
+        <div className="bs-row bs-row-cards">
+          <span className="bs-end-spacer" />
+          {cards}
+          <span className="bs-end-spacer" />
+        </div>
+      )}
     </section>
   );
 }
@@ -546,9 +553,9 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
 
 const BOOKSHELF_CSS = `
 .bs-root {
-  --bs-book-w: 200px;
-  --bs-book-h: 280px;
-  --bs-gap: 40px;
+  --bs-book-w: 180px;
+  --bs-book-h: 252px;
+  --bs-gap: 28px;
   --bs-plank-h: 22px;
   --bs-ink: #F9F7F2;
   --bs-ink-soft: #C8C0B4;
@@ -636,17 +643,10 @@ const BOOKSHELF_CSS = `
 @keyframes bs-sway { 0% { transform: rotate(-0.9deg); } 50% { transform: rotate(0.9deg); } 100% { transform: rotate(-0.9deg); } }
 @keyframes bs-swing { 0% { transform: rotate(0); } 20% { transform: rotate(-5deg); } 55% { transform: rotate(3.5deg); } 80% { transform: rotate(-1.5deg); } 100% { transform: rotate(0); } }
 
-/* Light on the mantle: the lamp's pool and the candle's halo */
-.bs-kk { position: relative; }
-.bs-kk-lamp::after, .bs-kk-candle::after {
-  content: ""; position: absolute; left: 50%; pointer-events: none; border-radius: 50%; mix-blend-mode: screen;
-}
-.bs-kk-lamp::after { bottom: -6px; width: 260px; height: 120px; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 100%, rgba(255,214,150,0.32), rgba(255,196,120,0.08) 55%, transparent 72%); animation: bs-lamp 5s ease-in-out infinite alternate; }
-.bs-kk-candle::after { top: 8px; width: 170px; height: 170px; transform: translateX(-50%); background: radial-gradient(circle, rgba(255,190,110,0.32), rgba(255,160,80,0.08) 50%, transparent 70%); animation: bs-halo 1.1s ease-in-out infinite alternate; }
-@keyframes bs-lamp { 0% { opacity: 0.85; } 100% { opacity: 1; } }
-@keyframes bs-halo { 0% { opacity: 0.7; transform: translateX(-50%) scale(0.96); } 100% { opacity: 1; transform: translateX(-50%) scale(1.05); } }
 
 .bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 24px 40px 72px; max-width: 100%; }
+/* Wide rooms keep a strip on the right for the hearth */
+@media (min-width: 1500px) { .bs-scroll { padding-right: 360px; } }
 .bs-shelf, .bs-row { max-width: 100%; }
 
 /* Header */
@@ -702,8 +702,6 @@ const BOOKSHELF_CSS = `
 .bs-header-left { animation: bs-drop 800ms var(--bs-spring) both; }
 .bs-sign { animation: bs-sway 6.5s ease-in-out 900ms infinite; }
 .bs-pill { animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(260ms + var(--i, 0) * 45ms); }
-.bs-kk-svg { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(320ms + var(--i, 0) * 60ms); }
-.bs-mantle .bs-plank { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: 280ms; }
 @keyframes bs-drop { 0% { opacity: 0; transform: translateY(-40px); } 100% { opacity: 1; transform: none; } }
 
 /* Loading: ghost books on the plank while the shelf is dusted */
@@ -738,10 +736,57 @@ const BOOKSHELF_CSS = `
 .bs-pill-ghost.is-danger { color: #ffb4ad; border-color: #dc2626; background: rgba(220,38,38,0.12); }
 .bs-erase-hint { font-family: var(--font-kalam), cursive; color: #ffb4ad; font-size: 15px; margin: 6px 0 0; }
 
+/* ── The bookcase ─────────────────────────────────────────────────────── */
+.bs-case {
+  position: relative; margin-top: 30px; padding: 30px 30px 26px; border-radius: 6px 6px 3px 3px;
+  /* back panel: darker boards with a vertical grain, in shadow */
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 46px, rgba(255,235,205,0.035) 46px 47px, transparent 47px 92px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #3E2A17 0%, #33220F 100%);
+  box-shadow: inset 0 24px 40px rgba(0,0,0,0.55), inset 24px 0 40px rgba(0,0,0,0.35), inset -24px 0 40px rgba(0,0,0,0.35), 0 30px 60px rgba(0,0,0,0.55);
+}
+.bs-case-top, .bs-case-bottom, .bs-case-side { position: absolute; z-index: 3; }
+.bs-case-top {
+  left: -12px; right: -12px; top: -16px; height: 30px; border-radius: 4px;
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 7px, rgba(255,255,255,0.03) 7px 8px, transparent 8px 19px), linear-gradient(180deg, #C48A52 0%, #A9723F 30%, #8A5A2E 100%);
+  box-shadow: 0 14px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,225,180,0.5), inset 0 -4px 0 rgba(0,0,0,0.25);
+}
+.bs-case-top::after { content: ""; position: absolute; left: 10px; right: 10px; top: -8px; height: 10px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #D9A570, #B27B45); box-shadow: inset 0 1px 0 rgba(255,235,200,0.6); }
+.bs-case-side { top: 4px; bottom: 4px; width: 26px; background-image: repeating-linear-gradient(180deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 7px, rgba(255,255,255,0.03) 7px 8px, transparent 8px 19px), linear-gradient(90deg, #A9723F, #8A5A2E 60%, #6A4120); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
+.bs-case-side-l { left: 0; border-radius: 2px 0 0 2px; box-shadow: inset -3px 0 0 rgba(0,0,0,0.25), inset 1px 0 0 rgba(255,225,180,0.35); }
+.bs-case-side-r { right: 0; border-radius: 0 2px 2px 0; box-shadow: inset 3px 0 0 rgba(0,0,0,0.25), inset -1px 0 0 rgba(255,225,180,0.35); }
+.bs-case-bottom { left: -10px; right: -10px; bottom: -14px; height: 24px; border-radius: 0 0 4px 4px; background: linear-gradient(180deg, #8A5A2E, #5A3618); box-shadow: 0 16px 26px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,225,180,0.25); }
+
+/* Firelight from the hearth on the right, playing on the wall and the wood */
+.bs-firelight {
+  position: absolute; right: -10%; bottom: -10%; width: 70%; height: 80%; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(ellipse at 85% 95%, rgba(255,150,60,0.42) 0%, rgba(255,120,40,0.18) 30%, rgba(200,80,30,0.06) 55%, transparent 72%);
+  animation: bs-firelight 2.2s ease-in-out infinite alternate;
+}
+@keyframes bs-firelight { 0% { opacity: 0.75; transform: scale(1); } 35% { opacity: 1; } 60% { opacity: 0.85; transform: scale(1.03); } 100% { opacity: 0.95; transform: scale(0.99); } }
+.bs-case::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(250deg, rgba(255,150,60,0.16), transparent 45%); mix-blend-mode: screen; animation: bs-firelight 2.2s ease-in-out infinite alternate; }
+
 /* Shelves */
-.bs-shelves { display: flex; flex-direction: column; gap: 44px; margin-top: 30px; }
-.bs-shelf { position: relative; padding: 0 24px; }
-.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); }
+.bs-shelves { display: flex; flex-direction: column; gap: 40px; position: relative; z-index: 2; --bs-ends: 150px; }
+.bs-shelf { position: relative; padding: 0; }
+.bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-ends) var(--bs-cols) var(--bs-ends); }
+.bs-end-spacer { display: block; }
+
+/* Vignettes: the used ends of each shelf */
+.bs-vig { position: relative; height: var(--bs-book-h); align-self: end; z-index: 1; }
+.bs-vig-piece { position: absolute; bottom: -4px; transform-origin: 50% 100%; }
+.bs-vig-piece .bs-kk-svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.5)); animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(360ms + var(--i, 0) * 70ms); }
+.bs-vig-piece:hover { animation: bs-wobble 700ms var(--bs-spring); }
+.bs-bookend { position: absolute; bottom: -2px; width: 46px; height: 76px; z-index: 5; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
+.bs-bookend-left { right: -14px; }
+.bs-bookend-right { left: -14px; }
+.bs-kk-svg { display: block; }
+.kk-steam { animation: kk-steam 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.kk-steam-2 { animation-delay: 0.7s; } .kk-steam-3 { animation-delay: 1.4s; }
+@keyframes kk-steam { 0% { opacity: 0; transform: translateY(4px) scale(0.9); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px) scale(1.15); } }
+.kk-flame { transform-origin: 50px 40px; animation: kk-flame 1.6s ease-in-out infinite alternate; }
+@keyframes kk-flame { 0% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(1.06, 0.94) rotate(2deg); } 100% { transform: scale(0.96, 1.08) rotate(-1deg); } }
 .bs-row-books { align-items: end; min-height: calc(var(--bs-book-h) + 18px); position: relative; z-index: 2; }
 .bs-row-cards { margin-top: calc(var(--bs-plank-h) + 14px + 14px); align-items: start; }
 .bs-plank {
@@ -769,23 +814,6 @@ const BOOKSHELF_CSS = `
   background: linear-gradient(180deg, #D9A570 0%, #C48A52 100%);
   box-shadow: inset 0 1px 0 rgba(255,235,200,0.6);
 }
-
-/* Mantle shelf with the writer's things */
-.bs-mantle { position: relative; margin: 26px 0 0; padding: 0 24px; }
-.bs-mantle-row { display: flex; justify-content: space-around; align-items: flex-end; height: 112px; padding: 0 4%; position: relative; z-index: 2; }
-.bs-kk { width: 96px; height: 96px; transform-origin: 50% 100%; }
-.bs-kk-svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.45)); }
-.bs-kk-lamp { width: 112px; height: 112px; }
-.bs-kk-mic { width: 104px; height: 104px; }
-.bs-kk-inkwell, .bs-kk-coffee { width: 84px; height: 84px; }
-.bs-kk-hourglass { width: 78px; height: 78px; }
-.bs-plank-mantle { top: 112px; }
-.bs-mantle + .bs-shelves { margin-top: 96px; }
-.kk-steam { animation: kk-steam 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
-.kk-steam-2 { animation-delay: 0.7s; } .kk-steam-3 { animation-delay: 1.4s; }
-@keyframes kk-steam { 0% { opacity: 0; transform: translateY(4px) scale(0.9); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px) scale(1.15); } }
-.kk-flame { transform-origin: 50px 40px; animation: kk-flame 1.6s ease-in-out infinite alternate; }
-@keyframes kk-flame { 0% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(1.06, 0.94) rotate(2deg); } 100% { transform: scale(0.96, 1.08) rotate(-1deg); } }
 
 /* Books lean a little, the way a real shelf settles */
 .bs-book-slot:nth-child(3n+2) .bs-book { transform: rotate(-1.1deg); transform-origin: 50% 100%; }
@@ -828,7 +856,7 @@ const BOOKSHELF_CSS = `
 .bs-cover-rule-top { top: 12px; } .bs-cover-rule-bottom { bottom: 12px; }
 .bs-cover-body { position: relative; z-index: 1; }
 .bs-cover-dash { width: 24px; height: 1px; background: rgba(193,122,71,0.55); margin-bottom: 16px; }
-.bs-cover-title { font-family: var(--font-playfair), var(--font-lora), serif; font-style: italic; font-size: 22px; font-weight: 500; color: #F4E8D1; line-height: 1.2; margin: 0 0 8px; text-shadow: 0 1px 3px rgba(0,0,0,0.35); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.bs-cover-title { font-family: var(--font-playfair), var(--font-lora), serif; font-style: italic; font-size: 20px; font-weight: 500; color: #F4E8D1; line-height: 1.2; margin: 0 0 8px; text-shadow: 0 1px 3px rgba(0,0,0,0.35); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .bs-cover-audience { font-family: var(--font-manrope), sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin: 0; }
 .bs-cover-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.22); border-radius: inherit; pointer-events: none; }
 .bs-cover-strip { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: var(--bs-copper); border-radius: 0 0 10px 2px; pointer-events: none; }
@@ -862,9 +890,7 @@ const BOOKSHELF_CSS = `
 .bs-card.is-lit { transform: translateY(-4px); box-shadow: 3px 3px 0 rgba(0,0,0,0.35), 0 0 0 1px #FFD97A, 0 14px 26px rgba(0,0,0,0.4); }
 .bs-card.is-lit .bs-progress-track i { filter: brightness(1.08); }
 
-/* Knick-knacks wobble when poked */
-.bs-kk { transition: transform 300ms var(--bs-spring); }
-.bs-kk:hover { animation: bs-wobble 700ms var(--bs-spring); }
+/* Objects wobble when poked */
 @keyframes bs-wobble { 0% { transform: rotate(0); } 25% { transform: rotate(-6deg) translateY(-6px); } 55% { transform: rotate(5deg) translateY(-3px); } 80% { transform: rotate(-2deg); } 100% { transform: rotate(0); } }
 .bs-pill { transition: transform 220ms var(--bs-spring), box-shadow 160ms ease, background 160ms ease; }
 .bs-pill:hover { transform: translateY(-2px) scale(1.03); }
@@ -880,7 +906,8 @@ const BOOKSHELF_CSS = `
 .bs-pips i { width: 9px; height: 9px; border-radius: 50%; background: #CDBF9F; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
 .bs-pips i.on { background: linear-gradient(135deg, #E29B6D, #C17A47); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.3); }
 .bs-card-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.bs-card-step { font-family: var(--font-manrope), sans-serif; font-size: 11px; color: #5A4A36; }
+.bs-card-foot .ds-stamp { white-space: nowrap; font-size: 10px; letter-spacing: 0.1em; }
+.bs-card-step { font-family: var(--font-manrope), sans-serif; font-size: 10.5px; color: #5A4A36; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bs-steps { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; font-family: var(--font-manrope), sans-serif; font-size: 12.5px; }
 .bs-steps li { display: flex; align-items: center; gap: 8px; }
 .bs-step-n { width: 18px; height: 18px; border-radius: 50%; background: var(--bs-copper); color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
@@ -903,12 +930,13 @@ const BOOKSHELF_CSS = `
   .bs-card-wide { grid-column: 1 / -1; }
   .bs-steps { grid-template-columns: 1fr; }
   .bs-bracket-l { left: 4%; } .bs-bracket-r { right: 4%; }
-  .bs-mantle { padding: 0 8px; margin-top: 18px; }
-  .bs-mantle-row { height: 80px; padding: 0; }
-  .bs-kk { width: 66px; height: 66px; }
-  .bs-kk-lamp, .bs-kk-hourglass, .bs-kk-manuscript, .bs-kk-plant { display: none; }
-  .bs-kk-mic { width: 72px; height: 72px; }
-  .bs-plank-mantle { top: 80px; }
-  .bs-mantle + .bs-shelves { margin-top: 70px; }
+  /* Phones: no room for the shelf-end clusters; the case slims down */
+  .bs-shelves { --bs-ends: 0px; gap: 32px; }
+  .bs-row { grid-template-columns: var(--bs-cols); }
+  .bs-vig, .bs-end-spacer { display: none; }
+  .bs-case { padding: 22px 14px 18px; margin-top: 22px; }
+  .bs-case-side { width: 12px; }
+  .bs-case-top { left: -6px; right: -6px; top: -12px; height: 22px; }
+  .bs-case-bottom { left: -5px; right: -5px; bottom: -10px; height: 16px; }
 }
 `;

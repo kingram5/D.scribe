@@ -18,23 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Comparison pages (HeyCatch action plan): high-intent competitor-name search
-  // traffic, so they outrank /about on priority.
-  const vsEntries: MetadataRoute.Sitemap = [
-    {
-      url: "https://d-scribe.app/vs",
-      lastModified: new Date("2026-09-14"),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    ...["builtwritten", "squibler", "dictate"].map((slug) => ({
-      url: `https://d-scribe.app/vs/${slug}`,
-      lastModified: new Date("2026-09-14"),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    })),
-  ];
-
   return [
     {
       url: "https://d-scribe.app",
@@ -60,7 +43,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.8,
     },
-    ...vsEntries,
     ...["terms", "privacy", "refunds", "acceptable-use", "dmca"].map((slug) => ({
       url: `https://d-scribe.app/legal/${slug}`,
       lastModified: new Date("2026-09-09"),

@@ -194,6 +194,13 @@ export default function Bookshelf(props: BookshelfProps) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const lit = hoverPreviewId ?? hoverId;
 
+  // While the room is on screen, flag the body so the app's top pill can center
+  // itself over the header column (which sits left of THEO's strip on wide rooms).
+  useEffect(() => {
+    document.body.classList.add("bs-in-room");
+    return () => document.body.classList.remove("bs-in-room");
+  }, []);
+
   // Parallax: the wall layers drift a few pixels against the mouse so the room has
   // depth. Written to CSS variables on the root, throttled to one frame.
   const rootRef = useRef<HTMLDivElement>(null);
@@ -628,8 +635,12 @@ const BOOKSHELF_CSS = `
 .bs-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden auto; padding: 18px 40px 72px; max-width: 100%; }
 /* Everything hangs off one column the width of the case, so edges line up */
 .bs-column { max-width: 1300px; margin: 0 auto; }
-/* Wide rooms keep the right side clear for THEO */
-@media (min-width: 1500px) { .bs-scroll { padding-right: 330px; } }
+/* Wide rooms keep the right side clear for THEO, and the app's top pill slides
+   left by half that strip so it sits centered over the header text. */
+@media (min-width: 1500px) {
+  .bs-scroll { padding-right: 330px; }
+  body.bs-in-room .ds-os-bar { left: calc(50% - 145px) !important; }
+}
 .bs-title-cursor { height: 0.9em; width: 3px; vertical-align: -0.08em; margin-left: 4px; }
 
 /* ── Glass (the studio's panels) ──────────────────────────────────────── */

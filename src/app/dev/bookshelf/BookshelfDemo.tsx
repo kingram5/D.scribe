@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Bookshelf, { type ShelfBook, type ShelfFilter } from "@/components/dashboard/Bookshelf";
 import Wordmark, { WORDMARK_VARIANTS, type WordmarkVariant } from "@/components/dashboard/Wordmark";
 import { readConsent, writeConsent } from "@/lib/consent";
+import OsBar from "@/components/ui/OsBar";
 
 /** ?logos=1: every wordmark reading on its own sign, side by side, for picking. */
 function LogoGallery() {
@@ -82,7 +83,8 @@ export default function BookshelfDemo() {
   return (
     <div className="ds-main-layout" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {debug && <pre style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, background: "#000", color: "#0f0", fontSize: 11, margin: 0, padding: 6, whiteSpace: "pre-wrap" }}>{measure || "measuring…"}</pre>}
-      <div style={{ height: 44, flex: "none", background: "rgba(20,15,10,0.6)", borderBottom: "1px solid rgba(249,247,242,0.08)" }} />
+      <OsBar />
+      <div style={{ height: 44, flex: "none" }} />
       <div className="ds-page-shell" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Bookshelf
           ownerName="Kyle"

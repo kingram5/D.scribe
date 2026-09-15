@@ -29,6 +29,7 @@ describe("GPT-Live voice helpers", () => {
   it("accepts only the allowlisted Live voices", () => {
     expect(isLiveVoice(LIVE_DEFAULT_VOICE)).toBe(true);
     expect(isLiveVoice("meridian")).toBe(true);
+    expect(isLiveVoice("ballad")).toBe(true);
     expect(isLiveVoice("finley")).toBe(false);
     expect(isLiveVoice("alloy")).toBe(false);
   });

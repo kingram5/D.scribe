@@ -1426,6 +1426,18 @@ export default function LandingV2() {
           ))}
           <a href="mailto:kyle@d-scribe.app" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Contact</a>
         </nav>
+        {/* Compare links (HeyCatch action plan): competitor-intent search traffic
+            needs a crawlable path from the homepage, not only a sitemap entry. */}
+        <nav aria-label="Compare" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+          <Link href="/vs" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Compare</Link>
+          {[
+            ["/vs/builtwritten", "vs Built&Written"],
+            ["/vs/squibler", "vs Squibler"],
+            ["/vs/dictate", "vs Dictate"],
+          ].map(([href, label]) => (
+            <Link key={href} href={href} style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>{label}</Link>
+          ))}
+        </nav>
         <span style={{ flexBasis: "100%", fontSize: 12, color: "#7E766C", lineHeight: 1.5 }}>
           Manuscripts are drafted with AI from your own recordings. You review, edit, and own the result.
           &copy; {new Date().getFullYear()} D.scribe, Dallas, Texas.

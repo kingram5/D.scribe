@@ -17,6 +17,8 @@ import type { ResearchItem } from "@/lib/research-corpus";
 import { formatResearchedSourcesBlock, rankResearchItems } from "@/lib/research-corpus";
 
 export const LIVE_MODEL = "gpt-live-1";
+/** Smarter Responses backend. Live stays the voice layer and keeps talking. */
+export const LIVE_BACKEND_MODEL = "gpt-5.6-terra";
 export const LIVE_DEFAULT_VOICE = "meridian";
 export const LIVE_VOICES = ["meridian", "ballad", "stone", "gleam", "vesper", "willow", "marin", "ripple"] as const;
 export type LiveVoice = (typeof LIVE_VOICES)[number];
@@ -61,6 +63,16 @@ export const LIVE_RESEARCH_CONTINUE_THINKING =
   "Keep interviewing now. Sourced material is gathered in the background. Do not pause, do not announce research, and do not wait for citations.";
 
 /**
+ * Coach prompt for the Responses backend. Keep it short so Terra can return
+ * one expansion question without stalling the spoken interview.
+ */
+export const LIVE_BACKEND_INSTRUCTIONS = `You coach THEO, a book-brainstorm interviewer. Given the conversation, return exactly one follow-up question that expands the material the author just presented.
+
+Expand by asking for one of: a concrete scene or example, what is at stake, the other side, who is helped or hurt, what they skipped, or how this belongs in the book.
+
+Do not write their book. Do not suggest titles, chapters, or outlines. Do not invent facts or citations. Do not greet. Return only the question, under 25 words.`;
+
+/**
  * Transport-only Live policies. Interviewer identity, steering, and language
  * come from BRAINSTORM_SYSTEM_PROMPT so Claude and Live stay aligned.
  */
@@ -68,7 +80,45 @@ const LIVE_VOICE_POLICIES = `Backchannel policy: Use moderate backchannels. Ackn
 
 Interruption policy: Stop speaking when the user interrupts. Listen to what they say. Keep listening while they pause to think. Do not treat a cough, music, or nearby conversation as a new request.
 
-Research policy: Sourced quotes and citations arrive in the background. Never pause, stall, or go silent to look something up. Never announce that you are researching, searching, checking a fact, or waiting for sources. Never ask the author to hold. Keep interviewing from the conversation. If sourced material later appears in your thinking, you may offer a relevant citation then, then continue. Do not invent citations that have not been supplied. You have no backend tools to wait on.`;
+Expansion policy: When the author offers a story, claim, memory, or idea, stay with it and help them enlarge it. Do not yank them back to the book title after every answer.
+
+Delegation policy:
+Backend tools:
+- Interview coach: suggest one sharper follow-up that expands the material they just presented.
+
+Delegate to the backend when:
+- They just offered a story, claim, or specific idea and you want a richer next question than a generic probe.
+
+Do not delegate to the backend when:
+- A simple clarification will do.
+- They are still mid-thought.
+- You already have a clear next question.
+
+Never pause, stall, or go silent while the backend works. Never announce that you are thinking, researching, or waiting. Ask your own expansion question from the conversation right away. If a backend suggestion arrives, use it only if it expands what they just said, then continue.
+
+Research policy: Sourced quotes and citations arrive in the background from the app. Never look them up, never wait for them, and never invent citations that have not been supplied. If sourced material later appears in your thinking, you may offer a relevant citation then, then continue.`;
+
+export function buildLiveDelegation(): {
+  type: "responses";
+  responses: {
+    model: string;
+    instructions: string;
+    tool_choice: "none";
+    max_output_tokens: number;
+    reasoning: { effort: "low" };
+  };
+} {
+  return {
+    type: "responses",
+    responses: {
+      model: LIVE_BACKEND_MODEL,
+      instructions: LIVE_BACKEND_INSTRUCTIONS,
+      tool_choice: "none",
+      max_output_tokens: 80,
+      reasoning: { effort: "low" },
+    },
+  };
+}
 
 export function isLiveVoice(value: unknown): value is LiveVoice {
   return typeof value === "string" && (LIVE_VOICES as readonly string[]).includes(value);

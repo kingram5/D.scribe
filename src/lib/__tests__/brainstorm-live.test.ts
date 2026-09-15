@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  LIVE_BACKEND_MODEL,
   LIVE_DEFAULT_VOICE,
   LIVE_MAX_HISTORY_MESSAGES,
   LIVE_RESEARCH_CONTINUE_THINKING,
+  buildLiveDelegation,
   buildLiveGreetingFacts,
   buildLiveInstructions,
   buildLiveOpeningAppend,
@@ -51,19 +53,32 @@ describe("buildLiveInstructions", () => {
     const prompt = buildLiveInstructions({});
     expect(prompt).toContain(BRAINSTORM_SYSTEM_PROMPT);
     expect(prompt).toMatch(/Technical Human Expression Organizer/);
-    expect(prompt).toMatch(/CRITICAL: Maintain the overarching book topic/);
+    expect(prompt).toMatch(/stay with it and help them expand it/);
     expect(prompt).toMatch(/What do you mean by that\?/);
-    expect(prompt).toMatch(/If they go broad, help them narrow/);
+    expect(prompt).not.toMatch(/If they go broad, help them narrow/);
     expect(prompt).toMatch(/NEVER use em dashes \(—\)/);
     expect(prompt).toMatch(/Backchannel policy:/);
     expect(prompt).toMatch(/Interruption policy:/);
+    expect(prompt).toMatch(/Expansion policy:/);
     expect(prompt).toMatch(/Research policy:/);
     expect(prompt).toMatch(/Never pause, stall, or go silent/);
-    expect(prompt).toMatch(/You have no backend tools to wait on/);
-    expect(prompt).not.toMatch(/Delegation policy:/);
+    expect(prompt).toMatch(/Ask your own expansion question from the conversation right away/);
+    expect(prompt).toMatch(/Delegation policy:/);
+    expect(prompt).toMatch(/Interview coach:/);
     expect(prompt).not.toMatch(/Do not guess research results while waiting/);
-    expect(prompt).not.toMatch(/Delegate to the backend/);
     expect(prompt).toMatch(/Ask one question at a time/);
+  });
+
+  it("pairs Live with a no-tools Terra coach", () => {
+    const delegation = buildLiveDelegation();
+    expect(delegation.type).toBe("responses");
+    expect(delegation.responses.model).toBe(LIVE_BACKEND_MODEL);
+    expect(delegation.responses.model).toBe("gpt-5.6-terra");
+    expect(delegation.responses.tool_choice).toBe("none");
+    expect(delegation.responses.max_output_tokens).toBe(80);
+    expect(delegation.responses.reasoning).toEqual({ effort: "low" });
+    expect(delegation.responses.instructions).toMatch(/exactly one follow-up question/);
+    expect(delegation.responses.instructions).toMatch(/Do not write their book/);
   });
 
   it("adds an opening greeting only on a fresh session", () => {
@@ -255,6 +270,7 @@ describe("BrainstormLiveChat live studio wiring", () => {
     expect(kick).toMatch(/delegation_id: null/);
     expect(kick).not.toMatch(/delegation_id: pending/);
     const delegation = src.slice(src.indexOf('if (type === "session.delegation.created")'), src.indexOf('if (type === "session.closed")'));
+    expect(delegation).toMatch(/delegation\.target !== "responses"/);
     expect(delegation).toMatch(/LIVE_RESEARCH_CONTINUE_THINKING/);
     expect(delegation).not.toMatch(/kickResearch/);
     expect(delegation).not.toMatch(/fetch\("\/api\/research\/run"/);

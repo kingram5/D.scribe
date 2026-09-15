@@ -13,6 +13,7 @@ import { sanitizeBrainstormMessages } from "@/lib/brainstorm-session";
 import {
   LIVE_DEFAULT_VOICE,
   LIVE_MODEL,
+  buildLiveDelegation,
   buildLiveGreetingFacts,
   buildLiveInstructions,
   firstRealUserMessage,
@@ -172,9 +173,10 @@ export async function POST(req: NextRequest) {
           instructions,
           audio: { output: { voice } },
           input: messagesToLiveInput(messages),
-          // Research is fire-and-forget in the app, same as the Claude studio.
-          // Client delegation would make GPT-Live pause the interview until
-          // thinking.append lands, which is the dead-air we built research to avoid.
+          // Responses backend coaches richer follow-ups without holding the mic.
+          // Research stays fire-and-forget in the app. Client delegation would
+          // pause the interview until thinking.append lands.
+          delegation: buildLiveDelegation(),
         },
         transport: { type: "webrtc", sdp },
       },

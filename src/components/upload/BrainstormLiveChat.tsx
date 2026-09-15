@@ -462,8 +462,10 @@ export default function BrainstormLiveChat({
       return;
     }
     if (type === "session.delegation.created") {
-      const delegation = event.delegation as { id?: string } | undefined;
-      if (delegation?.id) {
+      const delegation = event.delegation as { id?: string; target?: string } | undefined;
+      // Responses delegations are server-managed. Only complete leftover client
+      // waits so research never holds the interview.
+      if (delegation?.id && delegation.target !== "responses") {
         sendEvent({
           type: "session.thinking.append",
           delegation_id: delegation.id,

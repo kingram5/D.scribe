@@ -192,7 +192,13 @@ describe("brainstorm live session route", () => {
     expect(body.session.instructions).toMatch(/T\.H\.E\.O/);
     expect(body.session.instructions).toMatch(/Never pause, stall, or go silent/);
     expect(body.session.audio.output.voice).toBe("meridian");
-    expect(body.session.delegation).toBeUndefined();
+    expect(body.session.delegation).toMatchObject({
+      type: "responses",
+      responses: {
+        model: "gpt-5.6-terra",
+        tool_choice: "none",
+      },
+    });
   });
 });
 

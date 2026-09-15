@@ -13,10 +13,11 @@ describe("shared brainstorm interviewer prompt", () => {
   it("keeps the Haiku identity, steering, and language rules", () => {
     expect(BRAINSTORM_INIT_PING).toBe("Start the brainstorm session.");
     expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/Technical Human Expression Organizer/);
-    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/not to lecture or generate content/);
+    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/help them enlarge what they just offered/);
     expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/Never ask multiple questions/);
-    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/If they go broad, help them narrow/);
-    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/never let a sub-topic become the new subject/);
+    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/stay with it and help them expand it/);
+    expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/Do not treat every new detail as a reason to return to the title/);
+    expect(BRAINSTORM_SYSTEM_PROMPT).not.toMatch(/If they go broad, help them narrow/);
     expect(BRAINSTORM_SYSTEM_PROMPT).toMatch(/No "Not X\. Rather, Y\." inversions/);
   });
 
@@ -33,6 +34,8 @@ describe("shared brainstorm interviewer prompt", () => {
     expect(brainstormTopicAnchorBlock("A book about rest")).toMatch(
       /TOPIC ANCHOR — The user's book is about: "A book about rest"/,
     );
+    expect(brainstormTopicAnchorBlock("A book about rest")).toMatch(/explore and expand that thread/);
+    expect(brainstormTopicAnchorBlock("A book about rest")).not.toMatch(/then return to the broader theme/);
   });
 
   it("is what the Claude brainstorm route imports", () => {

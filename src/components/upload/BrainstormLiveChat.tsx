@@ -14,6 +14,7 @@ import {
   formatLiveResearchContext,
   groupTranscriptFragments,
   LIVE_DEFAULT_VOICE,
+  LIVE_VOICES,
   messagesToSeedFragments,
   type LiveTranscriptFragment,
   type LiveVoice,
@@ -243,7 +244,7 @@ export default function BrainstormLiveChat({
   const [showHistory, setShowHistory] = useState(false);
   const [researchEnabled, setResearchEnabled] = useState(false);
   const [researchNote, setResearchNote] = useState<"running" | "found" | null>(null);
-  const [voice] = useState<LiveVoice>(LIVE_DEFAULT_VOICE);
+  const [voice, setVoice] = useState<LiveVoice>(LIVE_DEFAULT_VOICE);
 
   const sessionKey = `brainstorm_session_${projectId}`;
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -271,6 +272,8 @@ export default function BrainstormLiveChat({
   const researchDisabledRef = useRef(false);
   const pendingDelegationRef = useRef<string | null>(null);
   const typedRef = useRef(false);
+  const openingSentRef = useRef(false);
+  const openingIsResumeRef = useRef(false);
 
   const studioViewportStyle = useStudioViewport();
 
@@ -427,6 +430,21 @@ export default function BrainstormLiveChat({
       setReady(true);
       setConnecting(false);
       connectedAtRef.current = Date.now();
+      if (!openingSentRef.current) {
+        openingSentRef.current = true;
+        const isResume = openingIsResumeRef.current;
+        sendEvent({
+          type: "session.instructions.append",
+          content: isResume
+            ? "Continue the interview from the supplied history. Do not restart."
+            : "Speak first. Open as Theo in one or two sentences, then ask a single opening question and pause.",
+        });
+        sendEvent({
+          type: "session.commentary.append",
+          delegation_id: null,
+          content: buildLiveOpeningAppend(null, isResume),
+        });
+      }
       return;
     }
     if (type === "session.input_transcript.delta" || type === "session.output_transcript.delta") {
@@ -470,7 +488,7 @@ export default function BrainstormLiveChat({
       const err = event.error as { message?: string } | undefined;
       setSendError(err?.message || "The Live session reported an error.");
     }
-  }, [applyFragments, persistSoon, kickResearch, settleUsage, teardownMedia]);
+  }, [applyFragments, persistSoon, kickResearch, sendEvent, settleUsage, teardownMedia]);
 
   const closeLiveSession = useCallback(async () => {
     if (!readyRef.current || !eventsRef.current || eventsRef.current.readyState !== "open") {
@@ -522,6 +540,8 @@ export default function BrainstormLiveChat({
     setBackgroundPaused(false);
     setMuted(false);
     billedRef.current = false;
+    openingSentRef.current = false;
+    openingIsResumeRef.current = resumeMessages.some((m) => m.content.trim() && m.role === "user");
     const seed = messagesToSeedFragments(resumeMessages);
     fragmentsRef.current = seed;
     applyFragments(seed);
@@ -602,11 +622,6 @@ export default function BrainstormLiveChat({
           await new Promise((r) => setTimeout(r, 50));
         }
         if (!readyRef.current) throw new Error("The Live session connected without becoming ready.");
-        sendEvent({
-          type: "session.commentary.append",
-          delegation_id: null,
-          content: buildLiveOpeningAppend(null, resumeMessages.length > 0),
-        });
       };
       void waitReady().catch((err) => {
         setSendError(err instanceof Error ? err.message : "Couldn't start the Live studio.");
@@ -622,7 +637,7 @@ export default function BrainstormLiveChat({
       setConnecting(false);
       teardownMedia();
     }
-  }, [applyFragments, handleLiveEvent, projectId, savedDraft, sendEvent, teardownMedia, unlockAudio, voice]);
+  }, [applyFragments, handleLiveEvent, projectId, savedDraft, teardownMedia, unlockAudio, voice]);
 
   const requestLeave = useCallback(() => {
     if (holdingThought || summarizing) return;
@@ -767,7 +782,6 @@ export default function BrainstormLiveChat({
     const next = !muted;
     setMuted(next);
     sendEvent({ type: next ? "session.input_audio.mute" : "session.input_audio.unmute" });
-    micRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; });
   }, [muted, sendEvent]);
 
   const sendTyped = useCallback(() => {
@@ -917,9 +931,24 @@ export default function BrainstormLiveChat({
               </button>
             </>
           ) : (
-            <button className="transcribe-btn" disabled={ttsAvail === "loading" || connecting} onClick={beginSession}>
-              {ttsAvail === "loading" || connecting ? "Connecting…" : "Start talking →"}
-            </button>
+            <>
+              <label style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif" }}>
+                Voice
+                <select
+                  value={voice}
+                  onChange={(e) => setVoice(e.target.value as LiveVoice)}
+                  aria-label="Live studio voice"
+                  style={{ background: "rgba(249,247,242,0.08)", color: "#F9F7F2", border: "1px solid rgba(249,247,242,0.22)", borderRadius: 10, padding: "10px 12px", fontSize: 14 }}
+                >
+                  {LIVE_VOICES.map((name) => (
+                    <option key={name} value={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</option>
+                  ))}
+                </select>
+              </label>
+              <button className="transcribe-btn" disabled={ttsAvail === "loading" || connecting} onClick={beginSession}>
+                {ttsAvail === "loading" || connecting ? "Connecting…" : "Start talking →"}
+              </button>
+            </>
           )}
           {showVoiceWall && <InkUpgradeModal reason="tts_locked" onClose={() => setShowVoiceWall(false)} />}
         </div>

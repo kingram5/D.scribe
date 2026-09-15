@@ -206,4 +206,16 @@ describe("BrainstormLiveChat live studio wiring", () => {
     expect(visibility).toMatch(/track\.stop\(\)/);
     expect(visibility).toMatch(/closeLiveSession\(\)/);
   });
+
+  it("opens with Live instructions plus commentary and a GPT-Live voice picker", async () => {
+    const { readFileSync } = await import("fs");
+    const { resolve } = await import("path");
+    const src = readFileSync(resolve(__dirname, "../../components/upload/BrainstormLiveChat.tsx"), "utf8");
+    expect(src).toMatch(/type: "session.instructions.append"/);
+    expect(src).toMatch(/type: "session.commentary.append"/);
+    expect(src).toMatch(/LIVE_VOICES\.map/);
+    expect(src).toMatch(/aria-label="Live studio voice"/);
+    expect(src).toMatch(/session.input_audio.mute/);
+    expect(src).toMatch(/session.input_audio.unmute/);
+  });
 });

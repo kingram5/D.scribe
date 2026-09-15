@@ -18,7 +18,7 @@ import { formatResearchedSourcesBlock, rankResearchItems } from "@/lib/research-
 
 export const LIVE_MODEL = "gpt-live-1";
 export const LIVE_DEFAULT_VOICE = "meridian";
-export const LIVE_VOICES = ["meridian", "ballad", "gleam", "vesper", "willow", "marin", "ripple"] as const;
+export const LIVE_VOICES = ["meridian", "ballad", "stone", "gleam", "vesper", "willow", "marin", "ripple"] as const;
 export type LiveVoice = (typeof LIVE_VOICES)[number];
 
 export const LIVE_INIT_PING = BRAINSTORM_INIT_PING;

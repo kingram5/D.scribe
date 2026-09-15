@@ -640,18 +640,20 @@ const BOOKSHELF_CSS = `
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
-.bs-header { display: flex; justify-content: center; align-items: center; margin: 10px 0 22px; animation: bs-drop 700ms var(--bs-spring) both; }
-.bs-header-left { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+/* No transform on the header itself: a fixed child (the usage card) must anchor to the screen, not to it */
+.bs-header { display: flex; justify-content: center; align-items: center; margin: 10px 0 22px; }
+.bs-header-left { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; animation: bs-drop 700ms var(--bs-spring) both; }
 .bs-brand { flex: none; padding: 0; }
 .bs-brand-fallback { font-family: var(--font-playfair), serif; font-style: italic; font-size: 34px; color: #F7EBD3; }
-.bs-title-block { max-width: 820px; }
-.bs-kicker { color: var(--bs-ink-dim) !important; margin-bottom: 8px; font-size: 14px !important; letter-spacing: 0.16em !important; }
+.bs-title-block { max-width: 560px; }
+.bs-kicker { color: var(--bs-ink-dim) !important; margin-bottom: 8px; font-size: 12.5px !important; letter-spacing: 0.16em !important; line-height: 1.6; }
 .bs-kicker-dim { color: rgba(249,247,242,0.4); }
 .bs-title { font-family: var(--font-lora), serif; font-weight: 400; font-size: 46px; letter-spacing: -0.02em; line-height: 1.08; margin: 0 0 8px; color: var(--bs-ink); }
-.bs-quote { font-family: var(--font-lora), serif; font-style: italic; font-size: 20px; line-height: 1.5; color: var(--bs-ink-soft); margin: 0; }
-.bs-quote-author { font-style: normal; font-family: var(--font-geist-mono), monospace; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(249,247,242,0.45); margin-left: 6px; }
-/* The usage meter lives in the top-right corner of the room, out of the column */
-.bs-header-aside { position: absolute; top: 16px; right: 40px; width: 300px; z-index: 5; }
+.bs-quote { font-family: var(--font-lora), serif; font-style: italic; font-size: 18px; line-height: 1.5; color: var(--bs-ink-soft); margin: 0; text-wrap: balance; }
+.bs-quote-author { display: block; font-style: normal; font-family: var(--font-geist-mono), monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(249,247,242,0.45); margin-top: 6px; }
+/* The usage meter lives in the top-right corner of the SCREEN, clear of the column
+   and of the centered top bar. */
+.bs-header-aside { position: fixed; top: 14px; right: 16px; width: 290px; z-index: 6; }
 .bs-board { padding: 10px 12px 12px; }
 .bs-board-label { color: var(--bs-ink-dim) !important; margin-bottom: 8px; }
 .bs-board-widget { position: relative; }
@@ -881,6 +883,7 @@ const BOOKSHELF_CSS = `
   .bs-header { margin: 6px 0 14px; flex-direction: column; gap: 12px; }
   .bs-header-left { gap: 8px; }
   .bs-header-aside { position: static; width: 100%; }
+  .bs-title-block { max-width: 100%; }
   .bs-case { padding: 20px 12px 16px; }
   .bs-case-side { width: 12px; }
   .bs-case-top { left: -6px; right: -6px; top: -8px; height: 18px; }

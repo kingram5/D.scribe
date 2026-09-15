@@ -154,6 +154,24 @@ describe("brainstorm live session route", () => {
     expect(liveCreate).not.toHaveBeenCalled();
   });
 
+  it("returns 503 with live_not_configured when OPENAI_API_KEY is missing", async () => {
+    delete process.env.OPENAI_API_KEY;
+    const { POST } = await import("@/app/api/brainstorm/live/session/route");
+    const res = await POST(jsonRequest("http://local/api/brainstorm/live/session", { sdp: "v=0", project_id: "proj-a" }));
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toMatchObject({ error: "live_not_configured" });
+    expect(liveCreate).not.toHaveBeenCalled();
+  });
+
+  it("maps OpenAI API failures to 502 instead of forwarding vendor 503", async () => {
+    const { APIError } = await import("openai");
+    liveCreate.mockRejectedValue(new APIError(503, "overloaded"));
+    const { POST } = await import("@/app/api/brainstorm/live/session/route");
+    const res = await POST(jsonRequest("http://local/api/brainstorm/live/session", { sdp: "v=0", project_id: "proj-a" }));
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toMatchObject({ error: "live_openai_failed", openai_status: 503 });
+  });
+
   it("creates a gpt-live-1 WebRTC session and returns the SDP answer", async () => {
     const { POST } = await import("@/app/api/brainstorm/live/session/route");
     const res = await POST(jsonRequest("http://local/api/brainstorm/live/session", {

@@ -21,8 +21,15 @@ import {
 } from "@/lib/brainstorm-live";
 
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const SDP_MAX_CHARS = 256_000;
+
+/** Bracket access so Next.js cannot inline an empty build-time value. */
+function liveApiKey(): string {
+  return String(process.env["OPENAI_API_KEY"] ?? "").trim();
+}
 
 function safetyIdentifier(userId: string): string {
   return createHash("sha256").update(`brainstorm-live:${userId}`).digest("hex");
@@ -40,8 +47,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return NextResponse.json({ error: "Live studio is not configured." }, { status: 503 });
+  const apiKey = liveApiKey();
+  if (!apiKey) {
+    logger.error("Live studio missing OPENAI_API_KEY", {
+      route: "/api/brainstorm/live/session",
+      userId: user.id,
+      meta: { vercelEnv: process.env["VERCEL_ENV"] ?? "unknown" },
+    });
+    return NextResponse.json(
+      {
+        error: "live_not_configured",
+        message: "OPENAI_API_KEY is not set on this deployment. Add it to Vercel Preview (not only Production), then redeploy.",
+      },
+      { status: 503 },
+    );
   }
 
   const inkCheck = await checkInk(user.id, "brainstorm_live");
@@ -143,7 +162,7 @@ export async function POST(req: NextRequest) {
     isResume: Boolean(firstUser),
   });
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY.trim(), maxRetries: 0 });
+  const client = new OpenAI({ apiKey, maxRetries: 0 });
 
   try {
     const result = await client.live.create(
@@ -175,10 +194,15 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         meta: { status: error.status, body: String(error.message).slice(0, 400) },
       });
-      const status = error.status === 401 || error.status === 403 ? 502 : (error.status ?? 502);
       return NextResponse.json(
-        { error: "Live session creation failed" },
-        { status: status >= 400 && status < 600 ? status : 502 },
+        {
+          error: "live_openai_failed",
+          message: error.status === 401 || error.status === 403
+            ? "OpenAI rejected the Live API key. Confirm the key can call gpt-live-1."
+            : "OpenAI could not start the Live session. Try again in a moment.",
+          openai_status: error.status ?? 502,
+        },
+        { status: 502 },
       );
     }
     logger.error("Live session creation threw", {

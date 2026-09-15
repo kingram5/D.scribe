@@ -435,6 +435,7 @@ export default function BrainstormLiveChat({
         const isResume = openingIsResumeRef.current;
         sendEvent({
           type: "session.instructions.append",
+          delegation_id: null,
           content: isResume
             ? "Continue the interview from the supplied history. Do not restart."
             : "Speak first. Open as Theo in one or two sentences, then ask a single opening question and pause.",

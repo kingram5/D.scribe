@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: ",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://analytics.tiktok.com https://px.ads.linkedin.com https://www.googleapis.com https://oauth2.googleapis.com https://api.stripe.com https://in.heycatch.ai",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.openai.com wss://api.openai.com https://*.openai.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://analytics.tiktok.com https://px.ads.linkedin.com https://www.googleapis.com https://oauth2.googleapis.com https://api.stripe.com https://in.heycatch.ai",
       "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accounts.google.com https://docs.google.com",
       "worker-src 'self' blob:",
       "upgrade-insecure-requests",

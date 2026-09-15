@@ -14,6 +14,7 @@ import {
   formatLiveResearchContext,
   groupTranscriptFragments,
   LIVE_DEFAULT_VOICE,
+  LIVE_RESEARCH_CONTINUE_THINKING,
   LIVE_VOICES,
   messagesToSeedFragments,
   type LiveTranscriptFragment,
@@ -270,7 +271,6 @@ export default function BrainstormLiveChat({
   const researchCompletedRef = useRef(false);
   const researchCompletedAtRef = useRef<number | null>(null);
   const researchDisabledRef = useRef(false);
-  const pendingDelegationRef = useRef<string | null>(null);
   const typedRef = useRef(false);
   const openingSentRef = useRef(false);
   const openingIsResumeRef = useRef(false);
@@ -356,7 +356,7 @@ export default function BrainstormLiveChat({
     setReady(false);
   }, []);
 
-  const kickResearch = useCallback((turns: number, msgs: BrainstormMessage[], force = false, delegationId: string | null = null) => {
+  const kickResearch = useCallback((turns: number, msgs: BrainstormMessage[], force = false) => {
     if (researchDisabledRef.current) return;
     const probe = force
       ? manualResearchProbe()
@@ -365,9 +365,8 @@ export default function BrainstormLiveChat({
           fired: researchFiredRef.current,
           completedAtTurns: researchCompletedAtRef.current,
         });
-    if (!probe && !delegationId) return;
-    if (probe && typeof probe.key === "number") researchFiredRef.current.add(probe.key);
-    if (delegationId) pendingDelegationRef.current = delegationId;
+    if (!probe) return;
+    if (typeof probe.key === "number") researchFiredRef.current.add(probe.key);
     setResearchNote("running");
     void fetch("/api/research/run", {
       method: "POST",
@@ -375,7 +374,7 @@ export default function BrainstormLiveChat({
       body: JSON.stringify({
         project_id: projectId,
         digest: digestMessages(msgs),
-        force: probe?.force ?? true,
+        force: probe.force,
       }),
     })
       .then(async (res) => {
@@ -399,25 +398,16 @@ export default function BrainstormLiveChat({
               || "Sourced material was added for this book. Offer a relevant citation if it fits, then continue the interview.";
             sendEvent({
               type: "session.thinking.append",
-              delegation_id: pendingDelegationRef.current,
+              delegation_id: null,
               content,
             });
-          } else if (pendingDelegationRef.current) {
-            sendEvent({
-              type: "session.thinking.append",
-              delegation_id: pendingDelegationRef.current,
-              content: "No additional sourced material was found. Continue the interview from the conversation.",
-            });
           }
-          pendingDelegationRef.current = null;
           return;
         }
         setResearchNote(null);
-        pendingDelegationRef.current = null;
       })
       .catch(() => {
         setResearchNote(null);
-        pendingDelegationRef.current = null;
       });
   }, [projectId, sendEvent]);
 
@@ -461,6 +451,9 @@ export default function BrainstormLiveChat({
         },
       ]);
       persistSoon();
+      if (type === "session.input_transcript.delta") {
+        kickResearch(userTurnCount(messagesRef.current), messagesRef.current);
+      }
       return;
     }
     if (type === "session.usage.updated") {
@@ -469,9 +462,13 @@ export default function BrainstormLiveChat({
       return;
     }
     if (type === "session.delegation.created") {
-      const delegation = event.delegation as { id?: string; target?: string } | undefined;
+      const delegation = event.delegation as { id?: string } | undefined;
       if (delegation?.id) {
-        kickResearch(userTurnCount(messagesRef.current), messagesRef.current, true, delegation.id);
+        sendEvent({
+          type: "session.thinking.append",
+          delegation_id: delegation.id,
+          content: LIVE_RESEARCH_CONTINUE_THINKING,
+        });
       }
       return;
     }

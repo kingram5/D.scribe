@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LIVE_DEFAULT_VOICE,
   LIVE_MAX_HISTORY_MESSAGES,
+  LIVE_RESEARCH_CONTINUE_THINKING,
   buildLiveGreetingFacts,
   buildLiveInstructions,
   buildLiveOpeningAppend,
@@ -36,6 +37,14 @@ describe("GPT-Live voice helpers", () => {
   });
 });
 
+describe("LIVE_RESEARCH_CONTINUE_THINKING", () => {
+  it("tells the model to keep talking instead of waiting on research", () => {
+    expect(LIVE_RESEARCH_CONTINUE_THINKING).toMatch(/Keep interviewing now/);
+    expect(LIVE_RESEARCH_CONTINUE_THINKING).toMatch(/Do not pause/);
+    expect(LIVE_RESEARCH_CONTINUE_THINKING).toMatch(/do not wait for citations/);
+  });
+});
+
 describe("buildLiveInstructions", () => {
   it("copies the Haiku interviewer prompt and keeps Live voice policies", () => {
     const prompt = buildLiveInstructions({});
@@ -47,7 +56,12 @@ describe("buildLiveInstructions", () => {
     expect(prompt).toMatch(/NEVER use em dashes \(—\)/);
     expect(prompt).toMatch(/Backchannel policy:/);
     expect(prompt).toMatch(/Interruption policy:/);
-    expect(prompt).toMatch(/Delegation policy:/);
+    expect(prompt).toMatch(/Research policy:/);
+    expect(prompt).toMatch(/Never pause, stall, or go silent/);
+    expect(prompt).toMatch(/You have no backend tools to wait on/);
+    expect(prompt).not.toMatch(/Delegation policy:/);
+    expect(prompt).not.toMatch(/Do not guess research results while waiting/);
+    expect(prompt).not.toMatch(/Delegate to the backend/);
     expect(prompt).toMatch(/Ask one question at a time/);
   });
 
@@ -224,5 +238,24 @@ describe("BrainstormLiveChat live studio wiring", () => {
     expect(src).toMatch(/aria-label="Live studio voice"/);
     expect(src).toMatch(/session.input_audio.mute/);
     expect(src).toMatch(/session.input_audio.unmute/);
+  });
+
+  it("keeps interviewing while research runs in the background", async () => {
+    const { readFileSync } = await import("fs");
+    const { resolve } = await import("path");
+    const src = readFileSync(resolve(__dirname, "../../components/upload/BrainstormLiveChat.tsx"), "utf8");
+    expect(src).toMatch(/LIVE_RESEARCH_CONTINUE_THINKING/);
+    expect(src).toMatch(/type === "session.delegation.created"/);
+    expect(src).toMatch(/delegation_id: delegation\.id/);
+    expect(src).toMatch(/kickResearch\(userTurnCount\(messagesRef\.current\), messagesRef\.current\)/);
+    expect(src).not.toMatch(/pendingDelegationRef/);
+    const kick = src.slice(src.indexOf("const kickResearch"), src.indexOf("const handleLiveEvent"));
+    expect(kick).toMatch(/void fetch\("\/api\/research\/run"/);
+    expect(kick).toMatch(/delegation_id: null/);
+    expect(kick).not.toMatch(/delegation_id: pending/);
+    const delegation = src.slice(src.indexOf('if (type === "session.delegation.created")'), src.indexOf('if (type === "session.closed")'));
+    expect(delegation).toMatch(/LIVE_RESEARCH_CONTINUE_THINKING/);
+    expect(delegation).not.toMatch(/kickResearch/);
+    expect(delegation).not.toMatch(/fetch\("\/api\/research\/run"/);
   });
 });

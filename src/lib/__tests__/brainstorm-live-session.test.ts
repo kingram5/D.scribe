@@ -190,7 +190,9 @@ describe("brainstorm live session route", () => {
     expect(body.session.model).toBe("gpt-live-1");
     expect(body.transport).toEqual({ type: "webrtc", sdp: "v=0 offer" });
     expect(body.session.instructions).toMatch(/T\.H\.E\.O/);
+    expect(body.session.instructions).toMatch(/Never pause, stall, or go silent/);
     expect(body.session.audio.output.voice).toBe("meridian");
+    expect(body.session.delegation).toBeUndefined();
   });
 });
 

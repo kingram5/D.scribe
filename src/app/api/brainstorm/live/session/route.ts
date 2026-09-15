@@ -172,7 +172,9 @@ export async function POST(req: NextRequest) {
           instructions,
           audio: { output: { voice } },
           input: messagesToLiveInput(messages),
-          delegation: { type: "client" },
+          // Research is fire-and-forget in the app, same as the Claude studio.
+          // Client delegation would make GPT-Live pause the interview until
+          // thinking.append lands, which is the dead-air we built research to avoid.
         },
         transport: { type: "webrtc", sdp },
       },

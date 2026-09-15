@@ -54,6 +54,13 @@ export type LiveHistoryItem =
     };
 
 /**
+ * Sent the instant a Live delegation appears so the interviewer never stalls
+ * for background research. Research results arrive later as silent thinking.
+ */
+export const LIVE_RESEARCH_CONTINUE_THINKING =
+  "Keep interviewing now. Sourced material is gathered in the background. Do not pause, do not announce research, and do not wait for citations.";
+
+/**
  * Transport-only Live policies. Interviewer identity, steering, and language
  * come from BRAINSTORM_SYSTEM_PROMPT so Claude and Live stay aligned.
  */
@@ -61,18 +68,7 @@ const LIVE_VOICE_POLICIES = `Backchannel policy: Use moderate backchannels. Ackn
 
 Interruption policy: Stop speaking when the user interrupts. Listen to what they say. Keep listening while they pause to think. Do not treat a cough, music, or nearby conversation as a new request.
 
-Delegation policy:
-Backend tools:
-- Research: look up sourced quotes, stats, and references for this book.
-
-Delegate to the backend when:
-- The author asks you to look something up, find a citation, or check a fact you cannot know from the conversation.
-
-Do not delegate to the backend when:
-- You can keep interviewing from the conversation.
-- You need a brief clarification.
-
-Do not guess research results while waiting.`;
+Research policy: Sourced quotes and citations arrive in the background. Never pause, stall, or go silent to look something up. Never announce that you are researching, searching, checking a fact, or waiting for sources. Never ask the author to hold. Keep interviewing from the conversation. If sourced material later appears in your thinking, you may offer a relevant citation then, then continue. Do not invent citations that have not been supplied. You have no backend tools to wait on.`;
 
 export function isLiveVoice(value: unknown): value is LiveVoice {
   return typeof value === "string" && (LIVE_VOICES as readonly string[]).includes(value);

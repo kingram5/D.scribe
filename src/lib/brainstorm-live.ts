@@ -4,6 +4,14 @@
  */
 
 import type { BrainstormMessage } from "@/lib/brainstorm-session";
+import {
+  BRAINSTORM_INIT_PING,
+  BRAINSTORM_SYSTEM_PROMPT,
+  brainstormGreetingBlock,
+  brainstormGreetingFacts,
+  brainstormTopicAnchorBlock,
+  type BrainstormGreetingFacts,
+} from "@/lib/brainstorm-prompt";
 import { INK_PER_LIVE_MINUTE } from "@/lib/ink";
 import type { ResearchItem } from "@/lib/research-corpus";
 import { formatResearchedSourcesBlock, rankResearchItems } from "@/lib/research-corpus";
@@ -13,7 +21,7 @@ export const LIVE_DEFAULT_VOICE = "meridian";
 export const LIVE_VOICES = ["meridian", "ballad", "gleam", "vesper", "willow", "marin", "ripple"] as const;
 export type LiveVoice = (typeof LIVE_VOICES)[number];
 
-export const LIVE_INIT_PING = "Start the brainstorm session.";
+export const LIVE_INIT_PING = BRAINSTORM_INIT_PING;
 export const LIVE_MAX_HISTORY_MESSAGES = 128;
 export const LIVE_MAX_HISTORY_TOKENS = 8192;
 export const LIVE_APPEND_MAX_CHARS = 1800; // ~450 tokens, under the 500-token append cap
@@ -24,11 +32,7 @@ export const LIVE_SEED_FRAGMENT_GAP_MS = 10_000;
 export const LIVE_SEED_FRAGMENT_END_MS = -60_000;
 
 /** Opening-greeting facts the Live model may mention, never invent. */
-export type LiveGreetingFacts = {
-  firstName: string;
-  title: string;
-  audience: string;
-};
+export type LiveGreetingFacts = BrainstormGreetingFacts;
 
 export type LiveTranscriptFragment = {
   speaker: "user" | "assistant";
@@ -49,24 +53,11 @@ export type LiveHistoryItem =
       content: Array<{ type: "output_text"; text: string }>;
     };
 
-const LIVE_INSTRUCTIONS = `You are T.H.E.O, called Theo in conversation, a warm curious ghostwriter helping the author develop ideas for their manuscript. Draw ideas OUT of them. Never spell out the acronym unprompted.
-
-You exist ONLY to help with book and manuscript ideation. If they ask for anything else, redirect: "I'm here to help you brainstorm your book. What are you thinking about writing?"
-
-CONTENT POLICY. Refuse to help develop graphic violence, sexual or erotic content, sexualization of minors, hate speech, illegal instructions, self-harm methods, or extremist ideology. If they steer there, say: "That's outside what I can help with here. Let's focus on a different angle for your book. What else is on your mind?"
-
-Rules:
-- Ask one question at a time.
-- Keep spoken replies to one or two short sentences.
-- Be genuinely curious. Probe for specifics. Mirror their language.
-- Don't summarize what they said back to them. Push forward.
-- Never suggest book titles, chapter structures, or outlines.
-- You are NOT writing their book. Help them figure out what they want to say.
-- Keep the overarching book topic. Sub-topics are threads inside that book.
-
-LANGUAGE. Never use em dashes. Never use: furthermore, moreover, pivotal, nuanced, resonate, tapestry, journey, landscape, dive deep, unpack, lean into, transformative, robust, seamless, leverage, utilize, delve, embark, myriad, in essence, it's worth noting, interestingly, at the end of the day, game-changer, paradigm shift. Sound like a curious human.
-
-Backchannel policy: Use moderate backchannels. Acknowledge naturally without competing with the main response.
+/**
+ * Transport-only Live policies. Interviewer identity, steering, and language
+ * come from BRAINSTORM_SYSTEM_PROMPT so Claude and Live stay aligned.
+ */
+const LIVE_VOICE_POLICIES = `Backchannel policy: Use moderate backchannels. Acknowledge naturally without competing with the main response.
 
 Interruption policy: Stop speaking when the user interrupts. Listen to what they say. Keep listening while they pause to think. Do not treat a cough, music, or nearby conversation as a new request.
 
@@ -104,11 +95,7 @@ export function buildLiveGreetingFacts(input: {
   projectTitle?: string | null;
   projectAudience?: string | null;
 }): LiveGreetingFacts {
-  const rawName = String(input.fullName || "").trim();
-  const firstName = rawName ? (rawName.split(/\s+/)[0] ?? "") : "";
-  const title = input.projectTitle && !/^untitled/i.test(input.projectTitle) ? input.projectTitle : "";
-  const audience = input.projectAudience && input.projectAudience !== "General" ? input.projectAudience : "";
-  return { firstName, title, audience };
+  return brainstormGreetingFacts(input);
 }
 
 export function buildLiveInstructions(opts: {
@@ -118,21 +105,13 @@ export function buildLiveInstructions(opts: {
   researchBlock?: string | null;
   isResume?: boolean;
 }): string {
-  const parts = [LIVE_INSTRUCTIONS];
+  const parts = [BRAINSTORM_SYSTEM_PROMPT, LIVE_VOICE_POLICIES];
   if (opts.audienceBlock) parts.push(opts.audienceBlock.trim());
 
   if (opts.topicAnchor) {
-    parts.push(
-      `TOPIC ANCHOR. The author's book is about: "${opts.topicAnchor.slice(0, 200)}"\nEvery question must stay rooted in this subject. When a sub-topic surfaces, explore it as an angle within this book, then return to the broader theme.`,
-    );
+    parts.push(brainstormTopicAnchorBlock(opts.topicAnchor).trim());
   } else if (opts.greeting && !opts.isResume) {
-    const known: string[] = [];
-    if (opts.greeting.firstName) known.push(`The author's first name is ${JSON.stringify(opts.greeting.firstName)}. Greet them by it.`);
-    if (opts.greeting.title) known.push(`Their working title is ${JSON.stringify(opts.greeting.title)}. Mention it naturally.`);
-    if (opts.greeting.audience) known.push(`The book is aimed at a ${JSON.stringify(opts.greeting.audience)} audience. Acknowledge that.`);
-    parts.push(
-      `OPENING GREETING. After the session starts you will be asked to speak first. Open warmly as Theo in one or two sentences, then ask a single opening question. ${known.length ? known.join(" ") : "Nothing about the author or project is on file. Keep the greeting warm and generic."} Never invent a name, title, or audience that is not listed here.`,
-    );
+    parts.push(brainstormGreetingBlock(opts.greeting).trim());
   }
 
   if (opts.isResume) {

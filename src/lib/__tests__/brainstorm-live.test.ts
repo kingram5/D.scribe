@@ -15,6 +15,7 @@ import {
   messagesToSeedFragments,
   type LiveTranscriptFragment,
 } from "@/lib/brainstorm-live";
+import { BRAINSTORM_SYSTEM_PROMPT } from "@/lib/brainstorm-prompt";
 import { INK_PER_LIVE_MINUTE } from "@/lib/ink";
 import type { BrainstormMessage } from "@/lib/brainstorm-session";
 
@@ -36,14 +37,18 @@ describe("GPT-Live voice helpers", () => {
 });
 
 describe("buildLiveInstructions", () => {
-  it("keeps the Live policy labels and Theo identity", () => {
+  it("copies the Haiku interviewer prompt and keeps Live voice policies", () => {
     const prompt = buildLiveInstructions({});
-    expect(prompt).toMatch(/You are T\.H\.E\.O/);
+    expect(prompt).toContain(BRAINSTORM_SYSTEM_PROMPT);
+    expect(prompt).toMatch(/Technical Human Expression Organizer/);
+    expect(prompt).toMatch(/CRITICAL: Maintain the overarching book topic/);
+    expect(prompt).toMatch(/What do you mean by that\?/);
+    expect(prompt).toMatch(/If they go broad, help them narrow/);
+    expect(prompt).toMatch(/NEVER use em dashes \(—\)/);
     expect(prompt).toMatch(/Backchannel policy:/);
     expect(prompt).toMatch(/Interruption policy:/);
     expect(prompt).toMatch(/Delegation policy:/);
     expect(prompt).toMatch(/Ask one question at a time/);
-    expect(prompt).not.toMatch(/em dashes \(—\)/);
   });
 
   it("adds an opening greeting only on a fresh session", () => {
@@ -53,14 +58,15 @@ describe("buildLiveInstructions", () => {
       projectAudience: "Money & Finance",
     });
     const fresh = buildLiveInstructions({ greeting, isResume: false });
-    expect(fresh).toMatch(/OPENING GREETING/);
+    expect(fresh).toMatch(/OPENING GREETING — This is the very first message/);
+    expect(fresh).toMatch(/Shape \(adapt, don't recite\)/);
     expect(fresh).toMatch(/Kyle/);
     expect(fresh).toMatch(/The Ledger/);
 
     const resume = buildLiveInstructions({ greeting, isResume: true, topicAnchor: "tithing" });
     expect(resume).not.toMatch(/OPENING GREETING/);
+    expect(resume).toMatch(/TOPIC ANCHOR — The user's book is about: "tithing"/);
     expect(resume).toMatch(/resumed conversation/);
-    expect(resume).toMatch(/tithing/);
   });
 
   it("appends audience specialization when provided", () => {

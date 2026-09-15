@@ -19,10 +19,13 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // 2026-09-08: /blog, /discover, /sitemap.xml and /robots.txt were missing, so Google was
 // bounced to /login for every one of them.
 // 2026-09-10: /about added (HeyCatch item 2); it used to bounce to /login.
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/sitemap.xml", "/robots.txt"];
+// 2026-09-14: /vs added (HeyCatch action plan compare pages). Same failure mode
+// as /blog and /about: public marketing pages bounced every visitor AND every
+// crawler to /login. Any new public route must be added here or it is invisible.
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/sitemap.xml", "/robots.txt"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
-const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
+const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -21,11 +21,16 @@ export default function MeetTheoPanel({
   onStart,
   onBack,
   paused = false,
+  liveStudio = false,
+  onToggleLiveStudio,
 }: {
   onStart?: () => void;
   onBack?: () => void;
   /** True while the studio covers the lobby, so T.H.E.O stops talking under it. */
   paused?: boolean;
+  /** Experimental GPT-Live studio. Default remains the Claude studio. */
+  liveStudio?: boolean;
+  onToggleLiveStudio?: () => void;
 }) {
   const bgRef = useRef<HTMLVideoElement>(null);
 
@@ -197,6 +202,17 @@ export default function MeetTheoPanel({
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {onToggleLiveStudio && (
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "rgba(168,159,148,0.85)", cursor: "pointer", fontFamily: "var(--font-manrope), sans-serif" }}>
+                <input
+                  type="checkbox"
+                  checked={liveStudio}
+                  onChange={onToggleLiveStudio}
+                  style={{ accentColor: "var(--ds-accent-500)" }}
+                />
+                Experimental Live studio — interrupt naturally
+              </label>
+            )}
             <button
               className="theo-lobby-cta"
               onClick={onStart}

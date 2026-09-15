@@ -41,6 +41,10 @@ describe("estimateInkCost", () => {
     expect(estimateInkCost("brainstorm")).toBe(2);
   });
 
+  it("returns 14 for brainstorm_live (two-minute GPT-Live reserve)", () => {
+    expect(estimateInkCost("brainstorm_live")).toBe(14);
+  });
+
   it("returns 6 for generate (most expensive op)", () => {
     expect(estimateInkCost("generate")).toBe(6);
   });

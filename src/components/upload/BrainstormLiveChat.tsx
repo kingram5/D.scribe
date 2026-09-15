@@ -14,6 +14,7 @@ import {
   formatLiveResearchContext,
   groupTranscriptFragments,
   LIVE_DEFAULT_VOICE,
+  messagesToSeedFragments,
   type LiveTranscriptFragment,
   type LiveVoice,
 } from "@/lib/brainstorm-live";
@@ -237,6 +238,7 @@ export default function BrainstormLiveChat({
   const [lengthNudgeDismissed, setLengthNudgeDismissed] = useState(false);
   const [showVoiceWall, setShowVoiceWall] = useState(false);
   const [showInkWall, setShowInkWall] = useState(false);
+  const [backgroundPaused, setBackgroundPaused] = useState(false);
   const [audience, setAudience] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [researchEnabled, setResearchEnabled] = useState(false);
@@ -297,22 +299,26 @@ export default function BrainstormLiveChat({
     messagesRef.current = grouped;
   }, []);
 
+  const persistNow = useCallback(() => {
+    void putServerSession(projectId, messagesRef.current);
+    try {
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        messages: messagesRef.current,
+        draft: draftRef.current,
+      }));
+    } catch {
+      setStorageBlocked(true);
+    }
+  }, [projectId, sessionKey]);
+
   const persistSoon = useCallback(() => {
     if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
     serverSyncTimerRef.current = setTimeout(() => {
       serverSyncTimerRef.current = null;
-      void putServerSession(projectId, messagesRef.current);
-      try {
-        localStorage.setItem(sessionKey, JSON.stringify({
-          version: 1,
-          messages: messagesRef.current,
-          draft: draftRef.current,
-        }));
-      } catch {
-        setStorageBlocked(true);
-      }
+      persistNow();
     }, 400);
-  }, [projectId, sessionKey]);
+  }, [persistNow]);
 
   const settleUsage = useCallback(async (seconds: number) => {
     if (billedRef.current) return;
@@ -513,8 +519,12 @@ export default function BrainstormLiveChat({
     setConnecting(true);
     setSendError(null);
     setRetryAction(null);
+    setBackgroundPaused(false);
+    setMuted(false);
     billedRef.current = false;
-    fragmentsRef.current = [];
+    const seed = messagesToSeedFragments(resumeMessages);
+    fragmentsRef.current = seed;
+    applyFragments(seed);
     lastUsageSecondsRef.current = 0;
     unlockAudio();
 
@@ -584,8 +594,6 @@ export default function BrainstormLiveChat({
       await peer.setRemoteDescription({ type: "answer", sdp: result.transport.sdp });
 
       setStarted(true);
-      setMessages(resumeMessages);
-      messagesRef.current = resumeMessages;
       if (savedDraft) setInput(savedDraft);
 
       const waitReady = async () => {
@@ -614,7 +622,7 @@ export default function BrainstormLiveChat({
       setConnecting(false);
       teardownMedia();
     }
-  }, [handleLiveEvent, projectId, savedDraft, sendEvent, teardownMedia, unlockAudio, voice]);
+  }, [applyFragments, handleLiveEvent, projectId, savedDraft, sendEvent, teardownMedia, unlockAudio, voice]);
 
   const requestLeave = useCallback(() => {
     if (holdingThought || summarizing) return;
@@ -730,23 +738,30 @@ export default function BrainstormLiveChat({
   useEffect(() => {
     const onVisibilityChange = () => {
       pageVisibleRef.current = document.visibilityState === "visible";
-      if (!pageVisibleRef.current && readyRef.current) {
-        sendEvent({ type: "session.input_audio.mute" });
-        micRef.current?.getTracks().forEach((track) => { track.enabled = false; });
-        void closeLiveSession();
-      }
+      if (pageVisibleRef.current) return;
+      if (!readyRef.current || summarizing || holdingThought) return;
+      sendEvent({ type: "session.input_audio.mute" });
+      micRef.current?.getTracks().forEach((track) => {
+        track.enabled = false;
+        track.stop();
+      });
+      persistNow();
+      setBackgroundPaused(true);
+      setSendError("The Live session was paused while the app was in the background. Tap Reconnect when you return.");
+      setRetryAction("start");
+      void closeLiveSession();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [closeLiveSession, sendEvent]);
+  }, [closeLiveSession, holdingThought, persistNow, sendEvent, summarizing]);
 
   const beginSession = useCallback(() => {
-    const resume = pendingResume ? savedMessages : messages;
+    const resume = pendingResume ? savedMessages : messagesRef.current;
     setShowVoiceGate(false);
     setShowResume(false);
     setPendingResume(false);
     void startLiveSession(resume);
-  }, [messages, pendingResume, savedMessages, startLiveSession]);
+  }, [pendingResume, savedMessages, startLiveSession]);
 
   const toggleMute = useCallback(() => {
     const next = !muted;
@@ -807,7 +822,7 @@ export default function BrainstormLiveChat({
   }, [closeLiveSession, onComplete, projectId, sessionKey]);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
-  const canFinish = userMessageCount >= 2 && !connecting && !summarizing && ready;
+  const canFinish = userMessageCount >= 2 && !connecting && !summarizing;
   const canTakeABreak = userMessageCount >= 1 && !connecting && !summarizing && !holdingThought;
 
   useEffect(() => {
@@ -935,7 +950,7 @@ export default function BrainstormLiveChat({
   const live = exchanges[exchanges.length - 1];
   const receding = exchanges.slice(0, -1).slice(-2);
   const older = exchanges.slice(0, -1).slice(0, -2);
-  const thinking = connecting || (!ready && started);
+  const thinking = connecting;
   const composing = input.trim().length > 0;
 
   if (typeof document === "undefined") return null;
@@ -1024,7 +1039,7 @@ export default function BrainstormLiveChat({
           </span>
           {retryAction && (
             <button onClick={() => { const action = retryAction; setSendError(null); setRetryAction(null); if (action === "start") beginSession(); else void finishBrainstorm(); }} style={{ background: "var(--ds-accent-500)", color: "#fff", border: "none", borderRadius: 100, padding: "6px 16px", fontSize: 12, cursor: "pointer" }}>
-              Retry
+              {retryAction === "start" && backgroundPaused ? "Reconnect" : "Retry"}
             </button>
           )}
         </div>
@@ -1066,7 +1081,7 @@ export default function BrainstormLiveChat({
                 sendTyped();
               }
             }}
-            placeholder={ready ? "Speak, or type while he listens…" : "Connecting…"}
+            placeholder={ready ? "Speak, or type while he listens…" : backgroundPaused ? "Session paused. Reconnect to keep talking…" : "Connecting…"}
             disabled={!ready}
             rows={1}
             aria-label="Your answer"

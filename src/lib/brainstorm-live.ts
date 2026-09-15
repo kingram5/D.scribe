@@ -19,6 +19,9 @@ export const LIVE_MAX_HISTORY_TOKENS = 8192;
 export const LIVE_APPEND_MAX_CHARS = 1800; // ~450 tokens, under the 500-token append cap
 export const LIVE_MAX_SESSION_SECONDS = 60 * 60;
 export const LIVE_TRANSCRIPT_GAP_MS = 1500;
+/** Place resumed turns well before Live's 0ms clock so captions cannot merge into history. */
+export const LIVE_SEED_FRAGMENT_GAP_MS = 10_000;
+export const LIVE_SEED_FRAGMENT_END_MS = -60_000;
 
 /** Opening-greeting facts the Live model may mention, never invent. */
 export type LiveGreetingFacts = {
@@ -176,6 +179,24 @@ export function messagesToLiveInput(messages: BrainstormMessage[]): LiveHistoryI
   }
 
   return items;
+}
+
+/**
+ * Turn persisted studio messages into caption fragments that sort before any
+ * Live `start_ms` (which begins at 0). Each seed turn is spaced farther apart
+ * than LIVE_TRANSCRIPT_GAP_MS so grouping reconstitutes the original rows.
+ */
+export function messagesToSeedFragments(messages: BrainstormMessage[]): LiveTranscriptFragment[] {
+  const cleaned = messages.filter((m) => m.content.trim() && !isLiveInitPing(m.content));
+  return cleaned.map((message, index) => {
+    const start = LIVE_SEED_FRAGMENT_END_MS - (cleaned.length - index) * LIVE_SEED_FRAGMENT_GAP_MS;
+    return {
+      speaker: message.role,
+      delta: message.content,
+      start_ms: start,
+      end_ms: start + 1,
+    };
+  });
 }
 
 /**

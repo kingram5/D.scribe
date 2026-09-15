@@ -12,6 +12,7 @@ import {
   isLiveVoice,
   liveDurationSeconds,
   messagesToLiveInput,
+  messagesToSeedFragments,
   type LiveTranscriptFragment,
 } from "@/lib/brainstorm-live";
 import { INK_PER_LIVE_MINUTE } from "@/lib/ink";
@@ -103,6 +104,34 @@ describe("messagesToLiveInput", () => {
   });
 });
 
+describe("messagesToSeedFragments", () => {
+  it("reconstitutes resume history and does not merge with live start_ms=0 captions", () => {
+    const messages: BrainstormMessage[] = [
+      { role: "user", content: "Start the brainstorm session." },
+      { role: "user", content: "A book about rest" },
+      { role: "assistant", content: "Who is it for?" },
+    ];
+    const seed = messagesToSeedFragments(messages);
+    expect(groupTranscriptFragments(seed)).toEqual([
+      { role: "user", content: "A book about rest" },
+      { role: "assistant", content: "Who is it for?" },
+    ]);
+    expect(seed.every((fragment) => fragment.end_ms < 0)).toBe(true);
+
+    const live: LiveTranscriptFragment = {
+      speaker: "assistant",
+      delta: "What changed?",
+      start_ms: 0,
+      end_ms: 400,
+    };
+    expect(groupTranscriptFragments([...seed, live])).toEqual([
+      { role: "user", content: "A book about rest" },
+      { role: "assistant", content: "Who is it for?" },
+      { role: "assistant", content: "What changed?" },
+    ]);
+  });
+});
+
 describe("groupTranscriptFragments", () => {
   it("merges nearby same-speaker fragments and keeps first-appearance order", () => {
     const fragments: LiveTranscriptFragment[] = [
@@ -160,5 +189,21 @@ describe("inkLiveSessionCost", () => {
     expect(liveDurationSeconds({ seconds: 12.5 }, 3)).toBe(12.5);
     expect(liveDurationSeconds({ duration_seconds: 9 }, 3)).toBe(9);
     expect(liveDurationSeconds(null, 4)).toBe(4);
+  });
+});
+
+describe("BrainstormLiveChat live studio wiring", () => {
+  it("seeds resume captions and offers reconnect after a background close", async () => {
+    const { readFileSync } = await import("fs");
+    const { resolve } = await import("path");
+    const src = readFileSync(resolve(__dirname, "../../components/upload/BrainstormLiveChat.tsx"), "utf8");
+    expect(src).toMatch(/messagesToSeedFragments\(resumeMessages\)/);
+    expect(src).toMatch(/setBackgroundPaused\(true\)/);
+    expect(src).toMatch(/Tap Reconnect when you return/);
+    expect(src).toMatch(/retryAction === "start" && backgroundPaused \? "Reconnect"/);
+    expect(src).toMatch(/document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
+    const visibility = src.slice(src.indexOf("const onVisibilityChange"), src.indexOf("const beginSession"));
+    expect(visibility).toMatch(/track\.stop\(\)/);
+    expect(visibility).toMatch(/closeLiveSession\(\)/);
   });
 });

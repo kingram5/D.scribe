@@ -14,7 +14,7 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
 
   return (
     <>
-      <div style={{
+      <div className="ds-os-bar" style={{
         position: "fixed",
         top: "max(24px, env(safe-area-inset-top))",
         left: "50%",

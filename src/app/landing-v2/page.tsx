@@ -1012,8 +1012,10 @@ export default function LandingV2() {
     const hero = video?.closest("section");
     if (!video || !hero) return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let heroVisible = true;
     const io = new IntersectionObserver(
       ([entry]) => {
+        heroVisible = entry.isIntersecting;
         if (entry.isIntersecting) {
           hero.classList.remove("lv2-offscreen");
           if (!mq.matches) video.play().catch(() => {});
@@ -1025,7 +1027,26 @@ export default function LandingV2() {
       { threshold: 0.05 }
     );
     io.observe(hero);
-    return () => io.disconnect();
+
+    // iOS refuses muted autoplay in Low Power Mode and Low Data Mode. The poster
+    // holds (its play button is hidden in CSS) and the first tap anywhere on the
+    // page starts the video, since a play() inside a user gesture is allowed.
+    const kick = () => {
+      if (!mq.matches && heroVisible && video.paused) video.play().catch(() => {});
+    };
+    const stopKicking = () => {
+      document.removeEventListener("touchend", kick);
+      document.removeEventListener("click", kick);
+    };
+    document.addEventListener("touchend", kick, { passive: true });
+    document.addEventListener("click", kick);
+    video.addEventListener("playing", stopKicking, { once: true });
+
+    return () => {
+      io.disconnect();
+      stopKicking();
+      video.removeEventListener("playing", stopKicking);
+    };
   }, []);
 
   return (
@@ -1061,6 +1082,8 @@ export default function LandingV2() {
             first. autoplay/loop/muted/playsInline were never changed. */}
         <video
           ref={videoRef}
+          className="lv2-hero-video"
+          aria-hidden="true"
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
             objectFit: "cover", objectPosition: "center center",
@@ -1607,6 +1630,17 @@ export default function LandingV2() {
            Desktop (≥1280px): layered art direction, absolutely positioned.
            Below 1280px: single-column flow — the layers stack, nothing collides. */
         .lv2-hero { position: relative; z-index: 1; overflow: hidden; }
+        /* The hero video is a backdrop. When iOS refuses to autoplay it (Low Power
+           Mode, Low Data Mode) Safari paints its own play button over the poster;
+           never show that button, and never let the backdrop take taps. */
+        .lv2-hero-video { pointer-events: none; }
+        .lv2-hero-video::-webkit-media-controls,
+        .lv2-hero-video::-webkit-media-controls-panel,
+        .lv2-hero-video::-webkit-media-controls-play-button,
+        .lv2-hero-video::-webkit-media-controls-start-playback-button {
+          display: none !important;
+          -webkit-appearance: none;
+        }
         .lv2-hero-waveform { pointer-events: none; text-align: center; position: relative; }
         /* Original brand headline, restored 2026-09-10. */
         .lv2-hero-author h1 { font-size: clamp(40px, 4.4vw, 66px); }

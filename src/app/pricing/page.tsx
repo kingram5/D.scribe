@@ -519,8 +519,11 @@ export default function PricingPage() {
                 Full D.scribe toolkit included
               </div>
 
+              {/* Carries the chosen plan through sign-in into Stripe checkout.
+                  Linking to /login here dropped the plan and looped signed-in
+                  visitors back to the dashboard. */}
               <Link
-                href="/login"
+                href={`/upgrade/${tier.name.toLowerCase()}`}
                 style={{
                   display: "block",
                   textAlign: "center",

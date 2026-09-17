@@ -61,7 +61,9 @@ export default function BookshelfDemo() {
     }, 800);
     return () => clearTimeout(t);
   }, [debug]);
-  const all = empty ? [] : MOCK;
+  // ?n=3 seeds a part-filled shelf, for checking when the step pads drop away.
+  const n = Number(params.get("n"));
+  const all = empty ? [] : (Number.isFinite(n) && n > 0 ? MOCK.slice(0, n) : MOCK);
   const logo = (params.get("logo") as WordmarkVariant | null) ?? "underline";
   const active = all.filter((b) => b.status !== "erased");
   const books = filter === "all" ? active : all.filter((b) => b.status === filter);
@@ -102,7 +104,6 @@ export default function BookshelfDemo() {
           brand={<Wordmark variant={logo} width={390} />}
           hoverPreviewId={params.get("hover") ?? undefined}
           openPreviewId={params.get("open") ?? undefined}
-          padArt={params.get("pads") === "paint" ? "paint" : "ink"}
           aside={
             <div className="plate-card" style={{ padding: "12px 16px", background: "#FBF9F3", color: "#2C2419" }}>
               <div className="ds-label">Usage widget renders here</div>

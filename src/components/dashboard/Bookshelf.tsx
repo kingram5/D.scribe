@@ -575,13 +575,13 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
    `art` picks the illustration style while Kyle decides: "ink" draws the doodle
    in code, "paint" uses a generated PNG from public/steps/. */
 export const STEP_NOTES = [
-  "Drop in any recording. A phone voice memo is fine.",
+  "Brainstorm with T.H.E.O or drop in an audio file. Voice memos and YouTube links are fine as well.",
   "Every word typed out, timestamped, yours to correct.",
-  "Say who it's for. The chapters arrange themselves.",
-  "THEO reads it back and finds the through line.",
-  "Chapters written in your voice, one at a time.",
-  "Edit like a document. Nothing is locked.",
-  "Take the manuscript out as PDF, Word or Drive.",
+  "Pick your chapter, word count and genre.",
+  "T.H.E.O combs through your transcript to organize and outline the major themes in your work.",
+  "Pick some quotes that you think fit well in each section and generate your chapters. Either individually or all at once.",
+  "Read your book and make some tweaks to make it even more YOU!",
+  "Get ready to share your masterpiece by downloading to PDF, Microsoft Word or Google Drive!",
 ];
 
 /** Doodles, drawn in code: ink lines on the pad, copper for the one accent. */
@@ -813,7 +813,7 @@ const BOOKSHELF_CSS = `
 .bs-shelf { position: relative; padding: 0; }
 .bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-cols); max-width: 100%; }
 .bs-row-books { align-items: end; min-height: calc(var(--bs-book-h) + 18px); position: relative; z-index: 2; }
-.bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; }
+.bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; position: relative; z-index: 3; }
 .bs-plank {
   position: absolute; left: 0; right: 0; top: calc(var(--bs-book-h) + 18px); height: var(--bs-plank-h); z-index: 1;
   border-radius: 2px;
@@ -950,7 +950,7 @@ const BOOKSHELF_CSS = `
 .bs-pads { grid-column: 1 / -1; justify-self: center; width: min(100%, 1040px); display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; align-items: start; }
 .bs-pad {
   position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 18px 8px 14px; border: 0; min-height: 132px; justify-content: flex-start; cursor: pointer; text-align: center; overflow: hidden;
+  padding: 18px 8px 14px; border: 0; min-height: 132px; justify-content: flex-start; cursor: pointer; text-align: center;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 22%),
     repeating-linear-gradient(180deg, transparent 0 21px, rgba(58,42,24,0.09) 21px 22px),
@@ -961,7 +961,7 @@ const BOOKSHELF_CSS = `
   transition: transform 420ms var(--bs-spring), box-shadow 300ms ease;
   animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(var(--i) * 45ms);
 }
-.bs-pad::after { content: ""; position: absolute; right: 0; bottom: 0; border-width: 0 0 14px 14px; border-style: solid; border-color: transparent transparent rgba(58,42,24,0.16) transparent; }
+.bs-pad::after { content: ""; position: absolute; right: 0; bottom: 0; border-radius: 0 0 3px 0; border-width: 0 0 14px 14px; border-style: solid; border-color: transparent transparent rgba(58,42,24,0.16) transparent; }
 .bs-pad:hover, .bs-pad:focus-visible { transform: rotate(0deg) translateY(-6px) scale(1.03); box-shadow: 0 18px 30px rgba(0,0,0,0.5); outline: none; }
 .bs-pad:focus-visible { box-shadow: 0 18px 30px rgba(0,0,0,0.5), 0 0 0 2px var(--bs-copper-hi); }
 .bs-pad-tape { position: absolute; top: -7px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-2deg); background: rgba(226,196,140,0.42); border-left: 1px solid rgba(255,255,255,0.35); border-right: 1px solid rgba(58,42,24,0.12); }
@@ -972,18 +972,38 @@ const BOOKSHELF_CSS = `
 }
 .bs-pad-art { width: 72px; height: 64px; display: block; object-fit: contain; }
 .bs-pad-name { font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5A452B; }
-/* Height animated with grid-template-rows, not max-height: no layout thrash. */
+/* The note floats below the pad: long copy never stretches the row, and only
+   transform and opacity animate. */
 .bs-pad-tip {
-  display: grid; grid-template-rows: 0fr; opacity: 0;
-  transition: grid-template-rows 380ms var(--bs-soft), opacity 260ms ease;
+  position: absolute; bottom: calc(100% + 10px); left: 50%; width: 232px; z-index: 4;
+  padding: 10px 12px; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(150deg, #FBF5E7 0%, #F1E6CE 100%);
+  box-shadow: 0 14px 26px rgba(0,0,0,0.5), 0 0 0 1px rgba(58,42,24,0.12);
+  opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.97);
+  transition: opacity 220ms ease, transform 320ms var(--bs-spring);
 }
-.bs-pad-tip > span { overflow: hidden; font-family: var(--font-lora), serif; font-size: 11.5px; line-height: 1.35; color: #6B5A42; }
+.bs-pad-tip::before { content: ""; position: absolute; bottom: -5px; left: 50%; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: #F1E6CE; }
+.bs-pad-tip > span { display: block; font-family: var(--font-lora), serif; font-size: 12px; line-height: 1.4; color: #5A452B; }
 .bs-pad.is-open { transform: rotate(0deg) translateY(-4px); }
-.bs-pad.is-open .bs-pad-tip { grid-template-rows: 1fr; opacity: 1; }
+.bs-pad.is-open .bs-pad-tip { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+/* Pads at the ends pull their note inward so it cannot leave the case. */
+.bs-pad:first-child .bs-pad-tip { left: 0; transform: translateX(0) translateY(6px) scale(0.97); }
+.bs-pad:first-child.is-open .bs-pad-tip { transform: translateX(0) translateY(0) scale(1); }
+.bs-pad:first-child .bs-pad-tip::before { left: 44px; }
+.bs-pad:last-child .bs-pad-tip { left: auto; right: 0; transform: translateX(0) translateY(6px) scale(0.97); }
+.bs-pad:last-child.is-open .bs-pad-tip { transform: translateX(0) translateY(0) scale(1); }
+.bs-pad:last-child .bs-pad-tip::before { left: auto; right: 44px; }
 /* Standing on their own under a part-filled shelf: no plank above them. */
 .bs-pads-shelf .bs-row-cards { margin-top: 0; }
 @media (max-width: 1180px) { .bs-pads { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 700px) { .bs-pads { grid-template-columns: repeat(2, 1fr); gap: 10px; } .bs-pad { min-height: 118px; padding: 16px 6px 12px; } .bs-pad-art { width: 60px; height: 52px; } }
+@media (max-width: 700px) {
+  .bs-pads { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .bs-pad { min-height: 118px; padding: 16px 6px 12px; }
+  .bs-pad-art { width: 60px; height: 52px; }
+  .bs-pad .bs-pad-tip, .bs-pad:first-child .bs-pad-tip, .bs-pad:last-child .bs-pad-tip { left: 0; right: 0; width: auto; transform: translateY(6px) scale(0.98); }
+  .bs-pad.is-open .bs-pad-tip, .bs-pad:first-child.is-open .bs-pad-tip, .bs-pad:last-child.is-open .bs-pad-tip { transform: translateY(0) scale(1); }
+  .bs-pad .bs-pad-tip::before { left: 50%; right: auto; }
+}
 .bs-pads-note { grid-column: 1 / -1; text-align: center; font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-dim); margin: 14px 0 0; }
 
 /* ── Pager ────────────────────────────────────────────────────────────── */

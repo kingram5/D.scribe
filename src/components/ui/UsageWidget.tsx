@@ -22,8 +22,6 @@ interface TtsData {
 export default function UsageWidget() {
   const [ink, setInk] = useState<InkData | null>(null);
   const [tts, setTts] = useState<TtsData | null>(null);
-  const [managingPlan, setManagingPlan] = useState(false);
-  const [portalError, setPortalError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/ink?history=false")
@@ -36,24 +34,6 @@ export default function UsageWidget() {
       .then(setTts)
       .catch(() => null);
   }, []);
-
-  async function handleManagePlan() {
-    setManagingPlan(true);
-    setPortalError(null);
-    try {
-      const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-        return; // redirecting — keep loading state until the page unloads
-      }
-      // An error *response* doesn't throw, so surface it instead of hanging.
-      setPortalError(data.error || `Couldn't open billing portal (${res.status})`);
-    } catch {
-      setPortalError("Couldn't open billing portal. Please try again.");
-    }
-    setManagingPlan(false); // only reached on failure — success redirects above
-  }
 
   const tier = ink?.tier ?? "free";
   const tierLabel = TIER_LABELS[tier] ?? tier;
@@ -166,10 +146,12 @@ export default function UsageWidget() {
       )}
 
       {tier !== "free" ? (
-        <button
-          onClick={handleManagePlan}
-          disabled={managingPlan}
+        /* Goes to the plans page, not straight into Stripe: from there you can
+           upgrade, switch down, or cancel. Stripe still owns card details. */
+        <a
+          href="/pricing"
           style={{
+            display: "block",
             width: "100%",
             padding: "8px 0",
             borderRadius: 8,
@@ -178,28 +160,15 @@ export default function UsageWidget() {
             fontSize: 12,
             fontWeight: 600,
             color: "#2C2419",
-            cursor: managingPlan ? "not-allowed" : "pointer",
+            cursor: "pointer",
             fontFamily: "var(--font-manrope), sans-serif",
-            opacity: managingPlan ? 0.6 : 1,
-            transition: "opacity 0.15s",
-          }}
-        >
-          {managingPlan ? "Loading..." : "Manage Plan"}
-        </button>
-      ) : null}
-      {portalError && (
-        <p
-          style={{
-            margin: "8px 0 0",
-            fontSize: 11,
-            color: "#ef4444",
-            fontFamily: "var(--font-manrope), sans-serif",
+            textDecoration: "none",
             textAlign: "center",
           }}
         >
-          {portalError}
-        </p>
-      )}
+          Manage Plan
+        </a>
+      ) : null}
       {tier === "free" ? (
         <a
           href="/pricing"

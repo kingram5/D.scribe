@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButton";
 
 export const metadata: Metadata = {
   title: "Pricing — AI Book Writing Plans Starting at $25",
@@ -519,27 +520,9 @@ export default function PricingPage() {
                 Full D.scribe toolkit included
               </div>
 
-              {/* Carries the chosen plan through sign-in into Stripe checkout.
-                  Linking to /login here dropped the plan and looped signed-in
-                  visitors back to the dashboard. */}
-              <Link
-                href={`/upgrade/${tier.name.toLowerCase()}`}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  padding: "13px 0",
-                  borderRadius: 12,
-                  background: tier.highlight ? "#C17A47" : "rgba(249,247,242,0.08)",
-                  color: tier.highlight ? "#fff" : "#F9F7F2",
-                  fontFamily: "var(--font-manrope), sans-serif",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  border: tier.highlight ? "none" : "1px solid rgba(249,247,242,0.15)",
-                }}
-              >
-                Get Started
-              </Link>
+              {/* Plan-aware: checkout for new customers, an in-place switch for
+                  subscribers (a second checkout would open a second subscription). */}
+              <PlanButton tier={tier.name.toLowerCase() as Tier} highlight={tier.highlight} />
 
               {/* HeyCatch item 5: payment trust marks under every tier CTA */}
               <div
@@ -574,6 +557,9 @@ export default function PricingPage() {
             </div>
           ))}
         </div>
+
+        {/* Subscribers only: cancel here, or step into Stripe for card details. */}
+        <PlanFooter />
 
         <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 13, color: "#7A7358", marginTop: 28, textAlign: "center" }}>
           Need a little more? One-time Ink and voice refills, from $20 — they never expire.

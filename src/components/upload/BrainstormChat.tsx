@@ -2114,7 +2114,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </h2>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 280, lineHeight: 1.5 }}>
             {isLocked
-              ? "Voice read-back is available on paid plans."
+              ? "Speak your answers with the mic as usual. T.H.E.O reading his replies out loud unlocks on Pro and Premium."
               : isExhausted
               ? "You've used this month's voice. I can still take notes if you type — or add more below."
               : "AI responses can be spoken back to you using your voice allowance. You can toggle this any time."}
@@ -2128,7 +2128,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               background: "rgba(249,247,242,0.06)", border: "1px solid rgba(249,247,242,0.18)",
               fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif",
             }}>
-              {isLocked ? "Voice unavailable on your plan" : "Monthly limit reached"}
+              {isLocked ? "Spoken replies are on Pro and Premium" : "Monthly limit reached"}
             </div>
             {isExhausted && (
               <button
@@ -2154,7 +2154,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             style={{ background: "rgba(249,247,242,0.08)", color: "var(--text-secondary)", border: "1px solid rgba(249,247,242,0.22)" }}
             onClick={() => chooseTts(false)}
           >
-            {ttsBlocked ? "Continue — text only" : "No thanks, text only"}
+            {isLocked ? "Continue — speak or type" : isExhausted ? "Continue — speak or type" : "No thanks, text only"}
           </button>
         </div>
         {isLocked && (

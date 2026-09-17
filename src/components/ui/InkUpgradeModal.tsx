@@ -23,7 +23,7 @@ function getHeader(reason: "ink" | "tts" | "tts_locked") {
 
 function getSubtitle(reason: "ink" | "tts" | "tts_locked") {
   if (reason === "tts") return "Add a one-time voice refill, or move to Premium for more every month.";
-  if (reason === "tts_locked") return "AI voice is available on Pro and Premium.";
+  if (reason === "tts_locked") return "T.H.E.O reading his replies aloud is on Pro and Premium. Speaking your own answers works on every plan.";
   return "Add a one-time Ink refill, or upgrade your plan to keep building.";
 }
 

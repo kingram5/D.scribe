@@ -464,7 +464,7 @@ export default function PricingPage() {
                       color: tier.talk ? "#F0A878" : "#7A7358",
                     }}
                   >
-                    {tier.talk ? "Talk it out with your ghostwriter" : "Brainstorm by typing"}
+                    {tier.talk ? "Talk it out with your ghostwriter" : "Speak or type your answers"}
                   </div>
                   <div
                     style={{
@@ -477,7 +477,7 @@ export default function PricingPage() {
                   >
                     {tier.talk
                       ? `${tier.talk.minutes} of spoken AI brainstorming (${tier.talk.chars})`
-                      : "Spoken brainstorm sessions unlock on Pro and Premium"}
+                      : "Use the mic in the studio on any plan. T.H.E.O reading his replies back to you unlocks on Pro and Premium."}
                   </div>
                 </div>
               </div>

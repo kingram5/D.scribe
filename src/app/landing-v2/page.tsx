@@ -1297,7 +1297,7 @@ export default function LandingV2() {
                   Talk it out with your ghostwriter.
                 </h3>
                 <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 17, lineHeight: 1.6, color: "#A89F94", margin: 0 }}>
-                  Spoken AI brainstorming sessions on Pro and Premium.
+                  Speak your answers on any plan. T.H.E.O talks back on Pro and Premium.
                 </p>
               </div>
               <BrainstormMock />

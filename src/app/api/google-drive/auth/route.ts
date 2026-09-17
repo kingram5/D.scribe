@@ -12,7 +12,9 @@ export async function GET(req: NextRequest) {
   if (error) return error;
 
   const projectId = req.nextUrl.searchParams.get("project_id") || "";
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  // Trimmed: the Vercel value was saved with a trailing newline, which Google
+  // rejects as an unknown client (invalid_client).
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
   if (!clientId) {
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 });
   }

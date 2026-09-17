@@ -581,7 +581,7 @@ describe("billing: the two sources of truth must not drift", () => {
 
   it("every priced operation has a positive floor", () => {
     const ops = [
-      "brainstorm", "brainstorm_summarize", "analyze", "voice_profile",
+      "brainstorm", "brainstorm_live", "brainstorm_summarize", "analyze", "voice_profile",
       "mind_map", "outline", "generate", "foreword", "rewrite",
       "coherence", "enrich", "style_distill",
     ] as const;

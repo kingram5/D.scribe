@@ -5,6 +5,7 @@ import type { ClaudeUsage } from "@/lib/claude-lite";
 
 export type InkOperation =
   | "brainstorm"
+  | "brainstorm_live"
   | "brainstorm_summarize"
   | "analyze"
   | "voice_profile"
@@ -25,6 +26,9 @@ export type InkOperation =
 // Deepgram ≈ $0.0043/audio-minute, Supadata a few cents per video.
 export const INK_PER_AUDIO_MINUTE = 0.5;
 export const INK_PER_YOUTUBE_IMPORT = 2;
+// GPT-Live-1 is $0.05 per minute billed per second. 1 Ink ≈ $0.006–0.009 of
+// vendor spend, so 7 Ink/min is cost-parity (not rounded up to a whole minute).
+export const INK_PER_LIVE_MINUTE = 7;
 
 // Conservative per-operation Ink floors for the PRE-flight cost check — lower
 // bounds on what an op typically costs, so a near-empty wallet can't kick off an
@@ -32,6 +36,7 @@ export const INK_PER_YOUTUBE_IMPORT = 2;
 // billing still uses actual token usage via deduct_ink.
 const ESTIMATED_COST: Record<InkOperation, number> = {
   brainstorm: 2,
+  brainstorm_live: 14, // ~2 minutes of GPT-Live at INK_PER_LIVE_MINUTE
   brainstorm_summarize: 1,
   analyze: 3,
   voice_profile: 1,

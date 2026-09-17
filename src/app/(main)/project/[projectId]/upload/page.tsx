@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import MeetTheoPanel from "@/components/upload/MeetTheoPanel";
 import BrainstormChat from "@/components/upload/BrainstormChat";
+import BrainstormLiveChat from "@/components/upload/BrainstormLiveChat";
 import PageShell from "@/components/ui/PageShell";
 import IntakeGrid from "@/components/upload/IntakeGrid";
 import ResearchCorpusList from "@/components/upload/ResearchCorpusList";
@@ -25,6 +26,23 @@ export default function UploadPage() {
   const [pausedSession, setPausedSession] = useState<BrainstormSessionRecord | null>(null);
   const [skipResumePrompt, setSkipResumePrompt] = useState(false);
   const [finishingPaused, setFinishingPaused] = useState(false);
+  const [liveStudio, setLiveStudio] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setLiveStudio(params.get("studio") === "live");
+  }, []);
+
+  const toggleLiveStudio = useCallback(() => {
+    setLiveStudio((on) => {
+      const next = !on;
+      const url = new URL(window.location.href);
+      if (next) url.searchParams.set("studio", "live");
+      else url.searchParams.delete("studio");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+      return next;
+    });
+  }, []);
 
   const refreshPausedSession = useCallback(() => {
     fetch(`/api/brainstorm/session?project_id=${encodeURIComponent(projectId)}`)
@@ -239,8 +257,20 @@ export default function UploadPage() {
             onStart={() => setChatting(true)}
             onBack={() => setShowBrainstorm(false)}
             paused={chatting}
+            liveStudio={liveStudio}
+            onToggleLiveStudio={toggleLiveStudio}
           />
-          {chatting && (
+          {chatting && (liveStudio ? (
+            <BrainstormLiveChat
+              projectId={projectId}
+              autoStart
+              skipResumePrompt={skipResumePrompt}
+              onComplete={() => router.push(`/project/${projectId}/transcript`)}
+              onBack={closeStudio}
+              triggerFinish={triggerBrainstormFinish}
+              onFinishTriggered={() => setTriggerBrainstormFinish(false)}
+            />
+          ) : (
             <BrainstormChat
               projectId={projectId}
               autoStart
@@ -250,7 +280,7 @@ export default function UploadPage() {
               triggerFinish={triggerBrainstormFinish}
               onFinishTriggered={() => setTriggerBrainstormFinish(false)}
             />
-          )}
+          ))}
         </div>
       )}
     </PageShell>

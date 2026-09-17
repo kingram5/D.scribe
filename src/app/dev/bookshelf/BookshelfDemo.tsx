@@ -102,6 +102,7 @@ export default function BookshelfDemo() {
           brand={<Wordmark variant={logo} width={390} />}
           hoverPreviewId={params.get("hover") ?? undefined}
           openPreviewId={params.get("open") ?? undefined}
+          padArt={params.get("pads") === "paint" ? "paint" : "ink"}
           aside={
             <div className="plate-card" style={{ padding: "12px 16px", background: "#FBF9F3", color: "#2C2419" }}>
               <div className="ds-label">Usage widget renders here</div>

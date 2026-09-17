@@ -73,6 +73,8 @@ interface BookshelfProps {
   hoverPreviewId?: string;
   /** Test/preview hook: start with this book opened. */
   openPreviewId?: string;
+  /** Test/preview hook: illustration style for the step notepads. */
+  padArt?: "ink" | "paint";
   /** Render only the stylesheet (for galleries that reuse the sign styles). */
   stylesOnly?: boolean;
 }
@@ -164,7 +166,7 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export default function Bookshelf(props: BookshelfProps) {
   const {
     ownerName, books, counts, filter, onFilter, eraseMode, onToggleErase, onEraseClick,
-    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId, stylesOnly,
+    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId, padArt, stylesOnly,
   } = props;
   // Open book (the reader): which one, and where the animation is.
   const [openBook, setOpenBook] = useState<ShelfBook | null>(() => openPreviewId ? books.find((b) => b.id === openPreviewId) ?? null : null);
@@ -340,17 +342,7 @@ export default function Bookshelf(props: BookshelfProps) {
           )}
 
           {isEmptyLibrary && (
-            <Shelf perShelf={Math.max(2, Math.min(perShelf, 3))} cards={
-              <div className="bs-card bs-card-wide">
-                <div className="ds-label">Seven steps, one book</div>
-                <ol className="bs-steps">
-                  {PIPELINE_STEPS.map((s, i) => (
-                    <li key={s}><span className="bs-step-n">{i + 1}</span>{s}</li>
-                  ))}
-                </ol>
-                <p className="bs-steps-note">Upload a talk, a sermon, a lecture. Just keep talking. The shelf fills itself.</p>
-              </div>
-            }>
+            <Shelf perShelf={perShelf} cards={<StepPads art={padArt} />}>
               <Link href="/project/new" className="bs-ghost-book">
                 <span className="bs-ghost-plus">+</span>
                 <span className="bs-ghost-title">Your first book</span>
@@ -565,6 +557,88 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
         </span>
       </div>
     </div>
+  );
+}
+
+/* ── Step notepads ──────────────────────────────────────────────────────────
+   The seven steps as small parchment pads propped on the shelf, each with its
+   own doodle. They stand in until the top shelf fills with real books.
+   `art` picks the illustration style while Kyle decides: "ink" draws the doodle
+   in code, "paint" uses a generated PNG from public/steps/. */
+export const STEP_NOTES = [
+  "Drop in any recording. A phone voice memo is fine.",
+  "Every word typed out, timestamped, yours to correct.",
+  "Say who it's for. The chapters arrange themselves.",
+  "THEO reads it back and finds the through line.",
+  "Chapters written in your voice, one at a time.",
+  "Edit like a document. Nothing is locked.",
+  "Take the manuscript out as PDF, Word or Drive.",
+];
+
+/** Doodles, drawn in code: ink lines on the pad, copper for the one accent. */
+function StepDoodle({ i }: { i: number }) {
+  const line = { fill: "none", stroke: "#3A2A18", strokeWidth: 2.1, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const copper = { ...line, stroke: "#B5703D" };
+  const art = [
+    // 1 Upload — a mic with sound arcs
+    <g key="a"><rect x="30" y="10" width="16" height="28" rx="8" {...line} /><path d="M22 32a16 16 0 0 0 32 0" {...line} /><path d="M38 48v9M30 57h16" {...line} /><path d="M58 18c4 5 4 13 0 18M64 12c7 9 7 23 0 32" {...copper} /></g>,
+    // 2 Transcript — a page of written lines
+    <g key="b"><path d="M20 8h34l8 8v48H20z" {...line} /><path d="M54 8v9h8" {...line} /><path d="M27 26h26M27 34h26M27 42h18" {...line} /><path d="M27 50h12" {...copper} /></g>,
+    // 3 Structure — stacked chapter blocks
+    <g key="c"><rect x="16" y="12" width="48" height="13" rx="3" {...line} /><rect x="16" y="31" width="48" height="13" rx="3" {...line} /><rect x="16" y="50" width="30" height="13" rx="3" {...copper} /></g>,
+    // 4 Analysis — a magnifier over a line of text
+    <g key="d"><circle cx="34" cy="30" r="16" {...line} /><path d="M46 42l14 15" {...line} /><path d="M26 26h16M26 34h10" {...copper} /></g>,
+    // 5 Generate — a quill writing a line
+    <g key="e"><path d="M60 10c-14 4-28 18-34 34l10 10c16-6 30-20 34-34z" {...line} /><path d="M36 38l16-16" {...line} /><path d="M14 62c8-4 16-4 24 0" {...copper} /></g>,
+    // 6 Editor — a pencil over ruled paper
+    <g key="f"><path d="M18 14h32M18 24h32M18 34h20" {...line} /><path d="M56 30l10 10-22 22-13 3 3-13z" {...line} /><path d="M56 30l10 10" {...copper} /></g>,
+    // 7 Export — a book leaving in an arrow
+    <g key="g"><path d="M14 16h22a6 6 0 0 1 6 6v34H20a6 6 0 0 1-6-6z" {...line} /><path d="M42 22h20M42 32h20" {...line} /><path d="M48 46h20m-8-8 8 8-8 8" {...copper} /></g>,
+  ];
+  return (
+    <svg className="bs-pad-art" viewBox="0 0 80 72" aria-hidden="true">{art[i] ?? art[0]}</svg>
+  );
+}
+
+/** The seven pads in a row, one tip open at a time. */
+export function StepPads({ art = "ink" }: { art?: "ink" | "paint" }) {
+  const [open, setOpen] = useState<number | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <>
+      <div className="bs-pads" role="list" aria-label="How a book gets made, in seven steps">
+        {PIPELINE_STEPS.map((s, i) => (
+          <StepPad key={s} i={i} art={art} open={open === i} onToggle={(n) => setOpen((cur) => (cur === n ? null : n))} />
+        ))}
+      </div>
+      <p className="bs-pads-note">Upload a talk, a sermon, a lecture. Just keep talking. The shelf fills itself.</p>
+    </>
+  );
+}
+
+function StepPad({ i, art = "ink", open, onToggle }: {
+  i: number; art?: "ink" | "paint"; open: boolean; onToggle: (i: number) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`bs-pad${open ? " is-open" : ""}`}
+      style={{ ["--i" as string]: i, ["--tilt" as string]: `${(i % 3) - 1}deg` }}
+      aria-expanded={open}
+      onClick={() => onToggle(i)}
+    >
+      <span className="bs-pad-tape" aria-hidden="true" />
+      <span className="bs-pad-n">{i + 1}</span>
+      {art === "paint"
+        ? <img className="bs-pad-art" src={`/steps/${PIPELINE_STEPS[i].toLowerCase()}.png`} alt="" />
+        : <StepDoodle i={i} />}
+      <span className="bs-pad-name">{PIPELINE_STEPS[i]}</span>
+      <span className="bs-pad-tip"><span>{STEP_NOTES[i]}</span></span>
+    </button>
   );
 }
 
@@ -864,6 +938,42 @@ const BOOKSHELF_CSS = `
 .bs-steps li { display: flex; align-items: center; gap: 8px; }
 .bs-step-n { width: 18px; height: 18px; border-radius: 50%; background: var(--bs-copper); color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .bs-steps-note { font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-soft); margin: 6px 0 0; }
+
+/* ── Step notepads: parchment pads propped on the shelf ───────────────── */
+.bs-pads { grid-column: 1 / -1; justify-self: center; width: min(100%, 1040px); display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; align-items: start; }
+.bs-pad {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 18px 8px 14px; border: 0; min-height: 132px; justify-content: flex-start; cursor: pointer; text-align: center; overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 22%),
+    repeating-linear-gradient(180deg, transparent 0 21px, rgba(58,42,24,0.09) 21px 22px),
+    linear-gradient(150deg, #F6EEDD 0%, #EFE3C9 100%);
+  color: #3A2A18; border-radius: 3px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.42), 0 1px 0 rgba(255,255,255,0.25) inset;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 420ms var(--bs-spring), box-shadow 300ms ease;
+  animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(var(--i) * 45ms);
+}
+.bs-pad::after { content: ""; position: absolute; right: 0; bottom: 0; border-width: 0 0 14px 14px; border-style: solid; border-color: transparent transparent rgba(58,42,24,0.16) transparent; }
+.bs-pad:hover, .bs-pad:focus-visible { transform: rotate(0deg) translateY(-6px) scale(1.03); box-shadow: 0 18px 30px rgba(0,0,0,0.5); outline: none; }
+.bs-pad:focus-visible { box-shadow: 0 18px 30px rgba(0,0,0,0.5), 0 0 0 2px var(--bs-copper-hi); }
+.bs-pad-tape { position: absolute; top: -7px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-2deg); background: rgba(226,196,140,0.42); border-left: 1px solid rgba(255,255,255,0.35); border-right: 1px solid rgba(58,42,24,0.12); }
+.bs-pad-n {
+  font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 700; color: #fff;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--bs-copper);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.bs-pad-art { width: 72px; height: 64px; display: block; object-fit: contain; }
+.bs-pad-name { font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5A452B; }
+/* Height animated with grid-template-rows, not max-height: no layout thrash. */
+.bs-pad-tip {
+  display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows 380ms var(--bs-soft), opacity 260ms ease;
+}
+.bs-pad-tip > span { overflow: hidden; font-family: var(--font-lora), serif; font-size: 11.5px; line-height: 1.35; color: #6B5A42; }
+.bs-pad.is-open { transform: rotate(0deg) translateY(-4px); }
+.bs-pad.is-open .bs-pad-tip { grid-template-rows: 1fr; opacity: 1; }
+.bs-pads-note { grid-column: 1 / -1; text-align: center; font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-dim); margin: 14px 0 0; }
 
 /* ── Pager ────────────────────────────────────────────────────────────── */
 .bs-pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 34px; }

@@ -61,7 +61,9 @@ export default function BookshelfDemo() {
     }, 800);
     return () => clearTimeout(t);
   }, [debug]);
-  const all = empty ? [] : MOCK;
+  // ?n=3 seeds a part-filled shelf, for checking when the step pads drop away.
+  const n = Number(params.get("n"));
+  const all = empty ? [] : (Number.isFinite(n) && n > 0 ? MOCK.slice(0, n) : MOCK);
   const logo = (params.get("logo") as WordmarkVariant | null) ?? "underline";
   const active = all.filter((b) => b.status !== "erased");
   const books = filter === "all" ? active : all.filter((b) => b.status === filter);

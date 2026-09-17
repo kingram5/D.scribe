@@ -340,17 +340,7 @@ export default function Bookshelf(props: BookshelfProps) {
           )}
 
           {isEmptyLibrary && (
-            <Shelf perShelf={Math.max(2, Math.min(perShelf, 3))} cards={
-              <div className="bs-card bs-card-wide">
-                <div className="ds-label">Seven steps, one book</div>
-                <ol className="bs-steps">
-                  {PIPELINE_STEPS.map((s, i) => (
-                    <li key={s}><span className="bs-step-n">{i + 1}</span>{s}</li>
-                  ))}
-                </ol>
-                <p className="bs-steps-note">Upload a talk, a sermon, a lecture. Just keep talking. The shelf fills itself.</p>
-              </div>
-            }>
+            <Shelf perShelf={perShelf} cards={<StepPads />}>
               <Link href="/project/new" className="bs-ghost-book">
                 <span className="bs-ghost-plus">+</span>
                 <span className="bs-ghost-title">Your first book</span>
@@ -400,6 +390,17 @@ export default function Bookshelf(props: BookshelfProps) {
               })}
             </Shelf>
           ))}
+
+          {/* The pads stay out while the top shelf still has room, then the
+              shelf is books only. Capacity is measured, so it is six at 1440px
+              and fewer on a narrow window. */}
+          {!loading && !isEmptyLibrary && !isEmptyFilter && safePage === 0 && books.length < perShelf && (
+            <section className="bs-shelf bs-pads-shelf">
+              <div className="bs-row bs-row-cards" style={{ ["--bs-cols" as string]: `repeat(${perShelf}, var(--bs-book-w))` }}>
+                <StepPads />
+              </div>
+            </section>
+          )}
         </div>
           <div className="bs-case-bottom" aria-hidden="true" />
         </div>
@@ -568,6 +569,91 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
   );
 }
 
+/* ── Step notepads ──────────────────────────────────────────────────────────
+   The seven steps as small parchment pads propped on the shelf, each with its
+   own doodle. They stand in until the top shelf fills with real books.
+   `art` picks the illustration style while Kyle decides: "ink" draws the doodle
+   in code, "paint" uses a generated PNG from public/steps/. */
+export const STEP_NOTES = [
+  "Brainstorm with T.H.E.O or drop in an audio file. Voice memos and YouTube links are fine as well.",
+  "Every word typed out, timestamped, yours to correct.",
+  "Pick your chapter, word count and genre.",
+  "T.H.E.O combs through your transcript to organize and outline the major themes in your work.",
+  "Pick some quotes that you think fit well in each section and generate your chapters. Either individually or all at once.",
+  "Read your book and make some tweaks to make it even more YOU!",
+  "Get ready to share your masterpiece by downloading to PDF, Microsoft Word or Google Drive!",
+];
+
+/** Doodles, drawn in code: ink lines on the pad, copper for the one accent. */
+function StepDoodle({ i }: { i: number }) {
+  const line = { fill: "none", stroke: "#3A2A18", strokeWidth: 2.1, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const copper = { ...line, stroke: "#B5703D" };
+  const art = [
+    // 1 Upload — a mic with sound arcs
+    <g key="a"><rect x="30" y="10" width="16" height="28" rx="8" {...line} /><path d="M22 32a16 16 0 0 0 32 0" {...line} /><path d="M38 48v9M30 57h16" {...line} /><path d="M58 18c4 5 4 13 0 18M64 12c7 9 7 23 0 32" {...copper} /></g>,
+    // 2 Transcript — a page of written lines
+    <g key="b"><path d="M20 8h34l8 8v48H20z" {...line} /><path d="M54 8v9h8" {...line} /><path d="M27 26h26M27 34h26M27 42h18" {...line} /><path d="M27 50h12" {...copper} /></g>,
+    // 3 Structure — stacked chapter blocks
+    <g key="c"><rect x="16" y="12" width="48" height="13" rx="3" {...line} /><rect x="16" y="31" width="48" height="13" rx="3" {...line} /><rect x="16" y="50" width="30" height="13" rx="3" {...copper} /></g>,
+    // 4 Analysis — a magnifier over a line of text
+    <g key="d"><circle cx="34" cy="30" r="16" {...line} /><path d="M46 42l14 15" {...line} /><path d="M26 26h16M26 34h10" {...copper} /></g>,
+    // 5 Generate — a quill writing a line
+    <g key="e"><path d="M60 10c-14 4-28 18-34 34l10 10c16-6 30-20 34-34z" {...line} /><path d="M36 38l16-16" {...line} /><path d="M14 62c8-4 16-4 24 0" {...copper} /></g>,
+    // 6 Editor — a pencil over ruled paper
+    <g key="f"><path d="M18 14h32M18 24h32M18 34h20" {...line} /><path d="M56 30l10 10-22 22-13 3 3-13z" {...line} /><path d="M56 30l10 10" {...copper} /></g>,
+    // 7 Export — a book leaving in an arrow
+    <g key="g"><path d="M14 16h22a6 6 0 0 1 6 6v34H20a6 6 0 0 1-6-6z" {...line} /><path d="M42 22h20M42 32h20" {...line} /><path d="M48 46h20m-8-8 8 8-8 8" {...copper} /></g>,
+  ];
+  return (
+    <svg className="bs-pad-art" viewBox="0 0 80 72" aria-hidden="true">{art[i] ?? art[0]}</svg>
+  );
+}
+
+/** The seven pads in a row, one tip open at a time (hover on a mouse, tap or Enter otherwise). */
+export function StepPads() {
+  const [open, setOpen] = useState<number | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <>
+      <div className="bs-pads" role="list" aria-label="How a book gets made, in seven steps">
+        {PIPELINE_STEPS.map((s, i) => (
+          <StepPad key={s} i={i} open={open === i} onOpen={setOpen} />
+        ))}
+      </div>
+      <p className="bs-pads-note">Upload a talk, a sermon, a lecture. Just keep talking. The shelf fills itself.</p>
+    </>
+  );
+}
+
+function StepPad({ i, open, onOpen }: { i: number; open: boolean; onOpen: (i: number | null) => void }) {
+  // Mouse: the note opens on hover. Touch and keyboard: it opens on tap/Enter,
+  // and tapping the same pad again closes it. Hover events never fire on touch,
+  // so the two paths do not fight each other.
+  return (
+    <button
+      type="button"
+      className={`bs-pad${open ? " is-open" : ""}`}
+      style={{ ["--i" as string]: i, ["--tilt" as string]: `${(i % 3) - 1}deg` }}
+      aria-expanded={open}
+      onClick={() => onOpen(open ? null : i)}
+      onMouseEnter={() => onOpen(i)}
+      onMouseLeave={() => onOpen(null)}
+      onFocus={() => onOpen(i)}
+      onBlur={() => onOpen(null)}
+    >
+      <span className="bs-pad-tape" aria-hidden="true" />
+      <span className="bs-pad-n">{i + 1}</span>
+      <StepDoodle i={i} />
+      <span className="bs-pad-name">{PIPELINE_STEPS[i]}</span>
+      <span className="bs-pad-tip"><span>{STEP_NOTES[i]}</span></span>
+    </button>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────────
 // Warm palette only. Wood and linen are drawn with gradients; no image assets.
 
@@ -727,7 +813,7 @@ const BOOKSHELF_CSS = `
 .bs-shelf { position: relative; padding: 0; }
 .bs-row { display: grid; justify-content: center; column-gap: var(--bs-gap); grid-template-columns: var(--bs-cols); max-width: 100%; }
 .bs-row-books { align-items: end; min-height: calc(var(--bs-book-h) + 18px); position: relative; z-index: 2; }
-.bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; }
+.bs-row-cards { margin-top: calc(var(--bs-plank-h) + 12px + 14px); align-items: start; position: relative; z-index: 3; }
 .bs-plank {
   position: absolute; left: 0; right: 0; top: calc(var(--bs-book-h) + 18px); height: var(--bs-plank-h); z-index: 1;
   border-radius: 2px;
@@ -845,7 +931,6 @@ const BOOKSHELF_CSS = `
   transition: transform 420ms var(--bs-spring), box-shadow 300ms ease, border-color 300ms ease;
 }
 .bs-card.is-lit { transform: translateY(-4px); border-color: rgba(226,155,109,0.55); box-shadow: 0 16px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(226,155,109,0.25); }
-.bs-card-wide { grid-column: 1 / -1; justify-self: center; width: min(100%, 520px); }
 .bs-card-ghost { min-height: 92px; opacity: 0.45; }
 .bs-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .bs-card-title { font-family: var(--font-lora), serif; font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -860,10 +945,66 @@ const BOOKSHELF_CSS = `
 .bs-card-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .bs-card-foot .ds-stamp { white-space: nowrap; font-size: 10px; letter-spacing: 0.1em; }
 .bs-card-step { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: 0.06em; color: rgba(249,247,242,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bs-steps { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 14px; font-family: var(--font-manrope), sans-serif; font-size: 12.5px; color: var(--bs-ink-soft); }
-.bs-steps li { display: flex; align-items: center; gap: 8px; }
-.bs-step-n { width: 18px; height: 18px; border-radius: 50%; background: var(--bs-copper); color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.bs-steps-note { font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-soft); margin: 6px 0 0; }
+
+/* ── Step notepads: parchment pads propped on the shelf ───────────────── */
+.bs-pads { grid-column: 1 / -1; justify-self: center; width: min(100%, 1040px); display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; align-items: start; }
+.bs-pad {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 18px 8px 14px; border: 0; min-height: 132px; justify-content: flex-start; cursor: pointer; text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 22%),
+    repeating-linear-gradient(180deg, transparent 0 21px, rgba(58,42,24,0.09) 21px 22px),
+    linear-gradient(150deg, #F6EEDD 0%, #EFE3C9 100%);
+  color: #3A2A18; border-radius: 3px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.42), 0 1px 0 rgba(255,255,255,0.25) inset;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 420ms var(--bs-spring), box-shadow 300ms ease;
+  animation: bs-pop 520ms var(--bs-spring) both; animation-delay: calc(var(--i) * 45ms);
+}
+.bs-pad::after { content: ""; position: absolute; right: 0; bottom: 0; border-radius: 0 0 3px 0; border-width: 0 0 14px 14px; border-style: solid; border-color: transparent transparent rgba(58,42,24,0.16) transparent; }
+.bs-pad:hover, .bs-pad:focus-visible { transform: rotate(0deg) translateY(-6px) scale(1.03); box-shadow: 0 18px 30px rgba(0,0,0,0.5); outline: none; }
+.bs-pad:focus-visible { box-shadow: 0 18px 30px rgba(0,0,0,0.5), 0 0 0 2px var(--bs-copper-hi); }
+.bs-pad-tape { position: absolute; top: -7px; left: 50%; width: 46px; height: 15px; transform: translateX(-50%) rotate(-2deg); background: rgba(226,196,140,0.42); border-left: 1px solid rgba(255,255,255,0.35); border-right: 1px solid rgba(58,42,24,0.12); }
+.bs-pad-n {
+  font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 700; color: #fff;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--bs-copper);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.bs-pad-art { width: 72px; height: 64px; display: block; object-fit: contain; }
+.bs-pad-name { font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5A452B; }
+/* The note floats below the pad: long copy never stretches the row, and only
+   transform and opacity animate. */
+.bs-pad-tip {
+  position: absolute; bottom: calc(100% + 10px); left: 50%; width: 232px; z-index: 4;
+  padding: 10px 12px; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(150deg, #FBF5E7 0%, #F1E6CE 100%);
+  box-shadow: 0 14px 26px rgba(0,0,0,0.5), 0 0 0 1px rgba(58,42,24,0.12);
+  opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.97);
+  transition: opacity 220ms ease, transform 320ms var(--bs-spring);
+}
+.bs-pad-tip::before { content: ""; position: absolute; bottom: -5px; left: 50%; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: #F1E6CE; }
+.bs-pad-tip > span { display: block; font-family: var(--font-lora), serif; font-size: 12px; line-height: 1.4; color: #5A452B; }
+.bs-pad.is-open { transform: rotate(0deg) translateY(-4px); }
+.bs-pad.is-open .bs-pad-tip { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+/* Pads at the ends pull their note inward so it cannot leave the case. */
+.bs-pad:first-child .bs-pad-tip { left: 0; transform: translateX(0) translateY(6px) scale(0.97); }
+.bs-pad:first-child.is-open .bs-pad-tip { transform: translateX(0) translateY(0) scale(1); }
+.bs-pad:first-child .bs-pad-tip::before { left: 44px; }
+.bs-pad:last-child .bs-pad-tip { left: auto; right: 0; transform: translateX(0) translateY(6px) scale(0.97); }
+.bs-pad:last-child.is-open .bs-pad-tip { transform: translateX(0) translateY(0) scale(1); }
+.bs-pad:last-child .bs-pad-tip::before { left: auto; right: 44px; }
+/* Standing on their own under a part-filled shelf: no plank above them. */
+.bs-pads-shelf .bs-row-cards { margin-top: 0; }
+@media (max-width: 1180px) { .bs-pads { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 700px) {
+  .bs-pads { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .bs-pad { min-height: 118px; padding: 16px 6px 12px; }
+  .bs-pad-art { width: 60px; height: 52px; }
+  .bs-pad .bs-pad-tip, .bs-pad:first-child .bs-pad-tip, .bs-pad:last-child .bs-pad-tip { left: 0; right: 0; width: auto; transform: translateY(6px) scale(0.98); }
+  .bs-pad.is-open .bs-pad-tip, .bs-pad:first-child.is-open .bs-pad-tip, .bs-pad:last-child.is-open .bs-pad-tip { transform: translateY(0) scale(1); }
+  .bs-pad .bs-pad-tip::before { left: 50%; right: auto; }
+}
+.bs-pads-note { grid-column: 1 / -1; text-align: center; font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-dim); margin: 14px 0 0; }
 
 /* ── Pager ────────────────────────────────────────────────────────────── */
 .bs-pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 34px; }
@@ -902,7 +1043,5 @@ const BOOKSHELF_CSS = `
   .bs-shelves { gap: 30px; }
   .bs-cover { padding: 18px 14px; }
   .bs-cover-title { font-size: 17px; }
-  .bs-card-wide { grid-column: 1 / -1; }
-  .bs-steps { grid-template-columns: 1fr; }
 }
 `;

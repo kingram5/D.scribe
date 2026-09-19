@@ -155,4 +155,10 @@ describe("the interviewer's doctrine", () => {
     expect(src).toContain("Never ask multiple questions in a single message");
     expect(src).toContain("TOPIC ANCHOR");
   });
+
+  it("opens a returning author's session on continuity, never a cold restart", () => {
+    const src = route();
+    expect(src).toContain("priorAnswers");
+    expect(src).toContain("Do NOT ask what the book is about from scratch");
+  });
 });

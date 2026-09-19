@@ -120,6 +120,19 @@ export async function POST(req: NextRequest) {
   );
   const baseSystem = audienceBlock ? SYSTEM_PROMPT + audienceBlock : SYSTEM_PROMPT;
 
+  // The author's own recorded material. An expert interviewer quotes your words
+  // back at you — this is what makes that possible. Degrades silently to empty
+  // when the project has no uploads yet (loadBriefingData never throws).
+  // Loaded BEFORE the greeting is built: a returning author's session opens on
+  // continuity, and the greeting needs to know whether prior answers exist.
+  let briefingBlock = "";
+  let priorAnswers: string[] = [];
+  if (verifiedProjectId) {
+    const briefing = await loadBriefingData(createServerClient(), verifiedProjectId, user.id);
+    briefingBlock = buildBriefingBlock(briefing);
+    priorAnswers = briefing.transcripts.flatMap((t) => t.authorLines ?? []).slice(0, 2);
+  }
+
   // Warm opener (Kyle's note 5): the first message used to jump straight into "what are
   // we writing about", which read as rushed. On the session's opening turn only, Theo
   // greets by name and shows he already knows the project. Every fact is optional —
@@ -135,6 +148,15 @@ export async function POST(req: NextRequest) {
     if (firstName) known.push(`The author's first name is ${JSON.stringify(firstName)} — greet them by it.`);
     if (knownTitle) known.push(`Their working title is ${JSON.stringify(knownTitle)} — mention it naturally.`);
     if (knownAudience) known.push(`The book is aimed at a ${JSON.stringify(knownAudience)} audience — acknowledge that.`);
+    if (priorAnswers.length > 0) {
+      // A returning author must never get a cold restart. One quoted line from
+      // their last session replaces "what do you want to write about today".
+      known.push(
+        `The author has brainstormed on this project before. Their own words last time: ${priorAnswers
+          .map((a) => JSON.stringify(a.slice(0, 140)))
+          .join(", ")}. Open by acknowledging that — quote one of those lines naturally — and ask where they want to pick up or what has changed since. Do NOT ask what the book is about from scratch.`
+      );
+    }
     greetingBlock = `\n\nOPENING GREETING — This is the very first message of the session. Open warmly as Theo, in one or two sentences, before your first question: introduce yourself briefly and show you already know this project.\n${known.length ? known.join("\n") : "Nothing about the author or project is on file yet — keep the greeting warm and generic."}\nShape (adapt, don't recite): "Hey ${firstName || "there"}, Theo here to help you start brainstorming${knownTitle ? ` ${JSON.stringify(knownTitle)}` : " your book"}${knownAudience ? `. I see you're writing for a ${knownAudience} audience` : ""}. Why don't we start with you telling me..."\nThen ask your single opening question. Never invent a name, title, or audience that is not listed above.`;
   }
 
@@ -155,15 +177,6 @@ export async function POST(req: NextRequest) {
     researchBlock = formatResearchedSourcesBlock(
       rankResearchItems((researchRows ?? []) as ResearchItem[], recentUserText),
     );
-  }
-
-  // The author's own recorded material. An expert interviewer quotes your words
-  // back at you — this is what makes that possible. Degrades silently to empty
-  // when the project has no uploads yet (loadBriefingData never throws).
-  let briefingBlock = "";
-  if (verifiedProjectId) {
-    const briefing = await loadBriefingData(createServerClient(), verifiedProjectId, user.id);
-    briefingBlock = buildBriefingBlock(briefing);
   }
 
   const dynamicSystem = (firstRealUserMsg

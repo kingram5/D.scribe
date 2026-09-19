@@ -6,10 +6,14 @@ import { createServerClient } from "@/lib/supabase";
 import { brainstormProfileBlock } from "@/lib/audience-profiles";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { formatResearchedSourcesBlock, rankResearchItems, type ResearchItem } from "@/lib/research-corpus";
+import { buildBriefingBlock, loadBriefingData } from "@/lib/brainstorm-briefing";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
-const MODEL = "claude-haiku-4-5-20251001";
+// The interviewer is the flagship conversation: it runs on the quality tier
+// (claude-lite.ts MODELS.quality), not the fast tier it used to share with
+// one-shot utility calls. Depth here is the product.
+const MODEL = "claude-sonnet-4-6";
 
 const SYSTEM_PROMPT = `You are T.H.E.O (Technical Human Expression Organizer) — "Theo" in conversation — the user's ghostwriter and a warm, curious brainstorming partner helping them develop ideas for their manuscript. Your job is to draw ideas OUT of the user — not to lecture or generate content for them. Refer to yourself as Theo if the moment calls for it; never spell out the acronym unprompted.
 
@@ -151,10 +155,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // The author's own recorded material. An expert interviewer quotes your words
+  // back at you — this is what makes that possible. Degrades silently to empty
+  // when the project has no uploads yet (loadBriefingData never throws).
+  let briefingBlock = "";
+  if (verifiedProjectId) {
+    const briefing = await loadBriefingData(createServerClient(), verifiedProjectId, user.id);
+    briefingBlock = buildBriefingBlock(briefing);
+  }
+
   const dynamicSystem = (firstRealUserMsg
     ? baseSystem +
       `\n\nTOPIC ANCHOR — The user's book is about: "${firstRealUserMsg.content.slice(0, 200)}"\nEvery question you ask must stay rooted in this overarching subject. When a sub-topic surfaces, explore it as a chapter or angle within this book, then return to the broader theme.`
-    : baseSystem + greetingBlock) + researchBlock;
+    : baseSystem + greetingBlock) + researchBlock + (briefingBlock ? `\n\n${briefingBlock}` : "");
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.
@@ -170,7 +183,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 512,
+      max_tokens: 900,
       temperature: 0.7,
       stream: true,
       system: dynamicSystem,
@@ -203,7 +216,7 @@ export async function POST(req: NextRequest) {
     if (usageSettled) return;
     usageSettled = true;
     if (inputTokens > 0 || outputTokens > 0) {
-      recordInkUsage(user.id, verifiedProjectId, "brainstorm", "fast", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
+      recordInkUsage(user.id, verifiedProjectId, "brainstorm", "quality", { input_tokens: inputTokens, output_tokens: outputTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
     }
   };
 

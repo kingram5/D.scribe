@@ -27,6 +27,8 @@ export interface BriefingKeyPoint {
 export interface BriefingTranscript {
   name: string;
   text: string;
+  /** The author's verbatim answers, when this transcript is a labeled brainstorm session. */
+  authorLines?: string[];
 }
 
 /** Character budget for the entire digest block, header instructions included. */
@@ -95,9 +97,21 @@ export function buildBriefingBlock(input: BriefingInput): string {
   }
 
   if (input.transcripts.length > 0) {
-    lines.push("TRANSCRIPT EXCERPTS:");
-    for (const t of input.transcripts.slice(0, MAX_EXCERPTS)) {
-      lines.push(`• (from "${trim(t.name, 60)}") "${excerptFrom(t.text)}"`);
+    const brainstormed = input.transcripts.filter((t) => (t.authorLines?.length ?? 0) > 0);
+    if (brainstormed.length > 0) {
+      lines.push("THE AUTHOR'S ANSWERS FROM EARLIER BRAINSTORM SESSIONS (verbatim — this is continuity; call back to them and go deeper):");
+      for (const t of brainstormed) {
+        for (const line of t.authorLines!.slice(0, 3)) {
+          lines.push(`• "${trim(line, MAX_VERBATIM)}"`);
+        }
+      }
+    }
+    const plain = input.transcripts.filter((t) => (t.authorLines?.length ?? 0) === 0);
+    if (plain.length > 0) {
+      lines.push("TRANSCRIPT EXCERPTS:");
+      for (const t of plain.slice(0, MAX_EXCERPTS)) {
+        lines.push(`• (from "${trim(t.name, 60)}") "${excerptFrom(t.text)}"`);
+      }
     }
   }
 
@@ -134,7 +148,7 @@ export async function loadBriefingData(
         .eq("project_id", projectId),
       supabase
         .from("transcripts")
-        .select("audio_upload_id, full_text")
+        .select("audio_upload_id, full_text, segments")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false })
         .limit(3),
@@ -154,11 +168,18 @@ export async function loadBriefingData(
       if (up?.id) nameById.set(up.id, up.file_name || "recording");
     }
 
-    const transcripts: BriefingTranscript[] = ((txRes.data as { audio_upload_id: string | null; full_text: string }[]) ?? [])
+    type TxRow = {
+      audio_upload_id: string | null;
+      full_text: string;
+      segments: { text?: string; speaker?: string }[] | null;
+    };
+    const txRows = (txRes.data ?? []) as TxRow[];
+    const transcripts: BriefingTranscript[] = txRows
       .filter((t) => t && t.full_text)
       .map((t) => ({
         name: (t.audio_upload_id && nameById.get(t.audio_upload_id)) || "recording",
         text: t.full_text,
+        authorLines: extractAuthorLines(t.segments),
       }));
 
     return { keyPoints, transcripts };
@@ -166,3 +187,21 @@ export async function loadBriefingData(
     return empty;
   }
 }
+
+/**
+ * The author's own answers from a finished brainstorm. Summarize saves every
+ * session as a labeled transcript (speaker "Author"), so past sessions are the
+ * memory: surface what the author actually SAID last time, verbatim, so Theo
+ * can call back and push deeper instead of starting cold.
+ */
+export function extractAuthorLines(
+  segments: { text?: string; speaker?: string }[] | null | undefined,
+): string[] {
+  if (!Array.isArray(segments)) return [];
+  return segments
+    .filter((s) => s && s.speaker === "Author" && typeof s.text === "string")
+    .map((s) => (s.text as string).replace(/\s+/g, " ").trim())
+    .filter((t) => t.length >= 40) // greetings and "yes" fragments are not memory
+    .slice(0, 3);
+}
+

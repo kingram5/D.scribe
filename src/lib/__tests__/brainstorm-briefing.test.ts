@@ -1,7 +1,10 @@
+import fs from "fs";
+import path from "path";
 import { describe, it, expect } from "vitest";
 import {
   buildBriefingBlock,
   excerptFrom,
+  extractAuthorLines,
   BRIEFING_BUDGET,
   type BriefingKeyPoint,
   type BriefingTranscript,
@@ -82,5 +85,74 @@ describe("buildBriefingBlock", () => {
     const block = buildBriefingBlock({ keyPoints: many, transcripts: [] });
     expect(block).toContain("Point 7");
     expect(block).not.toContain("Point 8\n");
+  });
+});
+
+describe("cross-session continuity", () => {
+  // Summarize saves every finished brainstorm as a labeled transcript with the
+  // author's answers as speaker "Author". Those answers are the memory: a
+  // second session must open with what the author already said, verbatim.
+
+  const SESSION: BriefingTranscript = {
+    name: "brainstorm-2026-09-18T10:00:00",
+    text: "INTERVIEWER: Where does the book start?\n\nAUTHOR: I want to write about the year our family lost everything and rebuilt.",
+    authorLines: ["I want to write about the year our family lost everything and rebuilt."],
+  };
+
+  it("extracts substantive author answers from labeled segments", () => {
+    const lines = extractAuthorLines([
+      { speaker: "Interviewer", text: "What do you want to write about today?" },
+      { speaker: "Author", text: "The desert season, and how provision showed up late but fully." },
+      { speaker: "Author", text: "Yes." }, // too short to be memory
+      { speaker: "Author", text: undefined as unknown as string }, // malformed, skipped
+    ]);
+    expect(lines).toEqual([
+      "The desert season, and how provision showed up late but fully.",
+    ]);
+  });
+
+  it("returns nothing for unlabeled transcripts", () => {
+    expect(extractAuthorLines(null)).toEqual([]);
+    expect(extractAuthorLines([{ text: "wall of speech text" }])).toEqual([]);
+  });
+
+  it("surfaces past answers as a continuity section, separate from transcript excerpts", () => {
+    const block = buildBriefingBlock({
+      keyPoints: [],
+      transcripts: [SESSION, TRANSCRIPTS[0]],
+    });
+    expect(block).toContain("EARLIER BRAINSTORM SESSIONS");
+    expect(block).toContain('"I want to write about the year our family lost everything and rebuilt."');
+    expect(block).toContain("TRANSCRIPT EXCERPTS:");
+  });
+
+  it("keeps excerpts section for material without author labels", () => {
+    const block = buildBriefingBlock({ keyPoints: [], transcripts: [TRANSCRIPTS[0]] });
+    expect(block).not.toContain("EARLIER BRAINSTORM SESSIONS");
+    expect(block).toContain("TRANSCRIPT EXCERPTS:");
+  });
+});
+
+// Source probes, house style: the doctrine lives in the route's system prompt
+// string, so a revert to the flat rules list turns these red.
+describe("the interviewer's doctrine", () => {
+  const route = () =>
+    fs.readFileSync(
+      path.resolve(__dirname, "../../app/api/brainstorm/route.ts"),
+      "utf8",
+    );
+
+  it("teaches the question behind the answer, tension-naming and thread-mining", () => {
+    const src = route();
+    expect(src).toContain("INTERVIEW CRAFT:");
+    expect(src).toContain("ASK THE QUESTION BEHIND THE ANSWER");
+    expect(src).toContain("NAME THE TENSION");
+    expect(src).toContain("NEVER LET A BIG THREAD DIE UNMINED");
+  });
+
+  it("keeps the one-question rule and the topic anchor", () => {
+    const src = route();
+    expect(src).toContain("Never ask multiple questions in a single message");
+    expect(src).toContain("TOPIC ANCHOR");
   });
 });

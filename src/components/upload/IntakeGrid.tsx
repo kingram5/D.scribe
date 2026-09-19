@@ -9,6 +9,11 @@ import TheoOrb from "@/components/ui/TheoOrb";
 import CassetteTape from "./CassetteTape";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 
+// Client component, so the constant cannot come from @/lib/ink (server-only:
+// node crypto plus the service-role Supabase client). Keep in sync with
+// INK_PER_YOUTUBE_IMPORT in src/lib/ink.ts.
+const YOUTUBE_IMPORT_INK = 2;
+
 interface IntakeGridProps {
   // record
   isRecording: boolean;
@@ -29,8 +34,10 @@ interface IntakeGridProps {
   handleDrop: (e: React.DragEvent) => void;
   handleFileInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
   // youtube
-  youtubeUrl: string;
-  setYoutubeUrl: (v: string) => void;
+  youtubeInput: string;
+  setYoutubeInput: (v: string) => void;
+  /** Links parsed out of the paste — drives the count, the button label and the Ink total. */
+  youtubeUrlCount: number;
   youtubeError: string;
   setYoutubeError: (v: string) => void;
   onYoutubeFetch: () => void;
@@ -459,25 +466,44 @@ export default function IntakeGrid(p: IntakeGridProps) {
 
       {/* ── 03 · YOUTUBE ─────────────────────────────────────────────────── */}
       <article data-tut="upload-youtube" style={cardBase}>
-        <CardTop l="04 / YOUTUBE" r="2 INK" hot />
+        <CardTop
+          l="04 / YOUTUBE"
+          r={
+            p.youtubeUrlCount > 0
+              ? `${p.youtubeUrlCount} LINK${p.youtubeUrlCount === 1 ? "" : "S"} · ${p.youtubeUrlCount * YOUTUBE_IMPORT_INK} INK`
+              : `${YOUTUBE_IMPORT_INK} INK EACH`
+          }
+          hot
+        />
         <h3 style={serifH3}>Bring a public conversation in.</h3>
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <input
-            type="url"
-            placeholder="Paste a YouTube URL"
-            aria-label="YouTube URL"
-            value={p.youtubeUrl}
-            onChange={(e) => { p.setYoutubeUrl(e.target.value); p.setYoutubeError(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && p.youtubeUrl.trim()) p.onYoutubeFetch(); }}
+        <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, marginTop: 4 }}>
+          Paste one link per line — a whole series in one go.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+          <textarea
+            placeholder={"https://youtube.com/watch?v=…\nhttps://youtu.be/…"}
+            aria-label="YouTube links, one per line"
+            rows={3}
+            value={p.youtubeInput}
+            onChange={(e) => { p.setYoutubeInput(e.target.value); p.setYoutubeError(""); }}
+            onKeyDown={(e) => {
+              // Enter adds a line here, so fetch on the modifier — one link or a
+              // dozen, the batch is the same action.
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && p.youtubeUrlCount > 0) {
+                p.onYoutubeFetch();
+              }
+            }}
             style={{
-              flex: 1,
-              minWidth: 0,
-              border: "none",
-              borderBottom: "1px solid rgba(44,36,25,0.25)",
-              background: "none",
-              padding: "10px 2px",
+              width: "100%",
+              resize: "vertical",
+              minHeight: 74,
+              border: "1px solid rgba(44,36,25,0.25)",
+              borderRadius: 8,
+              background: "rgba(255,255,255,0.55)",
+              padding: "10px 12px",
               // 16px floor: anything smaller makes iOS focus-zoom the page (M27).
               fontSize: 16,
+              lineHeight: 1.45,
               color: "var(--ds-ink)",
               outline: "none",
               fontFamily: "var(--font-manrope), sans-serif",
@@ -486,11 +512,11 @@ export default function IntakeGrid(p: IntakeGridProps) {
           <button
             type="button"
             className="transcribe-btn"
-            style={{ padding: "8px 16px", flexShrink: 0 }}
-            disabled={!p.youtubeUrl.trim() || p.uploading}
+            style={{ padding: "8px 16px", alignSelf: "flex-start" }}
+            disabled={p.youtubeUrlCount === 0 || p.uploading}
             onClick={p.onYoutubeFetch}
           >
-            Fetch →
+            {p.youtubeUrlCount > 1 ? `Fetch all ${p.youtubeUrlCount} →` : "Fetch →"}
           </button>
         </div>
         {p.youtubeError && (

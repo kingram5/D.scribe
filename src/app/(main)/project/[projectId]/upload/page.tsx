@@ -64,11 +64,10 @@ export default function UploadPage() {
       router.push(`/project/${projectId}/transcript`);
       return;
     }
-    if (engine.files.length > 0) {
-      engine.uploadAll();
-    } else if (engine.youtubeUrl.trim()) {
-      engine.handleYoutubeSubmit();
-    }
+    // One run covers every staged source: recorded clips, picked files and the
+    // YouTube paste. The old shape picked ONE branch, so a project holding only
+    // a recording — or a file plus a pasted link — left sources behind, silently.
+    engine.uploadAll();
   }
 
   return (
@@ -132,8 +131,9 @@ export default function UploadPage() {
             setDragging={engine.setDragging}
             handleDrop={engine.handleDrop}
             handleFileInput={engine.handleFileInput}
-            youtubeUrl={engine.youtubeUrl}
-            setYoutubeUrl={engine.setYoutubeUrl}
+            youtubeInput={engine.youtubeInput}
+            setYoutubeInput={engine.setYoutubeInput}
+            youtubeUrlCount={engine.youtubeUrlCount}
             youtubeError={engine.youtubeError}
             setYoutubeError={engine.setYoutubeError}
             onYoutubeFetch={engine.handleYoutubeSubmit}

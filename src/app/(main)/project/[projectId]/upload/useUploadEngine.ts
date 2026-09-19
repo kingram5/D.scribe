@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { parseYoutubeLinks } from "@/lib/youtube-links";
 
 type InputMode = "file" | "youtube";
 
@@ -72,8 +73,11 @@ export function useUploadEngine(projectId: string) {
   const [uploadError, setUploadError] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("file");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
+  // A paste, not a URL: the intake accepts one link per line and imports the
+  // whole batch in one run (each link still bills its own 2 Ink).
+  const [youtubeInput, setYoutubeInput] = useState("");
   const [youtubeError, setYoutubeError] = useState("");
+  const { urls: youtubeUrls } = parseYoutubeLinks(youtubeInput);
 
   // Recording state with real MediaRecorder
   const [isRecording, setIsRecording] = useState(false);
@@ -307,40 +311,104 @@ export function useUploadEngine(projectId: string) {
       }
     }
 
+    // YouTube links ride the same run as the audio files: "Transcribe" is one
+    // action, and a book assembled from recordings plus interviews should not
+    // need two clicks and two waits.
+    await importYoutubeBatch();
     setUploading(false);
   }
 
-  async function handleYoutubeSubmit() {
-    if (!youtubeUrl.trim()) return;
-    setYoutubeError("");
-    setUploading(true);
-
-    const label =
-      youtubeUrl.length > 50
-        ? youtubeUrl.substring(0, 50) + "..."
-        : youtubeUrl;
+  /**
+   * One URL per request — the API takes a single link — so a batch is a
+   * sequence. Failures are per-row; an out-of-Ink refusal stops the batch
+   * because every remaining link would be refused the same way, and the
+   * entries already imported must not be re-billed by a blind retry.
+   */
+  async function transcribeYoutube(url: string): Promise<"done" | "failed" | "stop"> {
+    const label = url.length > 50 ? url.substring(0, 50) + "..." : url;
 
     setProgress((p) => ({ ...p, [label]: "fetching" }));
-
-    const res = await fetch("/api/audio/youtube", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ youtube_url: youtubeUrl, project_id: projectId }),
+    setUploadError((p) => {
+      const next = { ...p };
+      delete next[label];
+      return next;
     });
+
+    const post = () =>
+      fetch("/api/audio/youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ youtube_url: url, project_id: projectId }),
+      });
+
+    let res = await post();
+
+    // The limiter allows 10 per minute and a short video finishes in seconds;
+    // a long batch can reach it. Wait out the window rather than failing rows
+    // the user already paid attention to.
+    if (res.status === 429) {
+      const waited = Number(res.headers.get("Retry-After") || 0) * 1000;
+      await new Promise((r) => setTimeout(r, Math.min(waited > 0 ? waited : 30_000, 65_000)));
+      res = await post();
+    }
 
     if (res.ok) {
       const result = await res.json();
-      setProgress((p) => ({
-        ...p,
-        [label]: result.transcribed ? "done" : "failed",
-      }));
-    } else {
-      const err = await res.json();
-      setYoutubeError(err.error || "Failed to get transcript");
-      setProgress((p) => ({ ...p, [label]: "failed" }));
+      const ok = result.transcribed !== false;
+      setProgress((p) => ({ ...p, [label]: ok ? "done" : "failed" }));
+      return ok ? "done" : "failed";
     }
 
-    setYoutubeUrl("");
+    const err = await res.json().catch(() => ({} as { error?: string; message?: string }));
+
+    if (res.status === 402) {
+      setYoutubeError(err.message || "You're out of Ink — top up to import more links.");
+      setProgress((p) => ({ ...p, [label]: "failed" }));
+      return "stop";
+    }
+
+    setUploadError((p) => ({ ...p, [label]: err.error || "Failed to get transcript" }));
+    setYoutubeError(err.error || "Failed to get transcript");
+    setProgress((p) => ({ ...p, [label]: "failed" }));
+    return "failed";
+  }
+
+  /** Import every link in the paste, in order. Returns how many landed. */
+  async function importYoutubeBatch(): Promise<number> {
+    const { urls, invalid } = parseYoutubeLinks(youtubeInput);
+    if (urls.length === 0) return 0;
+
+    setYoutubeError(
+      invalid.length > 0
+        ? `${invalid.length} entr${invalid.length === 1 ? "y was" : "ies were"} not a YouTube link and skipped.`
+        : ""
+    );
+
+    let done = 0;
+    for (const url of urls) {
+      const outcome = await transcribeYoutube(url);
+      if (outcome === "stop") break;
+      if (outcome === "done") done += 1;
+    }
+
+    setYoutubeInput("");
+    return done;
+  }
+
+  async function handleYoutubeSubmit() {
+    const { urls, invalid } = parseYoutubeLinks(youtubeInput);
+
+    if (urls.length === 0) {
+      setYoutubeError(
+        invalid.length > 0
+          ? `That doesn't look like a YouTube link: ${invalid[0]}`
+          : "Paste at least one YouTube link."
+      );
+      return;
+    }
+
+    setUploading(true);
+    await importYoutubeBatch();
     setUploading(false);
   }
 
@@ -350,7 +418,7 @@ export function useUploadEngine(projectId: string) {
     progressEntries.every(([, status]) => status === "done");
 
   const canInitialize =
-    files.length > 0 || recordings.length > 0 || youtubeUrl.trim().length > 5;
+    files.length > 0 || recordings.length > 0 || youtubeUrls.length > 0;
 
   return {
     // File state
@@ -364,8 +432,10 @@ export function useUploadEngine(projectId: string) {
     setDragging,
     inputMode,
     setInputMode,
-    youtubeUrl,
-    setYoutubeUrl,
+    youtubeInput,
+    setYoutubeInput,
+    youtubeUrls,
+    youtubeUrlCount: youtubeUrls.length,
     youtubeError,
     setYoutubeError,
 

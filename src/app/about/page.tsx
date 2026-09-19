@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FOUNDER, FOUNDER_STORY } from "@/lib/founder";
+import { FOUNDER, FOUNDER_STORY, FOUNDER_SIGNATURE } from "@/lib/founder";
 
 /**
  * /about — founder page (HeyCatch 2026-09-10 item 2).
@@ -189,9 +189,9 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* Kyle's story: his words, or nothing. Never invented copy, and never an
-              internal placeholder on a public page (fixed 2026-09-10 after the
-              placeholder shipped live). The section stays hidden until he writes it. */}
+          {/* Kyle's story: his words, verbatim from src/lib/founder.ts (swapped in
+              2026-09-19). Never edited, never an internal placeholder on a public
+              page (fixed 2026-09-10 after the placeholder shipped live). */}
           {FOUNDER_STORY ? (
             <>
               <h2 style={{ fontFamily: SERIF, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 400, fontStyle: "italic", color: COLORS.ink, lineHeight: 1.25, margin: "0 0 16px" }}>
@@ -202,6 +202,9 @@ export default function AboutPage() {
                   {para}
                 </p>
               ))}
+              <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, color: COLORS.accent, margin: "24px 0 0" }}>
+                {FOUNDER_SIGNATURE}
+              </p>
             </>
           ) : null}
 

@@ -1,5 +1,9 @@
+import fs from "fs";
+import path from "path";
 import { describe, it, expect } from "vitest";
 import { parseYoutubeLinks, youtubeVideoId } from "@/lib/youtube-links";
+
+const SRC = path.resolve(__dirname, "../..");
 
 // Regression for the single-link intake: importing a series of interviews meant
 // one paste, one click and one 2-Ink charge per video. A paste of N links is one
@@ -53,5 +57,40 @@ describe("youtubeVideoId", () => {
     expect(youtubeVideoId("https://www.youtube.com/")).toBeNull();
     expect(youtubeVideoId("https://www.youtube.com/watch?v=short")).toBeNull();
     expect(youtubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).not.toBeNull();
+  });
+});
+
+// Source probes, in the house style of mobile-probes.test.ts: this defect lived
+// in how the intake was WIRED, not in a pure function, so a behaviour test cannot
+// reach it. A revert to one-URL-per-click turns these red.
+describe("the intake is wired for a batch", () => {
+  const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf8");
+  const engine = () => read("app/(main)/project/[projectId]/upload/useUploadEngine.ts");
+
+  it("the engine parses the paste and imports the whole batch in one run", () => {
+    const src = engine();
+    expect(src).toMatch(/parseYoutubeLinks\(youtubeInput\)/);
+    expect(src).toMatch(/async function importYoutubeBatch/);
+    // The batch has to ride uploadAll, or "Transcribe" still leaves links behind.
+    expect(src.slice(src.indexOf("async function uploadAll"))).toMatch(/await importYoutubeBatch\(\)/);
+  });
+
+  it("a 429 waits out the limiter window instead of failing the row", () => {
+    const src = engine();
+    expect(src).toMatch(/res\.status === 429/);
+    expect(src).toMatch(/Retry-After/);
+  });
+
+  it("the YouTube card takes a paste, not a single URL", () => {
+    const grid = read("components/upload/IntakeGrid.tsx");
+    expect(grid).toMatch(/<textarea/);
+    expect(grid).toMatch(/aria-label="YouTube links, one per line"/);
+    expect(grid).not.toMatch(/type="url"/);
+  });
+
+  it("Transcribe runs every staged source, without an either/or branch", () => {
+    const page = read("app/(main)/project/[projectId]/upload/page.tsx");
+    expect(page).toMatch(/engine\.uploadAll\(\)/);
+    expect(page).not.toMatch(/else if \(engine\./);
   });
 });

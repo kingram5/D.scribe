@@ -19,7 +19,7 @@ function MicIcon({ className, size = 20 }: { className?: string; size?: number }
 }
 
 const PIPELINE = [
-  { num: "01", title: "Upload", desc: "Record live, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
+  { num: "01", title: "Upload", desc: "Record live, upload your audio files, or paste a batch of YouTube links. Any spoken word becomes raw material." },
   { num: "02", title: "Transcribe", desc: "AI captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
   { num: "03", title: "Structure", desc: "Set your chapter count, word targets, and tone. The blueprint for your book, built before a word is written." },
   { num: "04", title: "Analyze", desc: "Key themes extracted, voice profile built, narrative arcs identified. Your ideas, mapped." },
@@ -75,7 +75,7 @@ const P = {
 };
 
 const DASH_PIPELINE = [
-  { key: "upload",     label: "Audio Upload",       desc: "Upload your recording or paste a YouTube link" },
+  { key: "upload",     label: "Audio Upload",       desc: "Upload your recordings or paste YouTube links" },
   { key: "transcribe", label: "Transcription",      desc: "Your words, captured and ready to shape" },
   { key: "structure",  label: "Structure Setup",    desc: "Set chapters and word targets" },
   { key: "analyze",    label: "Content Analysis",   desc: "AI identifies themes, voice patterns, and narrative arcs" },

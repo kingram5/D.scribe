@@ -55,7 +55,7 @@ export const TUTORIALS: Record<string, StepTutorial> = {
       },
       {
         title: "Already have material? Bring it in.",
-        body: "Record yourself live on the cassette, drag and drop audio files you already have (MP3, WAV, M4A, MP4), or paste a YouTube link to import a public conversation's transcript.",
+        body: "Record yourself live on the cassette, drag and drop the audio files you already have (MP3, WAV, M4A, MP4), or paste in YouTube links — one per line — to import the transcripts of public conversations.",
         art: <IlUploadFour />,
       },
       {
@@ -83,7 +83,7 @@ export const TUTORIALS: Record<string, StepTutorial> = {
       {
         target: "upload-youtube",
         title: "04 · YouTube",
-        body: "Paste a public YouTube URL and press Fetch. We import only the transcript, never the video.",
+        body: "Paste one public YouTube link per line and press Fetch — a whole series in one go. We import only the transcripts, never the videos.",
       },
       {
         target: "upload-transcribe",

@@ -13,7 +13,7 @@ import {
   INIT_PING, askedQuestions, authorTurns, buildNotesBlock, callbackAllowed, computePacing,
   landingDeclinedAt, personalNormFrom, readNotes, stripPrivateTags, wrapPrivate,
 } from "@/lib/theo/notes";
-import type { BrainstormMessage } from "@/lib/brainstorm-session";
+import { sanitizeBrainstormMessages, type BrainstormMessage } from "@/lib/brainstorm-session";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -98,23 +98,36 @@ export async function POST(req: NextRequest) {
   // its background material failed to load.
   let briefing: Awaited<ReturnType<typeof loadBriefingData>> = { keyPoints: [], transcripts: [], handoffs: [], thinChapters: [], pastSessions: [] };
   let notes = readNotes(null);
+  let storedMessages: BrainstormMessage[] = [];
   let personalNorm: number | null = null;
   let researchBlock = "";
   if (verifiedProjectId) {
     const supabase = createServerClient();
     const [briefingData, activeRes, normRes, researchRes] = await Promise.all([
       loadBriefingData(supabase, verifiedProjectId, user.id),
-      supabase.from("brainstorm_sessions").select("notes").eq("project_id", verifiedProjectId).eq("user_id", user.id).eq("status", "active").maybeSingle(),
+      supabase.from("brainstorm_sessions").select("notes, messages").eq("project_id", verifiedProjectId).eq("user_id", user.id).eq("status", "active").maybeSingle(),
       supabase.from("brainstorm_sessions").select("turn_count").eq("user_id", user.id).eq("status", "finished").order("updated_at", { ascending: false }).limit(12),
       supabase.from("research_items").select("id, kind, text, attribution, source_title, source_url, source_date, themes, created_at").eq("project_id", verifiedProjectId).eq("user_id", user.id).eq("status", "active"),
     ]);
     briefing = briefingData;
     notes = readNotes((activeRes.data as { notes?: unknown } | null)?.notes);
+    storedMessages = sanitizeBrainstormMessages((activeRes.data as { messages?: unknown } | null)?.messages) ?? [];
     personalNorm = personalNormFrom(((normRes.data ?? []) as { turn_count: number }[]).map((r) => r.turn_count));
     researchBlock = formatResearchedSourcesBlock(
       rankResearchItems((researchRes.data ?? []) as ResearchItem[], spoken.slice(-6).join(" ")),
     );
   }
+
+  // The studio sends Claude a WINDOW (opening exchange plus the last 8 messages)
+  // to keep turns cheap. Everything counted in code (pacing against the author's
+  // own baseline, the callback budget, landing offers) needs the WHOLE session,
+  // so rebuild it from the autosaved row plus the turn that just arrived.
+  const lastTurn = history[history.length - 1];
+  const session: BrainstormMessage[] =
+    storedMessages.length > history.length && lastTurn?.role === "user"
+      ? [...storedMessages.filter((m, i) => !(i === storedMessages.length - 1 && m.role === "user" && m.content === lastTurn.content)), lastTurn]
+      : history;
+  const sessionSpoken = authorTurns(session);
 
   // TOPIC ANCHOR. The stored topic wins, then a real title. Only a project with
   // neither falls back to the first thing the author typed, and never to a
@@ -164,32 +177,29 @@ export async function POST(req: NextRequest) {
   // VOLATILE per-turn material rides at the END of the final user turn, inside
   // private tags, so the system text and the history before it stay byte-stable
   // and cacheable. Nothing in here is ever stored in the conversation.
-  const pacing = computePacing({ messages: history, personalNorm, landingDeclinedAtTurn: landingDeclinedAt(history) });
+  const pacing = computePacing({ messages: session, personalNorm, landingDeclinedAtTurn: landingDeclinedAt(session) });
   const notesBlock = firstRealUserMsg
     ? buildNotesBlock({
         notes,
         pacing,
-        callbackOk: callbackAllowed(history),
+        callbackOk: callbackAllowed(session),
         alreadyAsked: askedQuestions(briefing.pastSessions ?? []),
-        gaps: spoken.length >= 3 ? ledgerGaps(projectAudience, notes.captured).map((g) => g.need) : [],
+        gaps: sessionSpoken.length >= 3 ? ledgerGaps(projectAudience, notes.captured).map((g) => g.need) : [],
       })
     : "";
   const digestBlock = buildBriefingBlock(briefing, spoken.slice(-2).join(" "));
   const privateBlock = wrapPrivate([greetingBlock, notesBlock, digestBlock, researchBlock]);
 
-  // Claude messages. Cache breakpoint on the last ASSISTANT turn: everything up
-  // to there is identical next turn, while the final user turn (which carries
-  // the private block) is always fresh.
-  type Block = { type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "1h" } };
-  const roles = history.map((m) => m.role);
-  const lastAssistantIdx = roles.lastIndexOf("assistant");
-  const lastUserIdx = roles.lastIndexOf("user");
-  const claudeMessages = history.map((m, i) => {
-    const blocks: Block[] = [{ type: "text", text: m.content }];
-    if (i === lastAssistantIdx && i < lastUserIdx) blocks[0].cache_control = { type: "ephemeral", ttl: "1h" };
-    if (i === lastUserIdx && privateBlock) blocks.push({ type: "text", text: privateBlock });
-    return { role: m.role, content: blocks };
-  });
+  // Claude messages. Only the stable system text carries a cache breakpoint: the
+  // history is a sliding window, so a breakpoint on it would pay the cache-write
+  // premium for a prefix that is never read again.
+  const lastUserIdx = history.map((m) => m.role).lastIndexOf("user");
+  const claudeMessages = history.map((m, i) => ({
+    role: m.role,
+    content: i === lastUserIdx && privateBlock
+      ? [{ type: "text" as const, text: m.content }, { type: "text" as const, text: privateBlock }]
+      : m.content,
+  }));
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import StudioKeepsakes, { type StudioChip } from "@/components/upload/StudioKeepsakes";
+import SessionRecapCard, { type SessionRecapData } from "@/components/upload/SessionRecapCard";
 import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
@@ -405,6 +407,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
+  // Theo v2: what the author is allowed to see of Theo's notebook (their own
+  // lines, verbatim, and plain chips), the end-of-session card, and the optional
+  // "anything you want me to read first?" text.
+  const [keeperLines, setKeeperLines] = useState<string[]>([]);
+  const [chips, setChips] = useState<StudioChip[]>([]);
+  const [recap, setRecap] = useState<SessionRecapData | null>(null);
+  const [primer, setPrimer] = useState("");
+  const [showPrimer, setShowPrimer] = useState(false);
+  const notesInFlightRef = useRef(false);
   const [started, setStarted] = useState(false);
   const [listening, setListening] = useState(false);
   /* Hands-free (Kyle 2026-08-09): Speak is a session toggle, not a per-turn button. While
@@ -1413,6 +1424,28 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     };
   }, [teardownMic]);
 
+  // Theo's note-taker runs AFTER his reply lands, while the author is reading
+  // and typing, so it never adds to the wait for his next question. Failure is
+  // silent: a missed note must never interrupt an interview.
+  const takeNotes = useCallback((all: Message[]) => {
+    if (notesInFlightRef.current) return;
+    if (all.filter((m) => m.role === "user").length < 1) return;
+    notesInFlightRef.current = true;
+    void fetch("/api/brainstorm/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId, messages: all }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { keeperLines?: unknown; chips?: unknown } | null) => {
+        if (!d) return;
+        if (Array.isArray(d.keeperLines)) setKeeperLines(d.keeperLines.filter((x): x is string => typeof x === "string"));
+        if (Array.isArray(d.chips)) setChips(d.chips.filter((c): c is StudioChip => !!c && typeof (c as StudioChip).id === "string" && typeof (c as StudioChip).chip === "string"));
+      })
+      .catch(() => { /* silent by design */ })
+      .finally(() => { notesInFlightRef.current = false; });
+  }, [projectId]);
+
   // Start the conversation — AI sends first message
   const startConversation = useCallback(async () => {
     setStarted(true);
@@ -1429,7 +1462,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const res = await fetch("/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: initMessages, project_id: projectId }),
+        body: JSON.stringify({ messages: initMessages, project_id: projectId, primer: primer.trim() || undefined }),
       });
 
       if (!res.ok) {
@@ -1513,7 +1546,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
     }, 400);
     inputRef.current?.focus();
-  }, [projectId, speakSentence]);
+  }, [projectId, speakSentence, primer]);
 
   const kickResearch = useCallback((turns: number, msgs: Message[], force = false) => {
     if (researchDisabledRef.current) return;
@@ -1676,6 +1709,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
 
     if (sendOk) {
+      takeNotes([...updatedMessages, { role: "assistant", content: aiText }]);
       const turns = updatedMessages.filter((m) => m.role === "user").length;
       kickResearch(turns, [...updatedMessages, { role: "assistant", content: aiText }]);
     }
@@ -1688,7 +1722,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
     }, 400);
     inputRef.current?.focus();
-  }, [input, streaming, messages, speakSentence, teardownMic, projectId, kickResearch]);
+  }, [input, streaming, messages, speakSentence, teardownMic, projectId, kickResearch, takeNotes]);
 
   // Keep autoSendRef in sync so the silence timer can call sendMessage without stale closures
   useEffect(() => {
@@ -1906,7 +1940,19 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         persistSessionOnUnmountRef.current = false;
         try { localStorage.removeItem(sessionKey); } catch { /* storage blocked */ }
         closeServerSession(projectId, "finished");
-        onComplete();
+        // The real ending: show what today produced before leaving. An older
+        // server (or a failed card) simply skips straight out, as before.
+        const done = await res.json().catch(() => null) as { recap?: SessionRecapData } | null;
+        if (done?.recap && typeof done.recap.words === "number") {
+          handsFreeRef.current = false;
+          setHandsFree(false);
+          teardownMic();
+          stopAudio();
+          setRecap(done.recap);
+          setSummarizing(false);
+        } else {
+          onComplete();
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         console.error("Summarize error:", err);
@@ -1920,7 +1966,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       setSendError("Couldn't add this session to your sources. Your answers are still here — try again.");
       setRetryAction("finish");
     }
-  }, [messages, projectId, onComplete]);
+  }, [messages, projectId, onComplete, teardownMic, stopAudio]);
 
   const undoLast = useCallback(() => {
     if (streaming || messages.length < 2) return;
@@ -2259,6 +2305,34 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </div>
           )}
         </div>
+        <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          {!showPrimer ? (
+            <button
+              type="button"
+              onClick={() => setShowPrimer(true)}
+              style={{ background: "none", border: "none", padding: 4, cursor: "pointer", fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", textDecoration: "underline", textUnderlineOffset: 3 }}
+            >
+              Anything you want T.H.E.O to read first?
+            </button>
+          ) : (
+            <>
+              <label htmlFor="theo-primer" style={{ alignSelf: "flex-start", fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif" }}>
+                Paste notes, an outline, or a passage. Optional.
+              </label>
+              <textarea
+                id="theo-primer"
+                value={primer}
+                onChange={(e) => setPrimer(e.target.value.slice(0, 4000))}
+                rows={5}
+                placeholder="Sermon notes, a talk outline, a page you already wrote..."
+                style={{ width: "100%", resize: "vertical", borderRadius: 10, border: "1px solid var(--border-subtle, rgba(0,0,0,0.14))", padding: "10px 12px", fontSize: 16, lineHeight: 1.5, fontFamily: "var(--font-manrope), sans-serif", background: "var(--surface-raised, #fff)", color: "var(--ds-ink)" }}
+              />
+              <span style={{ alignSelf: "flex-end", fontSize: 11, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif" }}>
+                {primer.length.toLocaleString("en-US")} / 4,000
+              </span>
+            </>
+          )}
+        </div>
         <button
           onClick={() => { setPendingResume(false); setShowTtsPrompt(true); }}
           className="transcribe-btn"
@@ -2284,6 +2358,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     );
   }
 
+  // The real ending
+  if (recap) {
+    return (
+      <StudioShell onExit={onComplete} label="What you got down today">
+        <SessionRecapCard recap={recap} onDone={onComplete} />
+      </StudioShell>
+    );
+  }
+
   // Summarizing state
   if (summarizing) {
     return (
@@ -2301,7 +2384,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           color: "var(--text-secondary)",
           fontFamily: "var(--font-manrope), sans-serif",
         }}>
-          Distilling your ideas into source material...
+          Saving everything you said...
         </p>
         <style>{`
           .brainstorm-spinner {
@@ -2364,6 +2447,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           far out of focus so the conversation stays the subject. One CSS rule
           lifts every sibling above it, so the stage markup below is untouched. */}
       <StudioBackdrop />
+      <StudioKeepsakes keeperLines={keeperLines} chips={chips} />
       {/* Stage header */}
       <div className="ds-studio-header">
         <button

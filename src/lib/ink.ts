@@ -6,6 +6,7 @@ import type { ClaudeUsage } from "@/lib/claude-lite";
 export type InkOperation =
   | "brainstorm"
   | "brainstorm_summarize"
+  | "brainstorm_notes"
   | "analyze"
   | "voice_profile"
   | "mind_map"
@@ -33,6 +34,7 @@ export const INK_PER_YOUTUBE_IMPORT = 2;
 const ESTIMATED_COST: Record<InkOperation, number> = {
   brainstorm: 2,
   brainstorm_summarize: 1,
+  brainstorm_notes: 0.2,
   analyze: 3,
   voice_profile: 1,
   mind_map: 1,

@@ -10,8 +10,6 @@ import { createContext, useContext, type ReactNode } from "react";
  * route renders without the provider and gets the empty defaults.
  */
 export type LandingData = {
-  /** Public URL of the founder headshot, or null while public/founder-kyle.jpg is missing. */
-  founderHeadshot: string | null;
   /**
    * Live count of books generated (projects with at least one generated
    * chapter), read from Supabase at render time. null when the query failed or
@@ -21,7 +19,6 @@ export type LandingData = {
 };
 
 export const EMPTY_LANDING_DATA: LandingData = {
-  founderHeadshot: null,
   booksGenerated: null,
 };
 

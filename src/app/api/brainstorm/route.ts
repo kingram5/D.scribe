@@ -195,11 +195,14 @@ export async function POST(req: NextRequest) {
   let cacheReadTokens = 0;
   let cacheWriteTokens = 0;
   let usageSettled = false;
-  const settleUsage = () => {
+  // Returns a promise so the stream WAITS for the charge before it closes. On
+  // serverless the function freezes the moment the response ends, so a
+  // fire-and-forget charge here was silently dropped and brainstorm ran free.
+  const settleUsage = async (): Promise<void> => {
     if (usageSettled) return;
     usageSettled = true;
     if (inputTokens > 0 || outputTokens > 0 || cacheReadTokens > 0 || cacheWriteTokens > 0) {
-      recordInkUsage(user.id, verifiedProjectId, "brainstorm", "quality", { input_tokens: inputTokens, output_tokens: outputTokens, cache_read_input_tokens: cacheReadTokens, cache_creation_input_tokens: cacheWriteTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
+      await recordInkUsage(user.id, verifiedProjectId, "brainstorm", "quality", { input_tokens: inputTokens, output_tokens: outputTokens, cache_read_input_tokens: cacheReadTokens, cache_creation_input_tokens: cacheWriteTokens }).catch((err) => logger.error("recordInkUsage failed", { route: "/api/brainstorm", userId: user.id, error: err }));
     }
   };
 
@@ -243,7 +246,7 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-        settleUsage();
+        await settleUsage();
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
@@ -252,7 +255,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           error: err,
         });
-        settleUsage();
+        await settleUsage();
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();

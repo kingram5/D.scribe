@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { after } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { canonicalizeEmail } from "@/lib/email";
 import type { ClaudeUsage } from "@/lib/claude-lite";
@@ -273,8 +274,32 @@ export async function getInkBalance(userId: string) {
   };
 }
 
-/** Record token usage and deduct Ink after a Claude API call */
-export async function recordInkUsage(
+/**
+ * Record token usage and deduct Ink after a Claude API call.
+ *
+ * Most callers fire this without awaiting it so the reply is not held up. On
+ * serverless that charge was dropped whenever the function froze right after
+ * the response. Registering the promise with after() keeps the function alive
+ * until the charge lands. Outside a request (tests, scripts) after() throws and
+ * is ignored; the promise still runs.
+ */
+export function recordInkUsage(
+  userId: string,
+  projectId: string | null,
+  operation: InkOperation,
+  model: "fast" | "quality",
+  usage: ClaudeUsage
+): Promise<number> {
+  const charge = recordInkUsageNow(userId, projectId, operation, model, usage);
+  try {
+    after(() => charge.then(() => undefined, () => undefined));
+  } catch {
+    // not inside a request
+  }
+  return charge;
+}
+
+async function recordInkUsageNow(
   userId: string,
   projectId: string | null,
   operation: InkOperation,

@@ -37,8 +37,8 @@ export function inkMeterV2(): boolean {
   return process.env.INK_METER_V2 === "true";
 }
 
-/** Deepgram is ~$0.0043 per audio minute; at 91 Ink per vendor dollar that is 0.39. */
-export const INK_PER_AUDIO_MINUTE_V2 = 0.39;
+/** Deepgram is ~$0.0043 per audio minute; at 102 Ink per vendor dollar that is 0.44. */
+export const INK_PER_AUDIO_MINUTE_V2 = 0.44;
 
 /** The per-minute transcription rate for whichever meter is live. */
 export function inkPerAudioMinute(): number {

@@ -46,12 +46,12 @@ const TIERS = [
     name: "Starter",
     price: 25,
     ink: 300,
-    books: "~3 books",
+    books: "about 1.5 books",
     // Voice allotment powers the SPOKEN brainstorm — the AI interviewer talking
     // out loud while you answer by voice. Characters are its speech budget;
     // ~750 chars ≈ 1 minute of it talking, so the tiers advertise minutes.
     talk: null,
-    tagline: "Test the waters — write your first book or two.",
+    tagline: "Test the waters. Write your first book.",
     badge: null,
     highlight: false,
   },
@@ -59,7 +59,7 @@ const TIERS = [
     name: "Pro",
     price: 50,
     ink: 660,
-    books: "~6 books",
+    books: "~3 books",
     talk: { minutes: "≈30 min / month", chars: "20,000 voice characters" },
     tagline: "For the regular author who writes consistently.",
     badge: "Best Value",
@@ -69,7 +69,7 @@ const TIERS = [
     name: "Premium",
     price: 100,
     ink: 1500,
-    books: "~14 books",
+    books: "~7 books",
     talk: { minutes: "≈80 min / month", chars: "60,000 voice characters" },
     tagline: "High-volume authors, coaches, and teams.",
     badge: null,
@@ -607,8 +607,8 @@ export default function PricingPage() {
                 body: "Every action that calls the AI — transcription, chapter generation, enrichment passes, coherence rewrites — costs Ink. Think of it like tokens on a prepaid meter. You can see exactly how much each action will cost before you run it.",
               },
               {
-                title: "One book ≈ 100 Ink",
-                body: "A standard 40,000-word book runs roughly 100 Ink end to end. The Starter plan (300 Ink) covers about 3 full books. Pro (660 Ink) handles 6. Premium (1,500 Ink) is built for high-volume authors, coaches, or teams producing content consistently.",
+                title: "One book ≈ 200 Ink",
+                body: "A standard 40,000-word book runs roughly 200 Ink end to end, including the interview sessions with T.H.E.O that draw it out of you. The Starter plan (300 Ink) covers about a book and a half each month. Pro (660 Ink) handles about 3. Premium (1,500 Ink) covers about 7, built for high-volume authors, coaches, or teams producing content consistently. Shorter books and fewer interview sessions use less.",
               },
               {
                 title: "No surprise overages",

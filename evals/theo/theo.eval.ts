@@ -12,7 +12,7 @@ for (const line of fs.existsSync(".env.local") ? fs.readFileSync(".env.local", "
 
 const TURNS = Number(process.env.THEO_EVAL_TURNS || 12);
 const ONLY = (process.env.THEO_EVAL_PERSONAS || "").split(",").map((s) => s.trim()).filter(Boolean);
-const INK_PER_DOLLAR = 91;
+const INK_PER_DOLLAR = 102;
 
 const sum = (us: Usage[]) => us.reduce((n, u) => n + usd(u), 0);
 const tok = (us: Usage[]) => us.reduce((t, u) => ({ input: t.input + u.input, output: t.output + u.output, cacheRead: t.cacheRead + u.cacheRead, cacheWrite: t.cacheWrite + u.cacheWrite }), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });

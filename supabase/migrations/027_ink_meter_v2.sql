@@ -11,7 +11,7 @@
 -- WHAT. Ink = real vendor dollars x ONE multiplier, with input, output, cache
 -- reads and cache writes each priced at what they actually cost.
 --   Kyle, 2026-09-19: Starter (300 Ink, $25) should cover about 1.5 books a
---   month on the new stack => ~200 Ink per book => multiplier 91 (about 7.6x
+--   month on the new stack => ~200 Ink per book => multiplier 102 (measured; first estimate was 91) (about 7.6x
 --   cost on Starter, 6.9x Pro, 6.1x Premium, since bigger plans discount Ink).
 -- A vendor price change is one row in ink_rates. A margin change is one row in
 -- ink_meter_settings. Neither needs a migration.
@@ -28,7 +28,7 @@ create table if not exists ink_meter_settings (
 alter table ink_meter_settings enable row level security; -- service role only
 
 insert into ink_meter_settings (key, value, note) values
-  ('ink_per_vendor_dollar', 91, 'Ink charged per $1 of real vendor cost. 91 = Starter covers ~1.5 books/month (Kyle 2026-09-19). Re-set from measured cost after the eval run.')
+  ('ink_per_vendor_dollar', 102, 'Ink charged per $1 of real vendor cost. 102 = measured book cost $1.96 lands on 200 Ink, so Starter covers 1.5 books/month (Kyle 2026-09-20, set from the eval run).')
 on conflict (key) do nothing;
 
 -- Vendor list prices in US dollars per MILLION tokens.
@@ -74,7 +74,7 @@ begin
            + coalesce(p_output_tokens, 0)      * r.usd_out
            + coalesce(p_cache_read_tokens, 0)  * r.usd_cache_read
            + coalesce(p_cache_write_tokens, 0) * r.usd_cache_write ) / 1000000.0;
-  return round(v_usd * coalesce(v_mult, 91), 4);
+  return round(v_usd * coalesce(v_mult, 102), 4);
 end;
 $$ language plpgsql stable security definer set search_path = public, pg_temp;
 

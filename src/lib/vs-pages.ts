@@ -37,7 +37,7 @@ export type VsPage = {
 };
 
 export const D_SCRIBE_PRICING =
-  "Starter $25/mo (300 Ink, about 3 books), Pro $50/mo (660 Ink, about 6 books, plus about 30 min/month of spoken brainstorming), Premium $100/mo (1,500 Ink, about 14 books, plus about 80 min/month).";
+  "Starter $25/mo (300 Ink, about 1.5 books), Pro $50/mo (660 Ink, about 3 books, plus about 30 min/month of spoken brainstorming), Premium $100/mo (1,500 Ink, about 7 books, plus about 80 min/month).";
 
 export const SOURCED_NOTE =
   "Competitor details were read from their own public pages on 10 September 2026 and reflect what they advertised then. Prices and features change. Check their site before you buy.";

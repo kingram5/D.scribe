@@ -2,7 +2,6 @@
 // and handed to the client landing component through LandingDataProvider.
 
 import { createServerClient } from "@/lib/supabase";
-import { FOUNDER } from "@/lib/founder";
 import type { LandingData } from "@/components/landing/LandingDataContext";
 
 /**
@@ -37,7 +36,6 @@ export async function countBooksGenerated(): Promise<number | null> {
 
 export async function getLandingData(): Promise<LandingData> {
   return {
-    founderHeadshot: FOUNDER.headshot,
     booksGenerated: await countBooksGenerated(),
   };
 }

@@ -1,27 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FOUNDER, FOUNDER_STORY } from "@/lib/founder";
+import { FOUNDER_STORY } from "@/lib/founder";
 
 /**
- * /about — founder page (HeyCatch 2026-09-10 item 2).
+ * /about — the founding story (HeyCatch 2026-09-10 item 2).
  *
  * Server-rendered, same warm-editorial dark theme as /pricing and /legal.
- * Two things are Kyle's to supply and are rendered as obvious placeholders
- * until they exist (both live in src/lib/founder.ts):
- *   1. FOUNDER.headshot, once the file is in public/
- *   2. FOUNDER_STORY, in his own words
- * Nothing on this page is written in his voice.
+ * Kyle 2026-09-19: no personal info on this page — no name, email, location,
+ * headshot or Person schema. The story carries itself.
  */
 
 export const metadata: Metadata = {
   title: "About",
-  description: `D.scribe is voice-to-manuscript software for speakers, pastors, and coaches, built by ${FOUNDER.name} in ${FOUNDER.location}.`,
+  description: "D.scribe is voice-to-manuscript software for speakers, pastors, and coaches.",
   alternates: {
     canonical: "https://d-scribe.app/about",
   },
   openGraph: {
     title: "About D.scribe",
-    description: `Voice-to-manuscript software for speakers, pastors, and coaches, built by ${FOUNDER.name} in ${FOUNDER.location}.`,
+    description: "Voice-to-manuscript software for speakers, pastors, and coaches.",
     url: "https://d-scribe.app/about",
     siteName: "D.scribe",
     type: "website",
@@ -41,59 +38,9 @@ const COLORS = {
 const SANS = "var(--font-inter), var(--font-manrope), sans-serif";
 const SERIF = "var(--font-playfair), var(--font-lora), serif";
 
-const personSchema = {
-  "@context": "https://schema.org",
-  "@type": "Person",
-  name: FOUNDER.name,
-  jobTitle: "Founder",
-  email: `mailto:${FOUNDER.email}`,
-  worksFor: { "@type": "Organization", name: "D.scribe", url: "https://d-scribe.app" },
-  address: { "@type": "PostalAddress", addressLocality: "Dallas", addressRegion: "TX", addressCountry: "US" },
-};
-
-function Headshot({ src, size }: { src: string | null; size: number }) {
-  if (src) {
-    // Plain <img>: the file is a local static asset and this page is server-rendered once.
-    // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img
-        src={src}
-        alt={`${FOUNDER.name}, founder of D.scribe`}
-        width={size}
-        height={size}
-        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${COLORS.accent}`, display: "block" }}
-      />
-    );
-  }
-  return (
-    <div
-      role="img"
-      aria-label={`${FOUNDER.name}, ${FOUNDER.role} of D.scribe`}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        border: `2px dashed rgba(193,122,71,0.6)`,
-        background: "rgba(193,122,71,0.08)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 4,
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: size * 0.3, color: COLORS.accent, lineHeight: 1 }}>{FOUNDER.initials}</span>
-    </div>
-  );
-}
-
 export default function AboutPage() {
-  const headshot = FOUNDER.headshot;
-
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }} />
       <div style={{ minHeight: "100vh", backgroundColor: COLORS.bg, color: COLORS.ink, position: "relative", overflow: "hidden" }}>
         <div
           style={{
@@ -160,49 +107,18 @@ export default function AboutPage() {
             About
           </p>
           <h1 style={{ fontFamily: SERIF, fontSize: "clamp(30px, 5vw, 46px)", fontWeight: 400, fontStyle: "italic", color: COLORS.ink, lineHeight: 1.15, margin: "0 0 40px" }}>
-            The person behind D.scribe
+            Why I built this
           </h1>
 
-          {/* Founder card */}
-          <div
-            style={{
-              display: "flex",
-              gap: 28,
-              alignItems: "center",
-              flexWrap: "wrap",
-              padding: 28,
-              borderRadius: 20,
-              background: "rgba(249,247,242,0.03)",
-              border: `1px solid ${COLORS.divider}`,
-              marginBottom: 40,
-            }}
-          >
-            <Headshot src={headshot} size={128} />
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <p style={{ fontFamily: SERIF, fontSize: 28, color: COLORS.ink, margin: "0 0 4px", lineHeight: 1.2 }}>{FOUNDER.name}</p>
-              <p style={{ fontFamily: SANS, fontSize: 14, color: COLORS.muted, margin: "0 0 12px" }}>
-                {FOUNDER.role} &middot; {FOUNDER.location}
-              </p>
-              <a href={`mailto:${FOUNDER.email}`} style={{ fontFamily: SANS, fontSize: 14, color: COLORS.accent, textDecoration: "none" }}>
-                {FOUNDER.email}
-              </a>
-            </div>
-          </div>
-
-          {/* Kyle's story: his words, or nothing. Never invented copy, and never an
-              internal placeholder on a public page (fixed 2026-09-10 after the
-              placeholder shipped live). The section stays hidden until he writes it. */}
+          {/* Kyle's story: his words, verbatim from src/lib/founder.ts (swapped in
+              2026-09-19). Never edited, never an internal placeholder on a public
+              page (fixed 2026-09-10 after the placeholder shipped live). */}
           {FOUNDER_STORY ? (
-            <>
-              <h2 style={{ fontFamily: SERIF, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 400, fontStyle: "italic", color: COLORS.ink, lineHeight: 1.25, margin: "0 0 16px" }}>
-                Why I built this
-              </h2>
-              {FOUNDER_STORY.map((para, i) => (
-                <p key={i} style={{ fontFamily: SANS, fontSize: 17, lineHeight: 1.8, color: COLORS.body, margin: "0 0 16px" }}>
-                  {para}
-                </p>
-              ))}
-            </>
+            <>{FOUNDER_STORY.map((para, i) => (
+              <p key={i} style={{ fontFamily: SANS, fontSize: 17, lineHeight: 1.8, color: COLORS.body, margin: "0 0 16px" }}>
+                {para}
+              </p>
+            ))}</>
           ) : null}
 
           <div style={{ height: 1, background: COLORS.divider, margin: "40px 0" }} />

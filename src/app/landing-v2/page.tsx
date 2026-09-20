@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CinematicMurmurWaveform, CinematicCircularText } from "@/components/landing/CinematicClient";
 import { useLandingData } from "@/components/landing/LandingDataContext";
 import { FAQ_ITEMS } from "@/components/landing/faq";
-import { FOUNDER } from "@/lib/founder";
+// FOUNDER import removed (Kyle 2026-09-19): the footer no longer carries his name.
 import "../cinematic-landing.css";
 
 function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
@@ -19,11 +19,11 @@ function MicIcon({ className, size = 20 }: { className?: string; size?: number }
 }
 
 const PIPELINE = [
-  { num: "01", title: "Upload", desc: "Record live, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
-  { num: "02", title: "Transcribe", desc: "AI captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
+  { num: "01", title: "Upload", desc: "Record live with T.H.E.O, our ghostwriting interviewer, upload an audio file, or paste a YouTube link. Any spoken word becomes raw material." },
+  { num: "02", title: "Transcribe", desc: "D.scribe captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
   { num: "03", title: "Structure", desc: "Set your chapter count, word targets, and tone. The blueprint for your book, built before a word is written." },
   { num: "04", title: "Analyze", desc: "Key themes extracted, voice profile built, narrative arcs identified. Your ideas, mapped." },
-  { num: "05", title: "Generate", desc: "AI writes your manuscript chapter by chapter — in your voice, not a robot's." },
+  { num: "05", title: "Generate", desc: "D.scribe writes your manuscript chapter by chapter — in your voice, not a robot's." },
   { num: "06", title: "Edit", desc: "Review every sentence in a full manuscript editor. Refine, rewrite, and make it yours." },
   { num: "07", title: "Export", desc: "Download your finished book as PDF or DOCX. Print-ready. Publisher-ready. Yours." },
 ];
@@ -747,12 +747,17 @@ function BrainstormMock() {
   );
 }
 
+// Cover palette mirrors the dashboard library (Bookshelf.tsx COVERS): the same
+// six leather treatments, so the books on the landing page read as books from
+// the same shelf as the app.
+const LEATHER = (hi: string, mid: string, lo: string) =>
+  `radial-gradient(ellipse at 28% 18%, rgba(255,235,200,0.18) 0%, transparent 42%), linear-gradient(160deg, ${hi} 0%, ${mid} 45%, ${lo} 100%)`;
 const LANDING_BOOKS = [
   {
     title: "Leading With Clarity",
     author: "Marcus T.",
     genre: "Business / Leadership",
-    cover: "linear-gradient(160deg, #B8763A 0%, #8B5A2B 40%, #6B4423 100%)",
+    cover: LEATHER("#8A3A30", "#6E2A2A", "#3E1615"), // oxblood
     snippet: "The first time I told my team I didn't have the answer, I expected to lose their trust. Instead, I gained it. Leadership isn't about certainty. It's about direction. For years I thought great leaders never showed doubt. I was wrong. The teams that trusted me most were the ones who watched me sit with a hard problem, think out loud, and admit when I needed help. That vulnerability wasn't weakness. It was the whole thing.",
     review: "I never thought I'd write a book. But after years of leading teams through uncertainty, I realized the lessons I was sharing in meetings deserved a wider audience. D. scribe turned three hours of rambling voice memos into twelve coherent chapters.",
   },
@@ -760,7 +765,7 @@ const LANDING_BOOKS = [
     title: "Faith in the Everyday",
     author: "Pastor Renee J.",
     genre: "Faith Community",
-    cover: "linear-gradient(160deg, #4A5A6B 0%, #2C3A4A 40%, #1E2A35 100%)",
+    cover: LEATHER("#2F5A46", "#244235", "#142720"), // forest
     snippet: "Grace doesn't wait for Sunday. I found it in the checkout line, in the argument I didn't start, in the apology I finally made. It lives in the ordinary. My congregation had been asking me to write this down for years: the small moments, the quiet miracles hiding inside Tuesday afternoons. I kept saying I wasn't a writer. But I had been preaching for twenty-six years. I had something to say.",
     review: "My congregation had been asking me to write down my sermons for years. What I couldn't have done in a decade, D. scribe helped me accomplish in a weekend. Every word still sounds like me.",
   },
@@ -768,7 +773,7 @@ const LANDING_BOOKS = [
     title: "The Anxiety Playbook",
     author: "Dr. Sam K.",
     genre: "Self-Help",
-    cover: "linear-gradient(160deg, #3D6B5A 0%, #2C5243 40%, #1E3B2F 100%)",
+    cover: LEATHER("#2E4A66", "#223449", "#121D2B"), // navy
     snippet: "Anxiety lies to you about the future. The most powerful skill isn't silencing it. It's acting anyway, one small step at a time. I've spent fifteen years as a therapist saying this. The book I ended up writing isn't about curing anxiety. It's about learning to move while it's loud. Every tool inside came from someone who thought they were too broken to use it, and used it anyway.",
     review: "I recorded my thoughts during my morning runs for three months. D. scribe organized them into something I'm genuinely proud of, a practical guide that my patients actually want to read.",
   },
@@ -776,7 +781,7 @@ const LANDING_BOOKS = [
     title: "Fifty Miles, Fifty Lessons",
     author: "James R.",
     genre: "Running / Memoir",
-    cover: "linear-gradient(160deg, #6B5A42 0%, #4A3D2C 40%, #352B1F 100%)",
+    cover: LEATHER("#7A5030", "#5A3A22", "#31200F"), // saddle brown
     snippet: "I signed up for my first ultramarathon at 47, eighteen months after my divorce. People thought I was having a crisis. Maybe I was. But somewhere around mile thirty-one on a trail in Colorado, I stopped running away from something and started running toward it. This book isn't really about running. It's about what happens when you put your body through something your mind says is impossible, and you survive it, and learn to do it again.",
     review: "I never journaled, never kept notes, just ran. D. scribe turned thirty voice recordings from my training runs into a real manuscript. People at my gym ask me where they can buy it.",
   },
@@ -784,7 +789,7 @@ const LANDING_BOOKS = [
     title: "The First Generation",
     author: "Maria L.",
     genre: "Immigration / Family",
-    cover: "linear-gradient(160deg, #8B3D50 0%, #6B2D3E 40%, #4A1F2C 100%)",
+    cover: LEATHER("#5E3A5E", "#4A2A47", "#2A1628"), // plum
     snippet: "My mother crossed the border with eleven dollars and a name written on a napkin. She never learned to read English. Forty years later, I'm writing her story in a language she never had. This book is for every child who grew up translating: at the doctor's office, at the bank, at parent-teacher conferences. You weren't the child. You were the bridge. And that shaped you in ways you're still discovering.",
     review: "Writing this felt impossible. Too emotional, too personal, too much. D. scribe gave me enough distance to tell the story honestly. My mother cried the first time I read it to her.",
   },
@@ -792,7 +797,7 @@ const LANDING_BOOKS = [
     title: "Built From the Ground Up",
     author: "Derek O.",
     genre: "Entrepreneurship",
-    cover: "linear-gradient(160deg, #6B6345 0%, #4A4531 40%, #352B1F 100%)",
+    cover: LEATHER("#5C5A38", "#4A4A2E", "#2A2A18"), // olive
     snippet: "I started my company with a work truck, a phone, and a list of people who owed me favors. No MBA. No investors. No plan beyond showing up every day. Eight years later we had forty-two employees and more work than we could handle. I'm not a business genius. I just refused to quit longer than anyone else did. This book is the manual I wish I'd had. The honest, unglamorous version of building something from nothing, mistake by mistake.",
     review: "Three years of late nights and hard lessons. I kept saying I'd write it all down someday. D. scribe made someday happen in about two weekends. Worth every minute.",
   },
@@ -836,6 +841,8 @@ function LandingBook({ title, author, cover, snippet, interactive = true }: { ti
               <p className="lbook-author" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-manrope), sans-serif", marginTop: 10 }}>{author}</p>
             </div>
             <div style={{ position: "absolute", bottom: 14, left: 14, right: 14, height: 1, background: "linear-gradient(to right, transparent, rgba(193,122,71,0.2), transparent)" }} />
+            {/* The ❦ seal every finished book carries in the dashboard library */}
+            <span aria-hidden="true" style={{ position: "absolute", right: 16, bottom: 24, fontSize: 15, color: "#E3C27E", textShadow: "0 1px 0 rgba(0,0,0,0.6)", zIndex: 2 }}>❦</span>
           </div>
           {/* Inside of cover (paper) */}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #EDE5D8, #F5EFE4)", borderRadius: "2px 14px 14px 2px", transform: "rotateY(180deg) translateZ(1px)", backfaceVisibility: "hidden" }} />
@@ -978,7 +985,7 @@ function FadeSection({ children, className = "", delay = 0, style = {} }: { chil
 export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { founderHeadshot, booksGenerated } = useLandingData();
+  const { booksGenerated } = useLandingData();
 
   // HeyCatch item 3: one hero stat is a real number from Supabase. Below 100
   // books the honest framing is the "first 100 authors" invitation; at 100 and
@@ -1268,9 +1275,9 @@ export default function LandingV2() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 {[
-                  { title: "Your Voice", desc: "AI captures your speaking style — rhythm, vocabulary, pacing — and writes in it." },
+                  { title: "Your Voice", desc: "D.scribe captures your speaking style — rhythm, vocabulary, pacing — and writes in it." },
                   { title: "Your Ideas", desc: "Every key point comes from your words. Nothing invented. Nothing hallucinated." },
-                  { title: "Your Book", desc: "Edit every sentence. Rearrange every chapter. Export when it's ready. It's yours." },
+                  { title: "Your Book", desc: "Edit every sentence. Rearrange every chapter. Export when it's ready. Yours forever." },
                 ].map((pillar) => (
                   <div key={pillar.title}>
                     <div style={{ width: 32, height: 2, background: "#C17A47", marginBottom: 16, opacity: 0.6 }} />
@@ -1297,7 +1304,7 @@ export default function LandingV2() {
                   Talk it out with your ghostwriter.
                 </h3>
                 <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 17, lineHeight: 1.6, color: "#A89F94", margin: 0 }}>
-                  Speak your answers on any plan. T.H.E.O talks back on Pro and Premium.
+                  Speak or text with T.H.E.O in our Brainstorm Studio and watch the ideas pour out!
                 </p>
               </div>
               <BrainstormMock />
@@ -1416,21 +1423,17 @@ export default function LandingV2() {
         flexWrap: "wrap", gap: 16,
       }}>
         {/* Founder block (HeyCatch item 2). Facts only; Kyle's own note lives on /about. */}
-        <Link href="/about" className="lv2-founder" aria-label={`About ${FOUNDER.name}, founder of D.scribe`}>
-          {founderHeadshot ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={founderHeadshot} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(193,122,71,0.6)", flexShrink: 0 }} />
-          ) : (
-            <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: "50%", border: "1px dashed rgba(193,122,71,0.5)", background: "rgba(193,122,71,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 15, color: "#C17A47", flexShrink: 0 }}>
-              {FOUNDER.initials}
-            </span>
-          )}
+        {/* Kyle 2026-09-19: no name, no location, no face in the footer — just the link. */}
+        <Link href="/about" className="lv2-founder" aria-label="Why we built D.scribe">
+          <span aria-hidden="true" style={{ width: 44, height: 44, borderRadius: "50%", border: "1px solid rgba(193,122,71,0.5)", background: "rgba(193,122,71,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 17, color: "#C17A47", flexShrink: 0 }}>
+            D.
+          </span>
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontFamily: "var(--font-playfair), serif", fontSize: 15, color: "#F9F7F2" }}>
-              Built by {FOUNDER.name} in {FOUNDER.location}.
+              D.scribe
             </span>
             <span style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 12.5, color: "#C17A47" }}>
-              Why he built D.scribe &rarr;
+              Why we built D.scribe &rarr;
             </span>
           </span>
         </Link>

@@ -27,6 +27,24 @@ export type InkOperation =
 export const INK_PER_AUDIO_MINUTE = 0.5;
 export const INK_PER_YOUTUBE_IMPORT = 2;
 
+/**
+ * Ink meter v2 (migration 027): Ink = real vendor dollars x one multiplier, with
+ * input, output and cached tokens each priced at what they cost. OFF unless
+ * INK_METER_V2=true, which is set on Preview first. With the flag off every
+ * call below takes exactly the path it took before.
+ */
+export function inkMeterV2(): boolean {
+  return process.env.INK_METER_V2 === "true";
+}
+
+/** Deepgram is ~$0.0043 per audio minute; at 91 Ink per vendor dollar that is 0.39. */
+export const INK_PER_AUDIO_MINUTE_V2 = 0.39;
+
+/** The per-minute transcription rate for whichever meter is live. */
+export function inkPerAudioMinute(): number {
+  return inkMeterV2() ? INK_PER_AUDIO_MINUTE_V2 : INK_PER_AUDIO_MINUTE;
+}
+
 // Conservative per-operation Ink floors for the PRE-flight cost check — lower
 // bounds on what an op typically costs, so a near-empty wallet can't kick off an
 // expensive call whose content streams back before the deduct settles. Real
@@ -206,7 +224,8 @@ export async function settleInkReservation(
   usage: ClaudeUsage | null,
   flatInkCost?: number
 ): Promise<number> {
-  const { data, error } = await createServerClient().rpc("settle_ink_reservation", {
+  const v2 = inkMeterV2();
+  const { data, error } = await createServerClient().rpc(v2 ? "settle_ink_reservation_v2" : "settle_ink_reservation", {
     p_reservation_id: reservationId,
     p_project_id: projectId,
     p_operation: operation,
@@ -214,6 +233,7 @@ export async function settleInkReservation(
     p_input_tokens: usage?.input_tokens ?? 0,
     p_output_tokens: usage?.output_tokens ?? 0,
     p_flat_ink_cost: flatInkCost == null ? null : Math.max(0, Number(flatInkCost.toFixed(4))),
+    ...(v2 ? { p_cache_read_tokens: usage?.cache_read_input_tokens ?? 0, p_cache_write_tokens: usage?.cache_creation_input_tokens ?? 0 } : {}),
   });
   if (error) {
     if (error.message.includes("Insufficient Ink")) throw new Error("Insufficient Ink balance");
@@ -230,7 +250,7 @@ export async function getInkBalance(userId: string) {
   // Get usage breakdown by operation for current period
   const { data: usage } = await supabase
     .from("ink_usage")
-    .select("operation, ink_cost")
+    .select("operation, ink_cost, flat_ink_cost, billed_ink")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(500);
@@ -238,7 +258,9 @@ export async function getInkBalance(userId: string) {
   const breakdown: Record<string, number> = {};
   if (usage) {
     for (const row of usage) {
-      breakdown[row.operation] = (breakdown[row.operation] || 0) + Number(row.ink_cost);
+      // v2 rows carry what was actually charged; flat vendors carry flat_ink_cost; v1 token rows the generated column.
+      const r = row as { operation: string; ink_cost: number | null; flat_ink_cost?: number | null; billed_ink?: number | null };
+      breakdown[r.operation] = (breakdown[r.operation] || 0) + Number(r.billed_ink ?? r.flat_ink_cost ?? r.ink_cost ?? 0);
     }
   }
 
@@ -264,13 +286,15 @@ export async function recordInkUsage(
 
   const modelName = model === "fast" ? "haiku" : "sonnet";
 
-  const { data, error } = await supabase.rpc("deduct_ink", {
+  const v2 = inkMeterV2();
+  const { data, error } = await supabase.rpc(v2 ? "deduct_ink_v2" : "deduct_ink", {
     p_user_id: userId,
     p_project_id: projectId,
     p_operation: operation,
     p_model: modelName,
     p_input_tokens: usage.input_tokens,
     p_output_tokens: usage.output_tokens,
+    ...(v2 ? { p_cache_read_tokens: usage.cache_read_input_tokens ?? 0, p_cache_write_tokens: usage.cache_creation_input_tokens ?? 0 } : {}),
   });
 
   if (error) {

@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { getDownloadUrl } from "@/lib/r2";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkInk, recordFlatInkUsage, INK_PER_AUDIO_MINUTE } from "@/lib/ink";
+import { checkInk, recordFlatInkUsage, inkPerAudioMinute } from "@/lib/ink";
 
 // POST /api/transcribe — transcribe an uploaded audio file
 export async function POST(req: NextRequest) {
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     // Bill the Deepgram minutes. The work is done and returned either way —
     // a billing failure is a loud log line, not a customer-facing error.
     const minutes = Math.max(1, Math.ceil((result.duration_seconds ?? 0) / 60));
-    await recordFlatInkUsage(user.id, upload.project_id, "transcribe", "deepgram", minutes * INK_PER_AUDIO_MINUTE).catch(
+    await recordFlatInkUsage(user.id, upload.project_id, "transcribe", "deepgram", minutes * inkPerAudioMinute()).catch(
       (billErr) =>
         logger.error("transcribe: Ink settle failed after successful transcription", {
           route: "/api/transcribe",

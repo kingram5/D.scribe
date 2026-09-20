@@ -6,13 +6,9 @@ import { createServerClient } from "@/lib/supabase";
 import { brainstormProfileBlock } from "@/lib/audience-profiles";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { formatResearchedSourcesBlock, rankResearchItems, type ResearchItem } from "@/lib/research-corpus";
-import { buildBriefingBlock, loadBriefingData } from "@/lib/brainstorm-briefing";
-import { THEO_SYSTEM_PROMPT, THEO_GENERIC_OPENER } from "@/lib/theo/craft";
-import { ledgerGaps } from "@/lib/theo/ingredients";
-import {
-  INIT_PING, askedQuestions, authorTurns, buildNotesBlock, callbackAllowed, computePacing,
-  landingDeclinedAt, personalNormFrom, readNotes, stripPrivateTags, wrapPrivate,
-} from "@/lib/theo/notes";
+import { loadBriefingData } from "@/lib/brainstorm-briefing";
+import { assembleTheoTurn, topicAnchor } from "@/lib/theo/assemble";
+import { INIT_PING, authorTurns, personalNormFrom, readNotes, stripPrivateTags } from "@/lib/theo/notes";
 import { sanitizeBrainstormMessages, type BrainstormMessage } from "@/lib/brainstorm-session";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -127,79 +123,32 @@ export async function POST(req: NextRequest) {
     storedMessages.length > history.length && lastTurn?.role === "user"
       ? [...storedMessages.filter((m, i) => !(i === storedMessages.length - 1 && m.role === "user" && m.content === lastTurn.content)), lastTurn]
       : history;
-  const sessionSpoken = authorTurns(session);
 
-  // TOPIC ANCHOR. The stored topic wins, then a real title. Only a project with
-  // neither falls back to the first thing the author typed, and never to a
-  // returning author's "let's pick up where we left off".
+  // Everything the model sees for this turn is assembled in one pure function
+  // (src/lib/theo/assemble.ts), shared with the evaluation rig so that what gets
+  // graded is what ships.
   const knownTitle = projectTitle && !/^untitled/i.test(projectTitle) ? projectTitle : "";
   const returning = (briefing.handoffs?.length ?? 0) > 0 || briefing.transcripts.some((t) => (t.authorLines?.length ?? 0) > 0);
-  const anchorText = projectTopic || knownTitle || (!returning && firstRealUserMsg ? firstRealUserMsg.content.slice(0, 200) : "");
-  const anchorBlock = anchorText
-    ? `\n\nTOPIC ANCHOR. This book is about: ${JSON.stringify(anchorText)}\nEvery question stays rooted in that subject. When a sub-topic surfaces, explore it as an angle within this book, then return to the broader theme.`
-    : "";
-
-  // STABLE system text: identical on every turn of a project, so it caches.
-  const stableSystem = THEO_SYSTEM_PROMPT + (audienceBlock ?? `\n\n${THEO_GENERIC_OPENER}`) + anchorBlock;
-
-  // Warm opener (Kyle's note 5): on the opening turn only, Theo greets by name
-  // and shows he already knows the project. Every fact is optional.
-  let greetingBlock = "";
-  if (!firstRealUserMsg) {
-    const rawName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
-    const firstName = rawName ? (rawName.split(/\s+/)[0] ?? "") : "";
-    const knownAudience = projectAudience && projectAudience !== "General" ? projectAudience : "";
-    const known: string[] = [];
-    if (firstName) known.push(`The author's first name is ${JSON.stringify(firstName)}. Greet them by it.`);
-    if (knownTitle) known.push(`Their working title is ${JSON.stringify(knownTitle)}. Mention it naturally.`);
-    if (knownAudience) known.push(`The book is aimed at a ${JSON.stringify(knownAudience)} audience. Acknowledge that.`);
-    const handoff = briefing.handoffs?.[0];
-    const priorAnswers = briefing.transcripts.flatMap((t) => t.authorLines ?? []).slice(0, 2);
-    if (handoff?.line || handoff?.nextQuestion) {
-      // A returning author never gets a cold restart. This greeting is the one
-      // guaranteed callback; after it, callbacks are rationed in the notes block.
-      known.push(
-        `The author has brainstormed this book before.${handoff.line ? ` Their strongest line last time: ${JSON.stringify(handoff.line.slice(0, 200))}.` : ""}${handoff.nextQuestion ? ` You left them with this question to think about: ${JSON.stringify(handoff.nextQuestion.slice(0, 200))}.` : ""} Open by quoting that line back naturally, then either ask what came to them about that question, or ask where they want to pick up. Do NOT ask what the book is about from scratch.`,
-      );
-    } else if (priorAnswers.length > 0) {
-      known.push(
-        `The author has brainstormed on this project before. Their own words last time: ${priorAnswers.map((a) => JSON.stringify(a.slice(0, 140))).join(", ")}. Open by acknowledging that, quote one of those lines naturally, and ask where they want to pick up or what has changed since. Do NOT ask what the book is about from scratch.`,
-      );
-    }
-    if (primerText) {
-      known.push(
-        `Before starting, the author shared this to read first (notes, an outline, or a passage). Read it as background. Your first question should show you read it by asking about ONE specific thing in it, and asking for the moment or the room it came from:\n${JSON.stringify(primerText)}`,
-      );
-    }
-    greetingBlock = `OPENING GREETING. This is the very first message of the session. Open warmly as Theo, in one or two sentences, before your first question: introduce yourself briefly and show you already know this project.\n${known.length ? known.join("\n") : "Nothing about the author or project is on file yet. Keep the greeting warm and generic."}\nThen ask your single opening question. Never invent a name, title, or audience that is not listed above.`;
-  }
-
-  // VOLATILE per-turn material rides at the END of the final user turn, inside
-  // private tags, so the system text and the history before it stay byte-stable
-  // and cacheable. Nothing in here is ever stored in the conversation.
-  const pacing = computePacing({ messages: session, personalNorm, landingDeclinedAtTurn: landingDeclinedAt(session) });
-  const notesBlock = firstRealUserMsg
-    ? buildNotesBlock({
-        notes,
-        pacing,
-        callbackOk: callbackAllowed(session),
-        alreadyAsked: askedQuestions(briefing.pastSessions ?? []),
-        gaps: sessionSpoken.length >= 3 ? ledgerGaps(projectAudience, notes.captured).map((g) => g.need) : [],
-      })
-    : "";
-  const digestBlock = buildBriefingBlock(briefing, spoken.slice(-2).join(" "));
-  const privateBlock = wrapPrivate([greetingBlock, notesBlock, digestBlock, researchBlock]);
-
-  // Claude messages. Only the stable system text carries a cache breakpoint: the
-  // history is a sliding window, so a breakpoint on it would pay the cache-write
-  // premium for a prefix that is never read again.
-  const lastUserIdx = history.map((m) => m.role).lastIndexOf("user");
-  const claudeMessages = history.map((m, i) => ({
-    role: m.role,
-    content: i === lastUserIdx && privateBlock
-      ? [{ type: "text" as const, text: m.content }, { type: "text" as const, text: privateBlock }]
-      : m.content,
-  }));
+  const rawName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
+  const turn = assembleTheoTurn({
+    history,
+    session,
+    audienceBlock,
+    projectAudience,
+    anchorBlock: topicAnchor(projectTopic, knownTitle, returning, firstRealUserMsg?.content ?? ""),
+    greeting: {
+      firstName: rawName ? (rawName.split(/\s+/)[0] ?? "") : "",
+      knownTitle,
+      knownAudience: projectAudience && projectAudience !== "General" ? projectAudience : "",
+      handoff: briefing.handoffs?.[0],
+      priorAnswers: briefing.transcripts.flatMap((t) => t.authorLines ?? []).slice(0, 2),
+      primerText,
+    },
+    notes,
+    personalNorm,
+    briefing,
+    researchBlock,
+  });
 
   // Abort the upstream call if the client walks away — otherwise Anthropic
   // keeps generating to completion and we pay for tokens nobody will read.
@@ -218,10 +167,8 @@ export async function POST(req: NextRequest) {
       max_tokens: 900,
       temperature: 0.7,
       stream: true,
-      // Authors pause for minutes between answers, so the 1-hour cache is the
-      // one that actually gets hit.
-      system: [{ type: "text", text: stableSystem, cache_control: { type: "ephemeral", ttl: "1h" } }],
-      messages: claudeMessages,
+      system: turn.system,
+      messages: turn.messages,
     }),
   });
 

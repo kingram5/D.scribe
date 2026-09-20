@@ -16,7 +16,7 @@ export const SCRIBE_SYSTEM = `You keep private notes for a book interviewer name
 
 Rules:
 - "keeperLines", "phrases", "premise" and both sides of each "tensions" pair must be copied EXACTLY, character for character, from something the AUTHOR said. Never paraphrase, never tidy, never combine. If you cannot copy it exactly, leave it out.
-- A keeper line is a sentence or clause that would sound odd in anyone else's mouth: a home-made image, a blunt sentence after long ones, reported speech, a line they clearly mean. 20 to 240 characters. At most 2 new ones per update, and most updates have none.
+- A keeper line is a sentence or clause that would sound odd in anyone else's mouth AND still means something lifted out of the conversation onto a page: a home-made image, a blunt truth after long sentences, something someone actually said to them, a line they clearly mean. NEVER a hedge, a logistics remark, an "I don't know", a clarification, or a sentence that only makes sense as a reply. Test: could it open a chapter or be printed as a pull-quote? 20 to 240 characters. At most 2 new ones per update, and MOST updates have none.
 - "phrases" are the author's own short images or recurring expressions (4 to 80 characters), for the interviewer to reuse.
 - "threads": short labels (under 10 words) for subjects the author opened. mined=true only if the interviewer has already gone underneath it and got a specific moment, cost, or meaning.
 - "captured": ids from the INGREDIENTS list whose test is now clearly met by something the author said. Be strict. When unsure, leave it out.
@@ -64,7 +64,7 @@ export interface SessionRecap {
 export const RECAP_SYSTEM = `You are closing out a book interview. You read the whole interview and write the author's end-of-session card. Return ONLY a JSON object, no prose, no code fences.
 
 - "captured": 3 to 5 short plain statements of what the book gained today, each under 14 words, each naming something SPECIFIC the author said (a story, a person, a number, a claim). Written to the author ("The night you drove back to the hospital"). No praise, no adjectives like powerful or moving, no em dashes.
-- "lineOfTheDay": the single best line the AUTHOR said, copied EXACTLY, character for character, 20 to 240 characters. Never paraphrase.
+- "lineOfTheDay": the single best line the AUTHOR said, copied EXACTLY, character for character, 20 to 240 characters. Never paraphrase. It must stand on its own as a pull-quote in the finished book: an image, a blunt truth, or something someone said to them. Never a hedge, a clarification or a logistics remark.
 - "openThread": under 20 words: the most promising subject the author opened that was not fully explored.
 - "teaser": one question for the author to think about before next time, about that open thread. One sentence, plain words, no em dashes.
 - "topic": under 25 words: what this book is about, in the author's own terms. Empty string if it is still unclear.

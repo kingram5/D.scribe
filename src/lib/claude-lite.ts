@@ -13,6 +13,10 @@ export type ModelTier = "fast" | "quality";
 export interface ClaudeUsage {
   input_tokens: number;
   output_tokens: number;
+  /** Prompt-cache reads, billed by Anthropic at a tenth of the input price. */
+  cache_read_input_tokens?: number;
+  /** Prompt-cache writes, billed at 1.25x (5 min) or 2x (1 h) the input price. */
+  cache_creation_input_tokens?: number;
 }
 
 // Single source of truth for tier → model. claude-stream.ts imports this —

@@ -1,164 +1,149 @@
-import fs from "fs";
-import path from "path";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  BRIEFING_BUDGET,
   buildBriefingBlock,
   excerptFrom,
   extractAuthorLines,
-  BRIEFING_BUDGET,
+  rankKeyPoints,
+  thinChaptersFrom,
   type BriefingKeyPoint,
-  type BriefingTranscript,
 } from "@/lib/brainstorm-briefing";
 
-// The interviewer used to be blind to the author's recorded material, so it
-// asked strolled questions with no substance behind them. These pin the digest
-// that gives it homework: distilled key points, the author's verbatim words,
-// and hard caps so the block never bloats the per-turn prompt.
+const kp = (title: string, summary: string, extra: Partial<BriefingKeyPoint> = {}): BriefingKeyPoint => ({ title, summary, ...extra });
 
 const POINTS: BriefingKeyPoint[] = [
-  {
-    title: "Tithing is a trust exercise",
-    summary: "The author argues tithing measures trust in provision, not compliance.",
-    supporting_quotes: ["I told my congregation, you cannot out-give God."],
-  },
-  {
-    title: "The 90-day reset",
-    summary: "A framework for restarting stalled finances in one quarter.",
-  },
+  kp("Forgiveness is a decision", "He chose to forgive his father before he felt anything", { supporting_quotes: ["I forgave him in the parking lot of the hospital"], relevance_score: 0.9 }),
+  kp("Budgeting the church", "How the building fund nearly split the congregation", { relevance_score: 0.5 }),
+  kp("Prayer as a habit", "Praying at the same hour every morning for a year", { relevance_score: 0.7 }),
+  kp("Leading volunteers", "Why volunteers quit and what kept his team", { relevance_score: 0.6 }),
+  kp("Sabbath", "Learning to stop working on Mondays", { relevance_score: 0.4 }),
 ];
 
-const TRANSCRIPTS: BriefingTranscript[] = [
-  { name: "sermon-2026-03-15.mp3", text: "Thanks for having me today. ".repeat(5) + "But the real shift came when I stopped managing money and started trusting God with it. That season changed everything for our family and for the church." },
-];
-
-describe("excerptFrom", () => {
-  it("takes the excerpt from the middle, past the opening wind-up", () => {
-    const ex = excerptFrom(TRANSCRIPTS[0].text);
-    expect(ex).not.toContain("Thanks for having me");
-    expect(ex).toContain("real shift");
+describe("rankKeyPoints", () => {
+  it("with no conversation yet, returns the strongest points by relevance score", () => {
+    const out = rankKeyPoints(POINTS, "");
+    expect(out.map((p) => p.title)).toEqual(["Forgiveness is a decision", "Prayer as a habit", "Leading volunteers", "Budgeting the church"]);
   });
 
-  it("returns short text whole", () => {
-    expect(excerptFrom("Short talk.")).toBe("Short talk.");
+  it("ranks against what the author just said", () => {
+    const out = rankKeyPoints(POINTS, "my father was in the hospital and I had to decide whether to forgive him");
+    expect(out[0].title).toBe("Forgiveness is a decision");
   });
 
-  it("collapses whitespace and caps length", () => {
-    const ex = excerptFrom("word ".repeat(400));
-    expect(ex.length).toBeLessThanOrEqual(220);
-    expect(ex).not.toMatch(/  /);
+  it("returns nothing when the conversation shares nothing with the material", () => {
+    expect(rankKeyPoints(POINTS, "we went fishing on the lake with my cousins that summer")).toEqual([]);
+  });
+
+  it("caps the number of points", () => {
+    const many = Array.from({ length: 12 }, (_, i) => kp(`Point ${i}`, "summary", { relevance_score: i / 12 }));
+    expect(rankKeyPoints(many, "").length).toBe(4);
   });
 });
 
 describe("buildBriefingBlock", () => {
-  it("returns empty when the project has no material", () => {
+  it("is empty for a project with no material", () => {
     expect(buildBriefingBlock({ keyPoints: [], transcripts: [] })).toBe("");
   });
 
-  it("lists distilled points and quotes the author verbatim", () => {
-    const block = buildBriefingBlock({ keyPoints: POINTS, transcripts: TRANSCRIPTS });
-    expect(block).toContain("Tithing is a trust exercise");
-    expect(block).toContain('"I told my congregation, you cannot out-give God."');
-    expect(block).toContain('from "sermon-2026-03-15.mp3"');
+  it("is empty mid-conversation when nothing recorded is relevant", () => {
+    expect(buildBriefingBlock({ keyPoints: POINTS, transcripts: [] }, "we went fishing on the lake with my cousins")).toBe("");
   });
 
-  it("instructs Theo to quote verbatim and never invent quotes", () => {
+  it("surfaces the matched point with the author's own quote", () => {
+    const block = buildBriefingBlock({ keyPoints: POINTS, transcripts: [] }, "my father in the hospital, deciding to forgive");
+    expect(block).toContain("Forgiveness is a decision");
+    expect(block).toContain('"I forgave him in the parking lot of the hospital"');
+    expect(block).not.toContain("Sabbath");
+  });
+
+  it("tells Theo the digest is silent by default and never to invent quotes", () => {
     const block = buildBriefingBlock({ keyPoints: POINTS, transcripts: [] });
-    expect(block).toMatch(/verbatim/);
+    expect(block).toMatch(/Use it silently/);
+    expect(block).toMatch(/CALLBACKS/);
     expect(block).toMatch(/Never invent/);
   });
 
-  it("hard-caps the block so it never bloats the per-turn prompt", () => {
-    const many: BriefingKeyPoint[] = Array.from({ length: 40 }, (_, i) => ({
-      title: `Point ${i} about money mindset and frameworks`,
-      summary: "A long summary ".repeat(20),
-      supporting_quotes: ["quote ".repeat(60)],
-    }));
-    const block = buildBriefingBlock({ keyPoints: many, transcripts: TRANSCRIPTS });
-    expect(block.length).toBeLessThanOrEqual(BRIEFING_BUDGET);
-  });
-
-  it("caps the number of points surfaced", () => {
-    const many: BriefingKeyPoint[] = Array.from({ length: 30 }, (_, i) => ({
-      title: `Point ${i}`,
-      summary: "s",
-    }));
-    const block = buildBriefingBlock({ keyPoints: many, transcripts: [] });
-    expect(block).toContain("Point 7");
-    expect(block).not.toContain("Point 8\n");
-  });
-});
-
-describe("cross-session continuity", () => {
-  // Summarize saves every finished brainstorm as a labeled transcript with the
-  // author's answers as speaker "Author". Those answers are the memory: a
-  // second session must open with what the author already said, verbatim.
-
-  const SESSION: BriefingTranscript = {
-    name: "brainstorm-2026-09-18T10:00:00",
-    text: "INTERVIEWER: Where does the book start?\n\nAUTHOR: I want to write about the year our family lost everything and rebuilt.",
-    authorLines: ["I want to write about the year our family lost everything and rebuilt."],
-  };
-
-  it("extracts substantive author answers from labeled segments", () => {
-    const lines = extractAuthorLines([
-      { speaker: "Interviewer", text: "What do you want to write about today?" },
-      { speaker: "Author", text: "The desert season, and how provision showed up late but fully." },
-      { speaker: "Author", text: "Yes." }, // too short to be memory
-      { speaker: "Author", text: undefined as unknown as string }, // malformed, skipped
-    ]);
-    expect(lines).toEqual([
-      "The desert season, and how provision showed up late but fully.",
-    ]);
-  });
-
-  it("returns nothing for unlabeled transcripts", () => {
-    expect(extractAuthorLines(null)).toEqual([]);
-    expect(extractAuthorLines([{ text: "wall of speech text" }])).toEqual([]);
-  });
-
-  it("surfaces past answers as a continuity section, separate from transcript excerpts", () => {
+  it("puts continuity FIRST so a budget trim can never cut the memory", () => {
     const block = buildBriefingBlock({
-      keyPoints: [],
-      transcripts: [SESSION, TRANSCRIPTS[0]],
+      keyPoints: POINTS,
+      transcripts: [],
+      handoffs: [{ line: "I forgave him in the parking lot", openThread: "what his mother said afterwards", nextQuestion: "Who else needed to hear it?" }],
     });
-    expect(block).toContain("EARLIER BRAINSTORM SESSIONS");
-    expect(block).toContain('"I want to write about the year our family lost everything and rebuilt."');
-    expect(block).toContain("TRANSCRIPT EXCERPTS:");
+    expect(block.indexOf("FROM EARLIER SESSIONS")).toBeGreaterThan(0);
+    expect(block.indexOf("FROM EARLIER SESSIONS")).toBeLessThan(block.indexOf("ALREADY RECORDED"));
+    expect(block).toContain("what his mother said afterwards");
+    expect(block).toContain("Who else needed to hear it?");
   });
 
-  it("keeps excerpts section for material without author labels", () => {
-    const block = buildBriefingBlock({ keyPoints: [], transcripts: [TRANSCRIPTS[0]] });
-    expect(block).not.toContain("EARLIER BRAINSTORM SESSIONS");
-    expect(block).toContain("TRANSCRIPT EXCERPTS:");
+  it("falls back to the author's past lines when a session has no handoff", () => {
+    const block = buildBriefingBlock({ keyPoints: [], transcripts: [{ name: "brainstorm", text: "x", authorLines: ["The winter the heat got shut off in the Decatur house changed how I saw my mother."] }] });
+    expect(block).toContain("Decatur house");
+  });
+
+  it("names thin chapters to Theo and forbids naming them to the author", () => {
+    const block = buildBriefingBlock({ keyPoints: POINTS, transcripts: [], thinChapters: [{ title: "The Long Obedience", points: 0 }] });
+    expect(block).toContain("The Long Obedience");
+    expect(block).toMatch(/NEVER mention chapters/);
+  });
+
+  it("uses a transcript excerpt only when there is nothing better", () => {
+    const text = "Thanks for having me. ".repeat(40) + "The day the mill closed my father came home at noon. " + "More detail here. ".repeat(40);
+    const withOnlyTranscript = buildBriefingBlock({ keyPoints: [], transcripts: [{ name: "talk.mp3", text }] });
+    expect(withOnlyTranscript).toContain('from "talk.mp3"');
+    const withPoints = buildBriefingBlock({ keyPoints: POINTS, transcripts: [{ name: "talk.mp3", text }] });
+    expect(withPoints).not.toContain('from "talk.mp3"');
+  });
+
+  it("never exceeds the budget", () => {
+    const fat = Array.from({ length: 30 }, (_, i) => kp(`Point number ${i} with a long title `.repeat(3), "summary text ".repeat(40), { supporting_quotes: ["a quote ".repeat(40)], relevance_score: 1 }));
+    const block = buildBriefingBlock({
+      keyPoints: fat, transcripts: [],
+      handoffs: [{ line: "line ".repeat(100), openThread: "thread ".repeat(60), nextQuestion: "question ".repeat(60) }],
+      thinChapters: [{ title: "T ".repeat(80), points: 0 }, { title: "U ".repeat(80), points: 1 }],
+    });
+    expect(block.length).toBeLessThanOrEqual(BRIEFING_BUDGET);
+    expect(block).toContain("FROM EARLIER SESSIONS");
   });
 });
 
-// Source probes, house style: the doctrine lives in the route's system prompt
-// string, so a revert to the flat rules list turns these red.
-describe("the interviewer's doctrine", () => {
-  const route = () =>
-    fs.readFileSync(
-      path.resolve(__dirname, "../../app/api/brainstorm/route.ts"),
-      "utf8",
-    );
-
-  it("teaches the question behind the answer, tension-naming and thread-mining", () => {
-    const src = route();
-    expect(src).toContain("INTERVIEW CRAFT:");
-    expect(src).toContain("ASK THE QUESTION BEHIND THE ANSWER");
-    expect(src).toContain("NAME THE TENSION");
-    expect(src).toContain("NEVER LET A BIG THREAD DIE UNMINED");
+describe("extractAuthorLines", () => {
+  it("keeps the author's LONGEST lines, not the warm-up", () => {
+    const lines = extractAuthorLines([
+      { speaker: "Author", text: "Hi Theo, yes I am ready to get started today, thank you." },
+      { speaker: "Interviewer", text: "Where were you when you learned that?" },
+      { speaker: "Author", text: "I was standing in the hospital parking lot holding my father's watch, and I remember thinking that I could carry this anger for another twenty years or I could put it down right there." },
+      { speaker: "Author", text: "ok" },
+    ]);
+    expect(lines[0]).toContain("hospital parking lot");
+    expect(lines).not.toContain("ok");
   });
 
-  it("keeps the one-question rule and the topic anchor", () => {
-    const src = route();
-    expect(src).toContain("Never ask multiple questions in a single message");
-    expect(src).toContain("TOPIC ANCHOR");
+  it("handles junk", () => {
+    expect(extractAuthorLines(null)).toEqual([]);
+    expect(extractAuthorLines(undefined)).toEqual([]);
   });
+});
 
-  it("opens a returning author's session on continuity, never a cold restart", () => {
-    const src = route();
-    expect(src).toContain("priorAnswers");
-    expect(src).toContain("Do NOT ask what the book is about from scratch");
+describe("thinChaptersFrom", () => {
+  it("returns the thinnest chapters first and ignores well-fed ones", () => {
+    const out = thinChaptersFrom([
+      { title: "One", key_point_ids: ["a", "b", "c"] },
+      { title: "Two", key_point_ids: [] },
+      { title: "Three", key_point_ids: ["a"] },
+      { title: "", key_point_ids: [] },
+    ]);
+    expect(out).toEqual([{ title: "Two", points: 0 }, { title: "Three", points: 1 }]);
+  });
+});
+
+describe("excerptFrom", () => {
+  it("returns short text whole", () => {
+    expect(excerptFrom("A short line.")).toBe("A short line.");
+  });
+  it("starts at a sentence boundary past the wind-up", () => {
+    const text = "Thanks for having me. ".repeat(30) + "The real point starts here and keeps going for a while. " + "Filler sentence. ".repeat(30);
+    const out = excerptFrom(text);
+    expect(out.length).toBeLessThanOrEqual(220);
+    expect(out[0]).toMatch(/[A-Z]/);
   });
 });

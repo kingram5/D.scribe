@@ -80,50 +80,51 @@ export default function StudioKeepsakes({ keeperLines, chips }: { keeperLines: s
       </span>
 
       <style>{`
-        .ds-keepsakes {
-          position: fixed; right: 20px; top: 84px; z-index: 6; width: 268px;
+        /* Doubled class on purpose: the studio stage gives every direct child
+           position: relative (globals.css), which outranked a single class and
+           dropped this rail into the page flow on top of the header. */
+        aside.ds-keepsakes.ds-keepsakes {
+          position: fixed; left: 20px; top: 150px; z-index: 6; width: 252px;
+          max-height: calc(100vh - 190px); overflow-y: auto; scrollbar-width: none;
           font-family: var(--font-manrope), sans-serif; color: rgba(249,247,242,0.82);
           pointer-events: none;
         }
+        .ds-keepsakes::-webkit-scrollbar { display: none; }
         .ds-keepsakes > * { pointer-events: auto; }
         .ds-keepsakes-pill { display: none; }
-        .ds-keepsakes-panel {
+        /* A descending stack of separate cards down the left margin, newest on top. */
+        .ds-keepsakes-panel { display: flex; flex-direction: column; gap: 10px; }
+        .ds-keepsakes-chips, .ds-keepsakes-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .ds-keepsakes-chips li, .ds-keepsakes-lines li {
           background: rgba(26,22,16,0.72); border: 1px solid rgba(249,247,242,0.10);
-          border-radius: 14px; padding: 14px 16px; backdrop-filter: blur(10px);
-          max-height: min(58vh, 520px); overflow-y: auto;
+          border-radius: 12px; padding: 11px 13px; backdrop-filter: blur(10px);
+          transition: border-color 900ms ease, background 600ms ease, color 600ms ease;
         }
-        .ds-keepsakes-chips { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-        .ds-keepsakes-chips li {
-          font-size: 11.5px; line-height: 1; padding: 6px 9px; border-radius: 999px;
-          border: 1px solid rgba(240,168,120,0.32); color: #F0A878; white-space: nowrap;
-          transition: background 600ms ease, color 600ms ease;
-        }
-        .ds-keepsakes-chips li[data-fresh="true"] { background: rgba(240,168,120,0.18); color: #FFD9BD; }
+        .ds-keepsakes-chips li { font-size: 12px; line-height: 1.35; color: #F0A878; border-color: rgba(240,168,120,0.28); }
+        .ds-keepsakes-chips li[data-fresh="true"] { background: rgba(240,168,120,0.16); color: #FFD9BD; }
         .ds-keepsakes-label {
-          margin: 12px 0 8px; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+          margin: 4px 2px 0; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
           color: rgba(249,247,242,0.45);
         }
-        .ds-keepsakes-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
         .ds-keepsakes-lines li {
           font-family: var(--font-lora), serif; font-style: italic; font-size: 13.5px; line-height: 1.5;
-          color: rgba(249,247,242,0.86); padding-left: 10px; border-left: 2px solid rgba(240,168,120,0.35);
-          transition: border-color 900ms ease, color 900ms ease;
+          color: rgba(249,247,242,0.86); border-left: 2px solid rgba(240,168,120,0.35);
         }
-        .ds-keepsakes-lines li[data-fresh="true"] { border-left-color: #F0A878; color: #FFFFFF; }
+        .ds-keepsakes-lines li[data-fresh="true"] { border-color: #F0A878; color: #FFFFFF; }
         .ds-keepsakes-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
         /* Narrow screens: a pill that opens upward from the corner, so the
            question and the composer are never covered. */
         @media (max-width: 1100px) {
-          .ds-keepsakes { right: 12px; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 132px); width: auto; max-width: min(86vw, 340px); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; }
+          aside.ds-keepsakes.ds-keepsakes { left: auto; right: 12px; top: auto; max-height: none; overflow: visible; bottom: calc(env(safe-area-inset-bottom, 0px) + 132px); width: auto; max-width: min(86vw, 340px); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; }
           .ds-keepsakes-pill {
             display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
             background: rgba(26,22,16,0.82); color: rgba(249,247,242,0.82);
             border: 1px solid rgba(249,247,242,0.16); border-radius: 999px; padding: 8px 12px;
             font-size: 12px; font-family: inherit; backdrop-filter: blur(10px);
           }
-          .ds-keepsakes-panel { display: none; width: min(86vw, 340px); max-height: 46vh; }
-          .ds-keepsakes.is-open .ds-keepsakes-panel { display: block; }
+          .ds-keepsakes-panel { display: none; width: min(86vw, 340px); max-height: 46vh; overflow-y: auto; }
+          .ds-keepsakes.is-open .ds-keepsakes-panel { display: flex; }
           .ds-keepsakes-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(240,168,120,0.55); transition: background 600ms ease, box-shadow 600ms ease; }
           .ds-keepsakes-dot[data-fresh="true"] { background: #F0A878; box-shadow: 0 0 0 5px rgba(240,168,120,0.18); }
           .ds-keepsakes-caret { opacity: 0.6; }

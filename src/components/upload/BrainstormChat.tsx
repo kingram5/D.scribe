@@ -493,9 +493,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
      misses soft speech, and "quiet" was then declared mid-sentence; new words
      arriving are proof the author is still talking. */
   const lastLiveWordAtRef = useRef(0);
-  /* Live transcript held back as the fallback while the recorded clip gets the
-     more accurate full transcription. */
-  const liveFallbackRef = useRef("");
+  /* The live text that was just sent. Its recorded clip is refined in the
+     background; see transcribeSegment. */
+  const liveSentRef = useRef("");
+  /* live guess -> refined text, applied to the saved interview between turns. */
+  const refinedAnswersRef = useRef<Map<string, string>>(new Map());
+  const [refineTick, setRefineTick] = useState(0);
   const sttHintRef = useRef<{ audience: string | null; title: string | null }>({ audience: null, title: null });
   const gateOpenedAtRef = useRef(0);
   const trackMutedAtRef = useRef(0);
@@ -1003,7 +1006,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         };
         if (data.type !== "Results") return;
         const text = (data.channel?.alternatives?.[0]?.transcript ?? "").trim();
-        if (text) lastLiveWordAtRef.current = performance.now();
+        if (text) lastLiveWordAtRef.current = Date.now();
         if (data.is_final) {
           if (text) liveFinalRef.current += (liveFinalRef.current ? " " : "") + text;
           liveInterimRef.current = "";
@@ -1040,43 +1043,50 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
    *  the session armed (the next answer can still work); only a dead sign-in
    *  disarms, because it will fail identically forever. */
   const transcribeSegment = useCallback(async (blob: Blob) => {
+    // REFINE mode: the live words were already sent the instant the author went
+    // quiet, so nothing here may touch the composer, the gate or the error line.
+    // The clip gets the slower full-context transcription in the background and
+    // the cleaner text quietly replaces the live guess in the saved interview,
+    // which is what the book is written from. Zero added wait for the author.
+    const sentLive = liveSentRef.current;
+    liveSentRef.current = "";
+    const hint = sttHintRef.current;
+    const qs = new URLSearchParams();
+    if (hint.audience) qs.set("audience", hint.audience);
+    if (hint.title) qs.set("title", hint.title);
+    const sttUrl = `/api/brainstorm/stt?${qs.toString()}`;
+    if (sentLive) {
+      if (blob.size < 2000 || blob.size > MAX_CLIP_UPLOAD_BYTES) return;
+      try {
+        const res = await fetch(sttUrl, { method: "POST", headers: { "Content-Type": blob.type || "audio/mp4" }, body: blob });
+        if (!res.ok) return;
+        const payload = await res.json() as { transcript?: unknown };
+        const refined = typeof payload.transcript === "string" ? payload.transcript.trim() : "";
+        // A much shorter result means the clip lost audio; keep the live text.
+        if (!refined || refined === sentLive || refined.length < sentLive.length * 0.6) return;
+        refinedAnswersRef.current.set(sentLive, refined);
+        setRefineTick((n) => n + 1);
+      } catch { /* the live text stands */ }
+      return;
+    }
     try {
       if (!handsFreeRef.current || !pageVisibleRef.current) return;
       // Below ~2 KB there is no speech in any allowed container — a stray
       // click or a zero-length iOS flush. Skip the round trip.
-      const fallback = liveFallbackRef.current;
-      liveFallbackRef.current = "";
-      const sendFallback = () => {
-        if (!fallback || typedRef.current) return false;
-        setInput(fallback);
-        autoSendRef.current?.(fallback);
-        return true;
-      };
-      if (blob.size < 2000) { sendFallback(); return; }
-      if (blob.size > MAX_CLIP_UPLOAD_BYTES && sendFallback()) return;
-      const hint = sttHintRef.current;
-      const qs = new URLSearchParams();
-      if (hint.audience) qs.set("audience", hint.audience);
-      if (hint.title) qs.set("title", hint.title);
-      let res: Response;
-      try {
-        res = await fetch(`/api/brainstorm/stt?${qs.toString()}`, {
-          method: "POST",
-          headers: { "Content-Type": blob.type || "audio/mp4" },
-          body: blob,
-        });
-      } catch (networkError) {
-        if (sendFallback()) return;
-        throw networkError;
-      }
-      if (!res.ok && sendFallback()) return;
+      if (blob.size < 2000) return;
+      const res = await fetch(sttUrl, {
+        method: "POST",
+        headers: { "Content-Type": blob.type || "audio/mp4" },
+        body: blob,
+      });
       if (!res.ok) throw new Error(await sttErrorMessage(res));
       const payload = await res.json() as { transcript?: unknown };
       const transcript = typeof payload.transcript === "string" ? payload.transcript.trim() : "";
       if (!handsFreeRef.current || !pageVisibleRef.current) return;
+      // Never clobber what the user typed. Typing is the natural recovery when
+      // dictation misfires; their answer wins over the returning transcript.
       if (typedRef.current) return;
       if (!transcript) {
-        if (sendFallback()) return;
         setSendError("The microphone heard sound but no words came through. Try again, a little closer to the phone — or type your answer.");
         return;
       }
@@ -1116,6 +1126,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       }
     } catch { /* already stopped */ }
     if (!stopped && mode === "send") {
+      liveSentRef.current = "";
       transcribingRef.current = false;
       setTranscribing(false);
     }
@@ -1347,22 +1358,25 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           // Deepgram has long since finalized them — send without a round trip.
           const transcript = [liveFinalRef.current, liveInterimRef.current]
             .filter(Boolean).join(" ").trim();
-          // The live words are a fast first guess. The recorded clip gets the
-          // full-context transcription, which is noticeably more accurate, and
-          // the live text stands by as the fallback if that fails or is too big.
           closeLiveSocket();
           if (typedRef.current) {
             endSegment("discard"); // Typed answer wins; the user sends it themselves.
+          } else if (!transcript) {
+            endSegment("discard");
+            setSendError("The microphone heard sound but no words came through. Try again, a little closer to the phone — or type your answer.");
           } else {
-            liveFallbackRef.current = transcript;
-            transcribingRef.current = true;
-            setTranscribing(true);
+            // Send the live words NOW. Latency between the author and T.H.E.O.
+            // is the product; the clip is refined in the background instead.
+            liveSentRef.current = transcript;
             endSegment("send");
+            setInput(transcript);
+            autoSendRef.current?.(transcript);
           }
         } else {
           // Clip fallback (socket failed or never opened): exactly the proven
           // path. Close the gate BEFORE the async onstop→fetch chain so no new
           // segment opens mid-round-trip; transcribeSegment always clears this.
+          liveSentRef.current = ""; // this clip IS the answer, never a background refine
           transcribingRef.current = true;
           setTranscribing(true);
           closeLiveSocket();
@@ -1634,6 +1648,22 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // `textOverride` is the hands-free path: a Deepgram transcript lands in the
   // composer and sends in the same breath, without waiting a render for the
   // `input` state (and this closure) to catch up.
+  useEffect(() => {
+    if (streaming || refinedAnswersRef.current.size === 0) return;
+    const fixes = refinedAnswersRef.current;
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((m) => {
+        const better = m.role === "user" ? fixes.get(m.content) : undefined;
+        if (!better) return m;
+        changed = true;
+        return { ...m, content: better };
+      });
+      return changed ? next : prev;
+    });
+    refinedAnswersRef.current = new Map();
+  }, [streaming, refineTick]);
+
   const sendMessage = useCallback(async (textOverride?: string) => {
     const text = (typeof textOverride === "string" ? textOverride : input).trim();
     if (!text || streaming) return;

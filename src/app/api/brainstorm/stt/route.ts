@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { transcribeUtterance } from "@/lib/deepgram";
+import { sttKeyterms } from "@/lib/stt-keyterms";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -54,7 +55,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const transcript = await transcribeUtterance(audio, contentType);
+    // Audience and title arrive as plain query hints; they only pick a word list.
+    const q = req.nextUrl.searchParams;
+    const keyterms = sttKeyterms(q.get("audience")?.slice(0, 60), q.get("title")?.slice(0, 120));
+    const transcript = await transcribeUtterance(audio, contentType, keyterms);
     // An empty transcript is a valid outcome (breath, rustle, a cough). The
     // client owns the user-facing explanation; this route reports honestly.
     return NextResponse.json({ transcript });

@@ -97,7 +97,8 @@ export async function transcribeAudio(
  */
 export async function transcribeUtterance(
   audioBuffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  keyterms: string[] = []
 ): Promise<string> {
   const dg = await getClient();
 
@@ -110,6 +111,8 @@ export async function transcribeUtterance(
       // Same retention opt-out as full transcription: brainstorm answers are
       // the most personal audio in the product.
       mip_opt_out: true,
+      // Vocabulary hints (book of the Bible, the author's field, title words).
+      ...(keyterms.length > 0 ? { keyterm: keyterms } : {}),
     }
   );
 

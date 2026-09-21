@@ -82,7 +82,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     // short-lived server-minted token — never the real key in the browser.
     expect(src).toMatch(/wss:\/\/api\.deepgram\.com\/v1\/listen/);
     expect(src).toMatch(/interim_results=true/);
-    expect(src).toMatch(/new WebSocket\(LIVE_STT_URL, \["bearer", token\]\)/);
+    expect(src).toMatch(/new WebSocket\(LIVE_STT_URL \+ sttKeytermQuery\([^)]*\), \["bearer", token\]\)/);
     expect(src).not.toMatch(/DEEPGRAM_API_KEY/);
     // Words spoken during the handshake are queued, not lost.
     expect(src).toMatch(/pcmQueueRef\.current;[\s\S]{0,80}?queue\.push\(chunk\)/);
@@ -107,7 +107,7 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     expect(route).toMatch(/checkRateLimit\(user\.id, "brainstorm-stt"/);
     expect(route).toMatch(/contentType\.startsWith\("audio\/"\)/);
     expect(route).toMatch(/MAX_AUDIO_BYTES/);
-    expect(route).toMatch(/transcribeUtterance\(audio, contentType\)/);
+    expect(route).toMatch(/transcribeUtterance\(audio, contentType, keyterms\)/);
     const dg = read("lib/deepgram.ts");
     expect(dg).toMatch(/export async function transcribeUtterance/);
     expect(dg).toMatch(/mip_opt_out: true/);
@@ -127,7 +127,10 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     // Kyle's 3s quiet-send is a hard product requirement; the constant is the
     // single authority and the meter loop is its only consumer.
     expect(src).toMatch(/const QUIET_SEND_MS = 3000/);
-    expect(src).toMatch(/now - lastVoiceAtRef\.current >= QUIET_SEND_MS/);
+    // Quiet needs BOTH the meter and the live transcript silent for the same 3 seconds.
+    expect(src).toMatch(/Math\.max\(lastVoiceAtRef\.current, lastLiveWordAtRef\.current\)/);
+    expect(src).toMatch(/now - lastSignOfSpeech >= QUIET_SEND_MS/);
+    expect(src).toMatch(/const QUIET_SEND_MS = 3000;/);
     // Transcript lands in the composer, then auto-sends without a second tap.
     expect(src).toMatch(/setInput\(transcript\)/);
     expect(src).toMatch(/autoSendRef\.current\?\.\(transcript\)/);

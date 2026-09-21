@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { sttKeytermQuery } from "@/lib/stt-keyterms";
 import StudioKeepsakes, { type StudioChip } from "@/components/upload/StudioKeepsakes";
 import SessionRecapCard, { type SessionRecapData } from "@/components/upload/SessionRecapCard";
 import { createPortal } from "react-dom";
@@ -55,8 +56,13 @@ const GATE_REARM_DELAY_MS = 350;
 /* A segment that has heard no speech yet restarts, so an author thinking in
    silence never accumulates a huge upload of nothing. */
 const IDLE_SEGMENT_RESET_MS = 20_000;
-/* Safety bound on one spoken answer; matches the server's size expectations. */
-const MAX_SEGMENT_MS = 180_000;
+/* Safety bound on one spoken answer. Was 3 minutes, which cut storytellers off
+   mid-thought; the live transcript carries long answers, so the clip size no
+   longer bounds this. */
+const MAX_SEGMENT_MS = 600_000;
+/* Uploads above this skip clip transcription (the host rejects large request
+   bodies) and the live transcript is used instead. */
+const MAX_CLIP_UPLOAD_BYTES = 4_000_000;
 /* iOS can hand the mic back muted for a beat after playback ends. Only after
    this grace period is a muted track treated as a real failure. */
 const MUTED_MIC_GRACE_MS = 1500;
@@ -483,6 +489,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const segmentHasSpeechRef = useRef(false);
   const segmentStartedAtRef = useRef(0);
   const lastVoiceAtRef = useRef(0);
+  /* Last moment the live transcript produced a word. The volume meter alone
+     misses soft speech, and "quiet" was then declared mid-sentence; new words
+     arriving are proof the author is still talking. */
+  const lastLiveWordAtRef = useRef(0);
+  /* Live transcript held back as the fallback while the recorded clip gets the
+     more accurate full transcription. */
+  const liveFallbackRef = useRef("");
+  const sttHintRef = useRef<{ audience: string | null; title: string | null }>({ audience: null, title: null });
   const gateOpenedAtRef = useRef(0);
   const trackMutedAtRef = useRef(0);
   const micReacquireTriedRef = useRef(false);
@@ -569,7 +583,11 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     let cancelled = false;
     fetch(`/api/project/${projectId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((p) => { if (!cancelled && p?.audience) setAudience(p.audience); })
+      .then((p) => {
+        if (cancelled || !p) return;
+        if (p.audience) setAudience(p.audience);
+        sttHintRef.current = { audience: p.audience ?? null, title: typeof p.title === "string" ? p.title : null };
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [projectId]);
@@ -955,7 +973,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     try {
       // Browsers cannot set an Authorization header on a WebSocket; Deepgram
       // accepts the token as a subprotocol pair instead.
-      socket = new WebSocket(LIVE_STT_URL, ["bearer", token]);
+      socket = new WebSocket(LIVE_STT_URL + sttKeytermQuery(sttHintRef.current.audience, sttHintRef.current.title), ["bearer", token]);
     } catch (error) {
       liveStateRef.current = "failed";
       noteLiveIssue(`this browser rejected the live connection${error instanceof Error && error.message ? ` (${error.message})` : ""}.`);
@@ -985,6 +1003,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         };
         if (data.type !== "Results") return;
         const text = (data.channel?.alternatives?.[0]?.transcript ?? "").trim();
+        if (text) lastLiveWordAtRef.current = performance.now();
         if (data.is_final) {
           if (text) liveFinalRef.current += (liveFinalRef.current ? " " : "") + text;
           liveInterimRef.current = "";
@@ -1025,20 +1044,39 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       if (!handsFreeRef.current || !pageVisibleRef.current) return;
       // Below ~2 KB there is no speech in any allowed container — a stray
       // click or a zero-length iOS flush. Skip the round trip.
-      if (blob.size < 2000) return;
-      const res = await fetch("/api/brainstorm/stt", {
-        method: "POST",
-        headers: { "Content-Type": blob.type || "audio/mp4" },
-        body: blob,
-      });
+      const fallback = liveFallbackRef.current;
+      liveFallbackRef.current = "";
+      const sendFallback = () => {
+        if (!fallback || typedRef.current) return false;
+        setInput(fallback);
+        autoSendRef.current?.(fallback);
+        return true;
+      };
+      if (blob.size < 2000) { sendFallback(); return; }
+      if (blob.size > MAX_CLIP_UPLOAD_BYTES && sendFallback()) return;
+      const hint = sttHintRef.current;
+      const qs = new URLSearchParams();
+      if (hint.audience) qs.set("audience", hint.audience);
+      if (hint.title) qs.set("title", hint.title);
+      let res: Response;
+      try {
+        res = await fetch(`/api/brainstorm/stt?${qs.toString()}`, {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "audio/mp4" },
+          body: blob,
+        });
+      } catch (networkError) {
+        if (sendFallback()) return;
+        throw networkError;
+      }
+      if (!res.ok && sendFallback()) return;
       if (!res.ok) throw new Error(await sttErrorMessage(res));
       const payload = await res.json() as { transcript?: unknown };
       const transcript = typeof payload.transcript === "string" ? payload.transcript.trim() : "";
       if (!handsFreeRef.current || !pageVisibleRef.current) return;
-      // Never clobber what the user typed. Typing is the natural recovery when
-      // dictation misfires; their answer wins over the returning transcript.
       if (typedRef.current) return;
       if (!transcript) {
+        if (sendFallback()) return;
         setSendError("The microphone heard sound but no words came through. Try again, a little closer to the phone — or type your answer.");
         return;
       }
@@ -1298,7 +1336,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
 
     if (segmentHasSpeechRef.current) {
-      if (now - lastVoiceAtRef.current >= QUIET_SEND_MS || now - segmentStartedAtRef.current >= MAX_SEGMENT_MS) {
+      // Quiet means no voice on the meter AND no new words from the live
+      // transcript for the full window. Same 3 seconds; harder to trip by accident.
+      const lastSignOfSpeech = Math.max(lastVoiceAtRef.current, lastLiveWordAtRef.current);
+      if (now - lastSignOfSpeech >= QUIET_SEND_MS || now - segmentStartedAtRef.current >= MAX_SEGMENT_MS) {
         listeningRef.current = false;
         setListening(false);
         if (liveStateRef.current === "open") {
@@ -1306,15 +1347,17 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           // Deepgram has long since finalized them — send without a round trip.
           const transcript = [liveFinalRef.current, liveInterimRef.current]
             .filter(Boolean).join(" ").trim();
-          endSegment("discard"); // the clip is redundant; the live text is the answer
+          // The live words are a fast first guess. The recorded clip gets the
+          // full-context transcription, which is noticeably more accurate, and
+          // the live text stands by as the fallback if that fails or is too big.
           closeLiveSocket();
           if (typedRef.current) {
-            // Typed answer wins; the user sends it themselves.
-          } else if (!transcript) {
-            setSendError("The microphone heard sound but no words came through. Try again, a little closer to the phone — or type your answer.");
+            endSegment("discard"); // Typed answer wins; the user sends it themselves.
           } else {
-            setInput(transcript);
-            autoSendRef.current?.(transcript);
+            liveFallbackRef.current = transcript;
+            transcribingRef.current = true;
+            setTranscribing(true);
+            endSegment("send");
           }
         } else {
           // Clip fallback (socket failed or never opened): exactly the proven

@@ -4,7 +4,6 @@ import { memo, useState, useRef, useCallback } from "react";
 import type { KeyPoint } from "@/types";
 import type { NoteColor } from "./layout";
 import { OutlineDragHandle } from "./OutlineDragHandle";
-import { MobileEditSheet } from "./MobileEditSheet";
 
 interface KeyPointNoteProps {
   keyPoint: KeyPoint;
@@ -30,15 +29,33 @@ function KeyPointNoteComponent({
   onDelete,
 }: KeyPointNoteProps) {
   const [hovered, setHovered] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
+    setEditing(false);
     if (titleRef.current) {
       const val = titleRef.current.textContent || "";
       if (val !== keyPoint.title) onEdit("title", val);
     }
   }, [keyPoint.title, onEdit]);
+
+  // Phone (Kyle 2026-09-21): a plain tap anywhere on the note edits it in place; the drag
+  // handle moves it. Taps on the handle or the delete button are left alone.
+  const handleCardTap = useCallback((e: React.MouseEvent) => {
+    if (!isMobile) return;
+    const t = e.target as HTMLElement;
+    if (t.closest("button") || t.closest(".ds-outline-drag-handle")) return;
+    const el = titleRef.current;
+    if (!el || document.activeElement === el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, [isMobile]);
 
   // Slightly darker shade for the corner fold
   const foldColor = color === "#fdf5c9" ? "#f0e8a0"
@@ -55,11 +72,12 @@ function KeyPointNoteComponent({
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={handleCardTap}
       style={{
         width: 280,
         minHeight: 56,
         background: color,
-        border: `2px solid ${borderColor}`,
+        border: `2px solid ${editing ? "rgba(0,0,0,0.45)" : borderColor}`,
         borderRadius: 3,
         padding: isMobile ? "12px 12px 12px 38px" : "12px 12px 12px 14px",
         cursor: isDragging ? "grabbing" : "grab",
@@ -146,58 +164,28 @@ function KeyPointNoteComponent({
         }}>
           &#x2022;
         </span>
-        {isMobile ? (
-          // Phone: a tap opens the edit sheet. In-place contentEditable gave no cue and
-          // iOS would not reliably focus it (Kyle 2026-09-21).
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setSheetOpen(true); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            aria-label="Edit key point"
-            style={{
-              flex: 1,
-              minHeight: 44,
-              textAlign: "left",
-              fontFamily: "inherit",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "rgba(0,0,0,0.7)",
-              lineHeight: 1.4,
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              display: "flex",
-              gap: 6,
-              alignItems: "flex-start",
-              wordBreak: "break-word",
-            }}
-          >
-            <span style={{ flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}>
-              {keyPoint.title || "New Key Point"}
-            </span>
-            <span aria-hidden="true" style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", flexShrink: 0, marginTop: 1 }}>✎</span>
-          </button>
-        ) : (
         <div
           ref={titleRef}
           contentEditable
           suppressContentEditableWarning
+          onFocus={() => setEditing(true)}
           onBlur={handleTitleBlur}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } }}
           style={{
-            fontSize: 13,
+            flex: 1,
+            fontSize: isMobile ? 16 : 13, // 16px keeps iOS from zooming the page when the text gets focus
             fontWeight: 600,
             color: "rgba(0,0,0,0.7)",
             lineHeight: 1.4,
             outline: "none",
             cursor: "text",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: "vertical",
+            // While editing, show the whole text instead of the 4-line clamp.
+            overflow: editing ? "visible" : "hidden",
+            display: editing ? "block" : "-webkit-box",
+            WebkitLineClamp: editing ? undefined : 4,
+            WebkitBoxOrient: editing ? undefined : "vertical",
             wordBreak: "break-word",
             WebkitUserSelect: "text",
             userSelect: "text",
@@ -205,18 +193,10 @@ function KeyPointNoteComponent({
         >
           {keyPoint.title || "New Key Point"}
         </div>
+        {isMobile && !editing && (
+          <span aria-hidden="true" style={{ fontSize: 12, color: "rgba(0,0,0,0.3)", flexShrink: 0, marginTop: 2 }}>✎</span>
         )}
       </div>
-      {isMobile && (
-        <MobileEditSheet
-          open={sheetOpen}
-          label="Key point"
-          value={keyPoint.title || ""}
-          placeholder="New Key Point"
-          onSave={(v) => { if (v !== keyPoint.title) onEdit("title", v); }}
-          onClose={() => setSheetOpen(false)}
-        />
-      )}
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { memo, useState, useRef, useCallback } from "react";
 import type { Chapter } from "@/types";
 import type { NoteColor } from "./layout";
 import { OutlineDragHandle } from "./OutlineDragHandle";
-import { MobileEditSheet } from "./MobileEditSheet";
 
 interface ChapterNoteProps {
   chapter: Chapter;
@@ -43,15 +42,33 @@ function ChapterNoteComponent({
   onAddKeyPoint,
 }: ChapterNoteProps) {
   const [hovered, setHovered] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
+    setEditing(false);
     if (titleRef.current) {
       const val = titleRef.current.textContent || "";
       if (val !== chapter.title) onEdit("title", val);
     }
   }, [chapter.title, onEdit]);
+
+  // Phone (Kyle 2026-09-21): a plain tap anywhere on the note edits the title in place;
+  // the drag handle moves it. Taps on the handle, delete, or "+ key point" are left alone.
+  const handleCardTap = useCallback((e: React.MouseEvent) => {
+    if (!isMobile) return;
+    const t = e.target as HTMLElement;
+    if (t.closest("button") || t.closest(".ds-outline-drag-handle")) return;
+    const el = titleRef.current;
+    if (!el || document.activeElement === el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, [isMobile]);
 
   const borderColor = getBorderColor(color);
 
@@ -59,10 +76,11 @@ function ChapterNoteComponent({
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={handleCardTap}
       style={{
         width: 320,
         background: color,
-        border: `3px solid ${borderColor}`,
+        border: `3px solid ${editing ? "rgba(0,0,0,0.45)" : borderColor}`,
         borderRadius: 4,
         padding: isMobile ? "20px 18px 14px 44px" : "20px 18px 14px",
         cursor: isDragging ? "grabbing" : "grab",
@@ -140,40 +158,11 @@ function ChapterNoteComponent({
       </div>
 
       {/* Editable title */}
-      {isMobile ? (
-        // Phone: a tap opens the edit sheet (Kyle 2026-09-21: no way to edit on mobile).
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setSheetOpen(true); }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          aria-label="Edit chapter title"
-          style={{
-            width: "100%",
-            minHeight: 44,
-            textAlign: "left",
-            fontFamily: "inherit",
-            fontSize: 18,
-            fontWeight: 700,
-            color: "rgba(0,0,0,0.8)",
-            lineHeight: 1.3,
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-start",
-            wordBreak: "break-word",
-          }}
-        >
-          <span style={{ flex: 1 }}>{chapter.title || "Untitled"}</span>
-          <span aria-hidden="true" style={{ fontSize: 14, color: "rgba(0,0,0,0.35)", flexShrink: 0, marginTop: 3 }}>✎</span>
-        </button>
-      ) : (
       <div
         ref={titleRef}
         contentEditable
         suppressContentEditableWarning
+        onFocus={() => setEditing(true)}
         onBlur={handleTitleBlur}
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
@@ -192,17 +181,6 @@ function ChapterNoteComponent({
       >
         {chapter.title || "Untitled"}
       </div>
-      )}
-      {isMobile && (
-        <MobileEditSheet
-          open={sheetOpen}
-          label={`Chapter ${chapter.chapter_number} title`}
-          value={chapter.title || ""}
-          placeholder="Untitled"
-          onSave={(v) => { if (v !== chapter.title) onEdit("title", v); }}
-          onClose={() => setSheetOpen(false)}
-        />
-      )}
 
       {/* Footer: key point count + add button */}
       <div style={{

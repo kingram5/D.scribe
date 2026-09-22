@@ -916,7 +916,7 @@ const BOOKSHELF_CSS = `
 .bs-ghost-book:hover { background: rgba(193,122,71,0.14); transform: translateY(-6px); }
 .bs-ghost-plus { font-size: 36px; line-height: 1; color: var(--bs-copper); }
 .bs-ghost-title { font-family: var(--font-playfair), serif; font-style: italic; font-size: 20px; }
-.bs-ghost-sub { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bs-ink-soft); }
+.bs-ghost-sub { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bs-ink-soft); text-align: center; padding: 0 12px; } /* Kyle 2026-09-21: wraps to two lines on a phone, keep both centered */
 .bs-book-ghost { animation: bs-pop 600ms var(--bs-spring) both; animation-delay: calc(var(--i, 0) * 80ms); }
 .bs-cover-ghost { background: linear-gradient(160deg, rgba(249,247,242,0.10), rgba(249,247,242,0.04)); border: 1px dashed rgba(249,247,242,0.25); box-shadow: none; overflow: hidden; }
 .bs-cover-ghost::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,214,150,0.14) 50%, transparent 70%); animation: bs-shimmer 1.8s ease-in-out infinite; }
@@ -1003,6 +1003,8 @@ const BOOKSHELF_CSS = `
   .bs-pad .bs-pad-tip, .bs-pad:first-child .bs-pad-tip, .bs-pad:last-child .bs-pad-tip { left: 0; right: 0; width: auto; transform: translateY(6px) scale(0.98); }
   .bs-pad.is-open .bs-pad-tip, .bs-pad:first-child.is-open .bs-pad-tip, .bs-pad:last-child.is-open .bs-pad-tip { transform: translateY(0) scale(1); }
   .bs-pad .bs-pad-tip::before { left: 50%; right: auto; }
+  /* Kyle 2026-09-21: on the 2-column phone grid the 7th pad (Export) sat alone in the left column; center it. */
+  .bs-pad:nth-child(7) { grid-column: 1 / -1; width: calc(50% - 5px); justify-self: center; }
 }
 .bs-pads-note { grid-column: 1 / -1; text-align: center; font-family: var(--font-lora), serif; font-style: italic; font-size: 12.5px; color: var(--bs-ink-dim); margin: 14px 0 0; }
 

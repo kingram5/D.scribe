@@ -32,12 +32,31 @@ interface AnalysisData {
   voice_profile: VoiceProfile | null;
 }
 
+// The model returns voice-profile fields as either a string or a string[], and stored rows carry
+// both shapes, so the declared VoiceProfile type does not describe the data. Read every field
+// through these two helpers. Kyle 2026-09-21: opening Voice Profile crashed the whole page with
+// "signature_phrases.map is not a function" on a profile whose fields came back as prose.
+// Follow-up worth doing separately: normalise on write in /api/analyze/voice-profile.
+function asList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  // Split on semicolons, pipes and newlines only. Items routinely contain commas
+  // ("like I said" (appears 2 times, signals circling back)), so commas are not separators.
+  if (typeof value === "string") return value.split(/\s*[;|]\s*|\s*\n\s*/).map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
+function asText(value: unknown): string {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String).join(", ");
+  if (value == null) return "";
+  return String(value);
+}
+
 // Map a real voice profile to the 3 display traits shown during analysis.
 function deriveTraits(vp: VoiceProfile | null): string[] {
   if (!vp) return [];
   return [
-    vp.tone,
-    vp.vocabulary_level ? `${vp.vocabulary_level} vocabulary` : null,
+    asText(vp.tone) || null,
+    vp.vocabulary_level ? `${asText(vp.vocabulary_level)} vocabulary` : null,
     vp.formality_score != null ? `Formality ${vp.formality_score}/5` : null,
   ].filter(Boolean) as string[];
 }
@@ -626,7 +645,7 @@ export default function AnalysisPage() {
                 color: "#2C2419",
                 maxWidth: 640,
               }}>
-                {data.voice_profile.verdict}
+                {asText(data.voice_profile.verdict)}
               </p>
             )}
             {data?.voice_profile ? (
@@ -636,7 +655,7 @@ export default function AnalysisPage() {
                     Tone
                   </label>
                   <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
-                    {data.voice_profile.tone}
+                    {asText(data.voice_profile.tone)}
                   </p>
                 </div>
                 <div>
@@ -644,7 +663,7 @@ export default function AnalysisPage() {
                     Vocabulary Level
                   </label>
                   <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
-                    {data.voice_profile.vocabulary_level}
+                    {asText(data.voice_profile.vocabulary_level)}
                   </p>
                 </div>
                 <div>
@@ -652,16 +671,16 @@ export default function AnalysisPage() {
                     Formality
                   </label>
                   <p style={{ fontSize: 14, color: "#191816", marginTop: 4 }}>
-                    {data.voice_profile.formality_score}/5
+                    {asText(data.voice_profile.formality_score)}/5
                   </p>
                 </div>
-                {data.voice_profile.signature_phrases && (
+                {asList(data.voice_profile.signature_phrases).length > 0 && (
                   <div>
                     <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#a0978a", letterSpacing: "0.08em" }}>
                       Signature Phrases
                     </label>
                     <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {data.voice_profile.signature_phrases.map((p, i) => (
+                      {asList(data.voice_profile.signature_phrases).map((p, i) => (
                         <span key={i} style={{
                           fontSize: 12,
                           padding: "2px 8px",
@@ -675,13 +694,13 @@ export default function AnalysisPage() {
                     </div>
                   </div>
                 )}
-                {data.voice_profile.avoid && data.voice_profile.avoid.length > 0 && (
+                {asList(data.voice_profile.avoid).length > 0 && (
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "#B3352C", letterSpacing: "0.08em" }}>
                       Never in this voice
                     </label>
                     <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {data.voice_profile.avoid.map((a, i) => (
+                      {asList(data.voice_profile.avoid).map((a, i) => (
                         <span key={i} style={{
                           fontSize: 12,
                           padding: "2px 8px",

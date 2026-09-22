@@ -4,6 +4,7 @@ import { memo, useState, useRef, useCallback } from "react";
 import type { KeyPoint } from "@/types";
 import type { NoteColor } from "./layout";
 import { OutlineDragHandle } from "./OutlineDragHandle";
+import { MobileEditSheet } from "./MobileEditSheet";
 
 interface KeyPointNoteProps {
   keyPoint: KeyPoint;
@@ -29,6 +30,7 @@ function KeyPointNoteComponent({
   onDelete,
 }: KeyPointNoteProps) {
   const [hovered, setHovered] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
@@ -144,6 +146,39 @@ function KeyPointNoteComponent({
         }}>
           &#x2022;
         </span>
+        {isMobile ? (
+          // Phone: a tap opens the edit sheet. In-place contentEditable gave no cue and
+          // iOS would not reliably focus it (Kyle 2026-09-21).
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setSheetOpen(true); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            aria-label="Edit key point"
+            style={{
+              flex: 1,
+              minHeight: 44,
+              textAlign: "left",
+              fontFamily: "inherit",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "rgba(0,0,0,0.7)",
+              lineHeight: 1.4,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              display: "flex",
+              gap: 6,
+              alignItems: "flex-start",
+              wordBreak: "break-word",
+            }}
+          >
+            <span style={{ flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}>
+              {keyPoint.title || "New Key Point"}
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", flexShrink: 0, marginTop: 1 }}>✎</span>
+          </button>
+        ) : (
         <div
           ref={titleRef}
           contentEditable
@@ -170,7 +205,18 @@ function KeyPointNoteComponent({
         >
           {keyPoint.title || "New Key Point"}
         </div>
+        )}
       </div>
+      {isMobile && (
+        <MobileEditSheet
+          open={sheetOpen}
+          label="Key point"
+          value={keyPoint.title || ""}
+          placeholder="New Key Point"
+          onSave={(v) => { if (v !== keyPoint.title) onEdit("title", v); }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
     </div>
   );
 }

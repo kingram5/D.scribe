@@ -4,6 +4,7 @@ import { memo, useState, useRef, useCallback } from "react";
 import type { Chapter } from "@/types";
 import type { NoteColor } from "./layout";
 import { OutlineDragHandle } from "./OutlineDragHandle";
+import { MobileEditSheet } from "./MobileEditSheet";
 
 interface ChapterNoteProps {
   chapter: Chapter;
@@ -42,6 +43,7 @@ function ChapterNoteComponent({
   onAddKeyPoint,
 }: ChapterNoteProps) {
   const [hovered, setHovered] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const titleRef = useRef<HTMLDivElement>(null);
 
   const handleTitleBlur = useCallback(() => {
@@ -138,6 +140,36 @@ function ChapterNoteComponent({
       </div>
 
       {/* Editable title */}
+      {isMobile ? (
+        // Phone: a tap opens the edit sheet (Kyle 2026-09-21: no way to edit on mobile).
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setSheetOpen(true); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          aria-label="Edit chapter title"
+          style={{
+            width: "100%",
+            minHeight: 44,
+            textAlign: "left",
+            fontFamily: "inherit",
+            fontSize: 18,
+            fontWeight: 700,
+            color: "rgba(0,0,0,0.8)",
+            lineHeight: 1.3,
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            display: "flex",
+            gap: 8,
+            alignItems: "flex-start",
+            wordBreak: "break-word",
+          }}
+        >
+          <span style={{ flex: 1 }}>{chapter.title || "Untitled"}</span>
+          <span aria-hidden="true" style={{ fontSize: 14, color: "rgba(0,0,0,0.35)", flexShrink: 0, marginTop: 3 }}>✎</span>
+        </button>
+      ) : (
       <div
         ref={titleRef}
         contentEditable
@@ -160,6 +192,17 @@ function ChapterNoteComponent({
       >
         {chapter.title || "Untitled"}
       </div>
+      )}
+      {isMobile && (
+        <MobileEditSheet
+          open={sheetOpen}
+          label={`Chapter ${chapter.chapter_number} title`}
+          value={chapter.title || ""}
+          placeholder="Untitled"
+          onSave={(v) => { if (v !== chapter.title) onEdit("title", v); }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
 
       {/* Footer: key point count + add button */}
       <div style={{
@@ -175,7 +218,7 @@ function ChapterNoteComponent({
         }}>
           {keyPointCount} key point{keyPointCount !== 1 ? "s" : ""} ▾
         </span>
-        {hovered && (
+        {(hovered || isMobile) && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
             onMouseDown={(e) => e.stopPropagation()}

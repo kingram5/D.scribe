@@ -34,6 +34,18 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const isSaving = isDirty || saveStatus === "saving";
   return (
+    <>
+    <style>{`
+      /* Phone (Kyle 2026-09-21): the pill wrapped to three rows and sat on top of the
+         step nav, hiding the bottom of the outline. One row: undo, redo, one add
+         button, save dot. Continue lives in the step nav's Next on a phone. Parked just
+         above that nav so both stay reachable and neither covers the other. */
+      @media (max-width: 768px) {
+        .ds-outline-toolbar { bottom: calc(64px + env(safe-area-inset-bottom) + 8px) !important; flex-wrap: nowrap !important; gap: 6px !important; padding: 6px 12px !important; }
+        .ds-outline-toolbar .ds-tb-divider, .ds-outline-toolbar .ds-tb-continue, .ds-outline-toolbar .ds-tb-color:not(.ds-tb-color--primary) { display: none !important; }
+        .ds-outline-toolbar .ds-tb-status { min-width: 0 !important; font-size: 10px !important; }
+      }
+    `}</style>
     <div className="ds-outline-toolbar" data-tut="analysis-toolbar" style={{
       position: "fixed",
       bottom: 24,
@@ -76,14 +88,16 @@ export function EditorToolbar({
         ↪
       </button>
 
-      <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
+      <div className="ds-tb-divider" style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
 
       {/* Color add buttons */}
-      {COLOR_OPTIONS.map((opt) => (
+      {COLOR_OPTIONS.map((opt, i) => (
         <button
           key={opt.color}
+          className={i === 0 ? "ds-tb-color ds-tb-color--primary" : "ds-tb-color"}
           onClick={() => onAddChapter(opt.color)}
           title={`Add ${opt.label} chapter`}
+          aria-label={`Add ${opt.label} chapter`}
           style={{
             width: 28,
             height: 28,
@@ -105,10 +119,10 @@ export function EditorToolbar({
         </button>
       ))}
 
-      <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
+      <div className="ds-tb-divider" style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
 
       {/* Save status */}
-      <span style={{
+      <span className="ds-tb-status" style={{
         fontSize: 11,
         fontWeight: 600,
         color: saveStatus === "saving" ? "#a0978a"
@@ -127,6 +141,7 @@ export function EditorToolbar({
       {/* Continue button */}
       {hasChapters && (
         <button
+          className="ds-tb-continue"
           onClick={onContinue}
           disabled={isSaving}
           style={{
@@ -146,6 +161,7 @@ export function EditorToolbar({
         </button>
       )}
     </div>
+    </>
   );
 }
 

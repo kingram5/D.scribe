@@ -1353,6 +1353,9 @@ function OutlineEditorInner({
         width: "100%",
         height: isMobileLayout ? undefined : "calc(100vh - 160px)",
         overflow: isMobileLayout ? "auto" : "hidden",
+        // Phone: room for the compact toolbar parked above the step nav, so the last
+        // card can scroll clear of both bars (Kyle 2026-09-21).
+        paddingBottom: isMobileLayout ? 72 : undefined,
         WebkitOverflowScrolling: isMobileLayout ? "touch" : undefined,
         touchAction: isMobileLayout ? (isNoteDragging ? "none" : "pan-x pan-y") : undefined,
         background: "#f4f1ea",

@@ -784,6 +784,10 @@ function OutlineEditorInner({
 
   // Column drag handler
   const handleColumnMouseDown = useCallback((e: React.MouseEvent, chapterId: string) => {
+    // A touch tap fires compatibility mouse events, so without this a tap on the card
+    // body started a phantom drag on a phone. Mobile drags go through the handle's
+    // pointer events, which already carry this guard (BMO 2026-09-21).
+    if (layoutModeRef.current === "mobile") return;
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();
@@ -808,6 +812,8 @@ function OutlineEditorInner({
     kpIndex: number,
     color: NoteColor,
   ) => {
+    // See handleColumnMouseDown: on mobile the handle's pointer events own dragging.
+    if (layoutModeRef.current === "mobile") return;
     if ((e.target as HTMLElement).contentEditable === "true") return;
     e.preventDefault();
     e.stopPropagation();

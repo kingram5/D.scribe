@@ -1,8 +1,8 @@
 // Creator partner program: the numbers and pure rules (client-safe, no imports).
 // Kyle 2026-09-25: a creator link or code gives a NEW account 50 free Ink, once
 // per person, plus 50% off the first month of any plan (refills pay full price).
-// The creator earns 30% of what their referrals pay for 12 months, counted after
-// the 30-day refund window, and Kyle releases payouts by hand.
+// The creator earns 30% of their referrals' plan payments for 12 months (refills
+// earn nothing), counted after the 30-day refund window. Kyle releases payouts by hand.
 
 export const PARTNER_BONUS_INK = 50;
 export const PARTNER_DISCOUNT_PERCENT = 50;

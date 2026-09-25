@@ -5,7 +5,7 @@ import { createServerClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { grantTopupPurchase, clawbackTopupPurchase } from "@/lib/topup-purchases";
 import { isTopupSku, renewalRefillPayload } from "@/lib/topups";
-import { attributeCheckout, recordInvoiceCommission, recordTopupCommission, voidCommissionsForPayment } from "@/lib/partners";
+import { attributeCheckout, recordInvoiceCommission, voidCommissionsForPayment } from "@/lib/partners";
 
 // Creator-program bookkeeping always runs AFTER the entitlement work and can
 // never undo or fail it: a partner bug must not cost anyone their paid plan.
@@ -133,10 +133,8 @@ async function handleStripeEvent(event: Stripe.Event) {
       });
     }
 
-    await partnerSideEffect("checkout attribution", event.id, async () => {
-      await attributeCheckout(session);
-      if (kind === "topup") await recordTopupCommission(session);
-    });
+    // Kyle 2026-09-25: refills earn no commission; plan payments do (via invoices).
+    await partnerSideEffect("checkout attribution", event.id, () => attributeCheckout(session));
   }
 
   if (event.type === "customer.subscription.updated") {

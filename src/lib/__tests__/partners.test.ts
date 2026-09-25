@@ -176,6 +176,8 @@ describe("money-path guards", () => {
     const invoice = w.slice(w.indexOf('event.type === "invoice.payment_succeeded"'), w.indexOf('event.type === "invoice.payment_failed"'));
     expect(invoice.indexOf("recordInvoiceCommission")).toBeGreaterThan(invoice.indexOf("renewalRefillPayload"));
     expect(invoice).toMatch(/partnerSideEffect\("invoice commission"/);
+    // refills earn no commission (Kyle 2026-09-25): only invoice (plan) payments record one
+    expect(w).not.toMatch(/recordTopupCommission/);
     const fence = w.slice(w.indexOf("async function partnerSideEffect"), w.indexOf("async function activateSubscription"));
     expect(fence).toMatch(/try \{[\s\S]*await fn\(\);[\s\S]*\} catch/);
     expect(fence).not.toMatch(/throw/);

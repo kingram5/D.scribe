@@ -24,7 +24,7 @@ function welcomeMessage(p: Pick<Partner, "name" | "slug" | "code">) {
     `Your link: ${site()}/r/${p.slug}`,
     `Your code: ${p.code}`,
     ``,
-    `Anyone who signs up through your link or code gets ${PARTNER_BONUS_INK} free Ink to start writing, plus ${PARTNER_DISCOUNT_PERCENT}% off their first month. You get 30% of what they pay for their first 12 months.`,
+    `Anyone who signs up through your link or code gets ${PARTNER_BONUS_INK} free Ink to start writing, plus ${PARTNER_DISCOUNT_PERCENT}% off their first month. You get 30% of their plan payments for their first 12 months.`,
     ``,
     `Sign in at ${site()}/partner with this email to see your numbers, set up payouts, and use your free Premium account. Terms: ${site()}/legal/partners`,
   ].join("\n");

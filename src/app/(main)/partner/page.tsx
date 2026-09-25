@@ -102,7 +102,7 @@ export default function PartnerPage() {
         )}
       </div>
       <p style={{ fontFamily: sans, fontSize: 14, color: "#C8C0B4", lineHeight: 1.6, marginTop: 14 }}>
-        People who use your link or code get 50 free Ink and 50% off their first month. You earn {Math.round(p.commission_rate * 100)}% of what they pay for {p.commission_months} months.
+        People who use your link or code get 50 free Ink and 50% off their first month. You earn {Math.round(p.commission_rate * 100)}% of their plan payments for {p.commission_months} months.
         Always mention it&apos;s a partnership when you share it (#ad or &quot;I earn a commission&quot;).
       </p>
 

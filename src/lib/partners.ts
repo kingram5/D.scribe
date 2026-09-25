@@ -299,13 +299,6 @@ export async function recordInvoiceCommission(invoice: Stripe.Invoice) {
   await recordCommission({ userId, sourceId: invoice.id, paymentIntent, kind: "subscription", amountCents: invoice.amount_paid, paidAt });
 }
 
-export async function recordTopupCommission(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.user_id;
-  if (!userId || (session.amount_total ?? 0) <= 0) return;
-  const pi = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
-  await recordCommission({ userId, sourceId: session.id, paymentIntent: pi, kind: "topup", amountCents: session.amount_total ?? 0, paidAt: new Date() });
-}
-
 /** Full refund or dispute: the commission on that payment never gets paid. */
 export async function voidCommissionsForPayment(paymentIntent: string) {
   const { error } = await createServerClient()

@@ -49,7 +49,7 @@ export default function PartnerTermsPage() {
       <H2>3. What you earn</H2>
       <UL
         items={[
-          `${pct}% of what each customer you refer pays D.scribe for their first ${PARTNER_COMMISSION_MONTHS} months, starting with their first payment. That includes plan payments and refills, after discounts, and excludes taxes.`,
+          `${pct}% of each referred customer's plan payments (Starter, Pro or Premium) for their first ${PARTNER_COMMISSION_MONTHS} months, starting with their first payment, after discounts and excluding taxes. Ink and voice refills don't earn commission.`,
           "A customer counts as yours if they signed up through your link or code, or entered your code at checkout, and nobody referred them first.",
           `Each commission is held for ${COMMISSION_HOLD_DAYS} days so refunds and chargebacks can clear. A refunded or disputed payment earns nothing.`,
           "You can't earn on your own account or on accounts you control.",

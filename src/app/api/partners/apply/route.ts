@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
   const { data: existing } = await supabase
-    .from("partners").select("id, status").ilike("email", email).in("status", ["pending", "active", "paused"]).limit(1).maybeSingle();
+    .from("partners").select("id, status").eq("email", email).in("status", ["pending", "active", "paused"]).limit(1).maybeSingle();
   if (existing) return NextResponse.json({ ok: true, already: true });
 
   const { error } = await supabase.from("partners").insert({ name, email, links, audience, pitch, status: "pending", source: "application" });

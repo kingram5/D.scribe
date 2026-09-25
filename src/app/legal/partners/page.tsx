@@ -63,7 +63,8 @@ export default function PartnerTermsPage() {
         have at least <Strong>${PAYOUT_MINIMUM_CENTS / 100}</Strong> cleared. Amounts under that roll over to the next month.
       </P>
       <P>
-        You are responsible for your own taxes. US partners paid $600 or more in a year receive a 1099 through Stripe.
+        You are responsible for your own taxes. If you are in the US and we pay you $600 or more in a year, we will issue
+        you a 1099 as the law requires.
       </P>
 
       <H2>5. Your free Premium account</H2>

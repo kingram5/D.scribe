@@ -61,8 +61,9 @@ export async function findPartnerForUser(userId: string, email?: string | null):
   if (data) return data as Partner;
   if (!email) return null;
   // An approved creator who signs in for the first time: link the account by email.
+  // exact match only: ilike treats _ and % as wildcards, and this link decides who gets paid
   const { data: byEmail } = await supabase
-    .from("partners").select("*").ilike("email", email.trim()).is("user_id", null).in("status", ["active", "paused"]).limit(1).maybeSingle();
+    .from("partners").select("*").eq("email", email.trim().toLowerCase()).is("user_id", null).in("status", ["active", "paused"]).limit(1).maybeSingle();
   if (!byEmail) return null;
   const { data: linked } = await supabase
     .from("partners").update({ user_id: userId }).eq("id", (byEmail as Partner).id).is("user_id", null).select("*").maybeSingle();
@@ -96,7 +97,11 @@ export async function claimReferral(args: {
     }
 
     const balance = await ensureBalance(userId); // creates the wallet behind the usual anti-farming checks
-    let eligible = source !== "checkout" && isNewAccount(userCreatedAt) && balance.tier === "free";
+    // An account already on a paid plan isn't a creator's customer: clicking a link
+    // must not start a commission on someone who already pays. Checkout is the
+    // exception, because the webhook activates the plan before attribution runs.
+    if (source !== "checkout" && balance.tier !== "free") return { claimed: false, bonus: 0 };
+    let eligible = source !== "checkout" && isNewAccount(userCreatedAt);
     let hash: string | null = null;
     if (email) {
       hash = emailHash(email);

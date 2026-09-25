@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
       continue;
     }
     const ids = rows.map((r) => r.id).sort();
-    const key = `partner-payout-${p.id}-${createHash("sha256").update(ids.join(",")).digest("hex").slice(0, 32)}`;
+    // same commissions + same day = same transfer; a retry on a later day (say, after a
+    // failed release on an empty balance) gets a fresh attempt instead of the saved error
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `partner-payout-${p.id}-${day}-${createHash("sha256").update(ids.join(",")).digest("hex").slice(0, 32)}`;
     try {
       const transfer = await stripe.transfers.create(
         { amount: cents, currency: "usd", destination: p.stripe_connect_account_id!, description: `D.Scribe partner commission (${ids.length} payments)`, metadata: { partner_id: p.id } },

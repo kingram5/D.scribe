@@ -120,14 +120,28 @@ describe("claimReferral", () => {
     expect(state.rpcArgs?.p_bonus).toBe(50);
   });
 
-  it("attributes but gives no Ink to an old account, a paid account, or a checkout-time code", async () => {
+  it("attributes an old free account without free Ink", async () => {
     const { claimReferral } = await import("@/lib/partners");
     const old = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    expect((await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: old, partner: { ...partner }, source: "link" })).bonus).toBe(0);
+    expect(await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: old, partner: { ...partner }, source: "link" }))
+      .toEqual({ claimed: true, bonus: 0, partnerName: "Jane" });
+  });
+
+  it("never credits a creator with someone who already pays", async () => {
+    const { claimReferral } = await import("@/lib/partners");
     state.balanceTier = "starter";
-    expect((await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: fresh, partner: { ...partner }, source: "link" })).bonus).toBe(0);
-    state.balanceTier = "free";
-    expect((await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: fresh, partner: { ...partner }, source: "checkout" })).bonus).toBe(0);
+    expect(await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: fresh, partner: { ...partner }, source: "link" }))
+      .toEqual({ claimed: false, bonus: 0 });
+    expect(await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: fresh, partner: { ...partner }, source: "code" }))
+      .toEqual({ claimed: false, bonus: 0 });
+    expect(state.rpcArgs).toBeNull();
+  });
+
+  it("a code used at first checkout attributes the new subscriber (already on a plan by then), with no free Ink", async () => {
+    const { claimReferral } = await import("@/lib/partners");
+    state.balanceTier = "starter";
+    expect(await claimReferral({ userId: "u1", email: "a@gmail.com", userCreatedAt: fresh, partner: { ...partner }, source: "checkout" }))
+      .toEqual({ claimed: true, bonus: 0, partnerName: "Jane" });
   });
 
   it("gives nothing to a re-signup after deleting an account or a throwaway inbox", async () => {

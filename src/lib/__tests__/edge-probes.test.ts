@@ -509,6 +509,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     "discover",         // explicitly filters .eq("is_public", true)
     "health",           // liveness probe, no user data
     "stripe/webhook",   // authenticated by Stripe signature, not by session
+    "auth/hash-session", // anon-key cookie client, no table reads; Supabase validates the tokens
   ]);
 
   function apiRoutes(): { route: string; src: string }[] {

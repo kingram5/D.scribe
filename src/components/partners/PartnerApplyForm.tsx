@@ -69,7 +69,7 @@ export function PartnerApplyForm() {
         <input id="pa-audience" name="audience" maxLength={200} style={field} placeholder="e.g. 12k on Instagram, 800 on my email list" />
       </div>
       <div>
-        <label style={label} htmlFor="pa-pitch">Who would you share D.Scribe with, and why? (optional)</label>
+        <label style={label} htmlFor="pa-pitch">Who would you share D.scribe with, and why? (optional)</label>
         <textarea id="pa-pitch" name="pitch" rows={4} maxLength={1500} style={{ ...field, resize: "vertical" }} />
       </div>
       {/* honeypot: people never see this, bots fill it */}

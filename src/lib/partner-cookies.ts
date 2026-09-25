@@ -8,7 +8,8 @@ export function setReferralCookies(res: NextResponse, partner: { slug: string | 
   const secure = process.env.NODE_ENV === "production";
   res.cookies.set(REF_COOKIE, partner.slug, { path: "/", maxAge, sameSite: "lax", secure, httpOnly: true });
   // readable by the page so the "invited by" banner can show without a server round-trip
-  res.cookies.set(REF_NAME_COOKIE, encodeURIComponent(partner.name.slice(0, 60)), { path: "/", maxAge, sameSite: "lax", secure, httpOnly: false });
+  // Next encodes cookie values itself; encoding here too showed "Jane%20Doe" in the banner
+  res.cookies.set(REF_NAME_COOKIE, partner.name.slice(0, 60), { path: "/", maxAge, sameSite: "lax", secure, httpOnly: false });
   return res;
 }
 

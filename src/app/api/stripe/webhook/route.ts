@@ -5,6 +5,17 @@ import { createServerClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { grantTopupPurchase, clawbackTopupPurchase } from "@/lib/topup-purchases";
 import { isTopupSku, renewalRefillPayload } from "@/lib/topups";
+import { attributeCheckout, recordInvoiceCommission, recordTopupCommission, voidCommissionsForPayment } from "@/lib/partners";
+
+// Creator-program bookkeeping always runs AFTER the entitlement work and can
+// never undo or fail it: a partner bug must not cost anyone their paid plan.
+async function partnerSideEffect(label: string, eventId: string, fn: () => Promise<void>) {
+  try {
+    await fn();
+  } catch (err) {
+    logger.error(`Partner bookkeeping failed: ${label}`, { route: "/api/stripe/webhook", meta: { event_id: eventId }, error: err });
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +132,11 @@ async function handleStripeEvent(event: Stripe.Event) {
         meta: { event_id: event.id, session: session.id, user_id: userId ?? "(missing)", tier: tier ?? "(missing)" },
       });
     }
+
+    await partnerSideEffect("checkout attribution", event.id, async () => {
+      await attributeCheckout(session);
+      if (kind === "topup") await recordTopupCommission(session);
+    });
   }
 
   if (event.type === "customer.subscription.updated") {
@@ -171,16 +187,18 @@ async function handleStripeEvent(event: Stripe.Event) {
 
     const { data: balance } = await supabase
       .from("ink_balances")
-      .select("user_id")
+      .select("user_id, comp_partner")
       .eq("stripe_customer_id", customerId)
       .single();
 
     if (balance) {
+      // an active creator partner who cancels a paid plan falls back to their comp Premium
+      const comp = balance.comp_partner === true;
       const { error } = await supabase
         .from("ink_balances")
         .update({
-          tier: "free",
-          ink_balance: 0,
+          tier: comp ? "premium" : "free",
+          ink_balance: comp ? TIER_INK.premium : 0,
           stripe_subscription_id: null,
           tts_chars_used: 0,
           tts_period_start: new Date().toISOString(),
@@ -217,6 +235,8 @@ async function handleStripeEvent(event: Stripe.Event) {
           .eq("user_id", balance.user_id);
         if (error) throw new Error(`invoice refill failed: ${error.message}`);
       }
+
+      await partnerSideEffect("invoice commission", event.id, () => recordInvoiceCommission(invoice));
     }
   }
 
@@ -274,6 +294,8 @@ async function handleStripeEvent(event: Stripe.Event) {
       }
     }
     if (paymentIntent) {
+      const pi = paymentIntent;
+      await partnerSideEffect("void commission", event.id, () => voidCommissionsForPayment(pi));
       const clawed = await clawbackTopupPurchase(paymentIntent);
       if (clawed) {
         logger.warn("Top-up refunded/disputed — clawed back credits", {

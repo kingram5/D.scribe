@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButton";
+import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 
 export const metadata: Metadata = {
   title: "Pricing — AI Book Writing Plans Starting at $25",
@@ -564,6 +565,8 @@ export default function PricingPage() {
         <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 13, color: "#7A7358", marginTop: 28, textAlign: "center" }}>
           Need a little more? One-time Ink and voice refills, from $20 — they never expire.
         </p>
+
+        <CreatorCodeBox />
 
         {/* Everything included — shown once, not gated per tier */}
         <div style={{ maxWidth: 760, margin: "56px auto 0", textAlign: "center" }}>

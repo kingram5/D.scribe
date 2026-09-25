@@ -1,10 +1,12 @@
 import OsBar from "@/components/ui/OsBar";
 import { CheckoutOutcome } from "@/components/analytics/CheckoutOutcome";
+import { ReferralClaimer } from "@/components/partners/ReferralClaimer";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CheckoutOutcome />
+      <ReferralClaimer />
       <style>{`
         @media (max-width: 768px) {
           .ds-main-layout { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100dvh !important; }

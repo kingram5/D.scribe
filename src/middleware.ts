@@ -22,10 +22,11 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // 2026-09-14: /vs added (HeyCatch action plan compare pages). Same failure mode
 // as /blog and /about: public marketing pages bounced every visitor AND every
 // crawler to /login. Any new public route must be added here or it is invisible.
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/sitemap.xml", "/robots.txt"];
+// 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
-const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
+const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -510,7 +510,14 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     "health",           // liveness probe, no user data
     "stripe/webhook",   // authenticated by Stripe signature, not by session
     "auth/hash-session", // anon-key cookie client, no table reads; Supabase validates the tokens
+    "partners/apply",   // public partner application form: rate-limited + honeypot, writes one pending row, returns nothing
+    "partners/code",    // resolves a creator code to that creator's public name; rate-limited, no user data
   ]);
+  // Admin-only routes: every handler calls requirePartnerAdmin (Kyle's signed-in
+  // email or, where allowed, the machine key). They read across users by design.
+  const ADMIN_ROUTES = new Set(["admin/partners", "admin/partners/payouts"]);
+  // Ownership resolved through the caller's own partner record counts as scoped.
+  const OWNER_SCOPED = /\.eq\(\s*["']user_id["']|findPartnerForUser\(\s*user\.id/;
 
   function apiRoutes(): { route: string; src: string }[] {
     const root = path.resolve(__dirname, "../../app/api");
@@ -539,7 +546,8 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     const offenders = apiRoutes()
       .filter((r) => /createServerClient\s*\(/.test(r.src))
       .filter((r) => !PUBLIC_ROUTES.has(r.route))
-      .filter((r) => !/\.eq\(\s*["']user_id["']/.test(r.src))
+      .filter((r) => !(ADMIN_ROUTES.has(r.route) && /requirePartnerAdmin\(/.test(r.src)))
+      .filter((r) => !OWNER_SCOPED.test(r.src))
       .map((r) => r.route);
     expect(offenders).toEqual([]);
   });
@@ -548,7 +556,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     const offenders = apiRoutes()
       .filter((r) => !PUBLIC_ROUTES.has(r.route))
       .filter((r) => r.route !== "auth/magic-link" && r.route !== "log-client-error")
-      .filter((r) => !/requireAuth|requireUser|getUser\s*\(/.test(r.src))
+      .filter((r) => !/requireAuth|requireUser|getUser\s*\(|requirePartnerAdmin\(/.test(r.src))
       .map((r) => r.route);
     expect(offenders).toEqual([]);
   });

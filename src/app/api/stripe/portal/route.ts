@@ -11,11 +11,16 @@ export async function POST(req: NextRequest) {
 
   const { data: balance } = await supabase
     .from("ink_balances")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, comp_partner, stripe_subscription_id")
     .eq("user_id", user.id)
     .single();
 
   const customerId = balance?.stripe_customer_id as string | null;
+
+  // creator partners get Premium on the house; there's no bill to manage
+  if (balance?.comp_partner && !balance?.stripe_subscription_id) {
+    return NextResponse.json({ error: "Your Premium is on the house as a D.Scribe partner. There's no bill to manage." }, { status: 409 });
+  }
 
   if (!customerId) {
     return NextResponse.json({ error: "No billing account found" }, { status: 404 });

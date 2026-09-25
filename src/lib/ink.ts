@@ -101,7 +101,7 @@ function hashEmail(email: string): string {
  * disagree. Throws on failure — a fabricated in-memory wallet here used to let
  * checkInk approve work that deduct_ink could never settle.
  */
-async function ensureBalance(userId: string): Promise<InkBalance> {
+export async function ensureBalance(userId: string): Promise<InkBalance> {
   const supabase = createServerClient();
 
   // Hash both the raw-lowercase and canonical forms: the ledger holds legacy

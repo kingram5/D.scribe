@@ -1,4 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import type Stripe from "stripe";
+import { logger } from "@/lib/logger";
+import {
+  claimReferral,
+  findActivePartnerBySlug,
+  hadSubscriptionBefore,
+  referralFor,
+} from "@/lib/partners";
+import { REF_COOKIE } from "@/lib/partner-rules";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
 import { stripe, STRIPE_PRICES, TOPUP_PRICES } from "@/lib/stripe";
@@ -85,7 +94,33 @@ export async function POST(req: NextRequest) {
 
   const customerId = await ensureStripeCustomer(user.id, user.email, existingCustomerId);
 
-  const session = await stripe.checkout.sessions.create({
+  // Creator program. The pricing buttons go sign-in -> checkout without ever
+  // loading the dashboard, so a creator link's cookie is claimed here too. A
+  // first-time subscriber referred by an active creator gets the creator's 50%
+  // pre-applied; everyone else gets the code box. None of this may block a sale.
+  let promotionCode: string | null = null;
+  try {
+    let ref = await referralFor(user.id);
+    const slug = req.cookies.get(REF_COOKIE)?.value;
+    if (!ref && slug) {
+      const partner = await findActivePartnerBySlug(slug);
+      if (partner) {
+        await claimReferral({ userId: user.id, email: user.email, userCreatedAt: user.created_at, partner, source: "link" });
+        ref = await referralFor(user.id);
+      }
+    }
+    if (ref?.partner.status === "active" && ref.partner.stripe_promotion_code_id && !(await hadSubscriptionBefore(customerId))) {
+      promotionCode = ref.partner.stripe_promotion_code_id;
+    }
+  } catch (err) {
+    logger.warn("Creator discount lookup failed; checkout continues with the code box", {
+      route: "/api/stripe/checkout",
+      meta: { user_id: user.id },
+      error: err,
+    });
+  }
+
+  const base: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: STRIPE_PRICES[tier], quantity: 1 }],
@@ -94,7 +129,24 @@ export async function POST(req: NextRequest) {
     success_url: `${siteUrl}/dashboard?upgraded=true&plan=${tier}`,
     cancel_url: `${siteUrl}/dashboard`,
     metadata: { user_id: user.id, tier },
-  });
+  };
+
+  let session: Stripe.Checkout.Session;
+  if (promotionCode) {
+    try {
+      session = await stripe.checkout.sessions.create({ ...base, discounts: [{ promotion_code: promotionCode }] });
+    } catch (err) {
+      // an expired, used-up or switched-off creator code must never cost the sale
+      logger.warn("Creator code could not be applied; falling back to the code box", {
+        route: "/api/stripe/checkout",
+        meta: { user_id: user.id, promotion_code: promotionCode },
+        error: err,
+      });
+      session = await stripe.checkout.sessions.create({ ...base, allow_promotion_codes: true });
+    }
+  } else {
+    session = await stripe.checkout.sessions.create({ ...base, allow_promotion_codes: true });
+  }
 
   return NextResponse.json({ url: session.url });
 }

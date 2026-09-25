@@ -575,9 +575,9 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
    `art` picks the illustration style while Kyle decides: "ink" draws the doodle
    in code, "paint" uses a generated PNG from public/steps/. */
 export const STEP_NOTES = [
-  "Brainstorm with T.H.E.O or drop in an audio file. Voice memos and YouTube links are fine as well.",
-  "Every word typed out, timestamped, yours to correct.",
-  "Pick your chapter, word count and genre.",
+  "Brainstorm with T.H.E.O or drop in an audio file. Voice memos and YouTube links work fine as well.",
+  "Every word; typed out, timestamped, and yours to correct.",
+  "Pick your: chapter count, word count, and genre.",
   "T.H.E.O combs through your transcript to organize and outline the major themes in your work.",
   "Pick some quotes that you think fit well in each section and generate your chapters. Either individually or all at once.",
   "Read your book and make some tweaks to make it even more YOU!",

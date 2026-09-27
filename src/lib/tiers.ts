@@ -4,7 +4,10 @@
 //
 // Two plan sets. v1 is live. v2 is the Publisher-Ready pricing (Kyle
 // 2026-09-27, option #3): prices doubled, each plan sized to whole
-// Publisher-Ready books at the unchanged meter (~1,200 Ink per book).
+// Publisher-Ready books at the unchanged meter (~1,200 Ink per book), plus
+// ~300 Ink of headroom per book for the month's Theo interviews and analysis
+// (Kyle ruled 1,500 / 3,000 / 7,500 on 9/27 after the review found 1,200 left
+// Starter unable to finish its one book).
 // v2 turns on with NEXT_PUBLIC_PLANS_V2=true, which must flip on the same day
 // as migration 030 (SQL allotments) and the Stripe price swap. Until then this
 // branch can merge without changing a single price anyone sees or pays.
@@ -30,9 +33,9 @@ const PLANS_V1: Record<"starter" | "pro" | "premium", PlanDef> = {
 };
 
 const PLANS_V2: Record<"starter" | "pro" | "premium", PlanDef> = {
-  starter: { price: 50, ink: 1200, books: "1 Publisher-Ready book" },
-  pro: { price: 100, ink: 2400, books: "2 Publisher-Ready books" },
-  premium: { price: 200, ink: 6000, books: "5 Publisher-Ready books" },
+  starter: { price: 50, ink: 1500, books: "1 Publisher-Ready book" },
+  pro: { price: 100, ink: 3000, books: "2 Publisher-Ready books" },
+  premium: { price: 200, ink: 7500, books: "5 Publisher-Ready books" },
 };
 
 /** Ink for one Publisher-Ready book at meter v2 (~$11.75 vendor x 102). Display only. */

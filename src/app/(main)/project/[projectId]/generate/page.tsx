@@ -474,7 +474,7 @@ export default function GeneratePage() {
         <div style={{ padding: "0 40px 16px" }}>
           <GlassCard style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>Publisher-Ready pass</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>Publisher-Ready pass · recommended</div>
               <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
                 An editor reads every chapter, asks you what only you know, and your answers go into the book.
               </div>
@@ -1129,12 +1129,25 @@ export default function GeneratePage() {
                       onClick={generateAll}
                       disabled={isGenerating}
                       className="nodum-btn"
+                      style={publisherReady ? { opacity: 0.85 } : undefined}
                     >
                       {genAllRunning
                         ? "Generating..."
-                        : `Generate All ${chapters.length} Chapters`}
+                        : publisherReady
+                          ? `Quick draft: all ${chapters.length} chapters`
+                          : `Generate All ${chapters.length} Chapters`}
                     </button>
                   </InkTooltip>
+                  {/* With Publisher-Ready on it is the default path (Kyle 9/27); one pass stays as the quick draft. */}
+                  {publisherReady && (
+                    <button
+                      onClick={() => router.push(`/project/${projectId}/publisher-ready`)}
+                      disabled={isGenerating}
+                      style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: isGenerating ? "wait" : "pointer" }}
+                    >
+                      Write it Publisher-Ready
+                    </button>
+                  )}
                 </div>
               </div>
 

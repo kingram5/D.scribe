@@ -1,3 +1,5 @@
+import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+
 // Homepage FAQ — single source for the visible list (landing-v2/page.tsx) and
 // the FAQPage JSON-LD (app/page.tsx), so the two cannot drift.
 //
@@ -35,7 +37,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
   },
   {
     q: "How does Ink work?",
-    a: "Ink is D.scribe's credit system. Every action that uses AI — brainstorming, transcription, analysis, chapter generation, etc. — costs a small amount of Ink. Starter plans include 300 Ink per month, Pro includes 660, and Premium includes 1,500. A typical full manuscript runs around 100–200 Ink depending on length. You can always see your balance before taking any action.",
+    a: `Ink is D.scribe's credit system. Every action that uses AI (brainstorming, transcription, analysis, chapter generation and so on) costs a small amount of Ink. Starter plans include ${PLANS.starter.ink.toLocaleString("en-US")} Ink per month, Pro includes ${PLANS.pro.ink.toLocaleString("en-US")}, and Premium includes ${PLANS.premium.ink.toLocaleString("en-US")}. ${plansV2() ? `A full Publisher-Ready pass on a 40,000-word book runs about ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink; a quick draft uses far less.` : "A typical full manuscript runs around 100–200 Ink depending on length."} You can always see your balance before taking any action.`,
   },
   {
     q: "How long does it take to generate a manuscript?",

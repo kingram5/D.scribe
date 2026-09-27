@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { transcribeUtterance } from "@/lib/deepgram";
 import { recordFlatInkUsage, inkPerAudioMinute } from "@/lib/ink";
 import { createServerClient } from "@/lib/supabase";
+import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../_shared";
 
 export const maxDuration = 60;
@@ -13,7 +14,7 @@ const MAX_BILLED_MINUTES = 10;
 // Same Deepgram path as the brainstorm studio, but metered: the brainstorm STT
 // route never charged Ink, which the Theo v2 handoff flagged as unbilled spend.
 export async function POST(req: NextRequest) {
-  const { user, error } = await guard("stt", 30);
+  const { user, error } = await guard(await requireAuth(), "stt", 30);
   if (error) return error;
   try {
     const contentType = (req.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkInk } from "@/lib/ink";
 import { serveNext, submitAnswer, skipQuestion, finishChapter, finishInterview } from "@/lib/publisher-ready/interview";
+import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../_shared";
 
 export const maxDuration = 60;
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 //   { run_id, action: "finish_chapter", chapter_id }
 //   { run_id, action: "finish" }
 export async function POST(req: NextRequest) {
-  const { user, error } = await guard("interview", 60);
+  const { user, error } = await guard(await requireAuth(), "interview", 60);
   if (error) return error;
   try {
     const body = await req.json();

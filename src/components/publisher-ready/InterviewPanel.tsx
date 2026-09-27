@@ -212,7 +212,7 @@ export default function InterviewPanel({ runId, guardedFetch, onFinished }: Prop
         rows={6}
         disabled={busy}
         style={{
-          width: "100%", padding: 14, borderRadius: 10, fontSize: 15, lineHeight: 1.5,
+          width: "100%", padding: 14, borderRadius: 10, fontSize: 16, lineHeight: 1.5,
           border: "1px solid var(--ds-input-border)", background: "var(--ds-input-bg)", color: "var(--text-primary)",
           resize: "vertical", fontFamily: "inherit",
         }}

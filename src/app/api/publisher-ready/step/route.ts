@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { checkInk } from "@/lib/ink";
 import { stepDraft, stepEdit, stepRevise, stepFinal } from "@/lib/publisher-ready/pipeline";
+import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../_shared";
 
 // One chapter, one step. Opus/Fable turns can run for minutes, so the reply is
@@ -15,7 +16,7 @@ const OP: Record<string, "pr_draft" | "pr_edit" | "pr_revise" | "pr_final"> = {
 
 // POST /api/publisher-ready/step { run_id, chapter_id, step, creative_freedom? }
 export async function POST(req: NextRequest) {
-  const { user, error } = await guard("step", 40);
+  const { user, error } = await guard(await requireAuth(), "step", 40);
   if (error) return error;
 
   const { run_id, chapter_id, step, creative_freedom } = await req.json();

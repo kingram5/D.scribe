@@ -4,11 +4,12 @@ import { ensureBalance } from "@/lib/ink";
 import { estimateRunInk } from "@/lib/publisher-ready/estimate";
 import { STEP_MODELS } from "@/lib/publisher-ready/pipeline";
 import { progress, type RRQuestion } from "@/lib/publisher-ready/round-robin";
+import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../_shared";
 
 // GET /api/publisher-ready/run?project_id=… — the live run (or last finished) with per-chapter state.
 export async function GET(req: NextRequest) {
-  const { user, error } = await guard("run-read", 120);
+  const { user, error } = await guard(await requireAuth(), "run-read", 120);
   if (error) return error;
   try {
     const projectId = req.nextUrl.searchParams.get("project_id");
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/publisher-ready/run { project_id, action?: "start" | "complete" | "cancel", run_id? }
 export async function POST(req: NextRequest) {
-  const { user, error } = await guard("run", 20);
+  const { user, error } = await guard(await requireAuth(), "run", 20);
   if (error) return error;
   try {
     const body = await req.json();

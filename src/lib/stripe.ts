@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { PLANS } from "@/lib/tiers";
 
 export const STRIPE_PRICES: Record<string, string> = {
   starter: process.env.STRIPE_PRICE_STARTER ?? "",
@@ -6,10 +7,27 @@ export const STRIPE_PRICES: Record<string, string> = {
   premium: process.env.STRIPE_PRICE_PREMIUM ?? "",
 };
 
+/**
+ * Price id -> tier. Includes the pre-swap prices (STRIPE_PRICE_*_LEGACY) so a
+ * subscriber still on an old price keeps their tier after the new prices go in.
+ */
+export function tierForPrice(priceId: string | undefined | null): string | undefined {
+  if (!priceId) return undefined;
+  const map: Record<string, string> = {};
+  for (const tier of ["starter", "pro", "premium"] as const) {
+    const current = process.env[`STRIPE_PRICE_${tier.toUpperCase()}`];
+    const legacy = process.env[`STRIPE_PRICE_${tier.toUpperCase()}_LEGACY`];
+    if (current) map[current] = tier;
+    if (legacy) map[legacy] = tier;
+  }
+  return map[priceId];
+}
+
+// Must match tier_ink_allotment() in SQL (012, and 030 once the v2 plans launch).
 export const TIER_INK: Record<string, number> = {
-  starter: 300,
-  pro: 660,
-  premium: 1500,
+  starter: PLANS.starter.ink,
+  pro: PLANS.pro.ink,
+  premium: PLANS.premium.ink,
 };
 
 export const TOPUP_PRICES: Record<string, string> = {

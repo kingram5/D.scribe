@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import type { requireAuth } from "@/lib/auth";
 import { publisherReadyEnabled } from "@/lib/ink";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { StepError } from "@/lib/publisher-ready/pipeline";
 import { RefusalError } from "@/lib/claude-next";
 import { logger } from "@/lib/logger";
 
-/** Auth + feature flag + rate limit, shared by every Publisher-Ready route. */
-export async function guard(route: string, limit = 30) {
+/**
+ * Feature flag + rate limit on top of the caller's requireAuth() result, shared by
+ * every Publisher-Ready route. Each route calls requireAuth itself so the auth
+ * guard is visible at the route (the edge-probe architecture test checks for it).
+ */
+export async function guard(auth: Awaited<ReturnType<typeof requireAuth>>, route: string, limit = 30) {
   if (!publisherReadyEnabled()) {
     return { user: null, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   }
-  const { user, error } = await requireAuth();
+  const { user, error } = auth;
   if (error) return { user: null, error };
   const { allowed, retryAfterMs } = await checkRateLimit(user.id, `pr-${route}`, limit);
   if (!allowed) {

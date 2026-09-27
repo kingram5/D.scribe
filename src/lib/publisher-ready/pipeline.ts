@@ -1,40 +1,29 @@
 /**
- * Publisher-Ready pipeline steps (server-only). One chapter per call so every
- * request stays inside the 300s function limit; the client drives the chapters
- * with a small concurrency cap.
+ * Publisher-Ready pipeline steps (server-only): load from the database, call
+ * the model step in core.ts, bill, save. One chapter per call so every request
+ * stays inside the 300s function limit; the client drives the chapters with a
+ * small concurrency cap.
  *
  * Models (Kyle 2026-09-27, BMO mix): draft Sonnet 5 -> editor Fable 5.1 ->
  * interview Sonnet 5 -> revise Opus 5.5 -> final check Sonnet 5.
  */
 
 import { createServerClient } from "@/lib/supabase";
-import { callClaudeNext, parseJsonReply, type NextModelKey, type Effort } from "@/lib/claude-next";
 import { recordInkUsage, type InkOperation } from "@/lib/ink";
-import { generateSystem, generatePrompt } from "@/lib/prompts/generate";
-import { generationProfileBlock } from "@/lib/audience-profiles";
 import { loadStyleMemory, styleMemoryPromptBlock } from "@/lib/style-memory";
 import { extractExcerptsForChapter } from "@/lib/chunker";
-import { creativeFreedomToInstruction } from "@/lib/claude-lite";
-import { sanitizeGenerated } from "@/lib/sanitize-output";
 import type { ClaudeUsage } from "@/lib/claude-lite";
+import type { Beat } from "./prompts";
+import { lintStructure } from "./structural-lint";
 import {
-  BEAT_PLAN_SCHEMA, beatPlanSystem, draftBeatBlock, type Beat,
-  EDITOR_SCHEMA, editorSystem, editorUser, type EditorReport,
-  REVISE_SCHEMA, reviseSystem, reviseUser,
-  FINAL_SCHEMA, finalCheckSystem,
-} from "./prompts";
-import { lintStructure, bookRepeats, type StructuralFlag } from "./structural-lint";
+  DEFAULT_MIX, coreDraft, coreEdit, coreRevise, coreFinal,
+  type ChapterInput, type Spend, type StepKey,
+} from "./core";
+
+export { applyEdits } from "./core";
 
 /** Which model and effort each step runs on. One place to change the mix. */
-export const STEP_MODELS: Record<"beats" | "draft" | "edit" | "coverage" | "interview" | "revise" | "final", { model: NextModelKey; effort: Effort }> = {
-  beats: { model: "sonnet5", effort: "low" },
-  draft: { model: "sonnet5", effort: "medium" },
-  edit: { model: "fable51", effort: "high" },
-  coverage: { model: "sonnet5", effort: "low" },
-  interview: { model: "sonnet5", effort: "low" },
-  revise: { model: "opus55", effort: "high" },
-  final: { model: "sonnet5", effort: "medium" },
-};
+export const STEP_MODELS = DEFAULT_MIX;
 
 type Db = ReturnType<typeof createServerClient>;
 
@@ -44,52 +33,65 @@ export class StepError extends Error {
   }
 }
 
+const OP_FOR_STEP: Record<StepKey, InkOperation> = {
+  beats: "pr_draft", draft: "pr_draft", edit: "pr_edit", coverage: "pr_interview",
+  interview: "pr_interview", revise: "pr_revise", final: "pr_final",
+};
+
+async function bill(userId: string, projectId: string, spend: Spend[]) {
+  for (const s of spend) await recordInkUsage(userId, projectId, OP_FOR_STEP[s.step], s.model, s.usage);
+}
+
+function totalUsage(spend: Spend[]): ClaudeUsage {
+  return spend.reduce<ClaudeUsage>((a, s) => ({
+    input_tokens: a.input_tokens + s.usage.input_tokens,
+    output_tokens: a.output_tokens + s.usage.output_tokens,
+    cache_read_input_tokens: (a.cache_read_input_tokens || 0) + (s.usage.cache_read_input_tokens || 0),
+    cache_creation_input_tokens: (a.cache_creation_input_tokens || 0) + (s.usage.cache_creation_input_tokens || 0),
+  }), { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
+}
+
 export interface ChapterContext {
-  project: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  chapter: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  excerpts: string;
-  keyPoints: { title: string; summary: string }[];
-  previousChapters: { title: string; summary: string }[];
+  projectId: string;
+  input: ChapterInput;
   latest: { content: string; version: number } | null;
 }
 
-/** Load a chapter the user owns, with its source excerpts and latest text. */
+/** Load a chapter the user owns, with its source excerpts, voice and latest text. */
 export async function loadChapterContext(db: Db, userId: string, chapterId: string): Promise<ChapterContext> {
   const { data: chapter } = await db.from("chapters").select("*").eq("id", chapterId).single();
   if (!chapter) throw new StepError("Chapter not found", 404);
   const { data: project } = await db.from("projects").select("*").eq("id", chapter.project_id).eq("user_id", userId).single();
   if (!project) throw new StepError("Project not found", 404);
 
-  const [transcripts, keyPoints, prev, latest] = await Promise.all([
+  const [transcripts, keyPoints, prev, latest, memory] = await Promise.all([
     db.from("transcripts").select("full_text").eq("project_id", chapter.project_id),
     db.from("key_points").select("*").in("id", chapter.key_point_ids || []),
     db.from("chapters").select("title, summary").eq("project_id", chapter.project_id)
-      .lt("chapter_number", chapter.chapter_number).order("chapter_number"),
+      .lt("chapter_number", chapter.chapter_number).gt("chapter_number", 0).order("chapter_number"),
     db.from("chapter_contents").select("content, version").eq("chapter_id", chapterId)
       .order("version", { ascending: false }).limit(1).maybeSingle(),
+    loadStyleMemory(userId),
   ]);
   const fullText = (transcripts.data || []).map((t) => t.full_text).join("\n\n");
   const kps = keyPoints.data || [];
   return {
-    project,
-    chapter,
-    excerpts: extractExcerptsForChapter(fullText, kps.map((kp) => kp.supporting_quotes || [])),
-    keyPoints: kps.map((kp) => ({ title: kp.title, summary: kp.summary })),
-    previousChapters: prev.data || [],
+    projectId: project.id,
     latest: latest.data ? { content: latest.data.content, version: latest.data.version } : null,
-  };
-}
-
-async function bill(userId: string, projectId: string, op: InkOperation, model: NextModelKey, usage: ClaudeUsage) {
-  await recordInkUsage(userId, projectId, op, model, usage);
-}
-
-function addUsage(a: ClaudeUsage, b: ClaudeUsage): ClaudeUsage {
-  return {
-    input_tokens: a.input_tokens + b.input_tokens,
-    output_tokens: a.output_tokens + b.output_tokens,
-    cache_read_input_tokens: (a.cache_read_input_tokens || 0) + (b.cache_read_input_tokens || 0),
-    cache_creation_input_tokens: (a.cache_creation_input_tokens || 0) + (b.cache_creation_input_tokens || 0),
+    input: {
+      projectTitle: project.title,
+      audience: project.audience,
+      scriptureTranslation: project.scripture_translation,
+      voiceProfile: project.voice_profile,
+      styleMemoryBlock: styleMemoryPromptBlock(memory),
+      chapterNumber: chapter.chapter_number,
+      chapterTitle: chapter.title,
+      chapterSummary: chapter.summary,
+      keyPoints: kps.map((kp) => ({ title: kp.title, summary: kp.summary })),
+      previousChapters: prev.data || [],
+      excerpts: extractExcerptsForChapter(fullText, kps.map((kp) => kp.supporting_quotes || [])),
+      targetWords: chapter.target_word_count,
+    },
   };
 }
 
@@ -113,12 +115,15 @@ async function recordPass(db: Db, row: Record<string, unknown>) {
   if (error) throw error;
 }
 
-async function voiceAndStyle(userId: string, project: Record<string, any>): Promise<string> { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const memory = await loadStyleMemory(userId);
-  // generateSystem already carries voice profile + style memory + audience +
-  // humanizer; reuse it minus the humanizer (the caller appends that itself).
-  return generateSystem(project.voice_profile, styleMemoryPromptBlock(memory), generationProfileBlock(project.audience, project.scripture_translation))
-    .split("\nCRITICAL — WRITE LIKE A HUMAN")[0];
+async function otherChapterTexts(db: Db, projectId: string, excludeId: string): Promise<Record<string, string>> {
+  const { data: chapters } = await db.from("chapters").select("id, chapter_number").eq("project_id", projectId).neq("id", excludeId);
+  const out: Record<string, string> = {};
+  await Promise.all((chapters || []).map(async (ch) => {
+    const { data } = await db.from("chapter_contents").select("content").eq("chapter_id", ch.id)
+      .order("version", { ascending: false }).limit(1).maybeSingle();
+    if (data?.content) out[`Chapter ${ch.chapter_number}`] = data.content;
+  }));
+  return out;
 }
 
 // ─── Step 1: beat plan + draft ───────────────────────────────────────────────
@@ -126,70 +131,25 @@ async function voiceAndStyle(userId: string, project: Record<string, any>): Prom
 export async function stepDraft(opts: { userId: string; runId: string; chapterId: string; creativeFreedom?: number; onText?: (t: string) => void }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
-  const beatsModel = STEP_MODELS.beats;
-  const draftModel = STEP_MODELS.draft;
-
-  const beatsRes = await callClaudeNext(
-    beatPlanSystem(),
-    `Chapter ${ctx.chapter.chapter_number}: "${ctx.chapter.title}"\nSummary: ${ctx.chapter.summary}\n\nKey points:\n${ctx.keyPoints.map((k) => `- ${k.title}: ${k.summary}`).join("\n")}\n\nSource material:\n---\n${ctx.excerpts}\n---`,
-    { ...beatsModel, maxTokens: 8000, jsonSchema: BEAT_PLAN_SCHEMA as unknown as Record<string, unknown> }
-  );
-  await bill(opts.userId, ctx.project.id, "pr_draft", beatsModel.model, beatsRes.usage);
-  const { beats } = parseJsonReply<{ beats: Beat[] }>(beatsRes.text);
-
-  const memory = await loadStyleMemory(opts.userId);
-  const system = generateSystem(ctx.project.voice_profile, styleMemoryPromptBlock(memory), generationProfileBlock(ctx.project.audience, ctx.project.scripture_translation));
-  const prompt = generatePrompt({
-    chapterNumber: ctx.chapter.chapter_number,
-    chapterTitle: ctx.chapter.title,
-    chapterSummary: ctx.chapter.summary,
-    transcriptExcerpts: ctx.excerpts,
-    keyPoints: ctx.keyPoints,
-    previousChapters: ctx.previousChapters,
-    targetWords: ctx.chapter.target_word_count,
-    audience: ctx.project.audience,
-    freedomInstruction: creativeFreedomToInstruction(opts.creativeFreedom ?? 50),
-  }) + draftBeatBlock(beats);
-
   await db.from("chapters").update({ status: "generating" }).eq("id", opts.chapterId);
-  let draftUsage: ClaudeUsage | null = null;
   try {
-    const res = await callClaudeNext(system, prompt, { ...draftModel, maxTokens: 32000, onText: opts.onText });
-    draftUsage = res.usage;
-    const content = sanitizeGenerated(res.text);
-    if (!content.trim()) throw new StepError("Draft came back empty. Try again.", 502);
-    const version = await saveVersion(db, opts.chapterId, content, { pipeline: "publisher_ready", step: "draft", model: res.servedBy });
+    const out = await coreDraft(ctx.input, STEP_MODELS, { creativeFreedom: opts.creativeFreedom, onText: opts.onText });
+    await bill(opts.userId, ctx.projectId, out.spend);
+    if (!out.text.trim()) throw new StepError("Draft came back empty. Try again.", 502);
+    const version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "draft", model: out.servedBy });
     await db.from("chapters").update({ status: "generated" }).eq("id", opts.chapterId);
     await recordPass(db, {
       run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "draft",
-      version_in: ctx.latest?.version ?? null, version_out: version, beat_plan: beats,
-      usage: addUsage(beatsRes.usage, res.usage),
+      version_in: ctx.latest?.version ?? null, version_out: version, beat_plan: out.beats, usage: totalUsage(out.spend),
     });
-    return { version, wordCount: content.trim().split(/\s+/).length, beats };
+    return { version, wordCount: out.text.trim().split(/\s+/).length, beats: out.beats.length };
   } catch (err) {
     await db.from("chapters").update({ status: ctx.latest ? "generated" : "outlined" }).eq("id", opts.chapterId);
     throw err;
-  } finally {
-    if (draftUsage) await bill(opts.userId, ctx.project.id, "pr_draft", draftModel.model, draftUsage);
   }
 }
 
 // ─── Step 2: editor read ─────────────────────────────────────────────────────
-
-async function otherChapterTexts(db: Db, projectId: string, excludeId: string): Promise<Record<string, string>> {
-  const { data: chapters } = await db.from("chapters").select("id, chapter_number, title").eq("project_id", projectId).neq("id", excludeId);
-  const out: Record<string, string> = {};
-  for (const ch of chapters || []) {
-    const { data } = await db.from("chapter_contents").select("content").eq("chapter_id", ch.id)
-      .order("version", { ascending: false }).limit(1).maybeSingle();
-    if (data?.content) out[`Chapter ${ch.chapter_number}`] = data.content;
-  }
-  return out;
-}
-
-function lintSummary(flags: StructuralFlag[]): string {
-  return flags.slice(0, 20).map((f) => `- ${f.kind}: ${f.message}${f.span ? ` [${f.span.slice(0, 120)}]` : ""}`).join("\n");
-}
 
 export async function stepEdit(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
@@ -199,25 +159,8 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
     .eq("run_id", opts.runId).eq("chapter_id", opts.chapterId).eq("step", "draft").maybeSingle();
   const beats = (pass?.beat_plan as Beat[] | null) || [];
 
-  const others = await otherChapterTexts(db, ctx.project.id, opts.chapterId);
-  const structure = lintStructure(ctx.latest.content);
-  const flags = [...structure.flags, ...bookRepeats(ctx.latest.content, others)];
-  const bookContext = [
-    `Title: ${ctx.project.title}`,
-    ...ctx.previousChapters.map((c, i) => `Ch ${i + 1}: "${c.title}": ${c.summary}`),
-  ].join("\n");
-
-  const m = STEP_MODELS.edit;
-  const res = await callClaudeNext(
-    editorSystem(ctx.project.audience),
-    editorUser({
-      chapterNumber: ctx.chapter.chapter_number, chapterTitle: ctx.chapter.title, draft: ctx.latest.content,
-      beats, sourceExcerpts: ctx.excerpts, bookContext, lintSummary: lintSummary(flags),
-    }),
-    { ...m, maxTokens: 32000, jsonSchema: EDITOR_SCHEMA as unknown as Record<string, unknown> }
-  );
-  await bill(opts.userId, ctx.project.id, "pr_edit", m.model, res.usage);
-  const report = parseJsonReply<EditorReport>(res.text);
+  const { report, spend } = await coreEdit(ctx.input, ctx.latest.content, beats, await otherChapterTexts(db, ctx.projectId, opts.chapterId), STEP_MODELS);
+  await bill(opts.userId, ctx.projectId, spend);
 
   // Replace any earlier editor output for this chapter in this run.
   await db.from("pr_questions").delete().eq("run_id", opts.runId).eq("chapter_id", opts.chapterId).eq("status", "queued");
@@ -225,7 +168,7 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
   if (report.author_questions.length) {
     const { error } = await db.from("pr_questions").insert(report.author_questions.map((q) => ({
       run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId,
-      question: q.question, why: q.why, impact: Math.max(1, Math.min(5, Math.round(q.impact || 3))), beat_id: q.beat_id,
+      question: q.question, why: q.why, impact: q.impact, beat_id: q.beat_id,
     })));
     if (error) throw error;
   }
@@ -237,14 +180,15 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
   }
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "edit",
-    version_in: ctx.latest.version, version_out: ctx.latest.version, scores: { ...report.scores, summary: report.summary }, usage: res.usage,
+    version_in: ctx.latest.version, version_out: ctx.latest.version,
+    scores: { ...report.scores, summary: report.summary }, usage: totalUsage(spend),
   });
   return { questions: report.author_questions.length, craftNotes: report.craft_notes.length, scores: report.scores, summary: report.summary };
 }
 
 // ─── Step 4: revise ──────────────────────────────────────────────────────────
 
-export async function stepRevise(opts: { userId: string; runId: string; chapterId: string; onText?: (t: string) => void }) {
+export async function stepRevise(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Draft this chapter first.");
@@ -264,27 +208,18 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
   const noteRows = (notesRes.data || []).map((n, i) => ({ ...n, ref: `N${i + 1}` }));
   const qRows = questions.map((q, i) => ({ ...q, ref: `Q${i + 1}` }));
 
-  const m = STEP_MODELS.revise;
-  const res = await callClaudeNext(
-    reviseSystem(await voiceAndStyle(opts.userId, ctx.project)),
-    reviseUser({
-      draft: ctx.latest.content,
-      craftNotes: noteRows.map((n) => ({ id: n.ref, span: n.span, problem: n.problem, fix: n.fix })),
-      answered: qRows.filter((q) => answerText.has(q.id)).map((q) => ({ id: q.ref, question: q.question, answer: answerText.get(q.id)! })),
-      unanswered: qRows.filter((q) => !answerText.has(q.id)).map((q) => ({ id: q.ref, question: q.question })),
-      sourceExcerpts: ctx.excerpts,
-      targetWords: ctx.chapter.target_word_count,
-    }),
-    { ...m, maxTokens: 64000, jsonSchema: REVISE_SCHEMA as unknown as Record<string, unknown>, onText: opts.onText }
+  const out = await coreRevise(
+    ctx.input,
+    ctx.latest.content,
+    noteRows.map((n) => ({ id: n.ref, span: n.span, problem: n.problem, fix: n.fix })),
+    qRows.map((q) => ({ id: q.ref, question: q.question, answer: answerText.get(q.id) ?? null })),
+    STEP_MODELS
   );
-  await bill(opts.userId, ctx.project.id, "pr_revise", m.model, res.usage);
-  const out = parseJsonReply<{ chapter: string; change_log: { ref: string; action: string; what_changed: string }[] }>(res.text);
-  const content = sanitizeGenerated(out.chapter);
-  if (!content.trim()) throw new StepError("Revision came back empty. Try again.", 502);
+  await bill(opts.userId, ctx.projectId, out.spend);
+  if (!out.text.trim()) throw new StepError("Revision came back empty. Try again.", 502);
 
-  const version = await saveVersion(db, opts.chapterId, content, { pipeline: "publisher_ready", step: "revise", model: res.servedBy });
-  // Mark craft notes by the reviser's own log.
-  const byRef = new Map(out.change_log.map((c) => [c.ref, c]));
+  const version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "revise", model: out.servedBy });
+  const byRef = new Map(out.changeLog.map((c) => [c.ref, c]));
   for (const n of noteRows) {
     const entry = byRef.get(n.ref);
     await db.from("pr_craft_notes").update({
@@ -294,69 +229,29 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
   }
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "revise",
-    version_in: ctx.latest.version, version_out: version, change_log: out.change_log, usage: res.usage,
+    version_in: ctx.latest.version, version_out: version, change_log: out.changeLog, usage: totalUsage(out.spend),
   });
-  return { version, changes: out.change_log.length };
+  return { version, changes: out.changeLog.length };
 }
 
 // ─── Step 5: final check ─────────────────────────────────────────────────────
-
-/** Apply find/replace edits; skips any whose `find` is missing or not unique, and never edits inside quotes. */
-export function applyEdits(text: string, edits: { find: string; replace: string }[]): { text: string; applied: number } {
-  let out = text;
-  let applied = 0;
-  for (const e of edits) {
-    if (!e.find || e.find === e.replace) continue;
-    const first = out.indexOf(e.find);
-    if (first === -1 || out.indexOf(e.find, first + 1) !== -1) continue;
-    // Quoted speech is the author's source material: an edit that changes any
-    // quoted text is refused.
-    const quotesBefore = (e.find.match(/["“”]/g) ?? []).join("");
-    const quotesAfter = (e.replace.match(/["“”]/g) ?? []).join("");
-    const quotedBefore = e.find.match(/["“][^"”]*["”]/g) ?? [];
-    if (quotesBefore !== quotesAfter || quotedBefore.some((q) => !e.replace.includes(q))) continue;
-    out = out.slice(0, first) + e.replace + out.slice(first + e.find.length);
-    applied++;
-  }
-  return { text: out, applied };
-}
 
 export async function stepFinal(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Nothing to check yet.");
 
-  const others = await otherChapterTexts(db, ctx.project.id, opts.chapterId);
-  const structure = lintStructure(ctx.latest.content);
-  const flags = [...structure.flags, ...bookRepeats(ctx.latest.content, others)];
-  const tellLines = structure.tells.bannedHits.map((b) => `- banned phrase "${b.phrase}" x${b.count}`);
-  if (structure.tells.negationFlips) tellLines.push(`- ${structure.tells.negationFlips} "not X, but Y" constructions`);
+  const out = await coreFinal(ctx.latest.content, await otherChapterTexts(db, ctx.projectId, opts.chapterId), STEP_MODELS);
+  await bill(opts.userId, ctx.projectId, out.spend);
 
-  let content = ctx.latest.content;
-  let applied = 0;
-  let usage: ClaudeUsage = { input_tokens: 0, output_tokens: 0 };
-  // Only spend a model call when the checker found something.
-  if (flags.length || tellLines.length) {
-    const m = STEP_MODELS.final;
-    const res = await callClaudeNext(
-      finalCheckSystem(),
-      `FLAGGED BY THE CHECKER:\n${[lintSummary(flags), ...tellLines].filter(Boolean).join("\n")}\n\nCHAPTER:\n---\n${content}\n---`,
-      { ...m, maxTokens: 16000, jsonSchema: FINAL_SCHEMA as unknown as Record<string, unknown> }
-    );
-    usage = res.usage;
-    await bill(opts.userId, ctx.project.id, "pr_final", m.model, res.usage);
-    const { edits } = parseJsonReply<{ edits: { find: string; replace: string; reason: string }[] }>(res.text);
-    ({ text: content, applied } = applyEdits(content, edits));
-  }
-
-  const after = lintStructure(content);
+  const after = lintStructure(out.text);
   let version = ctx.latest.version;
-  if (applied > 0) version = await saveVersion(db, opts.chapterId, content, { pipeline: "publisher_ready", step: "final" });
+  if (out.applied > 0) version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "final" });
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "final",
     version_in: ctx.latest.version, version_out: version,
-    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: applied },
-    usage,
+    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied },
+    usage: totalUsage(out.spend),
   });
-  return { version, applied, tellsScore: after.tells.score, flagsLeft: after.flags.length };
+  return { version, applied: out.applied, tellsScore: after.tells.score, flagsLeft: after.flags.length };
 }

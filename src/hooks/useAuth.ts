@@ -12,7 +12,12 @@ export function useAuth() {
   useEffect(() => {
     const supabase = createBrowserClient();
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // getSession() reads the locally stored session (no network round-trip);
+    // the onAuthStateChange listener below keeps it current. getUser() hit
+    // /auth/v1/user once per mounted hook (Sentry DSCRIBE-10). Server routes
+    // still verify the user on every API call via requireAuth().
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null;
       setUser(user);
       setLoading(false);
       // HeyCatch: this is where the app first sees a signed-in session

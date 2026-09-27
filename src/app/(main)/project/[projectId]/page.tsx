@@ -401,6 +401,17 @@ function StepAnimation({ stepKey }: { stepKey: string }) {
   }
 }
 
+/** Default every related array so older or partial payloads can't crash the page. */
+function normalizeProject(data: ProjectDetail): ProjectDetail {
+  return {
+    ...data,
+    audio_uploads: Array.isArray(data.audio_uploads) ? data.audio_uploads : [],
+    transcripts: Array.isArray(data.transcripts) ? data.transcripts : [],
+    key_points: Array.isArray(data.key_points) ? data.key_points : [],
+    chapters: Array.isArray(data.chapters) ? data.chapters : [],
+  };
+}
+
 export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
@@ -409,9 +420,11 @@ export default function ProjectPage() {
 
   useEffect(() => {
     fetch(`/api/project/${projectId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setProject(data);
+      .then(async (r) => {
+        const data = r.ok ? await r.json() : null;
+        // A 401/404/429 comes back as { error } — storing that as the project
+        // crashed getActiveStep on `.some` of undefined (Sentry DSCRIBE-Y).
+        setProject(data && data.id ? normalizeProject(data) : null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -427,7 +440,7 @@ export default function ProjectPage() {
 
   const activeStep = getActiveStep(project);
   const currentPipeline = PIPELINE[activeStep] || PIPELINE[0];
-  const totalWordCount = project.transcripts.reduce((sum, t) => sum + t.word_count, 0);
+  const totalWordCount = project.transcripts.reduce((sum, t) => sum + (t.word_count || 0), 0);
   const generatedChapters = project.chapters.filter((c) => c.status === "generated" || c.status === "edited");
   const generatedWordCount = generatedChapters.reduce((sum, c) => sum + (c.target_word_count || 0), 0);
 
@@ -828,7 +841,7 @@ export default function ProjectPage() {
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-manrope), sans-serif" }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34D399", animation: "spin 3s linear infinite" }} />
-                    {project.status.replace("_", " ")}
+                    {(project.status || "draft").replace("_", " ")}
                   </span>
                 </div>
                 <div>

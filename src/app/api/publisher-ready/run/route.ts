@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const { data: project } = await db.from("projects").select("id").eq("id", projectId).eq("user_id", user.id).single();
     if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-    const { data: chapters } = await db.from("chapters").select("id, chapter_number, title, target_word_count")
+    const { data: chapters } = await db.from("chapters").select("id, chapter_number, title, target_word_count, status")
       .eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
     const estimate = estimateRunInk(chapters || []);
     const { data: run } = await db.from("pr_runs").select("*").eq("project_id", projectId)

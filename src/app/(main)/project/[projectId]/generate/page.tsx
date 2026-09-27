@@ -54,6 +54,13 @@ export default function GeneratePage() {
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [inkEstimate, setInkEstimate] = useState<{ total_low: number; total_high: number; chapter_count: number; per_chapter?: number[] } | null>(null);
+  // Publisher-Ready is flag-gated server side; its run endpoint 404s when off.
+  const [publisherReady, setPublisherReady] = useState(false);
+  useEffect(() => {
+    fetch(`/api/publisher-ready/run?project_id=${projectId}`)
+      .then((r) => setPublisherReady(r.ok))
+      .catch(() => setPublisherReady(false));
+  }, [projectId]);
 
   // Are all chapters generated?
   const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
@@ -463,6 +470,25 @@ export default function GeneratePage() {
         }
         progress={genTotal > 0 ? genCurrent / genTotal : undefined}
       />
+      {publisherReady && (
+        <div style={{ padding: "0 40px 16px" }}>
+          <GlassCard style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>Publisher-Ready pass</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
+                An editor reads every chapter, asks you what only you know, and your answers go into the book.
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(`/project/${projectId}/publisher-ready`)}
+              disabled={isGenerating}
+              style={{ fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: isGenerating ? "wait" : "pointer" }}
+            >
+              Open
+            </button>
+          </GlassCard>
+        </div>
+      )}
       <div className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "340px 1fr",

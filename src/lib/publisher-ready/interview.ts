@@ -48,6 +48,9 @@ export interface InterviewState {
 export async function serveNext(userId: string, runId: string): Promise<InterviewState> {
   const db = createServerClient();
   const run = await loadRun(db, userId, runId);
+  if (run.status === "drafting" || run.status === "editing") {
+    await db.from("pr_runs").update({ status: "interviewing", updated_at: new Date().toISOString() }).eq("id", runId);
+  }
   const { data: chapters } = await db.from("chapters").select("id, chapter_number, title").eq("project_id", run.project_id);
   const chapterList = chapters || [];
   const titleOf = new Map(chapterList.map((c) => [c.id, c]));

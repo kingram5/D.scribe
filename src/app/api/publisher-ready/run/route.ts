@@ -21,9 +21,10 @@ export async function GET(req: NextRequest) {
     const { data: chapters } = await db.from("chapters").select("id, chapter_number, title, target_word_count, status")
       .eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
     const estimate = estimateRunInk(chapters || []);
+    const estimateSkipDraft = estimateRunInk(chapters || [], { skipDraft: true });
     const { data: run } = await db.from("pr_runs").select("*").eq("project_id", projectId)
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!run) return NextResponse.json({ run: null, chapters: chapters || [], estimate });
+    if (!run) return NextResponse.json({ run: null, chapters: chapters || [], estimate, estimateSkipDraft });
 
     const [passes, questions] = await Promise.all([
       db.from("pr_chapter_passes").select("chapter_id, step, scores, version_out, change_log").eq("run_id", run.id),
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
       run,
       chapters: chapters || [],
       estimate,
+      estimateSkipDraft,
       passes: passes.data || [],
       interview: progress((questions.data || []) as RRQuestion[]),
     });
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/publisher-ready/run { project_id, action?: "start" | "complete" | "cancel", run_id? }
+// POST /api/publisher-ready/run { project_id, action?: "start" | "complete" | "cancel", run_id?, skip_draft? }
 export async function POST(req: NextRequest) {
   const { user, error } = await guard(await requireAuth(), "run", 20);
   if (error) return error;
@@ -76,7 +78,8 @@ export async function POST(req: NextRequest) {
 
     // Check the whole run up front: never let a user pay for a draft and an
     // editor read and then run dry before the revise.
-    const estimate = estimateRunInk(chapters);
+    // Keeping the current chapters as the first draft drops the draft cost.
+    const estimate = estimateRunInk(chapters, { skipDraft: body.skip_draft === true });
     const balance = await ensureBalance(user.id);
     const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
     if (spendable < estimate) {

@@ -39,6 +39,7 @@ export default function PublisherReadyPage() {
   const [run, setRun] = useState<RunRow | null>(null);
   const [passes, setPasses] = useState<PassRow[]>([]);
   const [estimate, setEstimate] = useState(0);
+  const [estimateSkipDraft, setEstimateSkipDraft] = useState(0);
   const [running, setRunning] = useState<Step | null>(null);
   const [stepProgress, setStepProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export default function PublisherReadyPage() {
     setRun(data.run);
     setPasses(data.passes || []);
     setEstimate(data.estimate || 0);
+    setEstimateSkipDraft(data.estimateSkipDraft || data.estimate || 0);
     setLoading(false);
     return data;
   }, [projectId]);
@@ -141,7 +143,7 @@ export default function PublisherReadyPage() {
       const res = await guardedFetch("/api/publisher-ready/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId }),
+        body: JSON.stringify({ project_id: projectId, skip_draft: useCurrentDrafts }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { if (data.error !== "out_of_ink") setError(data.message || data.error); return; }
@@ -194,7 +196,7 @@ export default function PublisherReadyPage() {
         <GlassCard style={{ padding: 32 }}>
           <PanelTitle>Publisher-Ready pass</PanelTitle>
           <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>
-            Your book gets drafted, read by an editor, and sent back to you with questions only you can answer. Your answers go into the book in your own words. About {estimate.toLocaleString()} Ink for this book.
+            Your book gets drafted, read by an editor, and sent back to you with questions only you can answer. Your answers go into the book in your own words. About {(useCurrentDrafts ? estimateSkipDraft : estimate).toLocaleString()} Ink for this book.
           </p>
           <ol style={{ listStyle: "none", padding: 0, margin: "20px 0 0", display: "grid", gap: 10 }}>
             {STAGES.map((s, i) => {

@@ -26,6 +26,9 @@ interface Props {
   onFinished: () => void;
 }
 
+/** Stay under the host's ~4.5 MB request-body limit (the studio uses the same bound). */
+const MAX_CLIP_BYTES = 3_800_000;
+
 const btn = (primary = false): React.CSSProperties => ({
   fontSize: 13,
   fontWeight: 600,
@@ -44,6 +47,10 @@ const btn = (primary = false): React.CSSProperties => ({
  * an answer is vague. The author can skip, end a chapter, or end the interview.
  */
 export default function InterviewPanel({ runId, guardedFetch, onFinished }: Props) {
+  // Held in a ref: the parent passes a new function every render, and making
+  // loadNext depend on it would re-fetch the question and wipe a typed answer.
+  const onFinishedRef = useRef(onFinished);
+  onFinishedRef.current = onFinished;
   const [question, setQuestion] = useState<ServedQuestion | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [followUp, setFollowUp] = useState<{ text: string; answerId: string } | null>(null);
@@ -79,13 +86,13 @@ export default function InterviewPanel({ runId, guardedFetch, onFinished }: Prop
       const data = await call({ action: "next" });
       setQuestion(data.next);
       setProgress(data.progress);
-      if (!data.next) onFinished();
+      if (!data.next) onFinishedRef.current();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the next question");
     } finally {
       setBusy(false);
     }
-  }, [call, onFinished]);
+  }, [call]);
 
   useEffect(() => { void loadNext(); }, [loadNext]);
 
@@ -134,12 +141,28 @@ export default function InterviewPanel({ runId, guardedFetch, onFinished }: Prop
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
+      // Low bitrate keeps a long answer small; browsers that ignore the hint are
+      // still covered by the byte guard below.
+      const rec = new MediaRecorder(stream, { audioBitsPerSecond: 32_000 });
       chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      let bytes = 0;
+      let hitSizeCap = false;
+      rec.ondataavailable = (e) => {
+        if (e.data.size <= 0) return;
+        chunksRef.current.push(e.data);
+        bytes += e.data.size;
+        // The host rejects request bodies over ~4.5 MB (same bound as the
+        // brainstorm studio): stop early, transcribe what we have, and let the
+        // author press record again to keep going. Nothing is lost.
+        if (bytes > MAX_CLIP_BYTES && rec.state === "recording") {
+          hitSizeCap = true;
+          rec.stop();
+        }
+      };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         setRecording(false);
+        if (hitSizeCap) setError("That was a long one. I saved what you said; press “Answer out loud” again to keep going.");
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         const seconds = Math.round((Date.now() - startedAtRef.current) / 1000);
         setBusy(true);
@@ -165,7 +188,7 @@ export default function InterviewPanel({ runId, guardedFetch, onFinished }: Prop
       };
       recorderRef.current = rec;
       startedAtRef.current = Date.now();
-      rec.start();
+      rec.start(1000); // 1s slices so the byte guard sees the size as it grows
       setRecording(true);
       // Cap one answer at 10 minutes.
       setTimeout(() => { if (rec.state === "recording") rec.stop(); }, 600_000);
@@ -237,7 +260,7 @@ export default function InterviewPanel({ runId, guardedFetch, onFinished }: Prop
         <button onClick={() => act({ action: "finish_chapter", chapter_id: question.chapter_id }, loadNext)} disabled={busy} style={btn()}>
           Done with this chapter
         </button>
-        <button onClick={() => act({ action: "finish" }, onFinished)} disabled={busy} style={btn()}>
+        <button onClick={() => act({ action: "finish" }, () => onFinishedRef.current())} disabled={busy} style={btn()}>
           Done with all questions
         </button>
       </div>

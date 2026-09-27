@@ -115,7 +115,7 @@ describe("Publisher-Ready scoreboard", () => {
     // ── Phase 3: finish C/D with the answers, judge everything blind, report ─
     if (PHASE === "final") {
       if (!CONFIRM) { console.log("Re-run with PR_EVAL_CONFIRM=yes to spend."); return; }
-      const rows: { fixture: string; arm: Arm; total: number; scores: Record<string, number>; dollars: number; worst: string; code: ReturnType<typeof codeMetrics> }[] = [];
+      const rows: { fixture: string; arm: Arm; total: number; scores: Record<string, number>; dollars: number; slowest: number; worst: string; code: ReturnType<typeof codeMetrics> }[] = [];
       let judgeDollars = 0;
       for (const f of fixtures) {
         const arms: ArmResult[] = [];
@@ -134,7 +134,7 @@ describe("Publisher-Ready scoreboard", () => {
         for (const r of order) {
           const j = await judge(f, r.final!);
           judgeDollars += j.dollars;
-          rows.push({ fixture: f.id, arm: r.arm, total: rubricTotal(j.scores), scores: j.scores, dollars: r.dollars, worst: j.worst, code: codeMetrics(r.final!) });
+          rows.push({ fixture: f.id, arm: r.arm, total: rubricTotal(j.scores), scores: j.scores, dollars: r.dollars, slowest: Math.max(0, ...Object.values(r.seconds ?? {})), worst: j.worst, code: codeMetrics(r.final!) });
         }
       }
 
@@ -146,16 +146,18 @@ describe("Publisher-Ready scoreboard", () => {
         "",
         `${fixtures.length} chapter(s), rubric max ${RUBRIC_MAX}, lower of two judges per criterion. Judging cost $${judgeDollars.toFixed(2)}.`,
         "",
-        "| Arm | Avg rubric | Tells score | Rhythm | $ / chapter | $ / 40k-word book* | Ink / book* |",
-        "|---|---|---|---|---|---|---|",
+        "| Arm | Avg rubric | Tells score | Rhythm | $ / chapter | $ / 40k-word book* | Ink / book* | Slowest step (s)** |",
+        "|---|---|---|---|---|---|---|---|",
         ...(["A", "B", "C", "D"] as Arm[]).map((arm) => {
           const rs = byArm(arm);
           const perChapter = avg(rs.map((r) => r.dollars));
           const perBook = perChapter * (40000 / Math.max(500, words));
-          return `| ${arm} | ${avg(rs.map((r) => r.total)).toFixed(1)} | ${avg(rs.map((r) => r.code.tellsScore)).toFixed(0)} | ${avg(rs.map((r) => r.code.rhythm)).toFixed(2)} | $${perChapter.toFixed(3)} | $${perBook.toFixed(2)} | ${Math.round(perBook * INK_PER_VENDOR_DOLLAR)} |`;
+          return `| ${arm} | ${avg(rs.map((r) => r.total)).toFixed(1)} | ${avg(rs.map((r) => r.code.tellsScore)).toFixed(0)} | ${avg(rs.map((r) => r.code.rhythm)).toFixed(2)} | $${perChapter.toFixed(3)} | $${perBook.toFixed(2)} | ${Math.round(perBook * INK_PER_VENDOR_DOLLAR)} | ${Math.max(0, ...rs.map((r) => r.slowest)).toFixed(0)} |`;
         }),
         "",
         `*Book figures scale the measured per-chapter cost to 40,000 words at the average chapter length here (${Math.round(words)} words). Chapter costs only; interview sessions and analysis are extra.`,
+        "",
+        "**Each production step is one request capped at 300 s; anything near 240 s needs splitting before launch. A and B are a single call and are not timed (they show 0).",
         "",
         "A = today (Sonnet 4.6 one pass) · B = today's prompt on Sonnet 5 · C = Publisher-Ready production mix · D = Publisher-Ready budget mix",
         "",

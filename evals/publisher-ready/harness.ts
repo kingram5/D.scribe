@@ -47,9 +47,17 @@ export interface ArmResult {
   final?: string;
   dollars: number;
   spend: { step: string; model: string; dollars: number }[];
+  /** Wall-clock seconds per production step (each step is one request with a 300s limit). */
+  seconds?: Record<string, number>;
 }
 
 const SONNET46_RATE = { in: 3, out: 15 };
+
+async function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
+  const t = Date.now();
+  const v = await fn();
+  return [v, Math.round((Date.now() - t) / 100) / 10];
+}
 
 export function spendRows(spend: Spend[]): ArmResult["spend"] {
   return spend.map((s) => ({ step: s.step, model: s.model, dollars: usageDollars(s.model, s.usage) }));
@@ -85,12 +93,12 @@ export async function runArmB(f: Fixture): Promise<ArmResult> {
 /** Phase "questions": draft + editor read. */
 export async function runPrFront(f: Fixture, arm: "C" | "D"): Promise<ArmResult> {
   const mix = MIX_FOR[arm];
-  const draft = await coreDraft(f.input, mix);
-  const edit = await coreEdit(f.input, draft.text, draft.beats, f.otherChapters, mix);
+  const [draft, draftS] = await timed(() => coreDraft(f.input, mix));
+  const [edit, editS] = await timed(() => coreEdit(f.input, draft.text, draft.beats, f.otherChapters, mix));
   const spend = spendRows([...draft.spend, ...edit.spend]);
   return {
     arm, fixture: f.id, draft: draft.text, beats: draft.beats, editor: edit.report,
-    dollars: spend.reduce((n, s) => n + s.dollars, 0), spend,
+    dollars: spend.reduce((n, s) => n + s.dollars, 0), spend, seconds: { draft: draftS, edit: editS },
   };
 }
 
@@ -106,14 +114,14 @@ export async function runPrBack(f: Fixture, front: ArmResult, answers: Record<st
   const interviewTurns = questions.filter((q) => q.answer).length;
   const interviewDollars = interviewTurns * usageDollars(mix.interview.model, { input_tokens: 1200, output_tokens: 400 });
 
-  const revised = await coreRevise(f.input, front.draft!, notes, questions, mix);
-  const final = await coreFinal(revised.text, f.otherChapters, mix);
+  const [revised, reviseS] = await timed(() => coreRevise(f.input, front.draft!, notes, questions, mix));
+  const [final, finalS] = await timed(() => coreFinal(revised.text, f.otherChapters, mix));
   const spend = [
     ...front.spend,
     { step: "interview", model: mix.interview.model, dollars: interviewDollars },
     ...spendRows([...revised.spend, ...final.spend]),
   ];
-  return { ...front, final: final.text, dollars: spend.reduce((n, s) => n + s.dollars, 0), spend };
+  return { ...front, final: final.text, dollars: spend.reduce((n, s) => n + s.dollars, 0), spend, seconds: { ...front.seconds, revise: reviseS, final: finalS } };
 }
 
 // ─── Blind judging ───────────────────────────────────────────────────────────

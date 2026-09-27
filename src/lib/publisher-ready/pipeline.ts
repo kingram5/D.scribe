@@ -133,6 +133,7 @@ export async function stepDraft(opts: { userId: string; runId: string; chapterId
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   await db.from("chapters").update({ status: "generating" }).eq("id", opts.chapterId);
   try {
+    const t0 = Date.now();
     const out = await coreDraft(ctx.input, STEP_MODELS, { creativeFreedom: opts.creativeFreedom, onText: opts.onText });
     await bill(opts.userId, ctx.projectId, out.spend);
     if (!out.text.trim()) throw new StepError("Draft came back empty. Try again.", 502);
@@ -140,7 +141,7 @@ export async function stepDraft(opts: { userId: string; runId: string; chapterId
     await db.from("chapters").update({ status: "generated" }).eq("id", opts.chapterId);
     await recordPass(db, {
       run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "draft",
-      version_in: ctx.latest?.version ?? null, version_out: version, beat_plan: out.beats, usage: totalUsage(out.spend),
+      version_in: ctx.latest?.version ?? null, version_out: version, beat_plan: out.beats, usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
     });
     return { version, wordCount: out.text.trim().split(/\s+/).length, beats: out.beats.length };
   } catch (err) {
@@ -159,6 +160,7 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
     .eq("run_id", opts.runId).eq("chapter_id", opts.chapterId).eq("step", "draft").maybeSingle();
   const beats = (pass?.beat_plan as Beat[] | null) || [];
 
+  const t0 = Date.now();
   const { report, spend } = await coreEdit(ctx.input, ctx.latest.content, beats, await otherChapterTexts(db, ctx.projectId, opts.chapterId), STEP_MODELS);
   await bill(opts.userId, ctx.projectId, spend);
 
@@ -181,7 +183,7 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "edit",
     version_in: ctx.latest.version, version_out: ctx.latest.version,
-    scores: { ...report.scores, summary: report.summary }, usage: totalUsage(spend),
+    scores: { ...report.scores, summary: report.summary }, usage: { ...totalUsage(spend), elapsed_ms: Date.now() - t0 },
   });
   return { questions: report.author_questions.length, craftNotes: report.craft_notes.length, scores: report.scores, summary: report.summary };
 }
@@ -208,6 +210,7 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
   const noteRows = (notesRes.data || []).map((n, i) => ({ ...n, ref: `N${i + 1}` }));
   const qRows = questions.map((q, i) => ({ ...q, ref: `Q${i + 1}` }));
 
+  const t0 = Date.now();
   const out = await coreRevise(
     ctx.input,
     ctx.latest.content,
@@ -229,7 +232,7 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
   }
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "revise",
-    version_in: ctx.latest.version, version_out: version, change_log: out.changeLog, usage: totalUsage(out.spend),
+    version_in: ctx.latest.version, version_out: version, change_log: out.changeLog, usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
   });
   return { version, changes: out.changeLog.length };
 }
@@ -241,6 +244,7 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Nothing to check yet.");
 
+  const t0 = Date.now();
   const out = await coreFinal(ctx.latest.content, await otherChapterTexts(db, ctx.projectId, opts.chapterId), STEP_MODELS);
   await bill(opts.userId, ctx.projectId, out.spend);
 
@@ -251,7 +255,7 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "final",
     version_in: ctx.latest.version, version_out: version,
     scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied },
-    usage: totalUsage(out.spend),
+    usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
   });
   return { version, applied: out.applied, tellsScore: after.tells.score, flagsLeft: after.flags.length };
 }

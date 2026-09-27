@@ -20,7 +20,16 @@ export type InkOperation =
   | "style_distill"
   | "transcribe"
   | "youtube_import"
-  | "research";
+  | "research"
+  // Publisher-Ready pipeline (spec 2026-09-27)
+  | "pr_draft"
+  | "pr_edit"
+  | "pr_interview"
+  | "pr_revise"
+  | "pr_final";
+
+/** Model names the meter understands: the legacy tiers plus the 5-series keys (ink_rates rows, 029). */
+export type InkModel = "fast" | "quality" | "sonnet5" | "opus55" | "fable51";
 
 // Flat vendor-cost rates for the non-token operations. Rough cost parity with
 // the 1-Ink-per-1000-token convention (1 Ink ≈ $0.006-0.009 of vendor spend):
@@ -36,6 +45,14 @@ export const INK_PER_YOUTUBE_IMPORT = 2;
  */
 export function inkMeterV2(): boolean {
   return process.env.INK_METER_V2 === "true";
+}
+
+/**
+ * Publisher-Ready runs only when its flag is set AND the v2 meter is live: the
+ * v2 meter is the only one that prices each model at its own rate.
+ */
+export function publisherReadyEnabled(): boolean {
+  return process.env.PUBLISHER_READY === "true" && inkMeterV2();
 }
 
 /** Deepgram is ~$0.0043 per audio minute; at 102 Ink per vendor dollar that is 0.44. */
@@ -67,6 +84,12 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   transcribe: 2,
   youtube_import: 2,
   research: 3,
+  // Per chapter at meter v2 (102 Ink per vendor dollar). Floors, not averages.
+  pr_draft: 5,
+  pr_edit: 25,
+  pr_interview: 0.5,
+  pr_revise: 10,
+  pr_final: 2,
 };
 
 /** Estimated minimum Ink cost for an operation (used by the pre-flight gate). */
@@ -287,7 +310,7 @@ export function recordInkUsage(
   userId: string,
   projectId: string | null,
   operation: InkOperation,
-  model: "fast" | "quality",
+  model: InkModel,
   usage: ClaudeUsage
 ): Promise<number> {
   const charge = recordInkUsageNow(userId, projectId, operation, model, usage);
@@ -303,13 +326,18 @@ async function recordInkUsageNow(
   userId: string,
   projectId: string | null,
   operation: InkOperation,
-  model: "fast" | "quality",
+  model: InkModel,
   usage: ClaudeUsage
 ): Promise<number> {
+  // The v1 meter has no per-model price: a 5-series call billed through it
+  // would be charged at Sonnet 4.6 rates (a third of Fable's real cost).
+  if (model !== "fast" && model !== "quality" && !inkMeterV2()) {
+    throw new Error(`Model ${model} requires INK_METER_V2`);
+  }
   const supabase = createServerClient();
   await ensureBalance(userId);
 
-  const modelName = model === "fast" ? "haiku" : "sonnet";
+  const modelName = model === "fast" ? "haiku" : model === "quality" ? "sonnet" : model;
 
   const v2 = inkMeterV2();
   const { data, error } = await supabase.rpc(v2 ? "deduct_ink_v2" : "deduct_ink", {

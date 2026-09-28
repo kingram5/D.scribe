@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
-import { getTtsLimit } from "@/lib/tts";
+import { getTtsLimit, resolveTheoTtsModel, THEO_TTS_FALLBACK_MODEL } from "@/lib/tts";
 import { stripFormatMarkers } from "@/lib/export/format-markers";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
   // after the code default was already correct.
   const voiceId = "fnYMz3F5gMEDGMWcH1ex";
 
-  const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
-    {
+  const model = resolveTheoTtsModel(process.env.THEO_TTS_MODEL);
+  const callElevenLabs = (modelId: string) =>
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
       method: "POST",
       headers: {
         "xi-api-key": apiKey,
@@ -94,11 +94,42 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_turbo_v2",
+        model_id: modelId,
         voice_settings: { stability: 0.5, similarity_boost: 0.75 },
       }),
+    });
+
+  // A user must never hear silence because the newer model hiccuped: if the
+  // chosen model errors (or the call throws), retry once on eleven_turbo_v2.
+  let res: Response | null = null;
+  let firstError = "";
+  try {
+    res = await callElevenLabs(model);
+    if (!res.ok && model !== THEO_TTS_FALLBACK_MODEL) {
+      firstError = `status ${res.status}: ${(await res.text()).slice(0, 500)}`;
+      res = null;
     }
-  );
+  } catch (err) {
+    if (model === THEO_TTS_FALLBACK_MODEL) throw err;
+    firstError = err instanceof Error ? err.message : String(err);
+  }
+  if (!res) {
+    logger.warn("ElevenLabs TTS model failed, retrying on fallback", {
+      route: "/api/tts",
+      userId: user.id,
+      meta: { from: model, to: THEO_TTS_FALLBACK_MODEL, error: firstError },
+    });
+    try {
+      res = await callElevenLabs(THEO_TTS_FALLBACK_MODEL);
+    } catch (err) {
+      logger.error("ElevenLabs TTS fallback call threw", {
+        route: "/api/tts",
+        userId: user.id,
+        meta: { model: THEO_TTS_FALLBACK_MODEL, error: err instanceof Error ? err.message : String(err) },
+      });
+      return NextResponse.json({ error: "TTS generation failed" }, { status: 502 });
+    }
+  }
 
   if (!res.ok) {
     const err = await res.text();

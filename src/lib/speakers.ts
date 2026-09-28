@@ -99,9 +99,8 @@ function segmentWordRanges(t: LabeledTranscript): { start: number; end: number; 
 
 /**
  * at every change of speaker. Unlabeled transcripts return the plain words
- * unchanged, which is
- * don't line up with full_text) return the plain words unchanged, which is
- * byte-identical to what chunkTranscript produced before labels existed.
+ * unchanged, which is byte-identical to what chunkTranscript produced before
+ * labels existed.
  */
 export function labeledRange(t: LabeledTranscript, startWord: number, wordCount: number): string {
   const words = splitWords(t.full_text);

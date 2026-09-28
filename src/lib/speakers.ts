@@ -248,3 +248,25 @@ export function speakerLabelsEnabled(): boolean {
 export function needsSpeakerLabels(t: { segments: TranscriptSegment[] | null; speakers_confirmed_at?: string | null }): boolean {
   return speakerLabelsEnabled() && (t.segments?.length ?? 0) > 0 && !t.speakers_confirmed_at;
 }
+
+/** Names of the other people in a project's labeled recordings. */
+export function otherSpeakerNames(transcripts: Pick<LabeledTranscript, "speaker_map">[]): string[] {
+  const names = new Set<string>();
+  for (const t of transcripts) {
+    for (const l of Object.values(t.speaker_map ?? {})) if (l.role === "other" && l.name) names.add(l.name.trim());
+  }
+  return [...names];
+}
+
+/**
+ * Writing instruction placed at the END of the chapter prompt (closest to the
+ * output), because the base prompt tells the writer the author IS the voice of
+ * the source. Tested 9/27: with the rule only in the system prompt, Sonnet 5
+ * still wrote another pastor's sermon as the author's first-person memories.
+ * Empty when there are no other speakers, so unlabeled prompts are unchanged.
+ */
+export function speakerWritingBlock(names: string[]): string {
+  if (!names.length) return "";
+  const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `\n\nWHO SAID WHAT (this overrides the point-of-view rule above wherever they conflict): Some or all of the source material is ${who}'s words, not the author's. Lines tagged [Author] are the author's own. Everything tagged with another name belongs to that person. Still write in the author's first person, but as the author drawing on and responding to ${who}: credit their ideas, stories, scripture readings and claims to them by name ("${names[0]} puts it this way...", "I first heard ${names[0]} tell the story of..."). Never use "I" for anything ${who} did, saw, preached, taught, counted or lived through. If the source gives no personal story of the author's for a point, make the point through ${who}'s words and leave the author's personal experience out rather than inventing it.`;
+}

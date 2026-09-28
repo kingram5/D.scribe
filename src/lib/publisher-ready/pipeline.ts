@@ -15,7 +15,7 @@ import { extractExcerptsForChapter } from "@/lib/chunker";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import type { Beat } from "./prompts";
 import { lintStructure } from "./structural-lint";
-import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, type LabeledTranscript } from "@/lib/speakers";
+import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, otherSpeakerNames, type LabeledTranscript } from "@/lib/speakers";
 import {
   DEFAULT_MIX, coreDraft, coreEdit, coreRevise, coreFinal,
   type ChapterInput, type Spend, type StepKey,
@@ -91,6 +91,7 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
       chapterSummary: chapter.summary,
       keyPoints: kps.map((kp) => keyPointForPrompt(kp)).map((kp) => ({ title: kp.title, summary: kp.summary })),
       otherSpeakers: txs.some(hasOtherSpeakers),
+      otherSpeakerNames: otherSpeakerNames(txs),
       previousChapters: prev.data || [],
       excerpts: extractExcerptsForChapter(fullText, kps.map((kp) => kp.supporting_quotes || [])),
       targetWords: chapter.target_word_count,

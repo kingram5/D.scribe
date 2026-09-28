@@ -15,7 +15,7 @@ import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { MODELS } from "@/lib/claude-lite";
-import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, OTHER_SPEAKERS_RULE } from "@/lib/speakers";
+import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, OTHER_SPEAKERS_RULE, speakerWritingBlock, otherSpeakerNames } from "@/lib/speakers";
 
 // Full chapters can take 60-180s to stream from Claude. On the 60s cap the
 // Vercel function was killed before the save block ran, leaving blank chapters
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
     targetWords: chapter.target_word_count,
     audience: project.audience,
     freedomInstruction,
-  });
+  }) + speakerWritingBlock(otherSpeakerNames(transcripts));
 
   // Stream from Anthropic API. Abortable: when the client walks away we stop
   // paying for tokens nobody will read (see the ReadableStream cancel below).

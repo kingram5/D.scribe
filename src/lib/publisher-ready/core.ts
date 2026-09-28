@@ -12,7 +12,7 @@ import { generationProfileBlock } from "@/lib/audience-profiles";
 import { creativeFreedomToInstruction } from "@/lib/claude-lite";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import type { VoiceProfile, Audience } from "@/types";
-import { OTHER_SPEAKERS_RULE } from "@/lib/speakers";
+import { OTHER_SPEAKERS_RULE, speakerWritingBlock } from "@/lib/speakers";
 import {
   BEAT_PLAN_SCHEMA, beatPlanSystem, draftBeatBlock, type Beat,
   EDITOR_SCHEMA, editorSystem, editorUser, type EditorReport,
@@ -53,6 +53,8 @@ export interface ChapterInput {
   targetWords: number;
   /** True when labeled recordings include people other than the author. */
   otherSpeakers?: boolean;
+  /** Names of those other people, for the writer's attribution rule. */
+  otherSpeakerNames?: string[];
 }
 
 export function voiceSystem(input: ChapterInput): string {
@@ -84,7 +86,7 @@ export async function coreDraft(
     targetWords: input.targetWords,
     audience: input.audience,
     freedomInstruction: creativeFreedomToInstruction(opts.creativeFreedom ?? 50),
-  }) + draftBeatBlock(beats);
+  }) + draftBeatBlock(beats) + speakerWritingBlock(input.otherSpeakerNames ?? []);
 
   const res = await callClaudeNext(voiceSystem(input), prompt, { ...mix.draft, maxTokens: 32000, onText: opts.onText });
   spend.push({ step: "draft", model: mix.draft.model, usage: res.usage });
@@ -144,7 +146,7 @@ export async function coreRevise(
       unanswered: questions.filter((q) => !q.answer).map((q) => ({ id: q.id, question: q.question })),
       sourceExcerpts: input.excerpts,
       targetWords: input.targetWords,
-    }),
+    }) + speakerWritingBlock(input.otherSpeakerNames ?? []),
     { ...mix.revise, maxTokens: 64000, jsonSchema: REVISE_SCHEMA as unknown as Record<string, unknown>, onText: opts.onText }
   );
   const out = parseJsonReply<{ chapter: string; change_log: ChangeLogEntry[] }>(res.text);

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { extractExcerptsForChapter } from "@/lib/chunker";
-import { projectSourceText, speakersIn, hasOtherSpeakers, keyPointForPrompt, keyPointSpeakerColumns, type LabeledTranscript } from "@/lib/speakers";
+import { projectSourceText, speakersIn, hasOtherSpeakers, keyPointForPrompt, keyPointSpeakerColumns, otherSpeakerNames, type LabeledTranscript } from "@/lib/speakers";
 import {
   runArmA, runArmB, runPrFront, runPrBack, judge, codeMetrics, rubricTotal, RUBRIC_MAX,
   type Arm, type ArmResult, type Fixture,
@@ -88,6 +88,7 @@ describe("Publisher-Ready scoreboard", () => {
             chapterSummary: ch.summary,
             keyPoints: (kps || []).map((k) => keyPointForPrompt({ title: k.title, summary: k.summary, ...kpOwner(k) })).map((k) => ({ title: k.title, summary: k.summary })),
             otherSpeakers: txs.some(hasOtherSpeakers),
+            otherSpeakerNames: otherSpeakerNames(txs),
             previousChapters: prev || [],
             excerpts: extractExcerptsForChapter(fullText, (kps || []).map((k) => k.supporting_quotes || [])),
             targetWords: ch.target_word_count,

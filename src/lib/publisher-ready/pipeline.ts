@@ -15,6 +15,7 @@ import { extractExcerptsForChapter } from "@/lib/chunker";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import type { Beat } from "./prompts";
 import { lintStructure } from "./structural-lint";
+import { loadVoiceDialsBlock } from "@/lib/voice-dials-store";
 import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, otherSpeakerNames, type LabeledTranscript } from "@/lib/speakers";
 import {
   DEFAULT_MIX, coreDraft, coreEdit, coreRevise, coreFinal,
@@ -85,7 +86,8 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
       audience: project.audience,
       scriptureTranslation: project.scripture_translation,
       voiceProfile: project.voice_profile,
-      styleMemoryBlock: styleMemoryPromptBlock(memory),
+      // Learned edits + the author's voice picks (both empty for a brand-new author).
+      styleMemoryBlock: styleMemoryPromptBlock(memory) + (await loadVoiceDialsBlock(userId, db)),
       chapterNumber: chapter.chapter_number,
       chapterTitle: chapter.title,
       chapterSummary: chapter.summary,

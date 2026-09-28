@@ -8,6 +8,7 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import Spinner from "@/components/ui/Spinner";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import InterviewPanel from "@/components/publisher-ready/InterviewPanel";
+import VoicePicker from "@/components/publisher-ready/VoicePicker";
 import { useInkGuard } from "@/hooks/useInkGuard";
 import { setGenerationBusy } from "@/lib/generation-guard";
 import { bandFor } from "@/lib/publisher-ready/rubric";
@@ -45,6 +46,9 @@ export default function PublisherReadyPage() {
   const [error, setError] = useState<string | null>(null);
   const [useCurrentDrafts, setUseCurrentDrafts] = useState(false);
   const [interviewing, setInterviewing] = useState(false);
+  // Keep the voice picker up until the author finishes it, even if the editor finishes first.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useEffect(() => { if (running === "edit") setPickerOpen(true); }, [running]);
   const cancelRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -243,6 +247,13 @@ export default function PublisherReadyPage() {
           )}
           {error && <div role="alert" style={{ marginTop: 16, color: "#B4532A", fontSize: 13 }}>{error}</div>}
         </GlassCard>
+
+        {/* While the editor reads (a few minutes of waiting): the one-time voice picker. */}
+        {pickerOpen && (
+          <GlassCard style={{ padding: 32 }}>
+            <VoicePicker projectId={projectId} onClose={() => setPickerOpen(false)} />
+          </GlassCard>
+        )}
 
         {interviewing && run && (
           <GlassCard style={{ padding: 32 }}>

@@ -15,6 +15,7 @@ import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { MODELS } from "@/lib/claude-lite";
+import { loadVoiceDialsBlock } from "@/lib/voice-dials-store";
 import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, OTHER_SPEAKERS_RULE, speakerWritingBlock, otherSpeakerNames } from "@/lib/speakers";
 
 // Full chapters can take 60-180s to stream from Claude. On the 60s cap the
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
   const styleMemory = await loadStyleMemory(user.id);
   const system = generateSystem(
     project.voice_profile,
-    styleMemoryPromptBlock(styleMemory),
+    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)),
     generationProfileBlock(project.audience, project.scripture_translation) + (otherSpeakers ? `\n\n${OTHER_SPEAKERS_RULE}` : "")
   );
   const prompt = generatePrompt({

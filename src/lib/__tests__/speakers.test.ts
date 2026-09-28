@@ -37,10 +37,18 @@ describe("speaker labels: unlabeled transcripts are untouched", () => {
     expect(authorOnlyText(unlabeled)).toBe(full_text);
   });
 
-  it("falls back to plain text when segments no longer line up with full_text", () => {
-    const edited = { ...labeled, full_text: full_text + " extra words typed later" };
+  it("unlabeled text stays plain even when segments no longer line up with full_text", () => {
+    const edited = { ...unlabeled, full_text: full_text + " extra words typed later" };
     const words = edited.full_text.split(/\s+/).filter(Boolean);
     expect(labeledRange(edited, 0, words.length)).toBe(words.join(" "));
+  });
+
+  it("labeled text still gets tags when full_text drifted from the segments", () => {
+    const edited = { ...labeled, full_text: full_text + " extra words typed later" };
+    const text = labeledText(edited);
+    expect(text.startsWith("[Author]: Welcome")).toBe(true);
+    expect(text).toContain("[Pastor Mike, my pastor]:");
+    expect(text.endsWith("typed later")).toBe(true);
   });
 });
 

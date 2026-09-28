@@ -83,12 +83,23 @@ function segmentWordRanges(t: LabeledTranscript): { start: number; end: number; 
     ranges.push({ start: cursor, end: cursor + n, speaker: s.speaker });
     cursor += n;
   }
-  return cursor === splitWords(t.full_text).length ? ranges : null;
+  const total = splitWords(t.full_text).length;
+  if (cursor === total) return ranges;
+  if (cursor === 0 || total === 0) return null;
+  // full_text was edited apart from the segments (legacy rows): map each segment
+  // onto full_text proportionally. Exact for one speaker; near a speaker change
+  // the tag can land a few words early or late.
+  const scale = total / cursor;
+  return ranges.map((r, i) => ({
+    start: Math.round(r.start * scale),
+    end: i === ranges.length - 1 ? total : Math.round(r.end * scale),
+    speaker: r.speaker,
+  }));
 }
 
 /**
- * The words [startWord, startWord + wordCount) of full_text with a speaker tag
- * at every change of speaker. Unlabeled transcripts (or ones whose segments
+ * at every change of speaker. Unlabeled transcripts return the plain words
+ * unchanged, which is
  * don't line up with full_text) return the plain words unchanged, which is
  * byte-identical to what chunkTranscript produced before labels existed.
  */

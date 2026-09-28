@@ -52,3 +52,19 @@ describe("speaker labels change prompts when someone else spoke", () => {
     expect(out.startsWith("...")).toBe(true);
   });
 });
+
+describe("excerpts keep the speaker in force", () => {
+  it("prefixes the tag that was active before the excerpt window", () => {
+    const filler = "word ".repeat(80);
+    const text = `[Pastor Mike, my pastor]: ${filler}my father lost the farm and we moved to Tulsa. ${filler}\n\n[Author]: ${filler}I remember my own first job at the diner. end`;
+    const out = extractExcerptsForChapter(text, [["my father lost the farm"], ["my own first job at the diner"]]);
+    const [first, second] = out.split("\n\n");
+    expect(first.startsWith("[Pastor Mike, my pastor]: ...")).toBe(true);
+    expect(second.startsWith("[Author]: ...")).toBe(true);
+  });
+
+  it("unlabeled text gets no prefix", () => {
+    const text = "word ".repeat(80) + "my father lost the farm and we moved. " + "word ".repeat(80);
+    expect(extractExcerptsForChapter(text, [["my father lost the farm"]]).startsWith("...")).toBe(true);
+  });
+});

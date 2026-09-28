@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { extractExcerptsForChapter } from "@/lib/chunker";
+import { projectSourceText, speakersIn, hasOtherSpeakers, keyPointForPrompt, keyPointSpeakerColumns, type LabeledTranscript } from "@/lib/speakers";
 import {
   runArmA, runArmB, runPrFront, runPrBack, judge, codeMetrics, rubricTotal, RUBRIC_MAX,
   type Arm, type ArmResult, type Fixture,
@@ -23,8 +24,10 @@ const PHASE = process.env.PR_EVAL_PHASE || "";
 const CONFIRM = process.env.PR_EVAL_CONFIRM === "yes";
 const readJson = <T>(p: string): T => JSON.parse(fs.readFileSync(p, "utf8")) as T;
 const writeJson = (p: string, v: unknown) => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(v, null, 2)); };
+// PR_EVAL_ONLY=substring limits a run to matching fixture ids (e.g. "-other").
+const ONLY = process.env.PR_EVAL_ONLY || "";
 const loadFixtures = (): Fixture[] =>
-  fs.existsSync(FIXTURES) ? fs.readdirSync(FIXTURES).filter((f) => f.endsWith(".json")).map((f) => readJson<Fixture>(path.join(FIXTURES, f))) : [];
+  fs.existsSync(FIXTURES) ? fs.readdirSync(FIXTURES).filter((f) => f.endsWith(".json") && (!ONLY || f.includes(ONLY))).map((f) => readJson<Fixture>(path.join(FIXTURES, f))) : [];
 
 /** Rough pre-run price so nobody spends by accident. */
 function priceEstimate(fixtures: Fixture[]): number {
@@ -53,7 +56,7 @@ describe("Publisher-Ready scoreboard", () => {
         if (!ch) throw new Error(`chapter ${id} not found`);
         const { data: project } = await db.from("projects").select("*").eq("id", ch.project_id).single();
         const [{ data: ts }, { data: kps }, { data: prev }, { data: siblings }] = await Promise.all([
-          db.from("transcripts").select("full_text").eq("project_id", ch.project_id),
+          db.from("transcripts").select("*").eq("project_id", ch.project_id),
           db.from("key_points").select("*").in("id", ch.key_point_ids || []),
           db.from("chapters").select("title, summary").eq("project_id", ch.project_id).lt("chapter_number", ch.chapter_number).gt("chapter_number", 0).order("chapter_number"),
           db.from("chapters").select("id, chapter_number").eq("project_id", ch.project_id).neq("id", id),
@@ -63,9 +66,16 @@ describe("Publisher-Ready scoreboard", () => {
           const { data: c } = await db.from("chapter_contents").select("content").eq("chapter_id", s.id).order("version", { ascending: false }).limit(1).maybeSingle();
           if (c?.content) otherChapters[`Chapter ${s.chapter_number}`] = c.content;
         }
-        const fullText = (ts || []).map((t) => t.full_text).join("\n\n");
+        // PR_EVAL_OTHER_SPEAKER="Name|relationship" labels every voice in these recordings as that
+        // person (e.g. a sermon the book's author did not preach), to test the speaker-label path.
+        const other = (process.env.PR_EVAL_OTHER_SPEAKER || "").split("|");
+        const txs: LabeledTranscript[] = (ts || []).map((t) => other[0]
+          ? { ...t, speaker_map: Object.fromEntries(speakersIn(t.segments).map((sp) => [sp, { role: "other" as const, name: other[0], relationship: other[1] || undefined }])) }
+          : t);
+        const fullText = projectSourceText(txs);
+        const kpOwner = (k: { supporting_quotes?: string[] }) => other[0] ? { speaker_role: "other" as const, speaker_name: other[0] } : txs.reduce((acc, t) => acc ?? (keyPointSpeakerColumns(t, k.supporting_quotes || []).speaker_role ? keyPointSpeakerColumns(t, k.supporting_quotes || []) : null), null as null | Record<string, unknown>) ?? {};
         const fixture: Fixture = {
-          id: `${String(project?.title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40)}-ch${ch.chapter_number}`,
+          id: `${String(project?.title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40)}-ch${ch.chapter_number}${other[0] ? "-other" : ""}`,
           otherChapters,
           input: {
             projectTitle: project?.title ?? "",
@@ -76,7 +86,8 @@ describe("Publisher-Ready scoreboard", () => {
             chapterNumber: ch.chapter_number,
             chapterTitle: ch.title,
             chapterSummary: ch.summary,
-            keyPoints: (kps || []).map((k) => ({ title: k.title, summary: k.summary })),
+            keyPoints: (kps || []).map((k) => keyPointForPrompt({ title: k.title, summary: k.summary, ...kpOwner(k) })).map((k) => ({ title: k.title, summary: k.summary })),
+            otherSpeakers: txs.some(hasOtherSpeakers),
             previousChapters: prev || [],
             excerpts: extractExcerptsForChapter(fullText, (kps || []).map((k) => k.supporting_quotes || [])),
             targetWords: ch.target_word_count,

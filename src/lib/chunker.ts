@@ -94,7 +94,12 @@ export function extractExcerptsForChapter(
 
     const contextStart = Math.max(0, idx - 200);
     const contextEnd = Math.min(fullText.length, idx + quote.length + 200);
-    excerpts.push("..." + fullText.slice(contextStart, contextEnd) + "...");
+    // In speaker-labeled text, carry the speaker tag in force at this point so
+    // the excerpt still says who is talking. Labeled text puts tags only at the
+    // very start or after a blank line; unlabeled text has none, so it is unchanged.
+    const before = fullText.slice(0, contextStart);
+    const tag = [...before.matchAll(/(?:^|\n\n)(\[[^\]\n]{1,80}\]): /g)].pop()?.[1];
+    excerpts.push((tag ? `${tag}: ` : "") + "..." + fullText.slice(contextStart, contextEnd) + "...");
   }
 
   return excerpts.length > 0 ? excerpts.join("\n\n") : fullText.slice(0, 3000);

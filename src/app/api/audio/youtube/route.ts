@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { checkInk, recordFlatInkUsage, INK_PER_YOUTUBE_IMPORT } from "@/lib/ink";
+import { checkInk, recordFlatInkUsage, recordInkUsage, inkMeterV2, INK_PER_YOUTUBE_IMPORT } from "@/lib/ink";
+import { speakerLabelsEnabled } from "@/lib/speakers";
+import { splitYoutubeSpeakers } from "@/lib/youtube-speakers";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 300;
@@ -142,12 +144,28 @@ export async function POST(req: NextRequest) {
     const fullText = segments.map((s) => s.text).join(" ");
     const wordCount = fullText.split(/\s+/).filter(Boolean).length;
 
+    // Captions carry no speakers. With speaker labels on, a cheap model pass
+    // reads the text for speaker changes; the author confirms on the transcript
+    // page. Any failure falls back to one speaker, exactly as before.
+    let lineSpeakers: string[] | null = null;
+    if (speakerLabelsEnabled() && inkMeterV2() && segments.length > 1) {
+      try {
+        const split = await splitYoutubeSpeakers(segments.map((s) => s.text));
+        lineSpeakers = split.speakers;
+        await recordInkUsage(user.id, project_id, "youtube_import", "sonnet5", split.usage).catch((billErr) =>
+          logger.error("youtube: speaker split billing failed", { route: "/api/audio/youtube", userId: user.id, error: billErr })
+        );
+      } catch (splitErr) {
+        logger.warn("youtube: speaker split failed, keeping one speaker", { route: "/api/audio/youtube", userId: user.id, error: splitErr });
+      }
+    }
+
     // Map Supadata segments to our TranscriptSegment shape
-    const mappedSegments = segments.map((s) => ({
+    const mappedSegments = segments.map((s, i) => ({
       start: s.offset / 1000,
       end: (s.offset + s.duration) / 1000,
       text: s.text,
-      speaker: "Speaker 1",
+      speaker: lineSpeakers?.[i] ?? "Speaker 1",
     }));
 
     const { data: transcript, error: txError } = await supabase
@@ -158,7 +176,7 @@ export async function POST(req: NextRequest) {
         full_text: fullText,
         segments: mappedSegments,
         word_count: wordCount,
-        speaker_count: 1,
+        speaker_count: new Set(mappedSegments.map((s) => s.speaker)).size,
       })
       .select()
       .single();

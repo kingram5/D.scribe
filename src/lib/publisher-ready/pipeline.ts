@@ -15,6 +15,7 @@ import { extractExcerptsForChapter } from "@/lib/chunker";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import type { Beat } from "./prompts";
 import { lintStructure } from "./structural-lint";
+import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, type LabeledTranscript } from "@/lib/speakers";
 import {
   DEFAULT_MIX, coreDraft, coreEdit, coreRevise, coreFinal,
   type ChapterInput, type Spend, type StepKey,
@@ -65,7 +66,7 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
   if (!project) throw new StepError("Project not found", 404);
 
   const [transcripts, keyPoints, prev, latest, memory] = await Promise.all([
-    db.from("transcripts").select("full_text").eq("project_id", chapter.project_id),
+    db.from("transcripts").select("full_text, segments, speaker_map").eq("project_id", chapter.project_id),
     db.from("key_points").select("*").in("id", chapter.key_point_ids || []),
     db.from("chapters").select("title, summary").eq("project_id", chapter.project_id)
       .lt("chapter_number", chapter.chapter_number).gt("chapter_number", 0).order("chapter_number"),
@@ -73,7 +74,8 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
       .order("version", { ascending: false }).limit(1).maybeSingle(),
     loadStyleMemory(userId),
   ]);
-  const fullText = (transcripts.data || []).map((t) => t.full_text).join("\n\n");
+  const txs = (transcripts.data || []) as LabeledTranscript[];
+  const fullText = projectSourceText(txs);
   const kps = keyPoints.data || [];
   return {
     projectId: project.id,
@@ -87,7 +89,8 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
       chapterNumber: chapter.chapter_number,
       chapterTitle: chapter.title,
       chapterSummary: chapter.summary,
-      keyPoints: kps.map((kp) => ({ title: kp.title, summary: kp.summary })),
+      keyPoints: kps.map((kp) => keyPointForPrompt(kp)).map((kp) => ({ title: kp.title, summary: kp.summary })),
+      otherSpeakers: txs.some(hasOtherSpeakers),
       previousChapters: prev.data || [],
       excerpts: extractExcerptsForChapter(fullText, kps.map((kp) => kp.supporting_quotes || [])),
       targetWords: chapter.target_word_count,

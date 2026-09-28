@@ -22,6 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BrainstormMessage } from "@/lib/brainstorm-session";
+import { labeledText, hasOtherSpeakers, type LabeledTranscript, type SpeakerMap } from "@/lib/speakers";
 
 export interface BriefingKeyPoint {
   id?: string;
@@ -30,6 +31,9 @@ export interface BriefingKeyPoint {
   supporting_quotes?: string[];
   tags?: string[];
   relevance_score?: number;
+  /** From speaker labels (migration 031): whose point this is. */
+  speaker_role?: "author" | "other" | "mixed" | null;
+  speaker_name?: string | null;
 }
 
 export interface BriefingTranscript {
@@ -37,6 +41,8 @@ export interface BriefingTranscript {
   text: string;
   /** The author's verbatim answers, when this transcript is a labeled brainstorm session. */
   authorLines?: string[];
+  /** True when the author labeled other people in this recording. */
+  hasOtherSpeakers?: boolean;
 }
 
 /** Written by /api/brainstorm/summarize when a session is finished. */
@@ -165,9 +171,11 @@ export function buildBriefingBlock(input: BriefingInput, recentAuthorText = ""):
   const ranked = rankKeyPoints(input.keyPoints, recentAuthorText);
   const pointLines: string[] = [];
   for (const kp of ranked) {
-    pointLines.push(`• ${trim(kp.title, 80)}: ${trim(kp.summary, MAX_SUMMARY)}`);
+    // Another speaker's point is marked as theirs so Theo never asks the author about it as their own.
+    const owner = kp.speaker_role === "other" && kp.speaker_name ? ` [${trim(kp.speaker_name, 40)}'s point, not the author's]` : kp.speaker_role === "mixed" ? " [the author and another speaker]" : "";
+    pointLines.push(`• ${trim(kp.title, 80)}${owner}: ${trim(kp.summary, MAX_SUMMARY)}`);
     const quote = (kp.supporting_quotes ?? []).map((q) => q.trim()).find(Boolean);
-    if (quote) pointLines.push(`   in their words: "${trim(quote, MAX_VERBATIM)}"`);
+    if (quote) pointLines.push(kp.speaker_role === "other" && kp.speaker_name ? `   in ${trim(kp.speaker_name, 40)}'s words: "${trim(quote, MAX_VERBATIM)}"` : `   in their words: "${trim(quote, MAX_VERBATIM)}"`);
   }
   const pointsFit = fit(pointLines, SECTION_BUDGET.points);
   if (pointsFit.length) sections.push(["ALREADY RECORDED, closest to what they are saying now:", ...pointsFit].join("\n"));
@@ -193,6 +201,10 @@ export function buildBriefingBlock(input: BriefingInput, recentAuthorText = ""):
     "- Use it silently. Whether you may quote any of it aloud this turn is set in YOUR PRIVATE NOTES under CALLBACKS.",
     "- If they restate something already recorded, push one level underneath it instead of collecting it again.",
     "- Never invent, embellish, or paraphrase-as-quote. Only quote strings that appear here or in the conversation.",
+    // Only when the author labeled other people in their recordings: unlabeled projects see the header unchanged.
+    ...(input.keyPoints.some((kp) => kp.speaker_role === "other" || kp.speaker_role === "mixed") || input.transcripts.some((t) => t.hasOtherSpeakers)
+      ? ["- Material marked as another person's ([Name] tags, \"X's point\") is NOT the author's life. Never ask about it as theirs; ask for their reaction to it or their own version."]
+      : []),
   ].join("\n");
 
   let block = `${header}\n\n${sections.join("\n\n")}`;
@@ -240,8 +252,9 @@ export async function loadBriefingData(
   const empty: BriefingInput = { keyPoints: [], transcripts: [], handoffs: [], thinChapters: [], pastSessions: [] };
   try {
     const [kpRes, txRes, upRes, chRes, sessRes] = await Promise.all([
-      supabase.from("key_points").select("id, title, summary, supporting_quotes, tags, relevance_score").eq("project_id", projectId),
-      supabase.from("transcripts").select("audio_upload_id, full_text, segments").eq("project_id", projectId).order("created_at", { ascending: false }).limit(3),
+      // speaker_role / speaker_name come from migration 031.
+      supabase.from("key_points").select("*").eq("project_id", projectId),
+      supabase.from("transcripts").select("audio_upload_id, full_text, segments, speaker_map").eq("project_id", projectId).order("created_at", { ascending: false }).limit(3),
       supabase.from("audio_uploads").select("id, file_name").eq("project_id", projectId).eq("user_id", userId),
       supabase.from("chapters").select("title, key_point_ids, sort_order").eq("project_id", projectId).order("sort_order", { ascending: true }),
       supabase.from("brainstorm_sessions").select("messages, handoff, updated_at").eq("project_id", projectId).eq("user_id", userId).eq("status", "finished").order("updated_at", { ascending: false }).limit(3),
@@ -254,13 +267,15 @@ export async function loadBriefingData(
       if (up?.id) nameById.set(up.id, up.file_name || "recording");
     }
 
-    type TxRow = { audio_upload_id: string | null; full_text: string; segments: { text?: string; speaker?: string }[] | null };
+    type TxRow = { audio_upload_id: string | null; full_text: string; segments: { text?: string; speaker?: string }[] | null; speaker_map?: SpeakerMap | null };
     const transcripts: BriefingTranscript[] = ((txRes.data ?? []) as TxRow[])
       .filter((t) => t && t.full_text)
       .map((t) => ({
         name: (t.audio_upload_id && nameById.get(t.audio_upload_id)) || "recording",
-        text: t.full_text,
+        // Tagged [Author] / [Name] when labeled; plain text otherwise.
+        text: labeledText(t as LabeledTranscript),
         authorLines: extractAuthorLines(t.segments),
+        ...(hasOtherSpeakers(t) ? { hasOtherSpeakers: true } : {}),
       }));
 
     type SessRow = { messages: BrainstormMessage[] | null; handoff: SessionHandoff | null; updated_at: string };

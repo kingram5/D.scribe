@@ -12,6 +12,7 @@ import { generationProfileBlock } from "@/lib/audience-profiles";
 import { creativeFreedomToInstruction } from "@/lib/claude-lite";
 import { sanitizeGenerated } from "@/lib/sanitize-output";
 import type { VoiceProfile, Audience } from "@/types";
+import { OTHER_SPEAKERS_RULE } from "@/lib/speakers";
 import {
   BEAT_PLAN_SCHEMA, beatPlanSystem, draftBeatBlock, type Beat,
   EDITOR_SCHEMA, editorSystem, editorUser, type EditorReport,
@@ -50,10 +51,13 @@ export interface ChapterInput {
   previousChapters: { title: string; summary: string }[];
   excerpts: string;
   targetWords: number;
+  /** True when labeled recordings include people other than the author. */
+  otherSpeakers?: boolean;
 }
 
 export function voiceSystem(input: ChapterInput): string {
-  return generateSystem(input.voiceProfile, input.styleMemoryBlock, generationProfileBlock(input.audience, input.scriptureTranslation));
+  const speakers = input.otherSpeakers ? `\n\n${OTHER_SPEAKERS_RULE}` : "";
+  return generateSystem(input.voiceProfile, input.styleMemoryBlock, generationProfileBlock(input.audience, input.scriptureTranslation) + speakers);
 }
 
 export async function coreDraft(
@@ -104,7 +108,7 @@ export async function coreEdit(
     ...input.previousChapters.map((c, i) => `Ch ${i + 1}: "${c.title}": ${c.summary}`),
   ].join("\n");
   const res = await callClaudeNext(
-    editorSystem(input.audience),
+    editorSystem(input.audience, input.otherSpeakers),
     editorUser({
       chapterNumber: input.chapterNumber, chapterTitle: input.chapterTitle, draft,
       beats, sourceExcerpts: input.excerpts, bookContext, lintSummary: lintSummary(flags),

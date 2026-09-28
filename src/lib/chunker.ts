@@ -81,7 +81,9 @@ export function extractExcerptsForChapter(
   // straight from the model: drop empty/whitespace strings ("".indexOf() is 0
   // for any haystack, silently citing the transcript's opening) and dedup so
   // one quote cited by several key points ships one excerpt, not several.
-  const quotes = [...new Set(keyPointQuotes.flat().filter((q) => q.trim().length > 0))];
+  // A model may copy a leading "[Speaker]: " tag from a labeled transcript into a
+  // quote; strip it or indexOf never matches and the excerpt silently falls back.
+  const quotes = [...new Set(keyPointQuotes.flat().map((q) => q.replace(/^\[[^\]\n]{1,80}\]:\s*/, "")).filter((q) => q.trim().length > 0))];
   if (quotes.length === 0) return fullText.slice(0, 3000);
 
   // Find surrounding context for each quote in the transcript

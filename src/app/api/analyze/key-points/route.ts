@@ -12,6 +12,7 @@ import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
 import { releaseInkReservation, reserveInk, settleInkReservation } from "@/lib/ink";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled } from "@/lib/speakers";
 
 export const maxDuration = 60;
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   const { data: transcript } = await supabase
     .from("transcripts")
-    .select("id, full_text, segments")
+    .select("id, full_text, segments, speaker_map")
     .eq("id", transcript_id)
     .eq("project_id", project_id)
     .single();
@@ -66,13 +67,15 @@ export async function POST(req: NextRequest) {
   const emphases = computeUtteranceEmphasis(transcript.segments || []);
   const delivery = chunkEmphasis(emphases, chunk.startWord, chunk.startWord + chunk.wordCount);
 
+  // With speaker labels the chunk carries [Author] / [Name] tags; unlabeled
+  // transcripts get exactly the plain chunk text they always did.
   const prompt = keyPointsPrompt(
-    chunk.text,
+    labeledRange(transcript, chunk.startWord, chunk.wordCount),
     chunk.index,
     chunk.totalChunks,
     previous_titles || [],
     deliveryPromptBlock(delivery)
-  );
+  ) + extractionSpeakerBlock(transcript);
 
   const inkCheck = await reserveInk(user.id, "analyze");
   if (!inkCheck.allowed || !inkCheck.reservationId) {
@@ -128,9 +131,11 @@ export async function POST(req: NextRequest) {
         transcript_id,
         title: kp.title,
         summary: kp.summary,
-        supporting_quotes: kp.supporting_quotes || [],
+        supporting_quotes: isLabeled(transcript) ? (kp.supporting_quotes || []).map(stripSpeakerTags) : kp.supporting_quotes || [],
         tags: kp.tags || [],
         relevance_score: relevanceFromDelivery(kp.supporting_quotes || [], delivery),
+        // Who said it, from where the quotes sit in the labeled segments.
+        ...keyPointSpeakerColumns(transcript, kp.supporting_quotes || []),
       }))
     );
     if (insertError) {

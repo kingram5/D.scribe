@@ -178,3 +178,50 @@ export function authorOnlyText(t: LabeledTranscript): string {
 
 /** Model-facing rule, added only when a project has other speakers in it. */
 export const OTHER_SPEAKERS_RULE = `SPEAKERS IN THE SOURCE: Lines tagged [Author] are the author's own words and experiences. Lines tagged with any other name belong to that person, not the author. Never present another speaker's experiences, memories or opinions as the author's own, and never ask the author about another speaker's life as if it were theirs. When using another speaker's words, quote and credit them ("As Pastor Mike put it, ..."), and ask the author for their own reaction or their own version.`;
+
+/** True when a labeled transcript has anyone other than the author in it. */
+export function hasOtherSpeakers(t: Pick<LabeledTranscript, "speaker_map">): boolean {
+  return isLabeled(t) && Object.values(t.speaker_map!).some((l) => l.role === "other");
+}
+
+/**
+ * Extra instruction for key-point extraction when a transcript contains other
+ * speakers. Empty for unlabeled or author-only transcripts, so their prompt is
+ * unchanged.
+ */
+export function extractionSpeakerBlock(t: LabeledTranscript): string {
+  if (!hasOtherSpeakers(t)) return "";
+  return `\n\nSPEAKERS: Each line is tagged with who said it. [Author] is the person writing this book; every other tag is someone else. Extract points from the whole conversation, but make each summary say who holds the view or lived the story when it isn't the author (e.g. "Pastor Mike describes..."). Copy supporting quotes verbatim WITHOUT the speaker tag.`;
+}
+
+/**
+ * Speaker columns for a key point row, from where its quotes sit. Empty object
+ * for unlabeled transcripts, so their insert is exactly what it was.
+ */
+export function keyPointSpeakerColumns(t: LabeledTranscript, quotes: string[]): { speaker_role?: string | null; speaker_name?: string | null } {
+  if (!isLabeled(t)) return {};
+  const owner = ownerOfQuotes(t, quotes);
+  return { speaker_role: owner.role, speaker_name: owner.name };
+}
+
+/** Source text for model input across a project's transcripts (tagged where labeled). */
+export function projectSourceText(transcripts: LabeledTranscript[]): string {
+  return transcripts.map(labeledText).join("\n\n");
+}
+
+/** Key point as the writer sees it: others' points say whose they are. */
+export function keyPointForPrompt<T extends { title: string; summary: string; speaker_role?: string | null; speaker_name?: string | null }>(kp: T): T {
+  if (kp.speaker_role === "other" && kp.speaker_name) return { ...kp, summary: `${kp.summary} (This comes from ${kp.speaker_name}, not the author.)` };
+  if (kp.speaker_role === "mixed") return { ...kp, summary: `${kp.summary} (Draws on the author and another speaker; keep who said what straight.)` };
+  return kp;
+}
+
+/**
+ * Text to learn the author's voice from: only their own lines when they've
+ * labeled speakers and said enough (300+ words); otherwise everything, exactly
+ * as before labels existed.
+ */
+export function voiceSourceText(t: LabeledTranscript): string {
+  const own = authorOnlyText(t);
+  return isLabeled(t) && own.split(/\s+/).filter(Boolean).length >= 300 ? own : t.full_text;
+}

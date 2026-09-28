@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson, type ClaudeUsage } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
+import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled } from "@/lib/speakers";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { extractionProfileBlock } from "@/lib/audience-profiles";
 import {
@@ -95,8 +96,8 @@ export async function POST(req: NextRequest) {
   for (const chunk of chunks) {
     const previousTitles = allKeyPoints.map((kp) => kp.title);
     const prompt =
-      keyPointsPrompt(chunk.text, chunk.index, chunk.totalChunks, previousTitles) +
-      audiencePreserveBlock;
+      keyPointsPrompt(labeledRange(transcript, chunk.startWord, chunk.wordCount), chunk.index, chunk.totalChunks, previousTitles) +
+      audiencePreserveBlock + extractionSpeakerBlock(transcript);
 
     const { text: raw, usage } = await askClaudeWithUsage(KEY_POINTS_SYSTEM, prompt, { model: "fast", maxTokens: 4096 });
     kpInputTokens += usage.input_tokens;
@@ -130,9 +131,10 @@ export async function POST(req: NextRequest) {
         transcript_id,
         title: kp.title,
         summary: kp.summary,
-        supporting_quotes: kp.supporting_quotes,
+        supporting_quotes: isLabeled(transcript) ? (kp.supporting_quotes || []).map(stripSpeakerTags) : kp.supporting_quotes,
         tags: kp.tags,
         relevance_score: 0.8,
+        ...keyPointSpeakerColumns(transcript, kp.supporting_quotes || []),
       }))
     );
   }

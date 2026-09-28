@@ -102,7 +102,7 @@ export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 20 }}>
+    <div data-tut="transcript-speakers" style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 20 }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
           {confirmed ? "Speakers" : "Who is speaking?"}

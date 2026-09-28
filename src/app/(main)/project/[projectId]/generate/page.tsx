@@ -456,7 +456,7 @@ export default function GeneratePage() {
     <PageShell
       projectId={projectId}
       currentStep="generate"
-      disabledStepKeys={!anyGenerated || isGenerating ? ["editor"] : []}
+      disabledStepKeys={!anyGenerated || isGenerating ? ["editor", "interview", "revise"] : []}
     >
       <GenerationStage
         open={isGenerating}
@@ -471,7 +471,7 @@ export default function GeneratePage() {
         progress={genTotal > 0 ? genCurrent / genTotal : undefined}
       />
       {publisherReady && (
-        <div style={{ padding: "0 40px 16px" }}>
+        <div data-tut="generate-publisher-ready" style={{ padding: "0 40px 16px" }}>
           <GlassCard style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>Publisher-Ready pass · recommended</div>

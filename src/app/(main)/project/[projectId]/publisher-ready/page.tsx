@@ -176,12 +176,16 @@ export default function PublisherReadyPage() {
     await refresh();
   };
 
+  // Which of the nine steps this page is on: Interview until the answers are in, then Revise.
+  const stepKey = process.env.NEXT_PUBLIC_PUBLISHER_READY !== "true" ? "generate"
+    : run && ["revising", "checking", "done"].includes(run.status) ? "revise" : "interview";
+
   if (loading) {
-    return <PageShell projectId={projectId} currentStep="generate"><div style={{ padding: 60, display: "flex", justifyContent: "center" }}><Spinner /></div></PageShell>;
+    return <PageShell projectId={projectId} currentStep={stepKey}><div style={{ padding: 60, display: "flex", justifyContent: "center" }}><Spinner /></div></PageShell>;
   }
   if (unavailable) {
     return (
-      <PageShell projectId={projectId} currentStep="generate">
+      <PageShell projectId={projectId} currentStep={stepKey}>
         <div style={{ padding: 40 }}><GlassCard style={{ padding: 32 }}>Publisher-Ready isn&apos;t available yet.</GlassCard></div>
       </PageShell>
     );
@@ -195,14 +199,14 @@ export default function PublisherReadyPage() {
       : doneFor(key as Step).size >= chapters.length && chapters.length > 0;
 
   return (
-    <PageShell projectId={projectId} currentStep="generate" hideFooterNav>
+    <PageShell projectId={projectId} currentStep={stepKey} hideFooterNav>
       <div style={{ padding: "0 40px 40px", display: "grid", gap: 20, maxWidth: 980, width: "100%", margin: "0 auto" }}>
         <GlassCard style={{ padding: 32 }}>
           <PanelTitle>Publisher-Ready pass</PanelTitle>
           <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>
             Your book gets drafted, read by an editor, and sent back to you with questions only you can answer. Your answers go into the book in your own words. About {(useCurrentDrafts ? estimateSkipDraft : estimate).toLocaleString()} Ink for this book.
           </p>
-          <ol style={{ listStyle: "none", padding: 0, margin: "20px 0 0", display: "grid", gap: 10 }}>
+          <ol data-tut="pr-stages" style={{ listStyle: "none", padding: 0, margin: "20px 0 0", display: "grid", gap: 10 }}>
             {STAGES.map((s, i) => {
               const done = stageDone(s.key);
               const active = running === s.key || (s.key === "interview" && interviewing);
@@ -251,13 +255,13 @@ export default function PublisherReadyPage() {
         {/* While the editor reads (a few minutes of waiting): the one-time voice picker. */}
         {pickerOpen && (
           <GlassCard style={{ padding: 32 }}>
-            <VoicePicker projectId={projectId} onClose={() => setPickerOpen(false)} />
+            <div data-tut="pr-picker"><VoicePicker projectId={projectId} onClose={() => setPickerOpen(false)} /></div>
           </GlassCard>
         )}
 
         {interviewing && run && (
           <GlassCard style={{ padding: 32 }}>
-            <PanelTitle>Your editor has questions</PanelTitle>
+            <div data-tut="pr-interview"><PanelTitle>Your editor has questions</PanelTitle></div>
             <div style={{ marginTop: 16 }}>
               <InterviewPanel runId={run.id} guardedFetch={guardedFetch} onFinished={afterInterview} />
             </div>
@@ -266,7 +270,7 @@ export default function PublisherReadyPage() {
 
         {editPasses.length > 0 && (
           <GlassCard style={{ padding: 32 }}>
-            <PanelTitle>What the editor saw</PanelTitle>
+            <div data-tut="pr-editor-notes"><PanelTitle>What the editor saw</PanelTitle></div>
             <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
               {chapters.map((ch) => {
                 const pass = editPasses.find((p) => p.chapter_id === ch.id);

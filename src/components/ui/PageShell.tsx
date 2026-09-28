@@ -20,7 +20,7 @@ interface PageShellProps {
   disabledStepKeys?: string[];
 }
 
-const STEPS = [
+const STEPS_V1 = [
   { key: "upload", label: "Upload", path: "upload" },
   { key: "transcript", label: "Transcript", path: "transcript" },
   { key: "structure", label: "Structure", path: "structure" },
@@ -29,6 +29,22 @@ const STEPS = [
   { key: "editor", label: "Editor", path: "editor" },
   { key: "export", label: "Export", path: "export" },
 ];
+
+// Publisher-Ready (Kyle 2026-09-27): nine steps. Interview and Revision both
+// live on the publisher-ready page, which reports whichever one it is on.
+const STEPS_V2 = [
+  { key: "upload", label: "Upload", path: "upload" },
+  { key: "transcript", label: "Transcript", path: "transcript" },
+  { key: "structure", label: "Structure", path: "structure" },
+  { key: "analysis", label: "Analysis", path: "analysis" },
+  { key: "generate", label: "Draft", path: "generate" },
+  { key: "interview", label: "Interview", path: "publisher-ready" },
+  { key: "revise", label: "Revise", path: "publisher-ready" },
+  { key: "editor", label: "Editor", path: "editor" },
+  { key: "export", label: "Export", path: "export" },
+];
+
+const STEPS = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
 
 /** Project title for the header rail, cached per session so every step page
  *  doesn't re-fetch it. Falls back to empty (rail renders without a title). */
@@ -66,11 +82,17 @@ function useReachedStep(projectId: string | undefined, currentIdx: number): numb
   const [reached, setReached] = useState(currentIdx);
   useEffect(() => {
     if (!projectId || currentIdx < 0) return;
-    const key = `ds_reached_${projectId}`;
+    // The 9-step pipeline has its own key: its indexes mean different steps.
+    const key = STEPS === STEPS_V2 ? `ds_reached_v2_${projectId}` : `ds_reached_${projectId}`;
     let stored = -1;
     try {
       const raw = localStorage.getItem(key);
       if (raw !== null) stored = parseInt(raw, 10);
+      else if (STEPS === STEPS_V2) {
+        // Carry progress over from the 7-step pipeline (Editor 5 -> 7, Export 6 -> 8).
+        const old = localStorage.getItem(`ds_reached_${projectId}`);
+        if (old !== null) stored = [0, 1, 2, 3, 4, 7, 8][parseInt(old, 10)] ?? -1;
+      }
     } catch { /* storage unavailable — fall back to position only */ }
     const next = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
     setReached(next);
@@ -270,8 +292,11 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               // one, so navigating backward no longer strips checks off finished steps or
               // traps the user into clicking forward one at a time.
               const isDone = !isCurrent && i <= reachedIdx;
+              // In the 9-step pipeline Interview and Revise are optional: once the Draft
+              // step is reached, the Editor and Export stay one click away.
+              const skipAhead = STEPS === STEPS_V2 && reachedIdx >= 4 && (step.key === "editor" || step.key === "export");
               const isClickable = !isStepDisabled && !isCurrent
-                && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep));
+                && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep) || skipAhead);
               const marker = (
                 <span
                   className="ds-rail-marker-num"

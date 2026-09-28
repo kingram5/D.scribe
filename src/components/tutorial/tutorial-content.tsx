@@ -19,6 +19,11 @@ import {
   IlExport,
 } from "./illustrations";
 
+// Feature flags (inlined at build): new steps and features only appear in the
+// tours once they are switched on.
+const SPEAKER_LABELS = process.env.NEXT_PUBLIC_SPEAKER_LABELS === "true";
+const PUBLISHER_READY = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true";
+
 export interface TutorialSlide {
   title: string;
   body: string;
@@ -105,8 +110,22 @@ export const TUTORIALS: Record<string, StepTutorial> = {
         body: "Segments keeps speakers and timestamps; Full text reads as continuous prose. Use Edit Transcript in the sidebar to rewrite the whole thing at once, then Save Changes.",
         art: <IlViews />,
       },
+      ...(SPEAKER_LABELS
+        ? [{
+            title: "Tell us who is speaking",
+            body: "Every voice in your recording gets a name: you, or someone else (a guest, a pastor, a grandparent). Your interviewer and writer then never mix up your story with theirs. Solo recording? One tap. Analysis starts once every voice has a name.",
+            art: <IlViews />,
+          }]
+        : []),
     ],
     coachmarks: [
+      ...(SPEAKER_LABELS
+        ? [{
+            target: "transcript-speakers",
+            title: "Who is speaking?",
+            body: "Name each voice: the book's author (you, unless you're writing for someone) or someone else. \"Same person as\" merges a voice the detector split in two. The little speaker label on each paragraph fixes one it got wrong.",
+          }]
+        : []),
       {
         target: "transcript-body",
         title: "Click to edit",
@@ -221,8 +240,22 @@ export const TUTORIALS: Record<string, StepTutorial> = {
         body: "Flip the Include Foreword toggle and Generate All also writes an opening chapter previewing the topics ahead. You can regenerate it on its own later.",
         art: <IlForeword />,
       },
+      ...(PUBLISHER_READY
+        ? [{
+            title: "Write it Publisher-Ready",
+            body: "The recommended path. Your whole book gets drafted, read by an editor the way an agent would, then sent back to you with questions only you can answer. Quick draft still writes everything in one pass if you're in a hurry.",
+            art: <IlGenerate />,
+          }]
+        : []),
     ],
     coachmarks: [
+      ...(PUBLISHER_READY
+        ? [{
+            target: "generate-publisher-ready",
+            title: "Publisher-Ready pass",
+            body: "Draft, editor read, your interview, revision and a final check, one chapter at a time. You'll see the Ink cost before it starts.",
+          }]
+        : []),
       {
         target: "generate-chapters",
         title: "Your chapter list",
@@ -248,6 +281,51 @@ export const TUTORIALS: Record<string, StepTutorial> = {
         title: "Generate",
         body: "Generate Chapter drafts just this one; Generate All runs the whole book (and the foreword, if it's on). Finished chapters land in the Editor.",
       },
+    ],
+  },
+
+  // Publisher-Ready (Kyle 2026-09-27): the Interview and Revise steps.
+  interview: {
+    slides: [
+      {
+        title: "Your editor reads first",
+        body: "An editor reads every chapter the way a literary agent would and finds the thin spots: a missing scene, a name, what someone actually said. Craft fixes it handles itself. The rest become questions for you.",
+        art: <IlGenerate />,
+      },
+      {
+        title: "Which would you actually say?",
+        body: "While the editor reads, you'll see a few lines from your own chapter written two ways. Pick the one you'd say out loud, or type it your way. It takes about a minute, only happens once, and teaches the writer how you really talk.",
+        art: <IlEditParagraph />,
+      },
+      {
+        title: "Answer what only you know",
+        body: "Then the questions, five per chapter at a time before moving on, so no chapter hogs you. Type or answer out loud. Skip anything, finish a chapter early, or stop whenever you like. Your answers go into the book in your words.",
+        art: <IlBrainstorm />,
+      },
+    ],
+    coachmarks: [
+      { target: "pr-stages", title: "Where you are", body: "Draft, editor read, your interview, revision, final check. Each chapter moves through on its own; you can pause after any chapter." },
+      { target: "pr-picker", title: "Which would you say?", body: "Tap the line that sounds like you. \"Neither\" lets you write it your way, which is the most useful answer of all." },
+      { target: "pr-interview", title: "Your editor's questions", body: "Say it the way you'd tell a friend: names, places, what was said. Done with this chapter moves on; Done with all questions starts the revision." },
+    ],
+  },
+
+  revise: {
+    slides: [
+      {
+        title: "Your answers go in",
+        body: "Each chapter is revised with your answers in your own words. Anything you didn't answer is never made up. Quotes are never changed. The editor's craft notes get fixed along the way.",
+        art: <IlMagicRewrite />,
+      },
+      {
+        title: "A final check, then yours",
+        body: "A last pass catches flat rhythm, repeated phrases across chapters and anything that reads machine-written. Then the book lands in the Editor for you to polish.",
+        art: <IlEditSave />,
+      },
+    ],
+    coachmarks: [
+      { target: "pr-stages", title: "Revision and final check", body: "Keep this tab open while chapters finish. Each one saves as a new version, so nothing you wrote before is lost." },
+      { target: "pr-editor-notes", title: "What the editor saw", body: "A short read on each chapter's first draft. It's D.Scribe's own measure, not a prediction of any publisher's decision." },
     ],
   },
 

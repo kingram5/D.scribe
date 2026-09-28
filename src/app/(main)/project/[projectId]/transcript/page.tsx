@@ -7,6 +7,8 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
+import SpeakerLabelPanel from "@/components/transcript/SpeakerLabelPanel";
+import { speakerLabelsEnabled, needsSpeakerLabels } from "@/lib/speakers";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
 const P = {
@@ -130,6 +132,15 @@ export default function TranscriptPage() {
   // React Compiler ("existing memoization could not be preserved") and it
   // auto-memoizes this anyway.
   const merged = active?.segments ? mergeSegments(active.segments) : [];
+  const labelsOn = speakerLabelsEnabled();
+  // Any transcript still waiting for speaker labels blocks the step to analysis.
+  const labelsPending = labelsOn && transcripts.some((t) => needsSpeakerLabels(t));
+  /** Display name for a raw speaker label, using the author's labels when set. */
+  const nameFor = (raw: string): string => {
+    const l = active?.speaker_map?.[raw];
+    if (!l) return speakerLabel(raw);
+    return l.role === "author" ? "Author" : l.name || speakerLabel(raw);
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -170,6 +181,25 @@ export default function TranscriptPage() {
       idx,
     }));
   }, [merged]);
+
+  /** Re-read transcripts (speaker labels, confirmation) from the server. */
+  async function refreshTranscripts() {
+    const refreshed = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+    setTranscripts(refreshed.transcripts || []);
+  }
+
+  /** Move one paragraph (a run of segments) to another speaker. */
+  async function reassignParagraph(fromIdx: number, toIdx: number, speaker: string) {
+    if (!active) return;
+    const reassign = [];
+    for (let i = fromIdx; i <= toIdx; i++) reassign.push({ index: i, speaker });
+    await fetch("/api/transcript-speakers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript_id: active.id, speaker_map: active.speaker_map ?? {}, reassign }),
+    });
+    await refreshTranscripts();
+  }
 
   /** PATCH segments + full_text + word_count together, then refresh from the server.
    *  Both text copies are always written from the SAME segment array, so the
@@ -260,6 +290,16 @@ export default function TranscriptPage() {
       };
     });
     await persistSegments(nextSegments);
+    // A full edit re-spreads speakers by paragraph index, so labeled speakers
+    // need a second look before the next analysis.
+    if (active.speaker_map && Object.keys(active.speaker_map).length) {
+      await fetch("/api/transcript-speakers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript_id: active.id, action: "unconfirm" }),
+      });
+      await refreshTranscripts();
+    }
     setFullEditMode(false);
     setSaving(false);
   }
@@ -421,7 +461,7 @@ export default function TranscriptPage() {
 
   /* ── render ─────────────────────────────────────────────────── */
   return (
-    <PageShell projectId={projectId} currentStep="transcript">
+    <PageShell projectId={projectId} currentStep="transcript" disableNextStep={labelsPending}>
       <style>{`
         @media (max-width: 768px) {
           .ds-transcript-layout { flex-direction: column !important; }
@@ -556,6 +596,11 @@ export default function TranscriptPage() {
               </div>
             </div>
 
+            {/* who is speaking (labels feed every later step) */}
+            {labelsOn && active && (active.segments?.length ?? 0) > 0 && (
+              <SpeakerLabelPanel key={`${active.id}:${active.speakers_confirmed_at ?? ""}`} transcript={active} onSaved={refreshTranscripts} />
+            )}
+
             {/* speakers */}
             {speakerStats.length > 0 && (
               <div style={{ paddingBottom: 20 }}>
@@ -608,7 +653,7 @@ export default function TranscriptPage() {
                             {speakerInitial(s.speaker, s.idx)}
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 600, color: P.text, fontFamily: P.sans }}>
-                            {speakerLabel(s.speaker)}
+                            {nameFor(s.speaker)}
                           </span>
                         </div>
                         <span style={{ fontSize: 12, color: P.muted, fontFamily: P.mono }}>
@@ -1015,7 +1060,21 @@ export default function TranscriptPage() {
                           }}>
                             {formatTime(para.start)}
                           </span>
-                          {show && (
+                          {labelsOn && speakerStats.length > 1 ? (
+                            // Fix a paragraph the speaker detection got wrong.
+                            <select
+                              value={para.speaker}
+                              onChange={(e) => reassignParagraph(para.fromIdx, para.toIdx, e.target.value)}
+                              aria-label="Who said this paragraph"
+                              style={{
+                                fontSize: 10, fontFamily: P.mono, fontWeight: 600, color, background: "transparent",
+                                border: "1px solid transparent", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.04em",
+                                maxWidth: 90, cursor: "pointer",
+                              }}
+                            >
+                              {speakerStats.map((s) => <option key={s.speaker} value={s.speaker}>{nameFor(s.speaker)}</option>)}
+                            </select>
+                          ) : show && (
                             <span style={{
                               fontSize: 10,
                               fontFamily: P.mono,
@@ -1024,7 +1083,7 @@ export default function TranscriptPage() {
                               textTransform: "uppercase",
                               letterSpacing: "0.04em",
                             }}>
-                              {speakerLabel(para.speaker)}
+                              {nameFor(para.speaker)}
                             </span>
                           )}
                         </div>

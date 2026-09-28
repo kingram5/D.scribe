@@ -90,3 +90,18 @@ describe("speaker labels: labeled transcripts", () => {
     expect(speakerTag(undefined)).toBe("[Author]");
   });
 });
+
+describe("speaker label gate", () => {
+  it("only blocks analysis when the flag is on, there are speaker segments, and nothing is confirmed", async () => {
+    const { vi } = await import("vitest");
+    const { needsSpeakerLabels } = await import("../speakers");
+    const t = { segments: [seg("hello there", "Speaker 0")], speakers_confirmed_at: null };
+    vi.stubEnv("NEXT_PUBLIC_SPEAKER_LABELS", "");
+    expect(needsSpeakerLabels(t)).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_SPEAKER_LABELS", "true");
+    expect(needsSpeakerLabels(t)).toBe(true);
+    expect(needsSpeakerLabels({ ...t, speakers_confirmed_at: "2026-09-27T00:00:00Z" })).toBe(false);
+    expect(needsSpeakerLabels({ segments: [], speakers_confirmed_at: null })).toBe(false); // pasted text
+    vi.unstubAllEnvs();
+  });
+});

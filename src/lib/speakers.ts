@@ -225,3 +225,16 @@ export function voiceSourceText(t: LabeledTranscript): string {
   const own = authorOnlyText(t);
   return isLabeled(t) && own.split(/\s+/).filter(Boolean).length >= 300 ? own : t.full_text;
 }
+
+/** Speaker labelling is on (UI panel + analysis gate). Off = nothing changes. */
+export function speakerLabelsEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_SPEAKER_LABELS === "true";
+}
+
+/**
+ * Analysis must wait for labels: flag on, the transcript has speaker segments
+ * (pasted text has none), and nobody has confirmed them yet.
+ */
+export function needsSpeakerLabels(t: { segments: TranscriptSegment[] | null; speakers_confirmed_at?: string | null }): boolean {
+  return speakerLabelsEnabled() && (t.segments?.length ?? 0) > 0 && !t.speakers_confirmed_at;
+}

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordFlatInkUsage, recordInkUsage, inkMeterV2, INK_PER_YOUTUBE_IMPORT } from "@/lib/ink";
 import { speakerLabelsEnabled } from "@/lib/speakers";
-import { splitYoutubeSpeakers } from "@/lib/youtube-speakers";
+import { splitYoutubeSpeakers, fetchVideoContext } from "@/lib/youtube-speakers";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 300;
@@ -150,7 +150,9 @@ export async function POST(req: NextRequest) {
     let lineSpeakers: string[] | null = null;
     if (speakerLabelsEnabled() && inkMeterV2() && segments.length > 1) {
       try {
-        const split = await splitYoutubeSpeakers(segments.map((s) => s.text));
+        // Title + channel carry the right spelling of names the captions mangle.
+        const context = await fetchVideoContext(youtube_url);
+        const split = await splitYoutubeSpeakers(segments.map((s) => s.text), context);
         lineSpeakers = split.speakers;
         await recordInkUsage(user.id, project_id, "youtube_import", "sonnet5", split.usage).catch((billErr) =>
           logger.error("youtube: speaker split billing failed", { route: "/api/audio/youtube", userId: user.id, error: billErr })

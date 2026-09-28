@@ -52,7 +52,39 @@ const SYSTEM = `You split a video's caption lines into speakers. The captions ha
 
 Return turns: the index of the first line of each speaker's turn, with a label "Speaker 1", "Speaker 2" and so on. The same person keeps the same label every time they speak. The first turn starts at index 0. If the whole video is one person talking (a sermon, a lecture, a solo video), return a single turn at index 0 for "Speaker 1".
 
-In names, give a short guess at who each speaker is only when the video says so ("the host", "Joe", "Pastor Mike"). Leave a speaker out of names if nothing in the captions tells you.`;
+In names, give a short guess at who each speaker is only when the video says so ("the host", "Joe", "Pastor Mike"). Leave a speaker out of names if nothing in the captions tells you.
+
+You may also get the VIDEO TITLE and CHANNEL. Auto-captions often misspell names ("Robert Moo" for Robert Madu). When a name in the captions matches a name in the title or channel by sound or by role, use the title's spelling. When a solo video's title names one person and the captions never contradict it, that person is Speaker 1. A channel name is usually the organization that posted the video (a church, a podcast, a company), not a speaker; use it as a name only when the captions say that speaker is the channel's host.`;
+
+/** Free title + channel lookup (YouTube oEmbed, no key). Returns null on any failure. */
+export async function fetchVideoContext(url: string, timeoutMs = 4000): Promise<VideoContext | null> {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { title?: string; author_name?: string };
+    const title = (j.title ?? "").trim().slice(0, 300);
+    const channel = (j.author_name ?? "").trim().slice(0, 120);
+    return title || channel ? { title, channel } : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface VideoContext {
+  title: string;
+  channel: string;
+}
+
+/** The user-turn text the split model sees. Pure. */
+export function splitPrompt(lines: string[], context?: VideoContext | null): string {
+  const numbered = lines.map((l, i) => `${i}: ${l.replace(/\s+/g, " ").trim()}`).join("\n");
+  const head = context
+    ? `VIDEO TITLE: ${context.title || "(unknown)"}\nCHANNEL: ${context.channel || "(unknown)"}\n\n`
+    : "";
+  return `${head}CAPTION LINES:\n${numbered}`;
+}
 
 /** Speaker label for every caption line from a list of turn starts. Pure. */
 export function speakersFromTurns(lineCount: number, turns: Turn[]): string[] {
@@ -73,9 +105,11 @@ export function labelWithGuess(speaker: string, names: Record<string, string>): 
   return guess ? `${speaker} (${guess.slice(0, 20)}?)`.slice(0, 40) : speaker;
 }
 
-export async function splitYoutubeSpeakers(lines: string[]): Promise<{ speakers: string[]; count: number; usage: ClaudeUsage }> {
-  const numbered = lines.map((l, i) => `${i}: ${l.replace(/\s+/g, " ").trim()}`).join("\n");
-  const res = await callClaudeNext(SYSTEM, `CAPTION LINES:\n${numbered}`, {
+export async function splitYoutubeSpeakers(
+  lines: string[],
+  context?: VideoContext | null,
+): Promise<{ speakers: string[]; count: number; usage: ClaudeUsage }> {
+  const res = await callClaudeNext(SYSTEM, splitPrompt(lines, context), {
     model: "sonnet5", effort: "low", maxTokens: 16000, jsonSchema: SPLIT_SCHEMA as unknown as Record<string, unknown>,
   });
   const out = parseJsonReply<{ turns: Turn[]; names: { speaker: string; name: string }[] }>(res.text);

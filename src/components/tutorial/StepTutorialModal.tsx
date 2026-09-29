@@ -126,6 +126,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
           <button
             onClick={() => onClose()}
             aria-label="Close guide"
+            className="ds-guide-close"
             style={{
               width: 28,
               height: 28,
@@ -175,7 +176,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
         {/* Slide nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 24px 0" }}>
           {multi ? (
-            <div style={{ display: "flex", gap: 6 }} aria-label={`Slide ${idx + 1} of ${slides.length}`}>
+            <div className="ds-guide-dots" style={{ display: "flex", gap: 6 }} aria-label={`Slide ${idx + 1} of ${slides.length}`}>
               {slides.map((_, i) => (
                 <button
                   key={i}
@@ -282,7 +283,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
 
         {/* Auto-show toggle */}
         <div style={{ padding: "16px 24px 20px" }}>
-          <label style={{
+          <label className="ds-guide-autoshow" style={{
             display: "flex",
             alignItems: "center",
             gap: 10,

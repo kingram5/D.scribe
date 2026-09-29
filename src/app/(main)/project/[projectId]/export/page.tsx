@@ -841,6 +841,7 @@ export default function ExportPage() {
                 role="switch"
                 aria-checked={isPublic}
                 aria-label="Publish to the community"
+                className="ds-switch"
                 onClick={() => setIsPublic(!isPublic)}
                 style={{
                   width: 44,
@@ -1001,6 +1002,7 @@ export default function ExportPage() {
           <span style={{ color: "var(--ds-card-border)" }}>|</span>
           <Link
             href={`/project/${projectId}/write`}
+            className="ds-back-link"
             style={{
               color: "#C17A47",
               textDecoration: "none",

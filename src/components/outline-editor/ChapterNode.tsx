@@ -160,6 +160,7 @@ function ChapterNoteComponent({
       {/* Editable title */}
       <div
         ref={titleRef}
+        className="ds-editable-title"
         contentEditable
         suppressContentEditableWarning
         onFocus={() => setEditing(true)}

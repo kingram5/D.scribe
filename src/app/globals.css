@@ -1465,7 +1465,7 @@ input[type=range] {
   .ds-structure-card button,
   .ds-new-project form button,
   .cinematic-root main button,
-  .ds-transcript-layout aside button { min-height: 44px; }
+  .ds-transcript-layout aside button { min-height: 44px !important; }
 
   /* Transcript: one-click segment delete. Border hidden so the bigger box doesn't
      read as a bigger button; the glyph stays where it was. */
@@ -1477,7 +1477,7 @@ input[type=range] {
   .ds-transcript-player button { min-width: 44px; min-height: 44px; justify-content: center; }
 
   /* Outline: "+ key point" */
-  .ds-add-keypoint { min-height: 44px; padding: 0 12px !important; }
+  .ds-add-keypoint { min-height: 44px !important; padding: 0 12px !important; }
 
   /* Structure: +/- steppers */
   .ds-stepper-btn { width: 44px !important; height: 44px !important; }
@@ -1491,16 +1491,19 @@ input[type=range] {
   .ds-editor-actionbar > * { flex: 1 1 100% !important; min-width: 0; }
   .ds-editor-actionbar input,
   .ds-editor-actionbar button { min-height: 44px; }
-  /* Landing footer: link rows grew to 44px but the navs kept their old height, so
-     rows spilled onto the next nav. Full-width navs size to their content. */
-  .landing-v2 footer > nav { flex: 1 1 100%; }
+  /* Landing footer: the phone rule that pins the landing top bar to 60px
+     (.landing-v2 nav) also caught the two footer link navs, so their wrapped rows
+     spilled onto each other. Footer navs size to their content. */
+  .landing-v2 footer > nav { flex: 1 1 100%; height: auto !important; }
   /* Upload: the intake cards' 1fr column grew to its widest child (16px past the
      edge at 360). minmax(0, 1fr) lets the column shrink to the phone. */
   .ds-intake { grid-template-columns: minmax(0, 1fr); }
   .ds-intake > * { min-width: 0; }
   /* Cookie banner: while it's open it sat on top of the last screen of every page
      (footer links included). Room at the bottom lets that content scroll clear. */
-  body:has(> div[role="dialog"][aria-label="Cookie consent"]) { padding-bottom: 300px; }
+  /* (body is height:100%, so body padding sat inside the first screen; a block after
+     the last child is what actually extends the scroll.) */
+  body:has(> div[role="dialog"][aria-label="Cookie consent"])::after { content: ""; display: block; height: 280px; }
   /* Book carousel: the prev/next arrows are placed at half the carousel's height,
      which on a 360px phone landed them on top of the book dots. Centre them on the
      book instead, and give the dots full-size targets. */
@@ -1508,4 +1511,44 @@ input[type=range] {
   .lbook-dots > button { min-width: 44px !important; height: 44px !important; }
   /* Progress dots: 24px hit areas on a 14px pitch overlapped each other. */
   .ds-step-dots-row { gap: 16px !important; }
+  /* ---- Round 2 (inline sizes beat the round-1 rules, so these carry !important) ---- */
+  /* Toggle switches: a transparent border grows the tap area to 64x44 while the
+     visible 44x24 track and its knob stay exactly where they were. */
+  .ds-switch { box-sizing: content-box !important; border: 10px solid transparent !important; background-clip: padding-box !important; border-radius: 22px !important; margin: -10px !important; }
+  /* Landing top bar: "Sign in" and "Get Started" wrapped onto two lines and sat
+     against the wordmark. Keep them on one line at finger size. */
+  .landing-v2 > nav > div:last-child { gap: 12px !important; }
+  .landing-v2 .lv2-nav-link { white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; }
+  .landing-v2 .lv2-pill-cta { white-space: nowrap; min-height: 44px; padding: 0 16px; font-size: 15px; }
+  /* Small text links in link rows are at least 44 wide too. */
+  .ds-touch-links a { min-width: 44px; justify-content: center; }
+  /* Buttons and chips whose inline size landed just under 44. */
+  .ds-new-project form button,
+  .ds-structure-card button,
+  .ds-analysis-tabs button,
+  .ds-settings button,
+  .ds-usage-btn,
+  .ds-quotes-btn,
+  .ds-read-chip,
+  .transcribe-btn,
+  .ds-project-split button { min-height: 44px !important; }
+  .ds-usage-btn { display: flex !important; align-items: center; justify-content: center; }
+  .ds-read-chip { min-width: 44px; }
+  /* Outline cards: the editable chapter and key-point titles are the tap target
+     for editing; give single-line titles a full row. */
+  .ds-editable-title { min-height: 44px !important; }
+  /* Outline toolbar: the one colour button left on phones (add a chapter). */
+  .ds-outline-toolbar .ds-tb-color--primary { width: 44px !important; height: 44px !important; }
+  /* Step guide: close button and slide dots. The dots keep their look; a
+     transparent border makes each one a 44px target, spaced so they don't overlap. */
+  .ds-guide-close { width: 44px !important; height: 44px !important; }
+  .ds-guide-dots { gap: 0 !important; }
+  div:has(> .ds-guide-dots) { flex-wrap: wrap; row-gap: 8px !important; }
+  div:has(> .ds-guide-dots) > div > button { min-height: 44px !important; }
+  .ds-guide-dots > button { box-sizing: content-box !important; border: 18px solid transparent !important; background-clip: padding-box !important; }
+  /* Upload cassette: the decorative glare layer was painted over the tape's buttons. */
+  .ds-cassette-wrap .btn-3d { position: relative; z-index: 2; }
+  .ds-guide-autoshow { min-height: 44px; }
+  .ds-editor-chapter-strip button { min-height: 44px !important; }
+  .ds-back-link { min-height: 44px; display: inline-flex; align-items: center; }
 }

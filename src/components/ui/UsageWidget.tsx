@@ -150,6 +150,7 @@ export default function UsageWidget() {
            upgrade, switch down, or cancel. Stripe still owns card details. */
         <a
           href="/pricing"
+          className="ds-usage-btn"
           style={{
             display: "block",
             width: "100%",
@@ -172,6 +173,7 @@ export default function UsageWidget() {
       {tier === "free" ? (
         <a
           href="/pricing"
+          className="ds-usage-btn"
           style={{
             display: "block",
             width: "100%",

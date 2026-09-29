@@ -592,6 +592,7 @@ export default function GeneratePage() {
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setReaderId(ch.id); }}
                           aria-label={`Read chapter ${ch.chapter_number}`}
+                          className="ds-read-chip"
                           style={{
                             fontSize: "0.75rem", fontWeight: 700, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
                             border: "1px solid rgba(193,122,71,0.45)", background: readerId === ch.id ? "rgba(193,122,71,0.18)" : "transparent", color: "#A05526",
@@ -662,6 +663,7 @@ export default function GeneratePage() {
                     role="switch"
                     aria-checked={includeForeword}
                     aria-label="Include a foreword"
+                    className="ds-switch"
                     onClick={() => {
                       const next = !includeForeword;
                       setIncludeForeword(next);
@@ -863,7 +865,7 @@ export default function GeneratePage() {
                     <InkTooltip label="~0.5 Ink to fetch a fresh set of quotes" position="top">
                       {/* Was a near-invisible ghost button reading "Refresh" (Kyle's note 9):
                           accent-outlined, labelled with what it actually does, icon-led. */}
-                      <button
+                      <button className="ds-quotes-btn"
                         onClick={() => activeChapter && fetchEnrichments(activeChapter)}
                         disabled={enriching === activeChapter}
                         style={{

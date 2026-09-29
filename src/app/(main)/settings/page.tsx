@@ -62,7 +62,7 @@ export default function SettingsPage() {
   const sub: React.CSSProperties = { fontSize: 13, color: "#A89F94", lineHeight: 1.6, marginBottom: 16 };
 
   return (
-    <div style={{ minHeight: "100%", background: "#2C2419", overflowY: "auto" }}>
+    <div className="ds-settings" style={{ minHeight: "100%", background: "#2C2419", overflowY: "auto" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "112px 24px 64px", fontFamily: "var(--font-manrope), sans-serif" }}>
         <h1 style={{ fontFamily: "var(--font-lora), serif", fontSize: 36, color: "#F9F7F2", marginBottom: 28 }}>
           Settings

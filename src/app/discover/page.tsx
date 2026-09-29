@@ -58,7 +58,7 @@ export default function DiscoverPage() {
       className="cinematic-root relative w-full min-h-screen"
       style={{ backgroundColor: "#2C2419" }}
     >
-      <nav
+      <nav className="ds-touch-links"
         style={{
           position: "sticky",
           top: 0,

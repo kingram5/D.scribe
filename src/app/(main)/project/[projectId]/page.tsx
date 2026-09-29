@@ -745,7 +745,7 @@ export default function ProjectPage() {
               zIndex: 1,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div className="ds-step-dots-row" style={{ display: "flex", gap: 6 }}>
                   {pipeline.map((step, i) => {
                     const stepNavigable = navigable(i);
                     const dot = (
@@ -825,7 +825,7 @@ export default function ProjectPage() {
             </Link>
 
             {/* Footer metadata */}
-            <div style={{
+            <div className="ds-stage-footer" style={{
               position: "relative",
               zIndex: 1,
               display: "flex",

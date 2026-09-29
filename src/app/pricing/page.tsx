@@ -167,7 +167,7 @@ export default function PricingPage() {
         }}
       />
 
-      <nav
+      <nav className="ds-touch-links"
         style={{
           position: "sticky",
           top: 0,
@@ -331,6 +331,7 @@ export default function PricingPage() {
         </div>
 
         <div
+          className="pricing-tiers"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",

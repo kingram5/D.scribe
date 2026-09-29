@@ -1116,6 +1116,7 @@ export default function TranscriptPage() {
                             disabled={saving}
                             aria-label="Delete this segment"
                             title="Delete this segment"
+                            className="ds-seg-delete"
                             style={{
                               marginTop: 4, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
                               borderRadius: 6, border: `1px solid ${P.border}`, background: "transparent", color: P.muted,
@@ -1270,7 +1271,7 @@ export default function TranscriptPage() {
           )}
 
           {/* ═══════ BOTTOM AUDIO PLAYER BAR ═══════ */}
-          <div style={{
+          <div className="ds-transcript-player" style={{
             height: 96,
             minHeight: 96,
             background: P.card,
@@ -1283,7 +1284,7 @@ export default function TranscriptPage() {
             {/* playback controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {/* rewind */}
-              <button style={{
+              <button aria-label="Rewind" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -1298,7 +1299,7 @@ export default function TranscriptPage() {
                 </svg>
               </button>
               {/* play */}
-              <button style={{
+              <button aria-label="Play" style={{
                 width: 40,
                 height: 40,
                 borderRadius: "50%",
@@ -1314,7 +1315,7 @@ export default function TranscriptPage() {
                 </svg>
               </button>
               {/* forward */}
-              <button style={{
+              <button aria-label="Skip forward" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -1336,7 +1337,7 @@ export default function TranscriptPage() {
             </span>
 
             {/* waveform + scrubber */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
+            <div className="ds-player-wave" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
               {/* waveform bars */}
               <div style={{ display: "flex", alignItems: "end", gap: 2, height: 28 }}>
                 {Array.from({ length: 80 }).map((_, i) => {
@@ -1389,7 +1390,7 @@ export default function TranscriptPage() {
 
             {/* speed + volume */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button style={{
+              <button aria-label="Playback speed" style={{
                 background: P.inputBg,
                 border: `1px solid ${P.border}`,
                 borderRadius: 6,
@@ -1402,7 +1403,7 @@ export default function TranscriptPage() {
               }}>
                 1.5x
               </button>
-              <button style={{
+              <button aria-label="Volume" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",

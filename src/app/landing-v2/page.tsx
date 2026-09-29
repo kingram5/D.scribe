@@ -918,11 +918,11 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
       </div>
 
       {/* Arrows */}
-      <button onClick={goPrev} aria-label="Previous book" style={{ ...arrowStyle, left: 16 }}>‹</button>
-      <button onClick={goNext} aria-label="Next book" style={{ ...arrowStyle, right: 16 }}>›</button>
+      <button onClick={goPrev} aria-label="Previous book" className="lbook-arrow" style={{ ...arrowStyle, left: 16 }}>‹</button>
+      <button onClick={goNext} aria-label="Next book" className="lbook-arrow" style={{ ...arrowStyle, right: 16 }}>›</button>
 
       {/* Dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
+      <div className="lbook-dots" style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
         {books.map((_, i) => (
           <button
             key={i}
@@ -1205,7 +1205,7 @@ export default function LandingV2() {
           </div>
 
           {/* Right: step list — shifted left into middle space */}
-          <div style={{ position: "relative", transform: "translateX(-15%)" }}>
+          <div className="lv2-pipeline-steps" style={{ position: "relative", transform: "translateX(-15%)" }}>
             <div style={{
               position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
               background: "rgba(193,122,71,0.2)",
@@ -1328,7 +1328,7 @@ export default function LandingV2() {
             </div>
             <BookCarousel books={LANDING_BOOKS} />
 
-            <div className="text-center mt-16">
+            <div className="text-center mt-16 ds-touch-links">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →
               </Link>
@@ -1440,7 +1440,7 @@ export default function LandingV2() {
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
-        <nav aria-label="Legal" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+        <nav aria-label="Legal" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
           {[
             ["/legal/terms", "Terms"],
             ["/legal/privacy", "Privacy"],
@@ -1454,7 +1454,7 @@ export default function LandingV2() {
         </nav>
         {/* Compare links (HeyCatch action plan): competitor-intent search traffic
             needs a crawlable path from the homepage, not only a sitemap entry. */}
-        <nav aria-label="Compare" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+        <nav aria-label="Compare" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
           <Link href="/vs" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Compare</Link>
           {[
             ["/vs/builtwritten", "vs Built&Written"],
@@ -1682,6 +1682,7 @@ export default function LandingV2() {
         .lv2-pipeline-dash { height: 1122px; }
         @media (max-width: 1279px) {
           .lv2-dashboard-wrap { transform: none !important; }
+          .lv2-pipeline-steps { transform: none !important; }
           .lv2-brainstorm-wrap { margin-left: 0 !important; }
           .lv2-pipeline-dash { height: 900px; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 640px !important; margin: 0 auto; }

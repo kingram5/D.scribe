@@ -659,6 +659,9 @@ export default function GeneratePage() {
                     </button>
                   )}
                   <button
+                    role="switch"
+                    aria-checked={includeForeword}
+                    aria-label="Include a foreword"
                     onClick={() => {
                       const next = !includeForeword;
                       setIncludeForeword(next);
@@ -767,6 +770,7 @@ export default function GeneratePage() {
                     onTouchEnd={(e) => persistCreativeFreedom(parseInt((e.target as HTMLInputElement).value))}
                     onKeyUp={(e) => persistCreativeFreedom(parseInt((e.target as HTMLInputElement).value))}
                     className="ds-freedom-slider"
+                    aria-label="Creative freedom"
                   />
                   {/* Quill/pen icon */}
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(193,122,71,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>

@@ -188,7 +188,7 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
           ))}
         </dl>
 
-        <div style={{ marginTop: 56, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="ds-touch-links" style={{ marginTop: 56, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <Link href="/login" className="vs-cta">
             Start with 10 Ink free
           </Link>
@@ -201,6 +201,7 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
 
         <nav
           aria-label="Other comparisons"
+          className="ds-touch-links"
           style={{ display: "flex", gap: "6px 18px", flexWrap: "wrap", marginTop: 32, fontSize: 13.5 }}
         >
           {VS_PAGES.filter((p) => p.slug !== page.slug).map((p) => (

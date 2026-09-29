@@ -177,7 +177,7 @@ export default function AboutPage() {
           }}
         />
 
-        <nav
+        <nav className="ds-touch-links"
           style={{
             position: "sticky",
             top: 0,

@@ -1420,3 +1420,92 @@ input[type=range] {
   text-transform: uppercase;
 }
 .ds-stamp--live { color: #B3352C; }
+
+/* ========== Mobile loops pass (BMO, 2026-09-29) ==========
+   Phone-only fixes from the measured mobile audit: nothing past the right edge,
+   every control at least 44x44, nothing painted over. Desktop is untouched. */
+@media (max-width: 768px) {
+  /* On phones the app shell drops its 3D perspective (see (main)/layout.tsx), which
+     also dropped it under the fixed background glow (.nodum-env, z-index 0) on pages
+     whose content isn't positioned: Settings, Partner and Admin rendered as an empty
+     dark screen. position: relative keeps it painting above the glow without creating
+     a stacking context, so modals and the bottom step nav behave exactly as before. */
+  .ds-perspective-shell { position: relative; }
+
+  /* Top bar: logo link, account button and menu button get full-size touch targets. */
+  .ds-os-bar > a { min-height: 44px; }
+  .ds-os-bar .show-mobile > button,
+  .ds-user-menu-btn { min-width: 44px; min-height: 44px; }
+
+  /* Step rail: each marker's link is stretched to a 44px-tall, evenly shared cell;
+     the 24px circles themselves don't change. */
+  .ds-header-rail .ds-rail-markers { gap: 0 !important; justify-content: space-between; }
+  .ds-header-rail .ds-rail-markers > a,
+  .ds-header-rail .ds-rail-markers > span,
+  .ds-header-rail .ds-rail-markers > .ds-rail-help { flex: 1 1 0; min-height: 44px; display: flex !important; align-items: center; justify-content: center; }
+  .ds-rail-back { width: 44px !important; height: 44px !important; }
+
+  /* Small text links (marketing navs, legal footers, compare links) become 44px rows. */
+  .ds-touch-links a,
+  .ds-touch-links button { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* Pricing: three plan cards side by side overflowed the phone and hid Pro and
+     Premium off the right edge. Stack them. */
+  .pricing-tiers { grid-template-columns: 1fr !important; max-width: 440px; margin-left: auto; margin-right: auto; }
+
+  /* Landing book carousel: the side books sat ~650px past the right edge and
+     stretched the whole page to 1,370px wide on phones. Clip sideways only. */
+  .lbook-carousel { overflow-x: clip; }
+
+  /* Shared buttons and pills */
+  .nodum-btn, .nodum-btn-ghost { min-height: 44px; }
+  .bs-pill { min-height: 44px !important; }
+  .ds-add-more { min-height: 44px; display: inline-flex; align-items: center; }
+  .ds-step-row { min-height: 44px; }
+  .ds-structure-card button,
+  .ds-new-project form button,
+  .cinematic-root main button,
+  .ds-transcript-layout aside button { min-height: 44px; }
+
+  /* Transcript: one-click segment delete. Border hidden so the bigger box doesn't
+     read as a bigger button; the glyph stays where it was. */
+  .ds-seg-delete { width: 44px !important; height: 44px !important; margin-left: -11px; border-color: transparent !important; }
+  /* Transcript bottom player: 80 fixed waveform bars pushed the speed and volume
+     buttons off the right edge. Let the waveform shrink and clip instead. */
+  .ds-transcript-player { flex-wrap: wrap; height: auto !important; min-height: 0 !important; padding: 6px 8px !important; gap: 2px 6px !important; justify-content: space-between; }
+  .ds-transcript-player .ds-player-wave { min-width: 0; overflow: hidden; flex: 1 1 100% !important; order: 5; }
+  .ds-transcript-player button { min-width: 44px; min-height: 44px; justify-content: center; }
+
+  /* Outline: "+ key point" */
+  .ds-add-keypoint { min-height: 44px; padding: 0 12px !important; }
+
+  /* Structure: +/- steppers */
+  .ds-stepper-btn { width: 44px !important; height: 44px !important; }
+
+  /* Project page: the stage card's stats row + "View Details" ran 190px off the edge. */
+  .ds-stage-footer { flex-wrap: wrap; gap: 16px; }
+  .ds-stage-footer > div:first-child { flex-wrap: wrap; gap: 16px 24px !important; }
+  /* Editor bottom bar: the rewrite prompt plus "Save Changes" didn't fit side by side
+     and Save ran off the right edge. Each gets its own row on phones. */
+  .ds-editor-actionbar { flex-wrap: wrap; padding: 10px 12px !important; gap: 8px !important; }
+  .ds-editor-actionbar > * { flex: 1 1 100% !important; min-width: 0; }
+  .ds-editor-actionbar input,
+  .ds-editor-actionbar button { min-height: 44px; }
+  /* Landing footer: link rows grew to 44px but the navs kept their old height, so
+     rows spilled onto the next nav. Full-width navs size to their content. */
+  .landing-v2 footer > nav { flex: 1 1 100%; }
+  /* Upload: the intake cards' 1fr column grew to its widest child (16px past the
+     edge at 360). minmax(0, 1fr) lets the column shrink to the phone. */
+  .ds-intake { grid-template-columns: minmax(0, 1fr); }
+  .ds-intake > * { min-width: 0; }
+  /* Cookie banner: while it's open it sat on top of the last screen of every page
+     (footer links included). Room at the bottom lets that content scroll clear. */
+  body:has(> div[role="dialog"][aria-label="Cookie consent"]) { padding-bottom: 300px; }
+  /* Book carousel: the prev/next arrows are placed at half the carousel's height,
+     which on a 360px phone landed them on top of the book dots. Centre them on the
+     book instead, and give the dots full-size targets. */
+  .lbook-carousel > .lbook-arrow { top: 180px !important; margin-top: 0 !important; }
+  .lbook-dots > button { min-width: 44px !important; height: 44px !important; }
+  /* Progress dots: 24px hit areas on a 14px pitch overlapped each other. */
+  .ds-step-dots-row { gap: 16px !important; }
+}

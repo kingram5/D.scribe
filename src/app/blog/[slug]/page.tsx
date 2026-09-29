@@ -62,7 +62,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <div style={{ position: "fixed", top: "10%", right: "5%", width: "30vw", height: "30vw", background: "rgba(193,122,71,0.06)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
 
       {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
+      <nav className="ds-touch-links" style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: "#C17A47", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "var(--font-playfair), var(--font-lora), serif", fontSize: 20, paddingTop: 2 }}>D.</div>

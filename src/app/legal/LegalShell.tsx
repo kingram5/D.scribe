@@ -194,7 +194,7 @@ export function LegalShell({
       />
 
       {/* Nav */}
-      <nav
+      <nav className="ds-touch-links"
         style={{
           position: "sticky",
           top: 0,
@@ -313,7 +313,7 @@ export function LegalShell({
         >
           More legal
         </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px" }}>
+        <div className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px" }}>
           {LEGAL_PAGES.map((page) => {
             const isCurrent = page.href === currentPath;
             return isCurrent ? (

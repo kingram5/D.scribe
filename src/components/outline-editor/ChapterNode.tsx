@@ -198,6 +198,7 @@ function ChapterNoteComponent({
         </span>
         {(hovered || isMobile) && (
           <button
+            className="ds-add-keypoint"
             onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{

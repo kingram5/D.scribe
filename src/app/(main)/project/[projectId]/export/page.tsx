@@ -838,6 +838,9 @@ export default function ExportPage() {
                 {isPublic ? "Published" : "Private"}
               </span>
               <button
+                role="switch"
+                aria-checked={isPublic}
+                aria-label="Publish to the community"
                 onClick={() => setIsPublic(!isPublic)}
                 style={{
                   width: 44,

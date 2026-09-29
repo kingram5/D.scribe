@@ -1261,7 +1261,7 @@ export default function EditorPage() {
           )}
 
           {/* Bottom bar — rewrite input + save button, always in flow */}
-          <div data-tut="editor-rewrite" style={{
+          <div data-tut="editor-rewrite" className="ds-editor-actionbar" style={{
             flexShrink: 0,
             display: "flex",
             alignItems: "center",

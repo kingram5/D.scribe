@@ -214,6 +214,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               onClick={(e) => guardNav(e, `/project/${projectId}`)}
               aria-label="Back to progress dashboard"
               title="Back to Progress dashboard"
+              className="ds-rail-back"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -371,28 +372,32 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 onClick={() => { setTourOpen(false); setTutorialOpen(true); }}
                 title={`How ${currentLabel} works`}
                 aria-label={`Open the guide for the ${currentLabel} step`}
-                style={{
-                  width: 24,
-                  height: 24,
-                  marginLeft: 8,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  border: "1px dashed rgba(193,122,71,0.6)",
-                  background: "rgba(193,122,71,0.08)",
-                  color: "#A05526",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#C17A47"; e.currentTarget.style.color = "#F9F7F2"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(193,122,71,0.08)"; e.currentTarget.style.color = "#A05526"; }}
+                className="ds-rail-help"
+                style={{ background: "none", border: "none", padding: 0, marginLeft: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                onMouseEnter={(e) => { const c = e.currentTarget.firstElementChild as HTMLElement | null; if (c) { c.style.background = "#C17A47"; c.style.color = "#F9F7F2"; } }}
+                onMouseLeave={(e) => { const c = e.currentTarget.firstElementChild as HTMLElement | null; if (c) { c.style.background = "rgba(193,122,71,0.08)"; c.style.color = "#A05526"; } }}
               >
-                ?
+                <span
+                  aria-hidden
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    border: "1px dashed rgba(193,122,71,0.6)",
+                    background: "rgba(193,122,71,0.08)",
+                    color: "#A05526",
+                    transition: "all 0.2s",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  ?
+                </span>
               </button>
             )}
           </div>

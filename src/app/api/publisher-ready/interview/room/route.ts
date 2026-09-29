@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkInk } from "@/lib/ink";
 import { createServerClient } from "@/lib/supabase";
-import { serveNext, submitAnswer, skipQuestion, finishChapter, type InterviewState } from "@/lib/publisher-ready/interview";
+import { serveNext, submitAnswer, skipQuestion, finishChapter, editorFinished, type InterviewState } from "@/lib/publisher-ready/interview";
 import { welcomeLine, nextLine } from "@/lib/publisher-ready/room-lines";
 import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../../_shared";
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
     const db = createServerClient();
     const { data: run } = await db.from("pr_runs").select("id").eq("id", runId).eq("user_id", user.id).maybeSingle();
     if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
+    if (!(await editorFinished(user.id, runId))) {
+      return NextResponse.json({ error: "The editor hasn't finished reading yet. Finish the Editor review first." }, { status: 409 });
+    }
 
     // The question currently on the table (served, not yet answered or skipped).
     const { data: current } = await db.from("pr_questions").select("id, chapter_id")

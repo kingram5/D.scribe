@@ -56,7 +56,8 @@ export default function VoicePicker({ projectId, active = true, onClose }: { pro
   useEffect(() => {
     if (state !== "asking" && state !== "waiting") return;
     if (!active || pairs.length - idx > PREFETCH_AT) return;
-    void loadMore().then(() => setState((s) => (s === "waiting" ? "asking" : s)));
+    // Only leave "waiting" when a batch actually arrived (an in-flight fetch returns 0).
+    void loadMore().then((added) => { if (added) setState((s) => (s === "waiting" ? "asking" : s)); });
   }, [idx, pairs.length, active, state, loadMore]);
 
   // Ran out: wait for the batch in flight while the editor still reads; otherwise finish.
@@ -83,8 +84,8 @@ export default function VoicePicker({ projectId, active = true, onClose }: { pro
     setIdx((i) => i + 1);
   };
 
-  if (state === "loading" || state === "hidden") return null;
-  if (state === "waiting") {
+  if (state === "hidden") return null;
+  if (state === "loading" || state === "waiting") {
     return <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>Pulling a few more lines from your chapters…</div>;
   }
   if (state === "done") {

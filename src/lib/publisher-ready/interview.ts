@@ -174,3 +174,19 @@ export async function finishInterview(userId: string, runId: string) {
     .eq("run_id", runId).in("status", ["queued", "asked"]);
   await db.from("pr_runs").update({ status: "revising", updated_at: new Date().toISOString() }).eq("id", runId);
 }
+
+/**
+ * Has the editor read every chapter of this run's book? The interview and the
+ * revision both depend on it (flow v2: a stale tab or a rail click must not
+ * start either before the editor is done).
+ */
+export async function editorFinished(userId: string, runId: string): Promise<boolean> {
+  const db = createServerClient();
+  const run = await loadRun(db, userId, runId);
+  const [{ data: chapters }, { data: passes }] = await Promise.all([
+    db.from("chapters").select("id").eq("project_id", run.project_id).gt("chapter_number", 0),
+    db.from("pr_chapter_passes").select("chapter_id").eq("run_id", runId).eq("step", "edit"),
+  ]);
+  const read = new Set((passes ?? []).map((p) => p.chapter_id));
+  return (chapters ?? []).length > 0 && (chapters ?? []).every((c) => read.has(c.id));
+}

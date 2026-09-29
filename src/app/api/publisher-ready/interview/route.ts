@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkInk } from "@/lib/ink";
-import { serveNext, submitAnswer, skipQuestion, finishChapter, finishInterview } from "@/lib/publisher-ready/interview";
+import { serveNext, submitAnswer, skipQuestion, finishChapter, finishInterview, editorFinished } from "@/lib/publisher-ready/interview";
 import { requireAuth } from "@/lib/auth";
 import { guard, errorResponse } from "../_shared";
 
@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
         await finishChapter(user.id, runId, body.chapter_id);
         return NextResponse.json({ ok: true });
       case "finish":
+        if (!(await editorFinished(user.id, runId))) {
+          return NextResponse.json({ error: "The editor hasn't finished reading yet." }, { status: 409 });
+        }
         await finishInterview(user.id, runId);
         return NextResponse.json({ ok: true });
       default:

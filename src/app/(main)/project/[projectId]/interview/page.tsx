@@ -23,6 +23,7 @@ export default function InterviewPage() {
   const [progress, setProgress] = useState<InterviewProgress | null>(null);
   const [inRoom, setInRoom] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [editorDone, setEditorDone] = useState(false);
 
   useEffect(() => {
     fetch(`/api/publisher-ready/run?project_id=${projectId}`)
@@ -30,6 +31,10 @@ export default function InterviewPage() {
       .then((d) => {
         setRun(d?.run ?? null);
         setProgress(d?.interview ?? null);
+        // The interview only opens once the editor has read every chapter.
+        const read = new Set(((d?.passes ?? []) as { chapter_id: string; step: string }[]).filter((x) => x.step === "edit").map((x) => x.chapter_id));
+        const chs = (d?.chapters ?? []) as { id: string }[];
+        setEditorDone(chs.length > 0 && chs.every((c) => read.has(c.id)));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -48,7 +53,7 @@ export default function InterviewPage() {
 
   const status = run?.status ?? "";
   const pastInterview = ["revising", "checking", "done"].includes(status);
-  const ready = status === "interviewing" || status === "editing" || status === "drafting";
+  const ready = editorDone && ["interviewing", "editing", "drafting"].includes(status);
   const noQuestions = !!progress && progress.remaining === 0 && progress.answered === 0 && progress.skipped === 0;
 
   return (
@@ -56,12 +61,15 @@ export default function InterviewPage() {
       <div style={{ padding: "0 clamp(16px, 4vw, 40px) 40px", display: "grid", placeItems: "center", minHeight: "60vh" }}>
         {loading ? (
           <Spinner />
-        ) : !run ? (
+        ) : !run || (!editorDone && !pastInterview) ? (
           <GlassCard style={{ padding: 32, maxWidth: 560 }}>
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.6 }}>
-              The interview comes after the editor reads your draft.
+              The interview comes after the editor reads your whole draft.
             </p>
-            <button onClick={() => router.push(`/project/${projectId}/publisher-ready`)} style={primary}>Go to Editor review</button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
+              <button onClick={() => router.push(`/project/${projectId}/publisher-ready`)} style={primary}>Go to Editor review</button>
+              <button onClick={() => router.push(`/project/${projectId}/editor`)} style={secondary}>Skip to your final draft</button>
+            </div>
           </GlassCard>
         ) : pastInterview ? (
           <GlassCard style={{ padding: 32, maxWidth: 560 }}>

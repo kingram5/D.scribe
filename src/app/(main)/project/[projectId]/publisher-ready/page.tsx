@@ -68,18 +68,17 @@ export default function EditorReviewPage() {
 
   const startEditor = async () => {
     setStartError(null);
-    let current = liveRun;
-    if (!current) {
-      const res = await guardedFetch("/api/publisher-ready/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId, skip_draft: true }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { if (data.error !== "out_of_ink") setStartError(data.message || data.error); return; }
-      current = data.run as RunRow;
-      setRun(current);
-    }
+    // Always ask the server: it opens a run, or resumes the First Draft's run
+    // after checking the Ink for everything still to come.
+    const res = await guardedFetch("/api/publisher-ready/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId, skip_draft: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { if (data.error !== "out_of_ink") setStartError(data.message || data.error); return; }
+    const current = data.run as RunRow;
+    setRun(current);
     const todo = chapters.filter((c) => !edited.has(c.id));
     await pr.runStep(current.id, "edit", todo, (chapterId) => {
       setPasses((prev) => [...prev, { chapter_id: chapterId, step: "edit", scores: null }]);

@@ -70,10 +70,31 @@ export async function POST(req: NextRequest) {
 
     const { data: live } = await db.from("pr_runs").select("*").eq("project_id", projectId)
       .not("status", "in", "(done,cancelled)").maybeSingle();
-    if (live) return NextResponse.json({ run: live, resumed: true });
-
     const { data: chapters } = await db.from("chapters").select("id, target_word_count")
       .eq("project_id", projectId).gt("chapter_number", 0);
+
+    if (live) {
+      // Flow v2: First Draft opens the run on the draft's Ink alone. Starting the
+      // review on that run must still check everything after the draft up front,
+      // so nobody pays for an editor read and then runs dry mid-revise.
+      if (body.skip_draft === true && chapters?.length) {
+        const rest = estimateRunInk(chapters, { skipDraft: true });
+        const balance = await ensureBalance(user.id);
+        const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
+        if (spendable < rest) {
+          return NextResponse.json({
+            error: "out_of_ink",
+            message: `The review, interview and rewrite need about ${rest} Ink and you have ${Math.floor(spendable)}.`,
+            estimate: rest,
+          }, { status: 402 });
+        }
+        if (Number(live.ink_estimate ?? 0) < rest) {
+          await db.from("pr_runs").update({ ink_estimate: rest, updated_at: new Date().toISOString() }).eq("id", live.id);
+          live.ink_estimate = rest;
+        }
+      }
+      return NextResponse.json({ run: live, resumed: true });
+    }
     if (!chapters || chapters.length === 0) {
       return NextResponse.json({ error: "Build an outline first: Publisher-Ready works chapter by chapter." }, { status: 400 });
     }

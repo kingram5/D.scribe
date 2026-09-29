@@ -96,7 +96,9 @@ export default function EditorPage() {
       const old = prev[idx].latest_content?.content ?? "";
       if (idx === activeIdxRef.current) {
         // Never overwrite words the author is in the middle of changing.
-        if (contentRef.current === old) {
+        // Whitespace-normalized: the editor may tidy text on load without any real edit.
+        const norm = (t: string) => t.replace(/\s+/g, " ").trim();
+        if (norm(contentRef.current) === norm(old)) {
           setContent(data.content);
           setWordCount(data.word_count ?? data.content.split(/\s+/).filter(Boolean).length);
         } else {

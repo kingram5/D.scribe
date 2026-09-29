@@ -304,6 +304,7 @@ export default function GeneratePage() {
         }
 
         setGenAllResult({ chapters_generated: toGenerate.length });
+        setShowReviewChoice(true); // the fork shows after a quick draft too
         setShowCelebration(true);
       }
 
@@ -524,7 +525,7 @@ export default function GeneratePage() {
         const ch = chapters.find((c) => c.id === justReady);
         return ch ? (
           <div role="status" style={{
-            position: "fixed", right: 20, bottom: 20, zIndex: 141, display: "flex", alignItems: "center", gap: 12,
+            position: "fixed", right: 16, top: 16, zIndex: 141, display: "flex", alignItems: "center", gap: 12,
             padding: "10px 14px", borderRadius: 12, background: "var(--ds-paper, #FDFCF8)", border: "1px solid rgba(193,122,71,0.35)",
             boxShadow: "0 10px 30px rgba(0,0,0,0.2)", fontSize: 13, color: "var(--text-primary)",
           }}>

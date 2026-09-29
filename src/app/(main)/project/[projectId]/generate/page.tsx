@@ -16,6 +16,9 @@ import GenerationStage from "@/components/ui/GenerationStage";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useInkGuard } from "@/hooks/useInkGuard";
 import InkTooltip from "@/components/ui/InkTooltip";
+import ChapterReader, { isReadable } from "@/components/draft/ChapterReader";
+import ReviewChoice from "@/components/draft/ReviewChoice";
+import { usePrStepRunner } from "@/hooks/usePrStepRunner";
 
 export default function GeneratePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -40,16 +43,23 @@ export default function GeneratePage() {
   const [genAllResult, setGenAllResult] = useState<{ chapters_generated: number } | null>(null);
   const [genAllProgress, setGenAllProgress] = useState<{ step: string; current: number; total: number; message?: string } | null>(null);
   const [regenRunning, setRegenRunning] = useState(false);
+  // Flow v2 (Kyle 9/28): the Publisher-Ready draft runs HERE, and finished
+  // chapters are readable in a side pane while the rest are written.
+  const pr = usePrStepRunner(guardedFetch, () => setShowUpgrade(true));
+  const prDrafting = pr.running === "draft";
+  const [readerId, setReaderId] = useState<string | null>(null);
+  const [justReady, setJustReady] = useState<string | null>(null);
+  const [showReviewChoice, setShowReviewChoice] = useState(false);
 
   // Leave-guard: chapter generation is a long streaming run — losing the tab
   // mid-stream wastes the Ink already spent. PageShell turns this into an info
   // pill + a confirm on any step navigation; beforeunload covers tab close.
   useEffect(() => {
     setGenerationBusy(
-      genAllRunning || regenRunning ? "Chapters are still generating" : null
+      genAllRunning || regenRunning || prDrafting ? "Chapters are still generating" : null
     );
     return () => setGenerationBusy(null);
-  }, [genAllRunning, regenRunning]);
+  }, [genAllRunning, regenRunning, prDrafting]);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [includeForeword, setIncludeForeword] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -62,9 +72,40 @@ export default function GeneratePage() {
       .catch(() => setPublisherReady(false));
   }, [projectId]);
 
-  // Are all chapters generated?
-  const allGenerated = chapters.length > 0 && chapters.every((ch) => ch.status === "generated");
-  const anyGenerated = chapters.some((ch) => ch.status === "generated");
+  // Are all chapters generated? (A hand-edited chapter still counts as drafted.)
+  const allGenerated = chapters.length > 0 && chapters.every((ch) => isReadable(ch));
+  const anyGenerated = chapters.some((ch) => isReadable(ch));
+
+  /** Write the first draft with the Publisher-Ready writer, chapter by chapter. */
+  async function startPrDraft() {
+    pr.setError(null);
+    const res = await guardedFetch("/api/publisher-ready/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId, draft_only: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { if (data.error !== "out_of_ink") pr.setError(data.message || data.error || "Couldn't start the draft"); return; }
+    const todo = chapters.filter((c) => c.chapter_number > 0 && !isReadable(c));
+    const ok = await pr.runStep(data.run.id, "draft", todo, (chapterId) => {
+      setChapters((prev) => prev.map((c) => (c.id === chapterId ? { ...c, status: "generated" as const } : c)));
+      setJustReady(chapterId);
+    });
+    const fresh = await fetch(`/api/project/${projectId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const chs: Chapter[] = fresh?.chapters ?? chapters;
+    if (fresh) setChapters(chs);
+    if (ok && chs.filter((c) => c.chapter_number > 0).every((c) => isReadable(c))) {
+      setShowCelebration(true);
+      setShowReviewChoice(true);
+    }
+  }
+
+  // "Chapter N is ready" chip fades on its own.
+  useEffect(() => {
+    if (!justReady) return;
+    const t = setTimeout(() => setJustReady(null), 9000);
+    return () => clearTimeout(t);
+  }, [justReady]);
 
   // Load foreword preference from localStorage
   useEffect(() => {
@@ -443,7 +484,7 @@ export default function GeneratePage() {
     } catch { /* leave the chip up so the author can retry */ }
     setApplyingWordCount(false);
   }
-  const isGenerating = genAllRunning || regenRunning;
+  const isGenerating = genAllRunning || regenRunning || prDrafting;
 
   const ungeneratedCount = chapters.filter(ch => ch.status !== "generated").length;
   const estimatedSeconds = ungeneratedCount * 45;
@@ -460,34 +501,47 @@ export default function GeneratePage() {
     >
       <GenerationStage
         open={isGenerating}
+        docked={publisherReady}
         coherence={genIsCoherence}
         progressLabel={
-          genIsCoherence
-            ? "Smoothing transitions across the manuscript"
-            : genTotal > 0
-              ? `Chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}`
-              : undefined
+          prDrafting
+            ? `${pr.progress.done} of ${pr.progress.total} chapters drafted`
+            : genIsCoherence
+              ? "Smoothing transitions across the manuscript"
+              : genTotal > 0
+                ? `Chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}`
+                : undefined
         }
-        progress={genTotal > 0 ? genCurrent / genTotal : undefined}
+        progress={prDrafting ? (pr.progress.total ? pr.progress.done / pr.progress.total : 0) : genTotal > 0 ? genCurrent / genTotal : undefined}
       />
-      {publisherReady && (
-        <div data-tut="generate-publisher-ready" style={{ padding: "0 40px 16px" }}>
-          <GlassCard style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>Publisher-Ready pass · recommended</div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
-                An editor reads every chapter, asks you what only you know, and your answers go into the book.
-              </div>
-            </div>
-            <button
-              onClick={() => router.push(`/project/${projectId}/publisher-ready`)}
-              disabled={isGenerating}
-              style={{ fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: isGenerating ? "wait" : "pointer" }}
-            >
-              Open
-            </button>
-          </GlassCard>
-        </div>
+      <ChapterReader
+        chapters={chapters.filter((c) => c.chapter_number > 0)}
+        openId={readerId}
+        onOpen={setReaderId}
+        onClose={() => setReaderId(null)}
+      />
+      {justReady && !readerId && (() => {
+        const ch = chapters.find((c) => c.id === justReady);
+        return ch ? (
+          <div role="status" style={{
+            position: "fixed", right: 20, bottom: 20, zIndex: 141, display: "flex", alignItems: "center", gap: 12,
+            padding: "10px 14px", borderRadius: 12, background: "var(--ds-paper, #FDFCF8)", border: "1px solid rgba(193,122,71,0.35)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.2)", fontSize: 13, color: "var(--text-primary)",
+          }}>
+            Chapter {ch.chapter_number} is ready
+            <button type="button" onClick={() => { setReaderId(ch.id); setJustReady(null); }} style={{
+              border: "none", background: "transparent", color: "#A05526", fontWeight: 700, cursor: "pointer", fontSize: 13, padding: 0,
+            }}>Read it</button>
+          </div>
+        ) : null;
+      })()}
+      {publisherReady && showReviewChoice && allGenerated && !isGenerating && (
+        <ReviewChoice
+          floating
+          onReview={() => router.push(`/project/${projectId}/publisher-ready`)}
+          onFinal={() => router.push(`/project/${projectId}/editor`)}
+          onDismiss={() => setShowReviewChoice(false)}
+        />
       )}
       <div className="ds-pipeline-grid" style={{
         display: "grid",
@@ -530,8 +584,25 @@ export default function GeneratePage() {
                       <span style={{ fontSize: "1.1rem" }}>Ch {ch.chapter_number}: {ch.title}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
-                      <span style={{ fontSize: "0.8rem", color: "#7A7358" }}>{ch.target_word_count}w</span>
+                      {isReadable(ch) && ch.chapter_number > 0 ? (
+                        // Flow v2: finished chapters open in the reading pane.
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setReaderId(ch.id); }}
+                          aria-label={`Read chapter ${ch.chapter_number}`}
+                          style={{
+                            fontSize: "0.75rem", fontWeight: 700, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                            border: "1px solid rgba(193,122,71,0.45)", background: readerId === ch.id ? "rgba(193,122,71,0.18)" : "transparent", color: "#A05526",
+                          }}
+                        >
+                          Read
+                        </button>
+                      ) : (
+                        <>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
+                          <span style={{ fontSize: "0.8rem", color: "#7A7358" }}>{ch.target_word_count}w</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -1138,14 +1209,16 @@ export default function GeneratePage() {
                           : `Generate All ${chapters.length} Chapters`}
                     </button>
                   </InkTooltip>
-                  {/* With Publisher-Ready on it is the default path (Kyle 9/27); one pass stays as the quick draft. */}
-                  {publisherReady && (
+                  {/* With Publisher-Ready on its writer is the default draft (Kyle 9/27), and it
+                      now runs right here so chapters are readable as they land (flow v2, 9/28). */}
+                  {publisherReady && !allGenerated && (
                     <button
-                      onClick={() => router.push(`/project/${projectId}/publisher-ready`)}
+                      onClick={startPrDraft}
                       disabled={isGenerating}
+                      data-tut="generate-publisher-ready"
                       style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: isGenerating ? "wait" : "pointer" }}
                     >
-                      Write it Publisher-Ready
+                      {prDrafting ? "Writing your first draft…" : anyGenerated ? "Finish my first draft" : "Write my first draft"}
                     </button>
                   )}
                 </div>
@@ -1166,8 +1239,24 @@ export default function GeneratePage() {
                 </div>
               )}
 
+              {pr.error && !prDrafting && (
+                <div role="alert" style={{ marginTop: 12, color: "#B4532A", fontSize: 13 }}>
+                  {pr.error} Hit &ldquo;Finish my first draft&rdquo; to retry the chapters that didn&apos;t land.
+                </div>
+              )}
+
+              {/* Flow v2: the fork after the first draft, kept on the page after the pop-up. */}
+              {publisherReady && allGenerated && !isGenerating && (
+                <div style={{ marginTop: 16 }}>
+                  <ReviewChoice
+                    onReview={() => router.push(`/project/${projectId}/publisher-ready`)}
+                    onFinal={() => router.push(`/project/${projectId}/editor`)}
+                  />
+                </div>
+              )}
+
               {/* Review & Edit link — shown when any chapter is generated */}
-              {anyGenerated && (
+              {anyGenerated && !(publisherReady && allGenerated) && (
                 <div style={{ marginTop: 16 }}>
                   <button
                     onClick={() => { if (!isGenerating) router.push(`/project/${projectId}/editor`); }}

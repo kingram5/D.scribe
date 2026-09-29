@@ -17,13 +17,21 @@ const PER_1K_WORDS_USD = 0.2;
 const DRAFT_FIXED_USD = 0.005;
 const DRAFT_PER_1K_WORDS_USD = 0.03;
 
-export function estimateChapterUsd(targetWords: number, opts: { skipDraft?: boolean } = {}): number {
+export interface EstimateOpts {
+  /** Keep the current chapters as the first draft (drops the draft's share). */
+  skipDraft?: boolean;
+  /** The First Draft step alone (flow v2: the review is optional, so starting a draft never demands the whole run's Ink). */
+  draftOnly?: boolean;
+}
+
+export function estimateChapterUsd(targetWords: number, opts: EstimateOpts = {}): number {
   const k = Math.max(500, targetWords) / 1000;
+  if (opts.draftOnly) return DRAFT_FIXED_USD + DRAFT_PER_1K_WORDS_USD * k;
   const full = FIXED_PER_CHAPTER_USD + PER_1K_WORDS_USD * k;
   return opts.skipDraft ? full - DRAFT_FIXED_USD - DRAFT_PER_1K_WORDS_USD * k : full;
 }
 
-export function estimateRunInk(chapters: { target_word_count: number | null }[], opts: { skipDraft?: boolean } = {}): number {
+export function estimateRunInk(chapters: { target_word_count: number | null }[], opts: EstimateOpts = {}): number {
   const usd = chapters.reduce((sum, c) => sum + estimateChapterUsd(c.target_word_count ?? 3000, opts), 0);
   return Math.ceil(usd * INK_PER_VENDOR_DOLLAR);
 }

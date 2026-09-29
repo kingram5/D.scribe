@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     const estimateSkipDraft = estimateRunInk(chapters || [], { skipDraft: true });
     const { data: run } = await db.from("pr_runs").select("*").eq("project_id", projectId)
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!run) return NextResponse.json({ run: null, chapters: chapters || [], estimate, estimateSkipDraft });
+    const estimateDraft = estimateRunInk(chapters || [], { draftOnly: true });
+    if (!run) return NextResponse.json({ run: null, chapters: chapters || [], estimate, estimateSkipDraft, estimateDraft });
 
     const [passes, questions] = await Promise.all([
       db.from("pr_chapter_passes").select("chapter_id, step, scores, version_out, change_log").eq("run_id", run.id),
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
       chapters: chapters || [],
       estimate,
       estimateSkipDraft,
+      estimateDraft,
       passes: passes.data || [],
       interview: progress((questions.data || []) as RRQuestion[]),
     });
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/publisher-ready/run { project_id, action?: "start" | "complete" | "cancel", run_id?, skip_draft? }
+// POST /api/publisher-ready/run { project_id, action?: "start" | "complete" | "cancel", run_id?, skip_draft?, draft_only? }
 export async function POST(req: NextRequest) {
   const { user, error } = await guard(await requireAuth(), "run", 20);
   if (error) return error;
@@ -79,13 +81,14 @@ export async function POST(req: NextRequest) {
     // Check the whole run up front: never let a user pay for a draft and an
     // editor read and then run dry before the revise.
     // Keeping the current chapters as the first draft drops the draft cost.
-    const estimate = estimateRunInk(chapters, { skipDraft: body.skip_draft === true });
+    // Starting from the First Draft page checks only the draft's Ink: the review is optional.
+    const estimate = estimateRunInk(chapters, body.draft_only === true ? { draftOnly: true } : { skipDraft: body.skip_draft === true });
     const balance = await ensureBalance(user.id);
     const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
     if (spendable < estimate) {
       return NextResponse.json({
         error: "out_of_ink",
-        message: `This book needs about ${estimate} Ink for a Publisher-Ready pass and you have ${Math.floor(spendable)}.`,
+        message: `This book needs about ${estimate} Ink ${body.draft_only === true ? "for the first draft" : "for a Publisher-Ready pass"} and you have ${Math.floor(spendable)}.`,
         estimate,
       }, { status: 402 });
     }

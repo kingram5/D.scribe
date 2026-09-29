@@ -1,33 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Pair { id: string; option_a: string; option_b: string; dimension: string }
 
+/** Fetch the next batch when this few pairs are left, so the author never waits on a spinner. */
+const PREFETCH_AT = 3;
+
 /**
  * "Which would you actually say out loud?" Shown while the editor reads the
- * book (dead time the author would otherwise spend watching a progress bar),
- * once per author. Two lines from their own chapter, written two ways; or
- * "neither" with a box to say it their way.
+ * book (dead time the author would otherwise spend watching a progress bar).
+ * Two lines from their own chapter, written two ways; or "neither" with a box
+ * to say it their way. Keeps serving fresh pairs for as long as `active` (the
+ * editor is still reading), up to the per-book cap on the server.
  */
-export default function VoicePicker({ projectId, onClose }: { projectId: string; onClose?: () => void }) {
+export default function VoicePicker({ projectId, active = true, onClose }: { projectId: string; active?: boolean; onClose?: () => void }) {
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [idx, setIdx] = useState(0);
-  const [state, setState] = useState<"loading" | "asking" | "done" | "hidden">("loading");
+  const [answered, setAnswered] = useState(0);
+  const [state, setState] = useState<"loading" | "asking" | "waiting" | "done" | "hidden">("loading");
   const [rewriting, setRewriting] = useState(false);
   const [rewrite, setRewrite] = useState("");
   const [busy, setBusy] = useState(false);
+  const fetching = useRef(false);
+  const pairsRef = useRef<Pair[]>([]);
+  const exhausted = useRef(false);
+
+  /** Pull open pairs (the server tops up a batch when few remain) and append the new ones. */
+  const loadMore = useCallback(async (): Promise<number> => {
+    if (fetching.current || exhausted.current) return 0;
+    fetching.current = true;
+    try {
+      const data = await fetch(`/api/voice-picker?project_id=${projectId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const incoming: Pair[] = data?.pairs ?? [];
+      if (!data || data.done || !incoming.length) exhausted.current = true;
+      const seen = new Set(pairsRef.current.map((p) => p.id));
+      const fresh = incoming.filter((p) => !seen.has(p.id));
+      if (fresh.length) {
+        pairsRef.current = [...pairsRef.current, ...fresh];
+        setPairs(pairsRef.current);
+      }
+      return fresh.length;
+    } finally {
+      fetching.current = false;
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    fetch(`/api/voice-picker?project_id=${projectId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data || data.done || !data.pairs?.length) { setState("hidden"); onClose?.(); return; }
-        setPairs(data.pairs);
-        setState("asking");
-      })
-      .catch(() => { setState("hidden"); onClose?.(); });
-  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps -- fetch once per project
+    void loadMore().then(() => {
+      if (!pairsRef.current.length) { setState("hidden"); onClose?.(); } else setState("asking");
+    });
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps -- first load once per project
+
+  // Top up in the background as the author nears the end of what's loaded.
+  useEffect(() => {
+    if (state !== "asking" && state !== "waiting") return;
+    if (!active || pairs.length - idx > PREFETCH_AT) return;
+    void loadMore().then(() => setState((s) => (s === "waiting" ? "asking" : s)));
+  }, [idx, pairs.length, active, state, loadMore]);
+
+  // Ran out: wait for the batch in flight while the editor still reads; otherwise finish.
+  useEffect(() => {
+    if (state !== "asking" && state !== "waiting") return;
+    if (idx < pairs.length) { if (state === "waiting") setState("asking"); return; }
+    if (active && !exhausted.current) setState("waiting");
+    else setState("done");
+  }, [idx, pairs.length, active, state]);
 
   const answer = async (choice: "a" | "b" | "neither") => {
     const pair = pairs[idx];
@@ -41,16 +79,21 @@ export default function VoicePicker({ projectId, onClose }: { projectId: string;
     setBusy(false);
     setRewriting(false);
     setRewrite("");
-    if (idx + 1 >= pairs.length) setState("done");
-    else setIdx(idx + 1);
+    setAnswered((n) => n + 1);
+    setIdx((i) => i + 1);
   };
 
   if (state === "loading" || state === "hidden") return null;
+  if (state === "waiting") {
+    return <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>Pulling a few more lines from your chapters…</div>;
+  }
   if (state === "done") {
     return (
       <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-        Got it. Your picks go into the rewrite, and every book after this one.{" "}
-        <button type="button" onClick={() => onClose?.()} style={{ marginLeft: 8, fontSize: 13, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--ds-card-border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>Close</button>
+        {answered > 0 ? `Got it. ${answered} picks. They go into the rewrite, and every book after this one.` : "Nothing to pick right now."}{" "}
+        {onClose && (
+          <button type="button" onClick={() => onClose()} style={{ marginLeft: 8, fontSize: 13, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--ds-card-border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>Close</button>
+        )}
       </div>
     );
   }
@@ -74,7 +117,7 @@ export default function VoicePicker({ projectId, onClose }: { projectId: string;
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-        While your editor reads · {idx + 1} of {pairs.length}
+        {active ? "While your editor reads" : "Your editor is done. Pick a few more or move on"} · pick {answered + 1}
       </div>
       <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>Which would you actually say out loud?</div>
       {option(pair.option_a, "a")}

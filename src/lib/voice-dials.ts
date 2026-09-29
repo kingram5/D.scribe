@@ -160,14 +160,15 @@ const ANCHOR_SCHEMA = {
 const ANCHOR_SYSTEM = `Rewrite this spoken sentence the way a polished nonfiction book would put it: smooth, correct, tidy. Keep the meaning. One sentence. Never use em dashes.`;
 
 /** Sentences from a draft that make good test material: 12-35 words, no quotes. */
-export function pickSourceSentences(draft: string, count: number): string[] {
+export function pickSourceSentences(draft: string, count: number, exclude: string[] = []): string[] {
+  const used = new Set(exclude.map((e) => e.trim()));
   const sentences = draft
     .replace(/\s+/g, " ")
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter((s) => {
       const n = s.split(" ").length;
-      return n >= 12 && n <= 35 && !/["“”]/.test(s) && !s.startsWith("#");
+      return n >= 12 && n <= 35 && !/["“”]/.test(s) && !s.startsWith("#") && !used.has(s);
     });
   if (sentences.length <= count) return sentences;
   // Spread picks across the chapter instead of taking the opening.
@@ -190,12 +191,14 @@ export async function generatePairs(opts: {
   draft: string;
   spokenLine?: string | null;
   dimensions?: Dimension[];
+  /** Source sentences already used for this book, so a new batch never repeats one. */
+  exclude?: string[];
   random?: () => number;
 }): Promise<{ pairs: PairRow[]; usage: ClaudeUsage[] }> {
   const rand = opts.random ?? Math.random;
   // "order" needs a passage, not one sentence, so the default set skips it.
   const dims = opts.dimensions ?? DIMENSIONS.filter((d) => d.key !== "order");
-  const sources = pickSourceSentences(opts.draft, dims.length);
+  const sources = pickSourceSentences(opts.draft, dims.length, opts.exclude);
   const usage: ClaudeUsage[] = [];
   const pairs: PairRow[] = [];
 

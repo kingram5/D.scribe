@@ -53,3 +53,14 @@ describe("source sentences", () => {
     expect(picked.every((p) => p.split(" ").length <= 35)).toBe(true);
   });
 });
+
+describe("pickSourceSentences exclude (flow v2 batches)", () => {
+  it("never reuses a sentence an earlier batch used", () => {
+    const lines = Array.from({ length: 12 }, (_, i) => `This is sentence number ${i} and it has enough plain words in it to qualify for a pair.`);
+    const draft = lines.join(" ");
+    const first = pickSourceSentences(draft, 5);
+    const second = pickSourceSentences(draft, 5, first);
+    expect(second.length).toBe(5);
+    expect(second.some((s) => first.includes(s))).toBe(false);
+  });
+});

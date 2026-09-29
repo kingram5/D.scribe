@@ -7,8 +7,14 @@ import { computeDials, generatePairs, voiceDialsBlock, type Pick } from "@/lib/v
 
 type Db = ReturnType<typeof createServerClient>;
 
-/** Answered pairs after which the picker stops asking (once per author). */
-export const PICKS_NEEDED = 6;
+/**
+ * The picker runs while the editor reads (Kyle 9/28: six picks ran out with
+ * ~80% of the wait left). It keeps serving batches for this book until the
+ * editor finishes or this many pairs exist for the book (cost cap).
+ */
+export const PAIRS_PER_BOOK_CAP = 30;
+/** Generate the next batch when this few unanswered pairs remain. */
+export const REFILL_AT = 3;
 
 /** The writer block for a user, or "" when they never used the picker. */
 export async function loadVoiceDialsBlock(userId: string, db: Db = createServerClient()): Promise<string> {
@@ -33,36 +39,49 @@ export interface PickerState {
   pairs: { id: string; option_a: string; option_b: string; dimension: string }[];
 }
 
-/** Open pairs for this author, generating a set from the project's draft when needed. */
+/**
+ * Open pairs for this book, topping up with a fresh batch from the draft when
+ * the author is nearly through them. Batches never reuse a source sentence.
+ */
 export async function pickerState(userId: string, projectId: string): Promise<PickerState> {
   const db = createServerClient();
-  const { count: answered } = await db.from("voice_pairs").select("id", { count: "exact", head: true })
-    .eq("user_id", userId).not("answered_at", "is", null);
-  if ((answered ?? 0) >= PICKS_NEEDED) return { done: true, answered: answered ?? 0, pairs: [] };
+  const { data: rows } = await db.from("voice_pairs")
+    .select("id, option_a, option_b, dimension, source_sentence, answered_at")
+    .eq("user_id", userId).eq("project_id", projectId).order("created_at");
+  const all = rows ?? [];
+  const answered = all.filter((r) => r.answered_at).length;
+  const shape = (r: (typeof all)[number]) => ({ id: r.id, option_a: r.option_a, option_b: r.option_b, dimension: r.dimension });
+  let open = all.filter((r) => !r.answered_at).map(shape);
+  if (all.length >= PAIRS_PER_BOOK_CAP) return { done: open.length === 0, answered, pairs: open };
+  if (open.length > REFILL_AT) return { done: false, answered, pairs: open };
 
-  let { data: open } = await db.from("voice_pairs").select("id, option_a, option_b, dimension")
-    .eq("user_id", userId).is("answered_at", null).order("created_at");
-  if (!open || open.length === 0) {
-    // Build from the project's newest chapter text and the author's own spoken words.
-    const { data: chapters } = await db.from("chapters").select("id").eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
-    let draft = "";
-    for (const ch of chapters ?? []) {
-      const { data: c } = await db.from("chapter_contents").select("content").eq("chapter_id", ch.id).order("version", { ascending: false }).limit(1).maybeSingle();
-      if (c?.content) draft += `\n\n${c.content}`;
-      if (draft.length > 12000) break;
-    }
-    if (!draft.trim()) return { done: false, answered: answered ?? 0, pairs: [] };
-    const { data: txs } = await db.from("transcripts").select("full_text, segments, speaker_map").eq("project_id", projectId);
-    const { pairs, usage } = await generatePairs({ draft, spokenLine: spokenLineFrom((txs ?? []) as LabeledTranscript[]) });
-    for (const u of usage) await recordInkUsage(userId, projectId, "style_distill", "sonnet5", u);
-    if (pairs.length) {
-      const { data: inserted } = await db.from("voice_pairs")
-        .insert(pairs.map((p) => ({ ...p, user_id: userId, project_id: projectId })))
-        .select("id, option_a, option_b, dimension");
-      open = inserted ?? [];
-    }
+  // Build a batch from the project's newest chapter text and the author's own spoken words.
+  const { data: chapters } = await db.from("chapters").select("id").eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
+  let draft = "";
+  for (const ch of chapters ?? []) {
+    const { data: c } = await db.from("chapter_contents").select("content").eq("chapter_id", ch.id).order("version", { ascending: false }).limit(1).maybeSingle();
+    if (c?.content) draft += `
+
+${c.content}`;
+    if (draft.length > 40000) break;
   }
-  return { done: false, answered: answered ?? 0, pairs: open ?? [] };
+  if (!draft.trim()) return { done: open.length === 0 && answered > 0, answered, pairs: open };
+  const hasAnchor = all.some((r) => r.dimension === "anchor");
+  let spokenLine: string | null = null;
+  if (!hasAnchor) {
+    const { data: txs } = await db.from("transcripts").select("full_text, segments, speaker_map").eq("project_id", projectId);
+    spokenLine = spokenLineFrom((txs ?? []) as LabeledTranscript[]);
+  }
+  const { pairs, usage } = await generatePairs({ draft, spokenLine, exclude: all.map((r) => r.source_sentence).filter(Boolean) });
+  for (const u of usage) await recordInkUsage(userId, projectId, "style_distill", "sonnet5", u);
+  const room = PAIRS_PER_BOOK_CAP - all.length;
+  if (pairs.length && room > 0) {
+    const { data: inserted } = await db.from("voice_pairs")
+      .insert(pairs.slice(0, room).map((p) => ({ ...p, user_id: userId, project_id: projectId })))
+      .select("id, option_a, option_b, dimension");
+    open = [...open, ...(inserted ?? [])];
+  }
+  return { done: open.length === 0, answered, pairs: open };
 }
 
 /** Save one pick and recompute the author's dials from every pick so far. */

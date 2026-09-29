@@ -255,7 +255,7 @@ export default function PublisherReadyPage() {
         {/* While the editor reads (a few minutes of waiting): the one-time voice picker. */}
         {pickerOpen && (
           <GlassCard style={{ padding: 32 }}>
-            <div data-tut="pr-picker"><VoicePicker projectId={projectId} onClose={() => setPickerOpen(false)} /></div>
+            <div data-tut="pr-picker"><VoicePicker projectId={projectId} active={running === "edit"} onClose={() => setPickerOpen(false)} /></div>
           </GlassCard>
         )}
 

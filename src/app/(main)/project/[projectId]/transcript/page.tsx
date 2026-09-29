@@ -8,7 +8,7 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
 import SpeakerLabelPanel from "@/components/transcript/SpeakerLabelPanel";
-import { speakerLabelsEnabled, needsSpeakerLabels } from "@/lib/speakers";
+import { speakerLabelsEnabled } from "@/lib/speakers";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
 const P = {
@@ -122,6 +122,9 @@ export default function TranscriptPage() {
   /* Per-paragraph editing: index into `merged`, plus the working text. */
   const [editingPara, setEditingPara] = useState<number | null>(null);
   const [paraDraft, setParaDraft] = useState("");
+  /* One-click segment delete (Kyle 9/28) keeps the previous segments for Undo. */
+  const [undoDelete, setUndoDelete] = useState<{ transcriptId: string; segments: TranscriptSegment[] } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /* Reading view (Kyle's note 7): "segments" keeps speakers, timestamps and the
      5-minute markers; "full" is the same text as continuous prose for a straight
      read-through. A view choice only — editing still writes back into segments. */
@@ -133,8 +136,6 @@ export default function TranscriptPage() {
   // auto-memoizes this anyway.
   const merged = active?.segments ? mergeSegments(active.segments) : [];
   const labelsOn = speakerLabelsEnabled();
-  // Any transcript still waiting for speaker labels blocks the step to analysis.
-  const labelsPending = labelsOn && transcripts.some((t) => needsSpeakerLabels(t));
   /** Display name for a raw speaker label, using the author's labels when set. */
   const nameFor = (raw: string): string => {
     const l = active?.speaker_map?.[raw];
@@ -219,6 +220,29 @@ export default function TranscriptPage() {
     });
     const refreshed = await fetch(`/api/project/${projectId}`).then((r) => r.json());
     setTranscripts(refreshed.transcripts || []);
+  }
+
+  /** Delete a whole paragraph (its run of segments) in one click; Undo restores it. */
+  async function deleteParagraph(paraIdx: number) {
+    if (!active || saving) return;
+    const para = merged[paraIdx];
+    if (!para) return;
+    const segments = active.segments || [];
+    setSaving(true);
+    setUndoDelete({ transcriptId: active.id, segments });
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndoDelete(null), 8000);
+    await persistSegments([...segments.slice(0, para.fromIdx), ...segments.slice(para.toIdx + 1)]);
+    setSaving(false);
+  }
+
+  async function undoLastDelete() {
+    if (!undoDelete || !active || active.id !== undoDelete.transcriptId) return;
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setSaving(true);
+    await persistSegments(undoDelete.segments);
+    setUndoDelete(null);
+    setSaving(false);
   }
 
   /** Save one edited paragraph back into the segments it was rendered from.
@@ -461,7 +485,7 @@ export default function TranscriptPage() {
 
   /* ── render ─────────────────────────────────────────────────── */
   return (
-    <PageShell projectId={projectId} currentStep="transcript" disableNextStep={labelsPending}>
+    <PageShell projectId={projectId} currentStep="transcript">
       <style>{`
         @media (max-width: 768px) {
           .ds-transcript-layout { flex-direction: column !important; }
@@ -1086,6 +1110,20 @@ export default function TranscriptPage() {
                               {nameFor(para.speaker)}
                             </span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => deleteParagraph(i)}
+                            disabled={saving}
+                            aria-label="Delete this segment"
+                            title="Delete this segment"
+                            style={{
+                              marginTop: 4, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+                              borderRadius: 6, border: `1px solid ${P.border}`, background: "transparent", color: P.muted,
+                              cursor: saving ? "wait" : "pointer", fontSize: 13, lineHeight: 1, padding: 0,
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
 
                         {/* timeline line */}
@@ -1382,6 +1420,19 @@ export default function TranscriptPage() {
           </div>
         </div>
       </div>
+      {undoDelete && (
+        <div role="status" style={{
+          position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 60,
+          display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", borderRadius: 12,
+          background: "var(--text-primary)", color: "var(--ds-card-bg, #fff)", fontSize: 13, fontFamily: P.sans,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+        }}>
+          Segment deleted
+          <button type="button" onClick={undoLastDelete} disabled={saving} style={{
+            border: "none", background: "transparent", color: "#E8A06E", fontWeight: 700, cursor: "pointer", fontSize: 13, padding: 0,
+          }}>Undo</button>
+        </div>
+      )}
     </PageShell>
   );
 }

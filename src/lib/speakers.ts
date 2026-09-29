@@ -242,8 +242,9 @@ export function speakerLabelsEnabled(): boolean {
 }
 
 /**
- * Analysis must wait for labels: flag on, the transcript has speaker segments
- * (pasted text has none), and nobody has confirmed them yet.
+ * Labels not yet confirmed: flag on, the transcript has speaker segments
+ * (pasted text has none), and nobody has confirmed them yet. A nudge only;
+ * nothing is blocked on it (Kyle 9/28).
  */
 export function needsSpeakerLabels(t: { segments: TranscriptSegment[] | null; speakers_confirmed_at?: string | null }): boolean {
   return speakerLabelsEnabled() && (t.segments?.length ?? 0) > 0 && !t.speakers_confirmed_at;

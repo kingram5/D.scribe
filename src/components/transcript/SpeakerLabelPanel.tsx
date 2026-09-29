@@ -15,8 +15,8 @@ interface Props {
  * "Who is speaking?" at the transcript step (Kyle 2026-09-27). One card per
  * detected speaker with a sample line: the book's author, or someone else
  * with a name and how they relate. "Same person as…" merges a speaker the
- * detector split in two. Saving marks the transcript confirmed, which is what
- * lets analysis run.
+ * detector split in two. Optional (Kyle 9/28): skipping it treats every voice
+ * as the author, exactly as before labels existed.
  */
 export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
   const speakers = useMemo(() => {
@@ -110,7 +110,7 @@ export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.5 }}>
           {confirmed
             ? "Saved. Change them anytime; the next analysis uses the new labels."
-            : "Tell us who each voice is, so your interviewer and writer never mix up your story with someone else's. The author is you, unless you're writing this book for someone."}
+            : "Optional. Tell us who each voice is, so your interviewer and writer never mix up your story with someone else's. Skip it and every voice is treated as yours."}
         </div>
       </div>
 

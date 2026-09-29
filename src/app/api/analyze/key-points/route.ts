@@ -12,7 +12,7 @@ import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { requireAuth } from "@/lib/auth";
 import { releaseInkReservation, reserveInk, settleInkReservation } from "@/lib/ink";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled, needsSpeakerLabels } from "@/lib/speakers";
+import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled } from "@/lib/speakers";
 
 export const maxDuration = 60;
 
@@ -52,10 +52,8 @@ export async function POST(req: NextRequest) {
     .single();
   if (!transcript) return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
 
-  // Who said what must be settled before quotes become key points.
-  if (needsSpeakerLabels(transcript)) {
-    return NextResponse.json({ error: "label_speakers", message: "Tell us who is speaking in this recording first." }, { status: 409 });
-  }
+  // Speaker labels are optional (Kyle 9/28): an unlabeled transcript is read as
+  // all the author's words, exactly as before labels existed.
 
   const chunks = chunkTranscript(transcript.full_text);
   const totalChunks = chunks.length;

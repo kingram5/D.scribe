@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson, type ClaudeUsage } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
-import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled, needsSpeakerLabels } from "@/lib/speakers";
+import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled } from "@/lib/speakers";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { extractionProfileBlock } from "@/lib/audience-profiles";
 import {
@@ -73,10 +73,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
   }
 
-  // Who said what must be settled before quotes become key points.
-  if (needsSpeakerLabels(transcript)) {
-    return NextResponse.json({ error: "label_speakers", message: "Tell us who is speaking in this recording first." }, { status: 409 });
-  }
+  // Speaker labels are optional (Kyle 9/28): an unlabeled transcript is read as
+  // all the author's words, exactly as before labels existed.
 
   // Get existing project for voice profile + audience (extraction conditioning)
   const { data: project } = await supabase

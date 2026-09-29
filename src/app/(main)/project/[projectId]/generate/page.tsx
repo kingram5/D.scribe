@@ -95,7 +95,8 @@ export default function GeneratePage() {
     const chs: Chapter[] = fresh?.chapters ?? chapters;
     if (fresh) setChapters(chs);
     if (ok && chs.filter((c) => c.chapter_number > 0).every((c) => isReadable(c))) {
-      setShowCelebration(true);
+      // The review fork is the celebration here (a toast on top of it overlapped).
+
       setShowReviewChoice(true);
     }
   }
@@ -305,7 +306,7 @@ export default function GeneratePage() {
 
         setGenAllResult({ chapters_generated: toGenerate.length });
         setShowReviewChoice(true); // the fork shows after a quick draft too
-        setShowCelebration(true);
+        if (!publisherReady) setShowCelebration(true);
       }
 
       const fresh = await fetch(`/api/project/${projectId}`);

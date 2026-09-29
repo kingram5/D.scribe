@@ -156,9 +156,11 @@ export default function EditorReviewPage() {
 
         {/* Dead center while the editor reads: the picker, pair after pair until it's done. */}
         {started && !pastEditor && (
-          <GlassCard style={{ padding: "32px clamp(18px, 4vw, 36px)", marginTop: "2vh" }}>
-            <div data-tut="pr-picker"><VoicePicker projectId={projectId} active={editing} /></div>
-          </GlassCard>
+          <div style={{ minHeight: "52vh", display: "grid", alignContent: "center" }}>
+            <GlassCard style={{ padding: "32px clamp(18px, 4vw, 36px)" }}>
+              <div data-tut="pr-picker"><VoicePicker projectId={projectId} active={editing} /></div>
+            </GlassCard>
+          </div>
         )}
 
         {editPasses.length > 0 && (allRead || pastEditor) && (

@@ -79,7 +79,8 @@ export default function ChapterReader({
   );
 
   return createPortal(
-    <aside className="ds-reader-pane" aria-label={`Reading chapter ${ch?.chapter_number ?? ""}`}>
+    // paper-theme: the portal sits outside the page wrapper that carries the light tokens.
+    <aside className="ds-reader-pane paper-theme" aria-label={`Reading chapter ${ch?.chapter_number ?? ""}`}>
       <style>{`
         .ds-reader-pane {
           position: fixed; top: 0; right: 0; bottom: 0; z-index: 150;

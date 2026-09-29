@@ -3139,7 +3139,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             textAlign: "center",
             fontFamily: "var(--font-manrope), sans-serif",
           }}>
-            {userMessageCount < 2
+            {isReview
+              ? `${userMessageCount} answer${userMessageCount === 1 ? "" : "s"} for your editor · tap I'm done whenever you like`
+              : userMessageCount < 2
               ? "Keep going — a couple more answers before this becomes source material"
               : `${userMessageCount} answers gathered · finish when you're ready`}
           </p>

@@ -32,19 +32,25 @@ const STEPS_V1 = [
 
 // Publisher-Ready (Kyle 2026-09-27): nine steps. Interview and Revision both
 // live on the publisher-ready page, which reports whichever one it is on.
-const STEPS_V2 = [
+// Flow v2 (Kyle 9/28): eight numbered steps; Export is "done", not a step,
+// so the count stays in single digits. Indexes line up with the 9/27 rail, so
+// the remembered-progress key carries over unchanged.
+const STEPS_V2: { key: string; label: string; path: string; done?: boolean }[] = [
   { key: "upload", label: "Upload", path: "upload" },
   { key: "transcript", label: "Transcript", path: "transcript" },
   { key: "structure", label: "Structure", path: "structure" },
   { key: "analysis", label: "Analysis", path: "analysis" },
-  { key: "generate", label: "Draft", path: "generate" },
-  { key: "interview", label: "Interview", path: "publisher-ready" },
-  { key: "revise", label: "Revise", path: "publisher-ready" },
-  { key: "editor", label: "Editor", path: "editor" },
-  { key: "export", label: "Export", path: "export" },
+  { key: "generate", label: "First Draft", path: "generate" },
+  { key: "review", label: "Editor review", path: "publisher-ready" },
+  { key: "interview", label: "Interview", path: "interview" },
+  { key: "editor", label: "Final Draft", path: "editor" },
+  { key: "export", label: "Done · Export", path: "export", done: true },
 ];
 
-const STEPS = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
+const STEPS: { key: string; label: string; path: string; done?: boolean }[] = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
+/** Steps that count toward "Step N of M" (Export is the finish line, not a step). */
+const NUMBERED = STEPS.filter((s) => !s.done).length;
+const stepCounter = (idx: number) => (STEPS[idx]?.done ? "Done" : `Step ${idx + 1} of ${NUMBERED}`);
 
 /** Project title for the header rail, cached per session so every step page
  *  doesn't re-fetch it. Falls back to empty (rail renders without a title). */
@@ -244,7 +250,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   {currentLabel}
                 </span>
                 <span className="ds-label ds-label--accent" style={{ whiteSpace: "nowrap" }}>
-                  Step {currentIdx + 1} of {STEPS.length}
+                  {stepCounter(currentIdx)}
                 </span>
               </div>
             </div>
@@ -292,8 +298,8 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               // one, so navigating backward no longer strips checks off finished steps or
               // traps the user into clicking forward one at a time.
               const isDone = !isCurrent && i <= reachedIdx;
-              // In the 9-step pipeline Interview and Revise are optional: once the Draft
-              // step is reached, the Editor and Export stay one click away.
+              // Editor review and Interview are optional: once the First Draft step is
+              // reached, the Final Draft and Export stay one click away.
               const skipAhead = STEPS === STEPS_V2 && reachedIdx >= 4 && (step.key === "editor" || step.key === "export");
               const isClickable = !isStepDisabled && !isCurrent
                 && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep) || skipAhead);
@@ -326,7 +332,12 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     transition: "all 0.2s",
                   }}
                 >
-                  {isDone ? (
+                  {step.done ? (
+                    // The finish line: a flag, never a number.
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 22V4" /><path d="M4 4h13l-2 4 2 4H4" />
+                    </svg>
+                  ) : isDone ? (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
@@ -342,7 +353,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     href={`/project/${projectId}/${step.path}`}
                     onClick={(e) => guardNav(e, `/project/${projectId}/${step.path}`)}
                     title={step.label}
-                    aria-label={`Go to step ${i + 1}: ${step.label}`}
+                    aria-label={step.done ? `Go to ${step.label}` : `Go to step ${i + 1}: ${step.label}`}
                     style={{ textDecoration: "none", display: "block" }}
                   >
                     {marker}
@@ -350,7 +361,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 );
               }
               return (
-                <span key={step.key} title={step.label} aria-label={`Step ${i + 1}: ${step.label}${isCurrent ? " (current)" : ""}`}>
+                <span key={step.key} title={step.label} aria-label={`${step.done ? step.label : `Step ${i + 1}: ${step.label}`}${isCurrent ? " (current)" : ""}`}>
                   {marker}
                 </span>
               );
@@ -533,7 +544,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             <div />
           )}
           <span className="ds-label">
-            Step {currentIdx + 1} of {STEPS.length}
+            {stepCounter(currentIdx)}
           </span>
           {nextStep ? (
             disableNextStep ? (

@@ -14,8 +14,8 @@ const AUTO_OFF_KEY = "ds_tut_auto_off";
  * features are switched on.
  */
 const TUTORIAL_VERSIONS: Record<string, number> = {
-  ...(process.env.NEXT_PUBLIC_SPEAKER_LABELS === "true" ? { transcript: 2 } : {}),
-  ...(process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? { generate: 2 } : {}),
+  ...(process.env.NEXT_PUBLIC_SPEAKER_LABELS === "true" ? { transcript: 3 } : {}),
+  ...(process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? { generate: 3, interview: 2 } : {}),
 };
 
 function seenId(stepKey: string): string {

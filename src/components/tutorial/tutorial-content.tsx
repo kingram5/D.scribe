@@ -113,7 +113,7 @@ export const TUTORIALS: Record<string, StepTutorial> = {
       ...(SPEAKER_LABELS
         ? [{
             title: "Tell us who is speaking",
-            body: "Every voice in your recording gets a name: you, or someone else (a guest, a pastor, a grandparent). Your interviewer and writer then never mix up your story with theirs. Solo recording? One tap. Analysis starts once every voice has a name.",
+            body: "Every voice in your recording gets a name: you, or someone else (a guest, a pastor, a grandparent). Your interviewer and writer then never mix up your story with theirs. Solo recording? Skip it: labels are optional and every voice counts as yours. The × under a speaker's name deletes that whole paragraph (Undo brings it back).",
             art: <IlViews />,
           }]
         : []),
@@ -242,8 +242,8 @@ export const TUTORIALS: Record<string, StepTutorial> = {
       },
       ...(PUBLISHER_READY
         ? [{
-            title: "Write it Publisher-Ready",
-            body: "The recommended path. Your whole book gets drafted, read by an editor the way an agent would, then sent back to you with questions only you can answer. Quick draft still writes everything in one pass if you're in a hurry.",
+            title: "Write your first draft",
+            body: "Write my first draft drafts every chapter, and each one opens with Read as soon as it lands, so you can start reading while the rest are written. When the last lands you choose: an optional publisher-ready review, or straight to your final draft.",
             art: <IlGenerate />,
           }]
         : []),
@@ -252,8 +252,8 @@ export const TUTORIALS: Record<string, StepTutorial> = {
       ...(PUBLISHER_READY
         ? [{
             target: "generate-publisher-ready",
-            title: "Publisher-Ready pass",
-            body: "Draft, editor read, your interview, revision and a final check, one chapter at a time. You'll see the Ink cost before it starts.",
+            title: "Write my first draft",
+            body: "Drafts every chapter, a couple at a time. Finished chapters get a Read button in the list. Quick draft is still there if you're in a hurry.",
           }]
         : []),
       {
@@ -284,8 +284,44 @@ export const TUTORIALS: Record<string, StepTutorial> = {
     ],
   },
 
-  // Publisher-Ready (Kyle 2026-09-27): the Interview and Revise steps.
+  // Flow v2 (Kyle 2026-09-28): Editor review, then the Interview room.
+  review: {
+    slides: [
+      {
+        title: "Your editor reads first",
+        body: "Optional, and only for publisher-ready edits and additions. An editor reads every chapter the way a literary agent would and finds the thin spots: a missing scene, a name, what someone actually said.",
+        art: <IlGenerate />,
+      },
+      {
+        title: "Which would you actually say?",
+        body: "While the editor reads, lines from your own chapters show up written two ways. Pick the one you'd say out loud, or type it your way. They keep coming until the editor is done, and they teach the writer how you really talk.",
+        art: <IlEditParagraph />,
+      },
+    ],
+    coachmarks: [
+      { target: "pr-picker", title: "Which would you say?", body: "Tap the line that sounds like you. \"Neither\" lets you write it your way, which is the most useful answer of all." },
+      { target: "pr-editor-notes", title: "What the editor saw", body: "A short read on each chapter's first draft. It's D.Scribe's own measure, not a prediction of any publisher's decision." },
+    ],
+  },
+
   interview: {
+    slides: [
+      {
+        title: "Welcome back",
+        body: "The same room as your first interview. T.H.E.O. asks your editor's questions out loud; answer the way you'd tell a friend: names, places, what was said.",
+        art: <IlBrainstorm />,
+      },
+      {
+        title: "Skip anything",
+        body: "Skip a question, jump to the next chapter, or tap I'm done whenever you've said enough. Your answers go into the book in your own words on the Final Draft.",
+        art: <IlMagicRewrite />,
+      },
+    ],
+    coachmarks: [],
+  },
+
+  // Pre-flow-v2 Publisher-Ready page (kept for the old 9-step rail's tours).
+  "interview-v1": {
     slides: [
       {
         title: "Your editor reads first",

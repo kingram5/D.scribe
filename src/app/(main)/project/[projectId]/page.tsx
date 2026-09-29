@@ -7,7 +7,7 @@ import { Project, AudioUpload, Transcript, KeyPoint, Chapter } from "@/types";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
-import { PIPELINE, getActiveStep, isStepNavigable, PIPELINE_V2, getActiveStepV2, isStepNavigableV2, publisherReadyUi } from "@/lib/pipeline-step";
+import { PIPELINE, getActiveStep, isStepNavigable, PIPELINE_V2, PIPELINE_V2_COUNTED, getActiveStepV2, isStepNavigableV2, publisherReadyUi } from "@/lib/pipeline-step";
 
 interface ProjectDetail extends Project {
   audio_uploads: AudioUpload[];
@@ -37,9 +37,9 @@ function ArrowIcon() {
 
 /* Step-specific animations for the pipeline detail card */
 function StepAnimation({ stepKey: rawKey }: { stepKey: string }) {
-  // The 9-step pipeline reuses the closest animation: the interview is a
-  // conversation (transcription waves), the revision is editing.
-  const stepKey = rawKey === "interview" ? "transcribe" : rawKey === "revise" ? "editor" : rawKey;
+  // Flow v2 reuses the closest animation: the interview is a conversation
+  // (transcription waves), the editor review is analysis.
+  const stepKey = rawKey === "interview" ? "transcribe" : rawKey === "review" ? "analyze" : rawKey === "revise" ? "editor" : rawKey;
   const wrapStyle: React.CSSProperties = {
     width: "100%",
     flex: 1,
@@ -789,7 +789,7 @@ export default function ProjectPage() {
                   color: "#C17A47",
                   fontWeight: 600,
                   fontFamily: "var(--font-manrope), sans-serif",
-                }}>Step {activeStep + 1} of {pipeline.length}</span>
+                }}>{v2 && activeStep >= PIPELINE_V2_COUNTED ? "Done" : `Step ${activeStep + 1} of ${v2 ? PIPELINE_V2_COUNTED : pipeline.length}`}</span>
               </div>
             </div>
 

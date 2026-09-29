@@ -62,28 +62,35 @@ export function isStepNavigable(index: number, activeStep: number): boolean {
   return index <= activeStep + 1;
 }
 
-// ─── Publisher-Ready pipeline (Kyle 2026-09-27: 9 steps) ────────────────────
-// Draft -> Interview (editor read + voice picker + questions) -> Revise (final
-// generation + final check) sit between Analysis and the Editor. Live with
+// ─── Publisher-Ready pipeline, flow v2 (Kyle 2026-09-28) ────────────────────
+// 1 Upload · 2 Transcript · 3 Structure · 4 Analysis · 5 First Draft ·
+// 6 Editor review · 7 Interview · 8 Final Draft, then DONE = Export (not
+// counted, so the step count stays in single digits). Review and Interview
+// are optional: skipping them goes straight to the Final Draft. Live with
 // NEXT_PUBLIC_PUBLISHER_READY=true; the 7-step pipeline above stays as-is
 // until then (and its tests keep pinning it).
 
 export interface PipelineStepV2 extends PipelineStep {
-  /** Steps a quick-draft author may skip on the way to the Editor. */
+  /** Steps a quick-draft author may skip on the way to the Final Draft. */
   optional?: boolean;
+  /** The finish line (Export): shown, but not counted as a step. */
+  done?: boolean;
 }
 
 export const PIPELINE_V2: PipelineStepV2[] = [
   { key: "upload", label: "Audio Upload", desc: "Upload your sermon, lecture, or recording", path: "upload" },
-  { key: "transcribe", label: "Transcription", desc: "Your words, captured, with every speaker named", path: "transcript" },
+  { key: "transcribe", label: "Transcription", desc: "Your words, captured and ready to shape", path: "transcript" },
   { key: "structure", label: "Structure Setup", desc: "Set chapters and word targets for your manuscript", path: "structure" },
   { key: "analyze", label: "Content Analysis", desc: "AI is identifying key themes, voice patterns, and building the structural foundation for your book.", path: "analysis" },
-  { key: "generate", label: "First Draft", desc: "Every chapter drafted in your voice from your own words", path: "generate" },
-  { key: "interview", label: "Editor & Interview", desc: "An editor reads the draft; you pick how you'd say things and answer what only you know", path: "publisher-ready", optional: true },
-  { key: "revise", label: "Revision", desc: "Your answers go into the book in your words, then a final check", path: "publisher-ready", optional: true },
-  { key: "editor", label: "Manuscript Editor", desc: "Review, refine, and polish your manuscript", path: "editor" },
-  { key: "export", label: "Export & Publish", desc: "Download your finished book in any format", path: "export" },
+  { key: "generate", label: "First Draft", desc: "Every chapter drafted in your voice, readable as each one lands", path: "generate" },
+  { key: "review", label: "Editor Review", desc: "Optional: an editor reads the draft while you pick how you'd say things", path: "publisher-ready", optional: true },
+  { key: "interview", label: "Interview", desc: "Optional: T.H.E.O. asks the editor's questions, only you can answer them", path: "interview", optional: true },
+  { key: "editor", label: "Final Draft", desc: "Your answers go into the book; then review, refine, and polish", path: "editor" },
+  { key: "export", label: "Done · Export", desc: "Download your finished book in any format", path: "export", done: true },
 ];
+
+/** Steps counted in "Step N of M" (Export is the finish line). */
+export const PIPELINE_V2_COUNTED = PIPELINE_V2.filter((s) => !s.done).length;
 
 export interface PipelineProgressV2 extends PipelineProgress {
   /** Status of the newest Publisher-Ready run, if any. */
@@ -94,15 +101,17 @@ export function publisherReadyUi(): boolean {
   return process.env.NEXT_PUBLIC_PUBLISHER_READY === "true";
 }
 
+const drafted = (c: { status?: string }) => c.status === "generated" || c.status === "edited";
+
 /** Index into PIPELINE_V2 for the step the user is on. Furthest evidence wins. */
 export function getActiveStepV2(p: PipelineProgressV2): number {
   const chapters = p.chapters ?? [];
-  if (chapters.some((c) => c.status === "edited")) return 7;          // editing → Editor
-  if (p.pr_status === "done") return 7;                                // revised + checked → Editor
-  if (p.pr_status === "revising" || p.pr_status === "checking") return 6;
-  if (p.pr_status === "interviewing" || p.pr_status === "editing") return 5;
-  if (chapters.some((c) => c.status === "generated")) return 5;       // drafted → Interview is next
-  if (p.pr_status === "drafting" || chapters.length > 0) return 4;    // outlined → First Draft
+  if (chapters.some((c) => c.status === "edited")) return 7;                            // editing → Final Draft
+  if (p.pr_status && ["revising", "checking", "done"].includes(p.pr_status)) return 7;  // revision runs on the Final Draft
+  if (p.pr_status === "interviewing") return 6;
+  if (p.pr_status === "editing") return 5;
+  if (chapters.length > 0 && chapters.every(drafted)) return 5;                         // drafted → Editor review is next
+  if (p.pr_status === "drafting" || chapters.length > 0) return 4;                      // outlined / drafting → First Draft
   if ((p.key_points ?? []).length > 0) return 3;
   if ((p.transcripts ?? []).length > 0) return 2;
   if ((p.audio_uploads ?? []).length > 0) return 1;
@@ -110,9 +119,9 @@ export function getActiveStepV2(p: PipelineProgressV2): number {
 }
 
 /**
- * Navigable in the 9-step pipeline: done steps, the current one, one ahead;
- * and once a draft exists the Editor and Export too, because Interview and
- * Revision are optional (a quick-draft author goes straight to the Editor).
+ * Navigable: done steps, the current one, one ahead; and once a draft exists
+ * the Final Draft and Export too, because Editor review and Interview are
+ * optional (skipping them goes straight to the Final Draft).
  */
 export function isStepNavigableV2(index: number, activeStep: number, hasDraft: boolean): boolean {
   if (index <= activeStep + 1) return true;

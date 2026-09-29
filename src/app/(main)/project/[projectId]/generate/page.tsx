@@ -497,7 +497,7 @@ export default function GeneratePage() {
     <PageShell
       projectId={projectId}
       currentStep="generate"
-      disabledStepKeys={!anyGenerated || isGenerating ? ["editor", "interview", "revise"] : []}
+      disabledStepKeys={!anyGenerated || isGenerating ? ["review", "interview", "editor"] : []}
     >
       <GenerationStage
         open={isGenerating}

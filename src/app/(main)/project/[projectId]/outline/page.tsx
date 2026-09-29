@@ -165,6 +165,7 @@ export default function OutlinePage() {
               return (
                 <button
                   key={ch.id}
+                  className="ds-enrich-chip"
                   onClick={() => setActiveEnrichChapter(isActive ? null : ch.id)}
                   style={{
                     padding: "8px 14px",

@@ -1551,4 +1551,12 @@ input[type=range] {
   .ds-guide-autoshow { min-height: 44px; }
   .ds-editor-chapter-strip button { min-height: 44px !important; }
   .ds-back-link { min-height: 44px; display: inline-flex; align-items: center; }
+  /* ---- Round 3 ---- */
+  /* Outline: enrichment chapter chips. */
+  .ds-enrich-chip { min-height: 44px !important; }
+  /* Dashboard shelf pager: with 14 shelf dots the prev/next arrows were squeezed to
+     40px wide on a 360px phone. Arrows keep their 46px; dots and gaps tighten. */
+  .bs-pager { gap: 12px !important; }
+  .bs-pager .bs-nav { flex-shrink: 0; }
+  .bs-pager .bs-dots { gap: 6px !important; }
 }

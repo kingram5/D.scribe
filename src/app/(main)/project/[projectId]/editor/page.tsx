@@ -11,6 +11,10 @@ import TipTapEditor, { TipTapSelection, TipTapEditorHandle } from "@/components/
 import MagicEditBubble from "@/components/editor/MagicEditBubble";
 import RewritePromptBar from "@/components/editor/RewritePromptBar";
 import VoiceMatchBadge from "@/components/editor/VoiceMatchBadge";
+import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
+import { useInkGuard } from "@/hooks/useInkGuard";
+import { usePrStepRunner, type PrStep } from "@/hooks/usePrStepRunner";
+import { setGenerationBusy } from "@/lib/generation-guard";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -19,6 +23,8 @@ export default function EditorPage() {
     (Chapter & { latest_content?: ChapterContent })[]
   >([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const activeIdxRef = useRef(0);
+  activeIdxRef.current = activeIdx;
   const [textStylesOpen, setTextStylesOpen] = useState(false);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -68,6 +74,71 @@ export default function EditorPage() {
   useEffect(() => {
     fetchChapters();
   }, [fetchChapters]);
+
+  // Final Draft (flow v2, Kyle 9/28): after the interview, the revision and the
+  // final check run here, and each chapter swaps in as its rewrite lands.
+  const { showUpgrade, setShowUpgrade, guardedFetch } = useInkGuard();
+  const openUpgrade = useCallback(() => setShowUpgrade(true), [setShowUpgrade]);
+  const pr = usePrStepRunner(guardedFetch, openUpgrade);
+  const [revision, setRevision] = useState<{ runId: string; stage: PrStep | "done" } | null>(null);
+  const [revisedReady, setRevisedReady] = useState<string | null>(null);
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  const revisingRef = useRef(false);
+
+  /** Pull one chapter's newest text after its rewrite lands. */
+  const reloadChapter = useCallback(async (chapterId: string) => {
+    const data = await fetch(`/api/chapter-content/${chapterId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!data?.content) return;
+    setChapters((prev) => {
+      const idx = prev.findIndex((c) => c.id === chapterId);
+      if (idx < 0) return prev;
+      const old = prev[idx].latest_content?.content ?? "";
+      if (idx === activeIdxRef.current) {
+        // Never overwrite words the author is in the middle of changing.
+        if (contentRef.current === old) {
+          setContent(data.content);
+          setWordCount(data.word_count ?? data.content.split(/\s+/).filter(Boolean).length);
+        } else {
+          setRevisedReady(chapterId);
+        }
+      }
+      return prev.map((c, i) => (i === idx ? { ...c, latest_content: data } : c));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (revisingRef.current) return;
+    let alive = true;
+    fetch(`/api/publisher-ready/run?project_id=${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(async (d) => {
+        const run = d?.run;
+        if (!alive || !run || !["revising", "checking"].includes(run.status) || revisingRef.current) return;
+        revisingRef.current = true;
+        const chs: { id: string; chapter_number: number }[] = d.chapters ?? [];
+        const passes: { chapter_id: string; step: string }[] = d.passes ?? [];
+        const todo = (step: string) => chs.filter((c) => !passes.some((p) => p.chapter_id === c.id && p.step === step));
+        setRevision({ runId: run.id, stage: "revise" });
+        if (!(await pr.runStep(run.id, "revise", todo("revise"), (id) => { void reloadChapter(id); }))) { revisingRef.current = false; return; }
+        setRevision({ runId: run.id, stage: "final" });
+        if (!(await pr.runStep(run.id, "final", todo("final"), (id) => { void reloadChapter(id); }))) { revisingRef.current = false; return; }
+        await guardedFetch("/api/publisher-ready/run", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ run_id: run.id, action: "complete" }),
+        });
+        setRevision({ runId: run.id, stage: "done" });
+        revisingRef.current = false;
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per project; the runner is stable
+  }, [projectId]);
+
+  useEffect(() => {
+    setGenerationBusy(pr.running ? "Your final draft is still being written" : null);
+    return () => setGenerationBusy(null);
+  }, [pr.running]);
 
   function handleContentChange(newContent: string) {
     setContent(newContent);
@@ -158,6 +229,42 @@ export default function EditorPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="editor">
+      {showUpgrade && <InkUpgradeModal onClose={() => setShowUpgrade(false)} />}
+      {/* Final Draft: the revision landing chapter by chapter after the interview. */}
+      {revision && (revision.stage !== "done" || pr.error) && (
+        <div role="status" style={{
+          margin: "0 clamp(16px, 4vw, 40px) 12px", padding: "12px 16px", borderRadius: 12,
+          background: "rgba(193,122,71,0.1)", border: "1px solid rgba(193,122,71,0.3)",
+          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 14, color: "var(--text-primary)",
+        }}>
+          {pr.running && <Spinner />}
+          <span style={{ fontWeight: 600 }}>
+            {pr.error
+              ? `The revision stopped: ${pr.error}`
+              : revision.stage === "revise"
+                ? `Putting your answers into the book · ${pr.progress.done} of ${pr.progress.total} chapters`
+                : `Final check · ${pr.progress.done} of ${pr.progress.total} chapters`}
+          </span>
+          {!pr.error && <span style={{ color: "var(--text-secondary)" }}>Chapters update here as each one lands. Keep this tab open.</span>}
+          {pr.error && (
+            <button onClick={() => window.location.reload()} style={{ fontSize: 13, fontWeight: 600, padding: "6px 12px", borderRadius: 8, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: "pointer" }}>
+              Try again
+            </button>
+          )}
+        </div>
+      )}
+      {revisedReady && chapters[activeIdx]?.id === revisedReady && (
+        <div role="status" style={{ margin: "0 clamp(16px, 4vw, 40px) 12px", fontSize: 13, color: "var(--text-secondary)", display: "flex", gap: 10, alignItems: "center" }}>
+          The revised version of this chapter is ready. Your unsaved edits are still on screen.
+          <button onClick={() => {
+            const ch = chapters[activeIdx];
+            if (ch?.latest_content) { setContent(ch.latest_content.content); setWordCount(ch.latest_content.word_count); }
+            setRevisedReady(null);
+          }} style={{ border: "none", background: "none", color: "#A05526", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 13 }}>
+            Load the revision
+          </button>
+        </div>
+      )}
       {isRewriting && (
         <div style={{
           position: "fixed",

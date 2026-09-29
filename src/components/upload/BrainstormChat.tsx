@@ -160,6 +160,18 @@ interface BrainstormChatProps {
    * "Continue where you left off?" prompt and go to the voice choice.
    */
   skipResumePrompt?: boolean;
+  /**
+   * Second interview room (flow v2, Kyle 9/28): the same studio, asking the
+   * editor's questions. Turns go to /api/publisher-ready/interview/room; no
+   * session save, notes, research or summarize. "I'm done" calls onDone.
+   */
+  review?: ReviewMode;
+}
+
+export interface ReviewMode {
+  runId: string;
+  onDone: () => void;
+  onState?: (s: { done: boolean; remaining: number | null; answered: number | null }) => void;
 }
 
 function isAppleMobileDevice() {
@@ -408,7 +420,14 @@ function putServerSession(projectId: string, messages: BrainstormMessage[]) {
   }).catch(() => { /* localStorage still holds the draft */ });
 }
 
-export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered, autoStart, skipResumePrompt }: BrainstormChatProps) {
+export default function BrainstormChat({ projectId, onComplete, onBack, triggerFinish, onFinishTriggered, autoStart, skipResumePrompt, review }: BrainstormChatProps) {
+  // Review mode is fixed for the life of the studio; a ref keeps it readable
+  // from the long-lived callbacks below without widening their dependencies.
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  const isReview = !!review;
+  /** The editor's follow-up the author is answering right now, if any. */
+  const reviewFollowUpRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -439,14 +458,15 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   const [showResume, setShowResume] = useState(false);
   const [savedMessages, setSavedMessages] = useState<Message[]>([]);
   const [savedDraft, setSavedDraft] = useState("");
-  const [showTtsPrompt, setShowTtsPrompt] = useState(false);
+  // Review mode skips the resume check and goes straight to the voice choice.
+  const [showTtsPrompt, setShowTtsPrompt] = useState(!!review);
   // The studio had no error surface at all: every failure was a console.error or
   // a bare return, so a dead send looked like T.H.E.O repeating himself.
   const [sendError, setSendError] = useState<string | null>(null);
   const [retryAction, setRetryAction] = useState<StudioRetryAction | null>(null);
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [pendingResume, setPendingResume] = useState(false);
-  const [hydrating, setHydrating] = useState(true);
+  const [hydrating, setHydrating] = useState(!review);
   const [showLeaveGuard, setShowLeaveGuard] = useState(false);
   const [holdingThought, setHoldingThought] = useState(false);
   const [lengthNudgeDismissed, setLengthNudgeDismissed] = useState(false);
@@ -470,7 +490,9 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // capture (no new segment mid-round-trip) and labels the stage honestly.
   const [transcribing, setTranscribing] = useState(false);
   const transcribingRef = useRef(false);
-  const sessionKey = `brainstorm_session_${projectId}`;
+  // Review mode never persists a session (the server holds the interview), but
+  // give it its own key so nothing can ever touch the brainstorm's saved one.
+  const sessionKey = review ? `review_room_${review.runId}` : `brainstorm_session_${projectId}`;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // ── Hands-free capture pipeline ──
@@ -1485,7 +1507,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // and typing, so it never adds to the wait for his next question. Failure is
   // silent: a missed note must never interrupt an interview.
   const takeNotes = useCallback((all: Message[]) => {
-    if (notesInFlightRef.current) return;
+    if (reviewRef.current || notesInFlightRef.current) return;
     if (all.filter((m) => m.role === "user").length < 1) return;
     notesInFlightRef.current = true;
     void fetch("/api/brainstorm/notes", {
@@ -1503,8 +1525,13 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       .finally(() => { notesInFlightRef.current = false; });
   }, [projectId]);
 
-  // Start the conversation — AI sends first message
-  const startConversation = useCallback(async () => {
+  // Start the conversation — AI sends first message. In review mode the same
+  // path also runs a control tap (Skip / Next chapter): T.H.E.O. speaks the
+  // next question without the author saying anything.
+  const startConversation = useCallback(async (reviewAction?: "skip" | "next_chapter") => {
+    const rv = reviewRef.current;
+    const command = rv && reviewAction ? reviewAction : null;
+    const base: Message[] = command ? messagesRef.current : [];
     setStarted(true);
     streamingRef.current = true;
     setStreaming(true);
@@ -1516,10 +1543,12 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     let streamFailed = false;
 
     try {
-      const res = await fetch("/api/brainstorm", {
+      const res = await fetch(rv ? "/api/publisher-ready/interview/room" : "/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: initMessages, project_id: projectId, primer: primer.trim() || undefined }),
+        body: JSON.stringify(rv
+          ? { run_id: rv.runId, action: command ?? "start" }
+          : { messages: initMessages, project_id: projectId, primer: primer.trim() || undefined }),
       });
 
       if (!res.ok) {
@@ -1531,7 +1560,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
       const decoder = new TextDecoder();
       let buffer = "";
 
-      setMessages([{ role: "assistant", content: "" }]);
+      setMessages([...base, { role: "assistant", content: "" }]);
       sentenceBufferRef.current = "";
 
       while (true) {
@@ -1556,14 +1585,18 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             if (parsed.error) {
               streamFailed = true;
               sentenceBufferRef.current = "";
-              setMessages([]);
+              setMessages(base);
               setSendError("That answer was cut off. Try again.");
-              setRetryAction("start");
+              setRetryAction(command ? null : "start");
               break;
+            }
+            if (parsed.review_state) {
+              reviewFollowUpRef.current = parsed.review_state.follow_up_of ?? null;
+              rv?.onState?.(parsed.review_state);
             }
             if (parsed.text) {
               aiText += parsed.text;
-              setMessages([{ role: "assistant", content: aiText }]);
+              setMessages([...base, { role: "assistant", content: aiText }]);
               // Sentence detection for TTS
               sentenceBufferRef.current += parsed.text;
               const match = /^(.*?[.!?])(?:\s+)([\s\S]*)$/.exec(sentenceBufferRef.current);
@@ -1589,24 +1622,26 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     } catch (err) {
       console.error("Brainstorm start error:", err);
       const msg = brainstormFailureMessage(err);
-      setMessages([]);
+      setMessages(base);
       setSendError(msg || "Couldn't connect to the brainstorm session. Please try again.");
-      setRetryAction(/HTTP 401/.test(msg) ? null : "start");
+      setRetryAction(/HTTP 401/.test(msg) || command ? null : "start");
       if (/HTTP 402|out of Ink/.test(msg)) setShowInkWall(true);
     }
 
     streamingRef.current = false;
     setStreaming(false);
     if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
-    serverSyncTimerRef.current = setTimeout(() => {
-      serverSyncTimerRef.current = null;
-      if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
-    }, 400);
+    if (!rv) {
+      serverSyncTimerRef.current = setTimeout(() => {
+        serverSyncTimerRef.current = null;
+        if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
+      }, 400);
+    }
     inputRef.current?.focus();
   }, [projectId, speakSentence, primer]);
 
   const kickResearch = useCallback((turns: number, msgs: Message[], force = false) => {
-    if (researchDisabledRef.current) return;
+    if (reviewRef.current || researchDisabledRef.current) return;
     const probe = force
       ? manualResearchProbe()
       : researchProbeAt(turns, {
@@ -1691,10 +1726,14 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     let sendOk = false;
 
     try {
-      const res = await fetch("/api/brainstorm", {
+      const rv = reviewRef.current;
+      const res = await fetch(rv ? "/api/publisher-ready/interview/room" : "/api/brainstorm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages, project_id: projectId }),
+        // Review mode: what the author said answers the question on the table.
+        body: JSON.stringify(rv
+          ? { run_id: rv.runId, action: "answer", text, follow_up_of: reviewFollowUpRef.current }
+          : { messages: apiMessages, project_id: projectId }),
       });
 
       if (!res.ok) {
@@ -1738,6 +1777,10 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               setSendError("That answer was cut off. Your message is back in the box — try again.");
               setRetryAction("send");
               break;
+            }
+            if (parsed.review_state) {
+              reviewFollowUpRef.current = parsed.review_state.follow_up_of ?? null;
+              reviewRef.current?.onState?.(parsed.review_state);
             }
             if (parsed.text) {
               aiText += parsed.text;
@@ -1792,7 +1835,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
     serverSyncTimerRef.current = setTimeout(() => {
       serverSyncTimerRef.current = null;
-      if (!streamingRef.current) void putServerSession(projectId, messagesRef.current);
+      if (!streamingRef.current && !reviewRef.current) void putServerSession(projectId, messagesRef.current);
     }, 400);
     inputRef.current?.focus();
   }, [input, streaming, messages, speakSentence, teardownMic, projectId, kickResearch, takeNotes]);
@@ -1813,6 +1856,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // Hydrate from localStorage and the server in parallel. One resume prompt,
   // fed by whichever copy has more messages (tiebreak: server).
   useEffect(() => {
+    // Review mode never resumes a saved chat: the server re-serves the open question.
+    if (reviewRef.current) return;
     let cancelled = false;
 
     let local: SavedBrainstormSession | null = null;
@@ -1863,7 +1908,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   // words that have not been sent yet.
   useEffect(() => {
     messagesRef.current = messages;
-    if (!started || messages.length === 0) return;
+    if (!started || messages.length === 0 || reviewRef.current) return;
     // Debounced + guarded, with a maxWait and a flush on teardown. A plain
     // debounce was worse than it looked on a phone: stream tokens arrive far
     // faster than 400ms, so the timer reset forever and NO write landed for the
@@ -1894,6 +1939,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   }, [messages, input, started, sessionKey]);
 
   useEffect(() => {
+    if (reviewRef.current) return;
     fetch("/api/research/run")
       .then((r) => (r.ok ? r.json() : { enabled: false }))
       .then((d) => {
@@ -1915,7 +1961,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     // pagehide is not guaranteed for an SPA route change. Flush the latest refs
     // once at unmount rather than from the per-keystroke effect cleanup, which
     // would defeat debouncing for a long memoir answer.
-    if (persistSessionOnUnmountRef.current && startedRef.current && messagesRef.current.length > 0) {
+    if (!reviewRef.current && persistSessionOnUnmountRef.current && startedRef.current && messagesRef.current.length > 0) {
       try {
         localStorage.setItem(sessionKey, JSON.stringify({
           version: 1,
@@ -1987,6 +2033,16 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
   }, [started]);
 
   const finishBrainstorm = useCallback(async () => {
+    // Review mode: I'm done hands back to the page, which moves on to the revision.
+    const rv = reviewRef.current;
+    if (rv) {
+      handsFreeRef.current = false;
+      setHandsFree(false);
+      teardownMic();
+      stopAudio();
+      rv.onDone();
+      return;
+    }
     // Need at least 2 user messages to have meaningful content
     const userMessages = messages.filter(m => m.role === "user");
     if (userMessages.length < 2) return;
@@ -2069,7 +2125,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
 
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const canUndo = userMessageCount > 0 && !streaming && !summarizing && messages.length >= 2;
-  const canFinish = userMessageCount >= 2 && !streaming && !summarizing;
+  const canFinish = (isReview ? started : userMessageCount >= 2) && !streaming && !summarizing;
   const canTakeABreak = userMessageCount >= 1 && !streaming && !summarizing && !holdingThought;
 
   const takeABreak = useCallback(async () => {
@@ -2079,7 +2135,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
     }
     setShowLeaveGuard(false);
     setHoldingThought(true);
-    await putServerSession(projectId, messagesRef.current);
+    if (!reviewRef.current) await putServerSession(projectId, messagesRef.current);
     window.setTimeout(() => { onBack(); }, 900);
   }, [projectId, onBack]);
 
@@ -2943,6 +2999,55 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               <path d="M14 2l-5 12-2-5-5-2z" />
             </svg>
           </button>
+          {/* Review mode: the editor's questions can be skipped one at a time or a chapter at a time. */}
+          {isReview && started && (
+            <>
+            <button
+              type="button"
+              className="ds-studio-break"
+              onClick={() => { void startConversation("skip"); }}
+              disabled={streaming || summarizing}
+              style={{
+                background: "none",
+                color: "rgba(249,247,242,0.75)",
+                border: "1px solid rgba(249,247,242,0.22)",
+                borderRadius: 12,
+                height: 52,
+                padding: "0 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: streaming ? "default" : "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              className="ds-studio-break"
+              onClick={() => { void startConversation("next_chapter"); }}
+              disabled={streaming || summarizing}
+              style={{
+                background: "none",
+                color: "rgba(249,247,242,0.75)",
+                border: "1px solid rgba(249,247,242,0.22)",
+                borderRadius: 12,
+                height: 52,
+                padding: "0 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: streaming ? "default" : "pointer",
+                fontFamily: "var(--font-manrope), sans-serif",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              Next chapter
+            </button>
+            </>
+          )}
           <button
             className="ds-studio-finish"
             onClick={finishBrainstorm}
@@ -2962,7 +3067,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               flexShrink: 0,
             }}
           >
-            Finish &amp; add to sources
+            {isReview ? "I'm done" : "Finish & add to sources"}
           </button>
           {canTakeABreak && (
             <button
@@ -2988,7 +3093,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             </button>
           )}
         </div>
-        {userMessageCount >= BRAINSTORM_LENGTH_NUDGE_TURNS && !lengthNudgeDismissed && (
+        {!isReview && userMessageCount >= BRAINSTORM_LENGTH_NUDGE_TURNS && !lengthNudgeDismissed && (
           <div role="status" style={{
             marginTop: 10,
             padding: "10px 12px",

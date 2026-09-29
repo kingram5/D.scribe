@@ -47,8 +47,10 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const src = chat();
     const start = src.slice(src.indexOf("const startConversation"), src.indexOf("const sendMessage"));
     expect(start).toMatch(/let streamFailed = false/);
-    expect(start).toMatch(/streamFailed = true;[\s\S]{0,180}?setMessages\(\[\]\)/);
-    expect(start).toMatch(/setRetryAction\("start"\)/);
+    // `base` is [] for the opening turn; only a review-room control tap keeps the chat.
+    expect(start).toMatch(/const base: Message\[\] = command \? messagesRef\.current : \[\];/);
+    expect(start).toMatch(/streamFailed = true;[\s\S]{0,180}?setMessages\(base\)/);
+    expect(start).toMatch(/setRetryAction\(command \? null : "start"\)/);
     expect(start).toMatch(/if \(!streamFailed && sentenceBufferRef\.current\.trim\(\)\)/);
     expect(src).toMatch(/if \(action === "start"\) startConversation\(\)/);
   });

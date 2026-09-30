@@ -374,8 +374,8 @@ describe("mobile: publisher-ready phone polish", () => {
 
   it("guide action pills stay one line tall on phones", () => {
     expect(globalsCss()).toMatch(/button\.ds-guide-btn[\s\S]{0,220}max-height:\s*40px/);
-    expect(globalsCss()).toMatch(/button\.ds-guide-btn--primary[\s\S]{0,80}width:\s*100%/);
-    expect(read("components/tutorial/StepTutorialModal.tsx")).toMatch(/ds-guide-btn--primary/);
+    expect(globalsCss()).toMatch(/button\.ds-guide-btn--block[\s\S]{0,80}width:\s*100%/);
+    expect(read("components/tutorial/StepTutorialModal.tsx")).toMatch(/ds-guide-btn--block/);
     expect(read("components/tutorial/CoachmarkTour.tsx")).toMatch(/ds-guide-btn/);
   });
 

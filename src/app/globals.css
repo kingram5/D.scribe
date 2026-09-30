@@ -1590,7 +1590,9 @@ input[type=range] {
     justify-content: center !important;
     flex: 0 0 auto;
   }
-  button.ds-guide-btn--primary { flex: 1 1 100% !important; width: 100% !important; }
+  /* Only the long last-slide CTA goes full-width. Short labels (Next, Got it)
+     stay compact pills so they don't stretch into a second oblong. */
+  button.ds-guide-btn--block { flex: 1 1 100% !important; width: 100% !important; }
   /* Upload cassette: the decorative glare layer was painted over the tape's buttons. */
   .ds-cassette-wrap .btn-3d { position: relative; z-index: 2; }
   .ds-guide-autoshow { min-height: 44px; }

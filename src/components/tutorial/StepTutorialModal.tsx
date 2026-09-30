@@ -282,7 +282,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
                 {hasTour && (
                   <button
                     type="button"
-                    className="ds-guide-btn ds-guide-btn--primary"
+                    className="ds-guide-btn ds-guide-btn--primary ds-guide-btn--block"
                     onClick={() => onClose({ startTour: true })}
                     autoFocus
                     style={{

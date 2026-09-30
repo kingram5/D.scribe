@@ -300,6 +300,16 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
           ))}
         </div>
 
+        <a
+          href="/pricing"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", minHeight: 44,
+            fontSize: 13, fontWeight: 600, color: "var(--ds-accent-500, #C17A47)", textDecoration: "none",
+            fontFamily: "var(--font-manrope), sans-serif",
+          }}
+        >
+          Compare all plans on the pricing page &rarr;
+        </a>
         <button
           onClick={onClose}
           style={{

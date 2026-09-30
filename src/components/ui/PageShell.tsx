@@ -160,6 +160,23 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
   const nextStep = currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
   const showStepNav = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
+  const [stepListOpen, setStepListOpen] = useState(false);
+  useEffect(() => { setStepListOpen(false); }, [currentStep]);
+  function stepState(i: number) {
+    const step = STEPS[i];
+    const isStepDisabled = !!disabledStepKeys?.includes(step.key);
+    const isCurrent = i === currentIdx;
+    // Done and reachable both key off the furthest step reached, not the current
+    // one, so navigating backward no longer strips checks off finished steps or
+    // traps the user into clicking forward one at a time.
+    const isDone = !isCurrent && i <= reachedIdx;
+    // Editor review and Interview are optional: once the First Draft step is
+    // reached, the Final Draft and Export stay one click away.
+    const skipAhead = STEPS === STEPS_V2 && reachedIdx >= 4 && (step.key === "editor" || step.key === "export");
+    const isClickable = !isStepDisabled && !isCurrent
+      && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep) || skipAhead);
+    return { isStepDisabled, isCurrent, isDone, isClickable };
+  }
 
   // Step tutorial: an illustrated intro modal shown automatically on the first
   // visit to each step (per browser, across projects), re-openable anytime via
@@ -250,7 +267,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 }}>
                   {currentLabel}
                 </span>
-                <span className="ds-label ds-label--accent" style={{ whiteSpace: "nowrap" }}>
+                <span className="ds-label ds-label--accent ds-rail-counter" style={{ whiteSpace: "nowrap" }}>
                   {stepCounter(currentIdx)}
                 </span>
               </div>
@@ -292,18 +309,21 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
 
           {/* Numbered step markers */}
           <div className="ds-rail-markers" style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+            {/* Phones: one "Step N of 8" button opens the full step list below the row. */}
+            <button
+              type="button"
+              className="ds-rail-stepbtn"
+              aria-expanded={stepListOpen}
+              aria-controls="ds-rail-steplist"
+              onClick={() => setStepListOpen((o) => !o)}
+            >
+              {stepCounter(currentIdx)}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: stepListOpen ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
             {STEPS.map((step, i) => {
-              const isStepDisabled = disabledStepKeys?.includes(step.key);
-              const isCurrent = i === currentIdx;
-              // Done and reachable both key off the furthest step reached, not the current
-              // one, so navigating backward no longer strips checks off finished steps or
-              // traps the user into clicking forward one at a time.
-              const isDone = !isCurrent && i <= reachedIdx;
-              // Editor review and Interview are optional: once the First Draft step is
-              // reached, the Final Draft and Export stay one click away.
-              const skipAhead = STEPS === STEPS_V2 && reachedIdx >= 4 && (step.key === "editor" || step.key === "export");
-              const isClickable = !isStepDisabled && !isCurrent
-                && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep) || skipAhead);
+              const { isStepDisabled, isCurrent, isDone, isClickable } = stepState(i);
               const marker = (
                 <span
                   className="ds-rail-marker-num"
@@ -355,6 +375,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     onClick={(e) => guardNav(e, `/project/${projectId}/${step.path}`)}
                     title={step.label}
                     aria-label={step.done ? `Go to ${step.label}` : `Go to step ${i + 1}: ${step.label}`}
+                    className="ds-rail-marker"
                     style={{ textDecoration: "none", display: "block" }}
                   >
                     {marker}
@@ -362,7 +383,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 );
               }
               return (
-                <span key={step.key} title={step.label} aria-label={`${step.done ? step.label : `Step ${i + 1}: ${step.label}`}${isCurrent ? " (current)" : ""}`}>
+                <span key={step.key} className="ds-rail-marker" title={step.label} aria-label={`${step.done ? step.label : `Step ${i + 1}: ${step.label}`}${isCurrent ? " (current)" : ""}`}>
                   {marker}
                 </span>
               );
@@ -488,6 +509,39 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             </div>
           )}
           </div>
+
+          {stepListOpen && (
+            <ol id="ds-rail-steplist" className="ds-rail-steplist" aria-label="All steps">
+              {STEPS.map((step, i) => {
+                const { isStepDisabled, isCurrent, isDone, isClickable } = stepState(i);
+                const num = step.done ? "⚑" : isDone ? "✓" : String(i + 1);
+                const body = (
+                  <>
+                    <span className={`ds-rail-steplist__num${isCurrent ? " is-current" : isDone ? " is-done" : ""}`} aria-hidden="true">{num}</span>
+                    <span>{step.label}</span>
+                    {isCurrent && <span className="ds-label ds-label--accent" style={{ marginLeft: "auto" }}>You are here</span>}
+                  </>
+                );
+                return (
+                  <li key={step.key}>
+                    {isClickable ? (
+                      <Link
+                        href={`/project/${projectId}/${step.path}`}
+                        onClick={(e) => { setStepListOpen(false); guardNav(e, `/project/${projectId}/${step.path}`); }}
+                        className="ds-rail-steplist__item"
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <span className={`ds-rail-steplist__item${isStepDisabled || !isCurrent ? " is-locked" : ""}`} aria-current={isCurrent ? "step" : undefined}>
+                        {body}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
 
           {isMobile && busy && (
             <div role="status" className="ds-generation-busy-banner" aria-live="polite">

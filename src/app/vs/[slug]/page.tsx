@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VS_PAGES, SOURCED_NOTE, getVsPage } from "@/lib/vs-pages";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 /**
  * /vs/[slug] comparison pages (HeyCatch action plan, "Do this quarter").
@@ -122,12 +123,15 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       <div className="vs-wrap">
-        <Link
-          href="/"
-          style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none", letterSpacing: "0.04em" }}
-        >
-          &larr; D.scribe
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Link
+            href="/"
+            style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none", letterSpacing: "0.04em" }}
+          >
+            &larr; D.scribe
+          </Link>
+          <PublicMobileMenu />
+        </div>
 
         <h1 className="vs-h1" style={{ marginTop: 28 }}>
           D.scribe vs {page.competitor}
@@ -157,6 +161,11 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
               </div>
             </div>
           ))}
+        </div>
+        <div className="ds-touch-links" style={{ marginTop: 18 }}>
+          <Link href="/pricing" style={{ color: COLORS.accent, fontSize: 14.5, fontWeight: 600, textDecoration: "none" }}>
+            See D.scribe&rsquo;s plans in full &rarr;
+          </Link>
         </div>
 
         <h2 className="vs-h2">Where {page.competitor} is better</h2>

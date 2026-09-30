@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FOUNDER_STORY } from "@/lib/founder";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 import { PLANS } from "@/lib/tiers";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 /**
  * /about — the founding story (HeyCatch 2026-09-10 item 2), expanded into a
@@ -210,7 +211,7 @@ export default function AboutPage() {
               <span style={{ fontFamily: SANS, fontWeight: 600, fontSize: 18, color: COLORS.ink }}>scribe</span>
             </Link>
             <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-              <Link href="/pricing" style={{ fontFamily: SANS, fontSize: 14, color: COLORS.ink, textDecoration: "none", fontWeight: 600 }}>
+              <Link href="/pricing" className="ds-pubnav-desktop" style={{ fontFamily: SANS, fontSize: 14, color: COLORS.ink, textDecoration: "none", fontWeight: 600 }}>
                 Pricing
               </Link>
               <Link
@@ -219,6 +220,7 @@ export default function AboutPage() {
               >
                 Get Started
               </Link>
+              <PublicMobileMenu />
             </div>
           </div>
         </nav>

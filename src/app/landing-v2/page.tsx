@@ -7,6 +7,7 @@ import { useLandingData } from "@/components/landing/LandingDataContext";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 // FOUNDER import removed (Kyle 2026-09-19): the footer no longer carries his name.
 import "../cinematic-landing.css";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
   return (
@@ -1075,9 +1076,10 @@ export default function LandingV2() {
           <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", fontWeight: 500, fontSize: 23, color: "#F9F7F2", letterSpacing: "0.01em" }}>scribe</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <Link href="/pricing" className="lv2-nav-link">Pricing</Link>
-          <Link href="/login" className="lv2-nav-link">Sign in</Link>
+          <Link href="/pricing" className="lv2-nav-link ds-pubnav-desktop">Pricing</Link>
+          <Link href="/login" className="lv2-nav-link ds-pubnav-desktop">Sign in</Link>
           <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 15 }}>→</span></Link>
+          <PublicMobileMenu />
         </div>
       </nav>
 
@@ -1156,6 +1158,7 @@ export default function LandingV2() {
           >
             See how it works
           </a>
+          <Link href="/pricing" className="lv2-price-link lv2-hero-price">See pricing &rarr;</Link>
         </div>
 
       </section>
@@ -1240,6 +1243,9 @@ export default function LandingV2() {
               </FadeSection>
             ))}
           </div>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 48 }}>
+          <Link href="/pricing" className="lv2-price-link">What does it cost? See the plans &rarr;</Link>
         </div>
       </section>
 
@@ -1332,6 +1338,8 @@ export default function LandingV2() {
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →
               </Link>
+              <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span>
+              <Link href="/pricing" className="lv2-price-link">See pricing &rarr;</Link>
             </div>
           </div>
         </section>
@@ -1412,6 +1420,9 @@ export default function LandingV2() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
+          <div style={{ marginTop: 18 }}>
+            <Link href="/pricing" className="lv2-price-link">Compare plans &rarr;</Link>
+          </div>
         </section>
       </FadeSection>
 
@@ -1441,6 +1452,7 @@ export default function LandingV2() {
           D. scribe &mdash; Your Voice, Written
         </span>
         <nav aria-label="Legal" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+          <Link href="/pricing" style={{ color: "#C17A47", textDecoration: "none", fontWeight: 600 }}>Pricing</Link>
           {[
             ["/legal/terms", "Terms"],
             ["/legal/privacy", "Privacy"],
@@ -1565,6 +1577,23 @@ export default function LandingV2() {
           transition: background 0.2s ease;
         }
         .lv2-pill-cta:hover { background: #D98B58; }
+
+        /* Pricing funnel links: quiet copper text, a full 44px tap row */
+        .lv2-price-link {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          font-family: var(--font-inter), var(--font-manrope), sans-serif;
+          font-size: 15px;
+          font-weight: 600;
+          color: #D98B58;
+          text-decoration: none;
+          border-bottom: 1px solid transparent;
+          transition: color 0.2s ease;
+        }
+        .lv2-price-link:hover { color: #F0A878; }
+        .lv2-hero-price { margin-left: 20px; vertical-align: middle; }
+        @media (max-width: 1279px) { .lv2-hero-price { margin: 6px 0 0; } }
 
         /* Footer founder block */
         .lv2-founder {

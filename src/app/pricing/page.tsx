@@ -3,6 +3,7 @@ import Link from "next/link";
 import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButton";
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 const FROM = PLANS.starter.price;
 
@@ -226,7 +227,7 @@ export default function PricingPage() {
             </span>
           </Link>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <div className="ds-pubnav-desktop" style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link
               href="/pricing"
               style={{
@@ -256,6 +257,7 @@ export default function PricingPage() {
           >
             Get Started
           </Link>
+          <PublicMobileMenu />
         </div>
       </nav>
 

@@ -1559,4 +1559,47 @@ input[type=range] {
   .bs-pager { gap: 12px !important; }
   .bs-pager .bs-nav { flex-shrink: 0; }
   .bs-pager .bs-dots { gap: 6px !important; }
+  /* ---- Design pass (Kyle's picks, 2026-09-29) ---- */
+  /* Project page: the 8 step dots can't each get a finger-sized target in ~280px,
+     and the step list right below links every step. Hidden on phones. */
+  .ds-step-dots-row { display: none !important; }
+  /* Dashboard shelf pager: 14 page dots on a phone. The 46px arrows already page
+     the shelf, so the dots go. */
+  .bs-pager .bs-dots { display: none !important; }
+  .bs-pager { justify-content: center; }
+  /* Public pages: the header's inline links move into the phone menu. */
+  .ds-pubnav-desktop { display: none !important; }
+  /* Step rail: the 8 numbered circles collapse into one "Step N of 8" button that
+     opens the full list. The inline counter moves into that button. */
+  .ds-header-rail .ds-rail-markers > .ds-rail-marker,
+  .ds-header-rail .ds-rail-counter { display: none !important; }
+  .ds-header-rail .ds-rail-markers { justify-content: space-between !important; gap: 8px !important; }
+  .ds-header-rail .ds-rail-markers > .ds-rail-help { flex: 0 0 44px !important; }
+  .ds-rail-stepbtn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+    border-radius: 9999px; border: 1px solid rgba(193,122,71,0.45); background: rgba(193,122,71,0.08);
+    color: #A05526; font: 700 12px/1 var(--font-manrope), sans-serif; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .ds-rail-steplist { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; }
+  .ds-rail-steplist__item {
+    display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px;
+    border-bottom: 1px solid var(--ds-divider, rgba(44,36,25,0.08)); text-decoration: none;
+    color: var(--text-primary, #2C2419); font: 500 15px/1.2 var(--font-manrope), sans-serif;
+  }
+  .ds-rail-steplist__item.is-locked { color: var(--text-tertiary, #716A53); opacity: 0.6; }
+  .ds-rail-steplist__num {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center;
+    justify-content: center; font: 700 11px/1 var(--font-geist-mono), ui-monospace, monospace;
+    border: 1px solid var(--ds-input-border, rgba(44,36,25,0.15)); color: var(--text-tertiary, #716A53);
+  }
+  .ds-rail-steplist__num.is-done { border-color: rgba(193,122,71,0.55); color: #A05526; }
+  .ds-rail-steplist__num.is-current { background: #C17A47; border-color: #C17A47; color: #F9F7F2; }
+}
+@media (min-width: 769px) {
+  .ds-rail-stepbtn, .ds-rail-steplist { display: none !important; }
+}
+/* The public phone menu is phone-only; the desktop header is unchanged. */
+@media (min-width: 769px) {
+  .ds-pubmenu { display: none !important; }
 }

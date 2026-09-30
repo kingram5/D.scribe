@@ -89,9 +89,14 @@ export default function SettingsPage() {
           <h2 style={h2}>Billing</h2>
           <p style={sub}>Manage your subscription, payment method, and invoices in the Stripe customer portal.</p>
           {billingError && <p style={{ fontSize: 12.5, color: "#E5896B", marginBottom: 12 }}>{billingError}</p>}
-          <button onClick={openBilling} disabled={billingLoading} style={btn()}>
-            {billingLoading ? "Opening…" : "Manage billing"}
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            <button onClick={openBilling} disabled={billingLoading} style={btn()}>
+              {billingLoading ? "Opening…" : "Manage billing"}
+            </button>
+            <Link href="/pricing" style={{ ...btn(), textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#C17A47", borderColor: "transparent", color: "#F9F7F2" }}>
+              Compare plans
+            </Link>
+          </div>
         </div>
 
         {/* Danger zone */}

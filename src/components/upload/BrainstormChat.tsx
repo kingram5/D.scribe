@@ -2332,8 +2332,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             {isLocked ? "Continue — speak or type" : isExhausted ? "Continue — speak or type" : "No thanks, text only"}
           </button>
         </div>
-        {isLocked && (
-          <a href="/pricing" style={{ fontSize: 12, color: "var(--ds-accent)", fontFamily: "var(--font-manrope), sans-serif", textDecoration: "none" }}>
+        {(isLocked || isExhausted) && (
+          <a href="/pricing" style={{ fontSize: 12, color: "var(--ds-accent)", fontFamily: "var(--font-manrope), sans-serif", textDecoration: "none", minHeight: 44, display: "inline-flex", alignItems: "center" }}>
             View plans →
           </a>
         )}
@@ -3218,7 +3218,8 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
             <p style={{ margin: 0, flex: 1, lineHeight: 1.45 }}>
               {usageNudge === "tts"
                 ? "You're close to this month's voice. I can still take notes if you type — or add more whenever you like."
-                : "You're close to this month's Ink. I can still work with you, and you can add more whenever you like."}
+                : "You're close to this month's Ink. I can still work with you, and you can add more whenever you like."}{" "}
+              <a href="/pricing" style={{ color: "#D98B58", fontWeight: 600, textDecoration: "none" }}>See plans &rarr;</a>
             </p>
             <button
               type="button"

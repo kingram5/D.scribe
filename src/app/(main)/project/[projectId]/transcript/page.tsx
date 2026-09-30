@@ -491,7 +491,13 @@ export default function TranscriptPage() {
           .ds-transcript-layout { flex-direction: column !important; }
           .ds-transcript-layout > aside { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 300px !important; overflow-y: auto !important; }
           .ds-transcript-layout > div:last-child { flex: 1 !important; }
+          /* Edit Transcript sits first in the side panel on a phone, so it's on
+             screen without scrolling inside the panel. */
+          .ds-tx-side { display: flex; flex-direction: column; }
+          .ds-tx-side > .ds-tx-edit { order: -1; padding-top: 12px; }
         }
+        .ds-tx-insights > summary::-webkit-details-marker { display: none; }
+        .ds-tx-insights:not([open]) .ds-tx-insights__chev { transform: rotate(-90deg); }
       `}</style>
       <div className="ds-transcript-layout" style={{
         display: "flex",
@@ -559,31 +565,25 @@ export default function TranscriptPage() {
           </div>
 
           {/* ── scrollable middle ── */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar">
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar ds-tx-side">
 
-            {/* insights */}
-            <div style={{ paddingTop: 20, paddingBottom: 16 }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 12,
+            {/* Insights & speakers: collapsible so a phone can fold it away; open by default. */}
+            <details open className="ds-tx-insights" style={{ paddingTop: 16 }}>
+              <summary style={{
+                display: "flex", alignItems: "center", gap: 6, minHeight: 44, cursor: "pointer", listStyle: "none",
+                fontSize: 11, fontWeight: 600, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: P.sans,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: P.muted,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  fontFamily: P.sans,
-                }}>
-                  Insights
-                </span>
-              </div>
+                Insights &amp; speakers
+                <svg className="ds-tx-insights__chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: "auto" }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </summary>
+            {/* insights */}
+            <div style={{ paddingTop: 4, paddingBottom: 16 }}>
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -706,6 +706,7 @@ export default function TranscriptPage() {
                 </div>
               </div>
             )}
+            </details>
 
             {/* transcript selector (if multiple) */}
             {transcripts.length > 1 && (
@@ -790,7 +791,7 @@ export default function TranscriptPage() {
             </div>
 
             {/* Edit transcript button */}
-            <div style={{ paddingBottom: 20 }}>
+            <div className="ds-tx-edit" style={{ paddingBottom: 20 }}>
               <button
                 onClick={() => {
                   // Build the editable text from SEGMENTS joined by blank lines,

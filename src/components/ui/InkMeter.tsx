@@ -200,6 +200,14 @@ export default function InkMeter({ compact = false }: { compact?: boolean }) {
           <AddMoreButton sku="ink_pack" />
         </div>
       </button>
+      {pct >= 85 && (
+        <a
+          href="/pricing"
+          style={{ display: "flex", alignItems: "center", minHeight: 36, padding: "0 6px", fontSize: 12, fontWeight: 600, color: "#A05526", textDecoration: "none", fontFamily: "var(--font-manrope), sans-serif" }}
+        >
+          Running low. Compare plans &rarr;
+        </a>
+      )}
 
       {/* Expanded breakdown */}
       {expanded && Object.keys(data.breakdown).length > 0 && (

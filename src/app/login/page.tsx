@@ -5,6 +5,11 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserClient, isAuthConfigured } from "@/lib/supabase";
+import {
+  oauthCallbackUrl,
+  oauthWouldLeaveStaging,
+  pinAuthorizeUrlToOrigin,
+} from "@/lib/auth-redirect";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -26,18 +31,29 @@ function LoginContent() {
     }
     setLoading(true);
     try {
+      const origin = window.location.origin;
+      const redirectTo = oauthCallbackUrl(origin, next, vercelShare);
       const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo,
+          skipBrowserRedirect: true,
           queryParams: { prompt: "select_account" },
         },
       });
-      if (error) {
+      if (error || !data?.url) {
         setLoading(false);
-        setEmailError(error.message);
+        setEmailError(error?.message || "Could not start Google sign-in.");
+        return;
       }
+      const pinned = pinAuthorizeUrlToOrigin(data.url, origin, next, vercelShare);
+      if (oauthWouldLeaveStaging(origin, pinned.redirectTo)) {
+        setLoading(false);
+        setEmailError("Google sign-in tried to send you to the live site. Stay on this preview URL and try again.");
+        return;
+      }
+      window.location.assign(pinned.url);
     } catch (err) {
       setLoading(false);
       setEmailError(err instanceof Error ? err.message : "Could not start Google sign-in.");

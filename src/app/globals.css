@@ -1089,10 +1089,13 @@ input[type=range] {
 
 /* ========== Landing V2 Mobile ========== */
 @media (max-width: 768px) {
-  /* Navbar */
+  /* Navbar — compact glass bar so the wordmark stays readable over the photo */
   .landing-v2 nav {
-    padding: 0 20px !important;
-    height: 60px !important;
+    height: 64px !important;
+    padding: 0 16px !important;
+    background: rgba(26, 20, 14, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
   }
   .landing-v2 nav > div:last-child > a:first-child {
     display: none !important;
@@ -1101,76 +1104,93 @@ input[type=range] {
     gap: 12px !important;
   }
 
-  /* Hero — switch from absolute to stacked flex */
+  /* Hero — stacked like the phone mock: headline, copy, CTA, then a quiet tagline.
+     The cinematic overlay (waveform + centered tagline, author hidden) made the
+     first screen look like a cropped desktop poster. */
+  .landing-v2 nav > div:first-child { margin-left: 0 !important; gap: 6px !important; }
+  .landing-v2 nav > div:first-child > span:first-child { font-size: 28px !important; }
+  .landing-v2 nav > div:first-child > span:last-child { font-size: 18px !important; }
+
   .landing-v2 .lv2-hero {
     height: auto !important;
-    min-height: 100svh !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding: 80px 24px 40px !important;
+    text-align: center !important;
+    padding: 80px 16px 28px !important;
+    gap: 16px !important;
     position: relative !important;
   }
 
-  /* Hide desktop-layout hero elements */
-  .lv2-hero-subarrow,
-  .lv2-hero-author {
+  .lv2-hero-video { opacity: 0.5 !important; }
+  .lv2-hero-overlay {
+    background-image: linear-gradient(to bottom, rgba(26, 20, 14, 0.28), rgba(26, 20, 14, 0.62)) !important;
+  }
+
+  .lv2-hero-waveform,
+  .lv2-hero-subarrow {
     display: none !important;
   }
 
-  /* Waveform sits in the upper third so the tagline can own the middle */
-  .lv2-hero-waveform {
-    position: absolute !important;
-    top: 14% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 100% !important;
-    height: 22vh !important;
-    min-height: 120px !important;
-    max-height: 180px !important;
+  .lv2-hero-author {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    order: 1 !important;
     z-index: 2 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    max-width: 560px !important;
+    width: 100% !important;
   }
-
-  /* Tagline: vertical middle of the first screen — visible on open */
-  .lv2-hero-tagline {
-    position: absolute !important;
-    top: 48% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin-top: 0 !important;
-    text-align: center !important;
-    width: min(100%, 360px) !important;
-    padding: 0 16px !important;
-    z-index: 3 !important;
+  .lv2-hero-author h1 {
+    font-size: 42px !important;
+    margin: 0 !important;
   }
-  .lv2-hero-tagline > div:first-child {
-    font-size: 34px !important;
-    margin-bottom: 8px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(2) {
-    font-size: 17px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(3) {
+  .lv2-author-copy {
+    margin: 12px 0 8px !important;
     font-size: 16px !important;
   }
+  .lv2-author-cta { margin-top: 4px; }
+  .lv2-hero-price {
+    display: flex !important;
+    margin: 4px 0 0 !important;
+  }
 
-  /* Stats footer — reset to simple centered row */
+  .lv2-hero-tagline {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    order: 2 !important;
+    z-index: 2 !important;
+    width: auto !important;
+    max-width: 360px !important;
+    padding: 4px 12px 0 !important;
+    margin-top: 0 !important;
+  }
+  .lv2-tagline-main { font-size: 22px !important; margin-bottom: 4px !important; }
+  .lv2-tagline-sub { display: none !important; }
+  .lv2-tagline-kick { font-size: 16px !important; }
+
+  /* Stats footer — stacked band under the hero, on the first phone screen */
   .lv2-hero-stats {
     position: relative !important;
     bottom: auto !important;
     flex-direction: column !important;
     align-items: center !important;
     gap: 20px !important;
-    padding: 24px 20px !important;
-    margin-top: 32px !important;
+    padding: 28px 20px !important;
+    margin-top: 0 !important;
   }
   .lv2-hero-stats > div {
     margin-left: 0 !important;
+    text-align: center !important;
   }
-  .lv2-hero-stats > div > div {
+  .lv2-hero-stats > div > div:first-child {
     margin-left: 0 !important;
     font-size: 32px !important;
   }
@@ -1601,6 +1621,7 @@ input[type=range] {
      is mostly inline, so it sat on the step nav, under the top bar, or under 44px. */
   .lined-paper {
     padding: 1.5rem 1rem 1.25rem 1.25rem !important;
+    transform: none !important;
   }
 
   .ds-review-choice--floating {
@@ -1629,7 +1650,12 @@ input[type=range] {
   }
 
   .ds-picker-option, .ds-picker-btn { min-height: 44px; }
+  .ds-picker-option { width: 100%; display: block; }
   .ds-picker-btn { padding: 10px 16px !important; }
+  .ds-picker-stage {
+    min-height: 0 !important;
+    align-content: start !important;
+  }
 
   .ds-chapter-ready {
     top: calc(max(24px, env(safe-area-inset-top)) + 64px) !important;

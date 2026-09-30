@@ -156,7 +156,7 @@ export default function EditorReviewPage() {
 
         {/* Dead center while the editor reads: the picker, pair after pair until it's done. */}
         {started && !pastEditor && (
-          <div style={{ minHeight: "52vh", display: "grid", alignContent: "center" }}>
+          <div className="ds-picker-stage" style={{ minHeight: "52vh", display: "grid", alignContent: "center" }}>
             <GlassCard style={{ padding: "32px clamp(18px, 4vw, 36px)" }}>
               <div data-tut="pr-picker"><VoicePicker projectId={projectId} active={editing} /></div>
             </GlassCard>

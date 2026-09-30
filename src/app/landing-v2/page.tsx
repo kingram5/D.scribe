@@ -1106,7 +1106,7 @@ export default function LandingV2() {
         </video>
 
         {/* Overlay */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
+        <div className="lv2-hero-overlay" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
         <div className="lv2-hero-waveform">
@@ -1725,18 +1725,17 @@ export default function LandingV2() {
 
         /* Mobile */
         @media (max-width: 768px) {
-          .landing-v2 nav { padding: 0 20px !important; }
+          .landing-v2 nav { padding: 0 16px !important; }
           .lv2-pillars { grid-template-columns: 1fr !important; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
-          .lv2-hero { padding: 96px 16px 40px !important; gap: 20px !important; }
-          .lv2-hero-waveform { height: 18vh; min-height: 110px; }
-          .lv2-hero-author h1 { font-size: clamp(34px, 11vw, 48px); }
+          .lv2-hero { padding: 80px 16px 28px !important; gap: 16px !important; min-height: 0 !important; justify-content: flex-start !important; }
+          .lv2-hero-waveform, .lv2-hero-subarrow { display: none !important; }
+          .lv2-hero-author h1 { font-size: 42px; }
           .lv2-author-copy { font-size: 16px !important; padding: 0 4px; }
-          .lv2-hero-tagline { padding: 0 12px; }
-          .lv2-hero-subarrow { width: 100%; }
-          .lv2-hero-subarrow a { min-height: 48px; }
+          .lv2-hero-tagline { padding: 4px 12px 0; }
+          .lv2-tagline-main { font-size: 22px; }
           .lv2-hero-stats {
             flex-direction: column;
             gap: 20px !important;

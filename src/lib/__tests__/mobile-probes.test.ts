@@ -356,6 +356,17 @@ describe("mobile: publisher-ready phone polish", () => {
     expect(globalsCss()).toMatch(/\.ds-review-choice__dismiss[\s\S]{0,80}min-height: 44px/);
   });
 
+  it("the phone landing shows the author headline instead of the cinematic overlay", () => {
+    const css = globalsCss();
+    const start = css.indexOf("Landing V2 Mobile");
+    const block = start === -1 ? "" : css.slice(start, start + 2800);
+    expect(block).toMatch(/\.lv2-hero-author \{[^}]*display:\s*flex/);
+    expect(block).toMatch(/\.lv2-hero-waveform,\s*\n\s*\.lv2-hero-subarrow \{[^}]*display:\s*none/);
+    expect(block).not.toMatch(/\.lv2-hero-author \{[^}]*display:\s*none/);
+    expect(block).toMatch(/justify-content:\s*flex-start/);
+    expect(read("app/landing-v2/page.tsx")).toMatch(/lv2-hero-overlay/);
+  });
+
   it("the bottom step nav uses shorter labels on phones", () => {
     expect(pageShell()).toMatch(/mobileLabel:\s*"Draft"/);
     expect(pageShell()).toMatch(/navLabel\(/);

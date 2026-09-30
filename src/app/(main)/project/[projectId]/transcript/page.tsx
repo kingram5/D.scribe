@@ -129,6 +129,7 @@ export default function TranscriptPage() {
      5-minute markers; "full" is the same text as continuous prose for a straight
      read-through. A view choice only — editing still writes back into segments. */
   const [view, setView] = useState<"segments" | "full">("segments");
+  const [insightsOpen, setInsightsOpen] = useState(true);
 
   const active = transcripts[activeIdx] ?? null;
   // Plain computation, not useMemo: an optional-chained dependency defeats the
@@ -494,7 +495,9 @@ export default function TranscriptPage() {
           /* Edit Transcript sits first in the side panel on a phone, so it's on
              screen without scrolling inside the panel. */
           .ds-tx-side { display: flex; flex-direction: column; }
-          .ds-tx-side > .ds-tx-edit { order: -1; padding-top: 12px; }
+          .ds-tx-side > .ds-tx-edit { display: contents; }
+          .ds-tx-side > .ds-tx-edit > button { order: -2; margin-top: 12px; }
+          .ds-tx-side > .ds-tx-insights { order: -1; }
         }
         .ds-tx-insights > summary::-webkit-details-marker { display: none; }
         .ds-tx-insights:not([open]) .ds-tx-insights__chev { transform: rotate(-90deg); }
@@ -568,7 +571,7 @@ export default function TranscriptPage() {
           <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar ds-tx-side">
 
             {/* Insights & speakers: collapsible so a phone can fold it away; open by default. */}
-            <details open className="ds-tx-insights" style={{ paddingTop: 16 }}>
+            <details open={insightsOpen} onToggle={(e) => setInsightsOpen(e.currentTarget.open)} className="ds-tx-insights" style={{ paddingTop: 16 }}>
               <summary style={{
                 display: "flex", alignItems: "center", gap: 6, minHeight: 44, cursor: "pointer", listStyle: "none",
                 fontSize: 11, fontWeight: 600, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: P.sans,

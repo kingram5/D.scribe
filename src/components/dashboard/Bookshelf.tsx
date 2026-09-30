@@ -197,7 +197,7 @@ export default function Bookshelf(props: BookshelfProps) {
   const rows = allRows.slice(safePage * SHELVES_PER_PAGE, safePage * SHELVES_PER_PAGE + SHELVES_PER_PAGE);
   const goto = (p: number) => { setPage(Math.max(0, Math.min(pageCount - 1, p))); setPageKey((k) => k + 1); };
   // A new filter starts at the first shelf.
-  useEffect(() => { setPage(0); }, [filter]);
+  useEffect(() => { setPage(0); }, [filter, search]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const lit = hoverPreviewId ?? hoverId;
 

@@ -1595,6 +1595,92 @@ input[type=range] {
   }
   .ds-rail-steplist__num.is-done { border-color: rgba(193,122,71,0.55); color: #A05526; }
   .ds-rail-steplist__num.is-current { background: #C17A47; border-color: #C17A47; color: #F9F7F2; }
+
+  /* ---- Publisher-Ready phone polish (2026-09-30) ----
+     Previous loops caught classed controls. The draft/review/interview chrome
+     is mostly inline, so it sat on the step nav, under the top bar, or under 44px. */
+  .lined-paper {
+    padding: 1.5rem 1rem 1.25rem 1.25rem !important;
+  }
+
+  .ds-review-choice--floating {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    width: min(520px, calc(100vw - 24px)) !important;
+  }
+  .ds-review-choice__dismiss {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin: -8px -8px 0 0;
+  }
+  .ds-review-choice__actions { flex-direction: column; }
+  .ds-review-choice__actions button {
+    width: 100%; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .ds-reader-pane { padding-top: env(safe-area-inset-top); }
+  .ds-reader-chrome {
+    flex-wrap: wrap;
+    padding: 8px 12px !important;
+    row-gap: 8px;
+  }
+  .ds-reader-chrome button {
+    min-height: 44px; min-width: 44px; padding: 8px 14px !important;
+  }
+
+  .ds-picker-option, .ds-picker-btn { min-height: 44px; }
+  .ds-picker-btn { padding: 10px 16px !important; }
+
+  .ds-chapter-ready {
+    top: calc(max(24px, env(safe-area-inset-top)) + 64px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+  .ds-chapter-ready button {
+    min-height: 44px; min-width: 44px; padding: 0 12px !important;
+  }
+
+  .ds-gen-dock {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+
+  .ds-chapter-row { min-height: 44px; padding: 8px 4px !important; }
+  .ds-pr-cta { min-height: 44px; width: 100%; }
+  .ds-pr-btn { min-height: 44px; }
+  .ds-pr-actions { flex-direction: column; align-items: stretch !important; }
+  .ds-pr-actions .ds-pr-btn, .ds-pr-actions button { width: 100%; min-height: 44px; }
+  .ds-text-btn {
+    min-height: 44px; display: inline-flex; align-items: center;
+    padding: 0 4px !important;
+  }
+
+  .ds-outline-toolbar .ds-tb-undo,
+  .ds-outline-toolbar .ds-tb-redo {
+    width: 44px !important; height: 44px !important;
+  }
+
+  .ds-mobile-stepnav { gap: 8px; }
+  .ds-mobile-stepnav a,
+  .ds-mobile-stepnav button {
+    max-width: 44%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ds-mobile-stepnav .ds-label {
+    flex: 0 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .ds-chapter-footer > div {
+    width: 100%; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .ds-os-menu a, .ds-os-menu button { min-height: 44px; }
 }
 @media (min-width: 769px) {
   .ds-rail-stepbtn, .ds-rail-steplist { display: none !important; }

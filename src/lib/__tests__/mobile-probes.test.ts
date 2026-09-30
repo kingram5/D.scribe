@@ -336,3 +336,35 @@ describe("mobile: touch targets", () => {
     expect(padY * 2 + fontPx * 1.2).toBeGreaterThanOrEqual(44);
   });
 });
+
+describe("mobile: publisher-ready phone polish", () => {
+  it("the floating review fork sits above the step nav", () => {
+    expect(globalsCss()).toMatch(/\.ds-review-choice--floating[\s\S]{0,220}64px \+ env\(safe-area-inset-bottom\)/);
+  });
+
+  it("the docked generation chip sits above the step nav", () => {
+    expect(globalsCss()).toMatch(/\.ds-gen-dock[\s\S]{0,220}64px \+ env\(safe-area-inset-bottom\)/);
+  });
+
+  it("the chapter-ready toast sits below the top bar", () => {
+    expect(globalsCss()).toMatch(/\.ds-chapter-ready[\s\S]{0,220}safe-area-inset-top/);
+  });
+
+  it("reader chrome, picker, and review dismiss are 44px on phones", () => {
+    expect(globalsCss()).toMatch(/\.ds-reader-chrome button[\s\S]{0,80}min-height:\s*44px/);
+    expect(globalsCss()).toMatch(/\.ds-picker-option, \.ds-picker-btn \{ min-height: 44px/);
+    expect(globalsCss()).toMatch(/\.ds-review-choice__dismiss[\s\S]{0,80}min-height: 44px/);
+  });
+
+  it("the bottom step nav uses shorter labels on phones", () => {
+    expect(pageShell()).toMatch(/mobileLabel:\s*"Draft"/);
+    expect(pageShell()).toMatch(/navLabel\(/);
+  });
+
+  it("the phone menu dismisses on Escape and outside pointerdown", () => {
+    const src = read("components/ui/OsBar.tsx");
+    expect(src).toMatch(/Escape/);
+    expect(src).toMatch(/pointerdown/);
+    expect(src).toMatch(/aria-expanded/);
+  });
+});

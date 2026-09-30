@@ -525,7 +525,7 @@ export default function GeneratePage() {
       {justReady && !readerId && (() => {
         const ch = chapters.find((c) => c.id === justReady);
         return ch ? (
-          <div role="status" style={{
+          <div role="status" className="ds-chapter-ready" style={{
             position: "fixed", right: 16, top: 16, zIndex: 141, display: "flex", alignItems: "center", gap: 12,
             padding: "10px 14px", borderRadius: 12, background: "var(--ds-paper, #FDFCF8)", border: "1px solid rgba(193,122,71,0.35)",
             boxShadow: "0 10px 30px rgba(0,0,0,0.2)", fontSize: 13, color: "var(--text-primary)",
@@ -567,6 +567,7 @@ export default function GeneratePage() {
                 return (
                   <div
                     key={ch.id}
+                    className="ds-chapter-row"
                     onClick={() => setActiveChapter(ch.id)}
                     style={{
                       cursor: "pointer",
@@ -1159,7 +1160,7 @@ export default function GeneratePage() {
               )}
 
               {/* Footer buttons — Next Chapter (left) | Generate Chapter (center) | Generate All (right) */}
-              <div data-tut="generate-actions" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+              <div data-tut="generate-actions" className="ds-chapter-footer" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
                 {/* Left: Next Chapter navigation */}
                 <button
                   onClick={() => nextChapter && setActiveChapter(nextChapter.id)}
@@ -1224,6 +1225,7 @@ export default function GeneratePage() {
                       onClick={startPrDraft}
                       disabled={isGenerating}
                       data-tut="generate-publisher-ready"
+                      className="ds-pr-cta"
                       style={{ fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: isGenerating ? "wait" : "pointer" }}
                     >
                       {prDrafting ? "Writing your first draft…" : anyGenerated ? "Finish my first draft" : "Write my first draft"}

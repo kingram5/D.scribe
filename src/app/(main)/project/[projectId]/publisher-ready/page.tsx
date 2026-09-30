@@ -116,10 +116,10 @@ export default function EditorReviewPage() {
             </span>
             {editing && <span>Keep this tab open.</span>}
             {!editing && !allRead && !pastEditor && (
-              <button onClick={startEditor} style={{ ...button, padding: "7px 14px", fontSize: 13 }}>Finish the read</button>
+              <button className="ds-pr-btn" onClick={startEditor} style={{ ...button, padding: "7px 14px", fontSize: 13 }}>Finish the read</button>
             )}
             {(allRead || pastEditor) && (
-              <button onClick={() => router.push(`/project/${projectId}/interview`)} style={{ ...button, marginLeft: "auto" }}>
+              <button className="ds-pr-btn" onClick={() => router.push(`/project/${projectId}/interview`)} style={{ ...button, marginLeft: "auto" }}>
                 Next: your interview →
               </button>
             )}
@@ -136,16 +136,16 @@ export default function EditorReviewPage() {
             {undrafted.length > 0 ? (
               <p style={{ margin: "18px 0 0", fontSize: 14, color: "#B4532A" }}>
                 {undrafted.length} chapter{undrafted.length === 1 ? " isn't" : "s aren't"} drafted yet.{" "}
-                <button onClick={() => router.push(`/project/${projectId}/generate`)} style={{ border: "none", background: "none", color: "#A05526", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 14 }}>Finish the first draft</button>
+                <button className="ds-text-btn" onClick={() => router.push(`/project/${projectId}/generate`)} style={{ border: "none", background: "none", color: "#A05526", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 14 }}>Finish the first draft</button>
               </p>
             ) : (
               <>
-                <button onClick={startEditor} style={{ ...button, marginTop: 22 }}>Start the editor</button>
+                <button className="ds-pr-btn" onClick={startEditor} style={{ ...button, marginTop: 22 }}>Start the editor</button>
                 <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--text-tertiary)" }}>About {estimate.toLocaleString()} Ink for the review, interview and rewrite.</p>
               </>
             )}
             <p style={{ margin: "18px 0 0", fontSize: 13 }}>
-              <button onClick={() => router.push(`/project/${projectId}/editor`)} style={{ border: "none", background: "none", color: "var(--text-secondary)", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 13 }}>
+              <button className="ds-text-btn" onClick={() => router.push(`/project/${projectId}/editor`)} style={{ border: "none", background: "none", color: "var(--text-secondary)", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 13 }}>
                 Skip the review and go to your final draft
               </button>
             </p>

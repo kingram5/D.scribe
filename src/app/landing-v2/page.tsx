@@ -1180,7 +1180,7 @@ export default function LandingV2() {
         </div>
 
       {/* ─── Pipeline Section ─── */}
-      <section id="how-it-works" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto", scrollMarginTop: 80 }}>
+      <section id="how-it-works" className="lv2-section" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto", scrollMarginTop: 80 }}>
         <FadeSection>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
@@ -1730,13 +1730,26 @@ export default function LandingV2() {
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
-          .lv2-hero-stats { gap: 16px; }
+          .lv2-hero { padding: 96px 16px 40px !important; gap: 20px !important; }
+          .lv2-hero-waveform { height: 18vh; min-height: 110px; }
+          .lv2-hero-author h1 { font-size: clamp(34px, 11vw, 48px); }
+          .lv2-author-copy { font-size: 16px !important; padding: 0 4px; }
+          .lv2-hero-tagline { padding: 0 12px; }
+          .lv2-hero-subarrow { width: 100%; }
+          .lv2-hero-subarrow a { min-height: 48px; }
+          .lv2-hero-stats {
+            flex-direction: column;
+            gap: 20px !important;
+            padding: 28px 20px !important;
+          }
+          .lv2-hero-stats > div > div:first-child { font-size: 32px !important; }
+          .lv2-section { padding: 56px 20px !important; }
           .lbook-carousel { padding: 0 16px; }
           .lbook-review-card {
             max-width: none;
             width: 100%;
             margin: 48px 0 0;
-            padding: 32px 28px;
+            padding: 32px 20px;
           }
         }
 

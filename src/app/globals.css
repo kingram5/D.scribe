@@ -1559,13 +1559,38 @@ input[type=range] {
   .ds-editable-title { min-height: 44px !important; }
   /* Outline toolbar: the one colour button left on phones (add a chapter). */
   .ds-outline-toolbar .ds-tb-color--primary { width: 44px !important; height: 44px !important; }
-  /* Step guide: close button and slide dots. The dots keep their look; a
-     transparent border makes each one a 44px target, spaced so they don't overlap. */
+  /* Step guide: close and dots stay 44px. Action pills stay one line tall —
+     the last-slide trio used to wrap into tall ovals on phones. */
   .ds-guide-close { width: 44px !important; height: 44px !important; }
   .ds-guide-dots { gap: 0 !important; }
-  div:has(> .ds-guide-dots) { flex-wrap: wrap; row-gap: 8px !important; }
-  div:has(> .ds-guide-dots) > div > button { min-height: 44px !important; }
   .ds-guide-dots > button { box-sizing: content-box !important; border: 18px solid transparent !important; background-clip: padding-box !important; }
+  .ds-guide-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .ds-guide-actions {
+    width: 100%;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  button.ds-guide-btn {
+    white-space: nowrap !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 0 16px !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto;
+  }
+  button.ds-guide-btn--primary { flex: 1 1 100% !important; width: 100% !important; }
   /* Upload cassette: the decorative glare layer was painted over the tape's buttons. */
   .ds-cassette-wrap .btn-3d { position: relative; z-index: 2; }
   .ds-guide-autoshow { min-height: 44px; }

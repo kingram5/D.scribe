@@ -372,6 +372,13 @@ describe("mobile: publisher-ready phone polish", () => {
     expect(pageShell()).toMatch(/navLabel\(/);
   });
 
+  it("guide action pills stay one line tall on phones", () => {
+    expect(globalsCss()).toMatch(/button\.ds-guide-btn[\s\S]{0,220}max-height:\s*40px/);
+    expect(globalsCss()).toMatch(/button\.ds-guide-btn--primary[\s\S]{0,80}width:\s*100%/);
+    expect(read("components/tutorial/StepTutorialModal.tsx")).toMatch(/ds-guide-btn--primary/);
+    expect(read("components/tutorial/CoachmarkTour.tsx")).toMatch(/ds-guide-btn/);
+  });
+
   it("the phone menu dismisses on Escape and outside pointerdown", () => {
     const src = read("components/ui/OsBar.tsx");
     expect(src).toMatch(/Escape/);

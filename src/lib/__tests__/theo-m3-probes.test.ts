@@ -113,6 +113,10 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const dg = read("lib/deepgram.ts");
     expect(dg).toMatch(/export async function transcribeUtterance/);
     expect(dg).toMatch(/mip_opt_out: true/);
+    // Nova-3 is multilingual; without language=en it auto-detects and has been
+    // seen to emit Arabic for English speech. Pin English on every STT path.
+    expect(dg).toMatch(/language:\s*"en"/);
+    expect(chat()).toMatch(/[?&]language=en/);
   });
 
   it("serializes TTS sentence requests so later audio cannot overtake earlier audio", () => {

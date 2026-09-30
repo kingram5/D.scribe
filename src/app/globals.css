@@ -1089,10 +1089,13 @@ input[type=range] {
 
 /* ========== Landing V2 Mobile ========== */
 @media (max-width: 768px) {
-  /* Navbar */
+  /* Navbar — compact glass bar so the wordmark stays readable over the photo */
   .landing-v2 nav {
-    padding: 0 20px !important;
-    height: 60px !important;
+    height: 64px !important;
+    padding: 0 16px !important;
+    background: rgba(26, 20, 14, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
   }
   .landing-v2 nav > div:last-child > a:first-child {
     display: none !important;
@@ -1101,76 +1104,93 @@ input[type=range] {
     gap: 12px !important;
   }
 
-  /* Hero — switch from absolute to stacked flex */
+  /* Hero — stacked like the phone mock: headline, copy, CTA, then a quiet tagline.
+     The cinematic overlay (waveform + centered tagline, author hidden) made the
+     first screen look like a cropped desktop poster. */
+  .landing-v2 nav > div:first-child { margin-left: 0 !important; gap: 6px !important; }
+  .landing-v2 nav > div:first-child > span:first-child { font-size: 28px !important; }
+  .landing-v2 nav > div:first-child > span:last-child { font-size: 18px !important; }
+
   .landing-v2 .lv2-hero {
     height: auto !important;
-    min-height: 100svh !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding: 80px 24px 40px !important;
+    text-align: center !important;
+    padding: 80px 16px 28px !important;
+    gap: 16px !important;
     position: relative !important;
   }
 
-  /* Hide desktop-layout hero elements */
-  .lv2-hero-subarrow,
-  .lv2-hero-author {
+  .lv2-hero-video { opacity: 0.5 !important; }
+  .lv2-hero-overlay {
+    background-image: linear-gradient(to bottom, rgba(26, 20, 14, 0.28), rgba(26, 20, 14, 0.62)) !important;
+  }
+
+  .lv2-hero-waveform,
+  .lv2-hero-subarrow {
     display: none !important;
   }
 
-  /* Waveform sits in the upper third so the tagline can own the middle */
-  .lv2-hero-waveform {
-    position: absolute !important;
-    top: 14% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 100% !important;
-    height: 22vh !important;
-    min-height: 120px !important;
-    max-height: 180px !important;
+  .lv2-hero-author {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    order: 1 !important;
     z-index: 2 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    max-width: 560px !important;
+    width: 100% !important;
   }
-
-  /* Tagline: vertical middle of the first screen — visible on open */
-  .lv2-hero-tagline {
-    position: absolute !important;
-    top: 48% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin-top: 0 !important;
-    text-align: center !important;
-    width: min(100%, 360px) !important;
-    padding: 0 16px !important;
-    z-index: 3 !important;
+  .lv2-hero-author h1 {
+    font-size: 42px !important;
+    margin: 0 !important;
   }
-  .lv2-hero-tagline > div:first-child {
-    font-size: 34px !important;
-    margin-bottom: 8px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(2) {
-    font-size: 17px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(3) {
+  .lv2-author-copy {
+    margin: 12px 0 8px !important;
     font-size: 16px !important;
   }
+  .lv2-author-cta { margin-top: 4px; }
+  .lv2-hero-price {
+    display: flex !important;
+    margin: 4px 0 0 !important;
+  }
 
-  /* Stats footer — reset to simple centered row */
+  .lv2-hero-tagline {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    order: 2 !important;
+    z-index: 2 !important;
+    width: auto !important;
+    max-width: 360px !important;
+    padding: 4px 12px 0 !important;
+    margin-top: 0 !important;
+  }
+  .lv2-tagline-main { font-size: 22px !important; margin-bottom: 4px !important; }
+  .lv2-tagline-sub { display: none !important; }
+  .lv2-tagline-kick { font-size: 16px !important; }
+
+  /* Stats footer — stacked band under the hero, on the first phone screen */
   .lv2-hero-stats {
     position: relative !important;
     bottom: auto !important;
     flex-direction: column !important;
     align-items: center !important;
     gap: 20px !important;
-    padding: 24px 20px !important;
-    margin-top: 32px !important;
+    padding: 28px 20px !important;
+    margin-top: 0 !important;
   }
   .lv2-hero-stats > div {
     margin-left: 0 !important;
+    text-align: center !important;
   }
-  .lv2-hero-stats > div > div {
+  .lv2-hero-stats > div > div:first-child {
     margin-left: 0 !important;
     font-size: 32px !important;
   }
@@ -1539,13 +1559,40 @@ input[type=range] {
   .ds-editable-title { min-height: 44px !important; }
   /* Outline toolbar: the one colour button left on phones (add a chapter). */
   .ds-outline-toolbar .ds-tb-color--primary { width: 44px !important; height: 44px !important; }
-  /* Step guide: close button and slide dots. The dots keep their look; a
-     transparent border makes each one a 44px target, spaced so they don't overlap. */
+  /* Step guide: close and dots stay 44px. Action pills stay one line tall —
+     the last-slide trio used to wrap into tall ovals on phones. */
   .ds-guide-close { width: 44px !important; height: 44px !important; }
   .ds-guide-dots { gap: 0 !important; }
-  div:has(> .ds-guide-dots) { flex-wrap: wrap; row-gap: 8px !important; }
-  div:has(> .ds-guide-dots) > div > button { min-height: 44px !important; }
   .ds-guide-dots > button { box-sizing: content-box !important; border: 18px solid transparent !important; background-clip: padding-box !important; }
+  .ds-guide-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .ds-guide-actions {
+    width: 100%;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  button.ds-guide-btn {
+    white-space: nowrap !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 0 16px !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto;
+  }
+  /* Only the long last-slide CTA goes full-width. Short labels (Next, Got it)
+     stay compact pills so they don't stretch into a second oblong. */
+  button.ds-guide-btn--block { flex: 1 1 100% !important; width: 100% !important; }
   /* Upload cassette: the decorative glare layer was painted over the tape's buttons. */
   .ds-cassette-wrap .btn-3d { position: relative; z-index: 2; }
   .ds-guide-autoshow { min-height: 44px; }
@@ -1595,6 +1642,98 @@ input[type=range] {
   }
   .ds-rail-steplist__num.is-done { border-color: rgba(193,122,71,0.55); color: #A05526; }
   .ds-rail-steplist__num.is-current { background: #C17A47; border-color: #C17A47; color: #F9F7F2; }
+
+  /* ---- Publisher-Ready phone polish (2026-09-30) ----
+     Previous loops caught classed controls. The draft/review/interview chrome
+     is mostly inline, so it sat on the step nav, under the top bar, or under 44px. */
+  .lined-paper {
+    padding: 1.5rem 1rem 1.25rem 1.25rem !important;
+    transform: none !important;
+  }
+
+  .ds-review-choice--floating {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    width: min(520px, calc(100vw - 24px)) !important;
+  }
+  .ds-review-choice__dismiss {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin: -8px -8px 0 0;
+  }
+  .ds-review-choice__actions { flex-direction: column; }
+  .ds-review-choice__actions button {
+    width: 100%; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .ds-reader-pane { padding-top: env(safe-area-inset-top); }
+  .ds-reader-chrome {
+    flex-wrap: wrap;
+    padding: 8px 12px !important;
+    row-gap: 8px;
+  }
+  .ds-reader-chrome button {
+    min-height: 44px; min-width: 44px; padding: 8px 14px !important;
+  }
+
+  .ds-picker-option, .ds-picker-btn { min-height: 44px; }
+  .ds-picker-option { width: 100%; display: block; }
+  .ds-picker-btn { padding: 10px 16px !important; }
+  .ds-picker-stage {
+    min-height: 0 !important;
+    align-content: start !important;
+  }
+
+  .ds-chapter-ready {
+    top: calc(max(24px, env(safe-area-inset-top)) + 64px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+  .ds-chapter-ready button {
+    min-height: 44px; min-width: 44px; padding: 0 12px !important;
+  }
+
+  .ds-gen-dock {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+
+  .ds-chapter-row { min-height: 44px; padding: 8px 4px !important; }
+  .ds-pr-cta { min-height: 44px; width: 100%; }
+  .ds-pr-btn { min-height: 44px; }
+  .ds-pr-actions { flex-direction: column; align-items: stretch !important; }
+  .ds-pr-actions .ds-pr-btn, .ds-pr-actions button { width: 100%; min-height: 44px; }
+  .ds-text-btn {
+    min-height: 44px; display: inline-flex; align-items: center;
+    padding: 0 4px !important;
+  }
+
+  .ds-outline-toolbar .ds-tb-undo,
+  .ds-outline-toolbar .ds-tb-redo {
+    width: 44px !important; height: 44px !important;
+  }
+
+  .ds-mobile-stepnav { gap: 8px; }
+  .ds-mobile-stepnav a,
+  .ds-mobile-stepnav button {
+    max-width: 44%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ds-mobile-stepnav .ds-label {
+    flex: 0 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .ds-chapter-footer > div {
+    width: 100%; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .ds-os-menu a, .ds-os-menu button { min-height: 44px; }
 }
 @media (min-width: 769px) {
   .ds-rail-stepbtn, .ds-rail-steplist { display: none !important; }

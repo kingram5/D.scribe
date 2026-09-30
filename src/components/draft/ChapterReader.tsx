@@ -89,12 +89,16 @@ export default function ChapterReader({
           box-shadow: -18px 0 50px rgba(44,36,25,0.18); animation: dsReaderIn 0.25s ease;
         }
         @keyframes dsReaderIn { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
-        @media (max-width: 820px) { .ds-reader-pane { width: 100vw; border-left: none; } }
+        @media (max-width: 820px) {
+          .ds-reader-pane { width: 100%; border-left: none; padding-top: env(safe-area-inset-top); }
+          .ds-reader-chrome { flex-wrap: wrap; padding: 8px 12px; row-gap: 8px; }
+          .ds-reader-chrome button { min-height: 44px; min-width: 44px; padding: 8px 14px; }
+        }
       `}</style>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "14px 18px", borderBottom: "1px solid var(--ds-card-border)" }}>
-        <button type="button" onClick={onClose} aria-label="Close reader" style={{
+      <div className="ds-reader-chrome" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "14px 18px", borderBottom: "1px solid var(--ds-card-border)" }}>
+        <button type="button" onClick={onClose} aria-label="Back to progress" style={{
           fontSize: 13, fontWeight: 600, padding: "7px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer",
-        }}>← Back to progress</button>
+        }}>← Back</button>
         <div style={{ display: "flex", gap: 6 }}>
           {navBtn("‹ Prev", prev)}
           {navBtn("Next ›", next)}

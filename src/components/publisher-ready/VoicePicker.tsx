@@ -93,7 +93,7 @@ export default function VoicePicker({ projectId, active = true, onClose }: { pro
       <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
         {answered > 0 ? `Got it. ${answered} picks. They go into the rewrite, and every book after this one.` : "Nothing to pick right now."}{" "}
         {onClose && (
-          <button type="button" onClick={() => onClose()} style={{ marginLeft: 8, fontSize: 13, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--ds-card-border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>Close</button>
+          <button type="button" className="ds-picker-btn" onClick={() => onClose()} style={{ marginLeft: 8, fontSize: 13, padding: "4px 10px", borderRadius: 8, border: "1px solid var(--ds-card-border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>Close</button>
         )}
       </div>
     );
@@ -103,6 +103,7 @@ export default function VoicePicker({ projectId, active = true, onClose }: { pro
   const option = (text: string, choice: "a" | "b") => (
     <button
       type="button"
+      className="ds-picker-option"
       disabled={busy}
       onClick={() => answer(choice)}
       style={{
@@ -132,13 +133,13 @@ export default function VoicePicker({ projectId, active = true, onClose }: { pro
             placeholder="Say it the way you would"
             style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 16, border: "1px solid var(--ds-input-border)", background: "var(--ds-input-bg)", color: "var(--text-primary)", fontFamily: "inherit" }}
           />
-          <button type="button" disabled={busy || !rewrite.trim()} onClick={() => answer("neither")}
+          <button type="button" className="ds-picker-btn" disabled={busy || !rewrite.trim()} onClick={() => answer("neither")}
             style={{ justifySelf: "start", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: "pointer" }}>
             Use my version
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => setRewriting(true)}
+        <button type="button" className="ds-picker-btn" onClick={() => setRewriting(true)}
           style={{ justifySelf: "start", fontSize: 13, padding: "6px 12px", borderRadius: 10, border: "1px solid var(--ds-card-border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>
           Neither. I&apos;d say it like this…
         </button>

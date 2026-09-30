@@ -17,6 +17,7 @@ export default function ReviewChoice({
 }) {
   return (
     <div
+      className={`ds-review-choice${floating ? " ds-review-choice--floating" : ""}`}
       role={floating ? "dialog" : undefined}
       aria-label={floating ? "Your first draft is done" : undefined}
       style={{
@@ -32,19 +33,19 @@ export default function ReviewChoice({
       }}
     >
       {floating && <style>{`@keyframes dsChoiceIn { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }`}</style>}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div style={{ fontFamily: "var(--font-lora), serif", fontSize: 19, fontWeight: 600, color: "var(--text-primary)" }}>
           Your first draft is done
         </div>
         {onDismiss && (
-          <button type="button" onClick={onDismiss} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
+          <button type="button" className="ds-review-choice__dismiss" onClick={onDismiss} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
         )}
       </div>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary)" }}>
         Want it publisher-ready? An editor reads every chapter, then T.H.E.O. interviews you about what only you know, and your answers go into the book.
         {" "}<strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>It&apos;s optional.</strong> It&apos;s only for publisher-ready edits and additions; skip it and go straight to your final draft.
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+      <div className="ds-review-choice__actions" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         <button type="button" onClick={onReview} disabled={disabled} style={{
           fontSize: 14, fontWeight: 600, padding: "11px 18px", borderRadius: 10, border: "none",
           background: "var(--ds-accent-500, #C17A47)", color: "#fff", cursor: disabled ? "wait" : "pointer",

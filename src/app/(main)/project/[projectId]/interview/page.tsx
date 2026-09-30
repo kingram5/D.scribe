@@ -66,9 +66,9 @@ export default function InterviewPage() {
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.6 }}>
               The interview comes after the editor reads your whole draft.
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
-              <button onClick={() => router.push(`/project/${projectId}/publisher-ready`)} style={primary}>Go to Editor review</button>
-              <button onClick={() => router.push(`/project/${projectId}/editor`)} style={secondary}>Skip to your final draft</button>
+            <div className="ds-pr-actions" style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
+              <button className="ds-pr-btn" onClick={() => router.push(`/project/${projectId}/publisher-ready`)} style={primary}>Go to Editor review</button>
+              <button className="ds-pr-btn" onClick={() => router.push(`/project/${projectId}/editor`)} style={secondary}>Skip to your final draft</button>
             </div>
           </GlassCard>
         ) : pastInterview ? (
@@ -76,7 +76,7 @@ export default function InterviewPage() {
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.6 }}>
               Your interview is done and your answers are going into the book.
             </p>
-            <button onClick={() => router.push(`/project/${projectId}/editor`)} style={primary}>Open your final draft</button>
+            <button className="ds-pr-btn" onClick={() => router.push(`/project/${projectId}/editor`)} style={primary}>Open your final draft</button>
           </GlassCard>
         ) : (
           <GlassCard style={{ padding: "36px 32px", maxWidth: 600, textAlign: "center" }}>
@@ -92,11 +92,11 @@ export default function InterviewPage() {
                 {progress.remaining} question{progress.remaining === 1 ? "" : "s"} waiting{progress.answered ? ` · ${progress.answered} answered` : ""}
               </p>
             )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginTop: 22 }}>
-              <button onClick={() => setInRoom(true)} disabled={!ready || finishing} style={primary}>
+            <div className="ds-pr-actions" style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginTop: 22 }}>
+              <button className="ds-pr-btn" onClick={() => setInRoom(true)} disabled={!ready || finishing} style={primary}>
                 {progress?.answered ? "Back into the interview" : "Start the interview"}
               </button>
-              <button onClick={finish} disabled={finishing} style={secondary}>
+              <button className="ds-pr-btn" onClick={finish} disabled={finishing} style={secondary}>
                 {finishing ? "Moving on…" : noQuestions ? "No questions, go to final draft" : "Skip the interview"}
               </button>
             </div>

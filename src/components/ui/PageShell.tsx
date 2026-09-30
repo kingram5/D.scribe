@@ -35,19 +35,19 @@ const STEPS_V1 = [
 // Flow v2 (Kyle 9/28): eight numbered steps; Export is "done", not a step,
 // so the count stays in single digits. Indexes line up with the 9/27 rail, so
 // the remembered-progress key carries over unchanged.
-const STEPS_V2: { key: string; label: string; path: string; done?: boolean }[] = [
+const STEPS_V2: { key: string; label: string; path: string; done?: boolean; mobileLabel?: string }[] = [
   { key: "upload", label: "Upload", path: "upload" },
   { key: "transcript", label: "Transcript", path: "transcript" },
   { key: "structure", label: "Structure", path: "structure" },
   { key: "analysis", label: "Analysis", path: "analysis" },
-  { key: "generate", label: "First Draft", path: "generate" },
-  { key: "review", label: "Editor review", path: "publisher-ready" },
+  { key: "generate", label: "First Draft", path: "generate", mobileLabel: "Draft" },
+  { key: "review", label: "Editor review", path: "publisher-ready", mobileLabel: "Editor" },
   { key: "interview", label: "Interview", path: "interview" },
-  { key: "editor", label: "Final Draft", path: "editor" },
-  { key: "export", label: "Done · Export", path: "export", done: true },
+  { key: "editor", label: "Final Draft", path: "editor", mobileLabel: "Final" },
+  { key: "export", label: "Done · Export", path: "export", done: true, mobileLabel: "Export" },
 ];
 
-const STEPS: { key: string; label: string; path: string; done?: boolean }[] = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
+const STEPS: { key: string; label: string; path: string; done?: boolean; mobileLabel?: string }[] = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
 /** Steps that count toward "Step N of M" (Export is the finish line, not a step). */
 const NUMBERED = STEPS.filter((s) => !s.done).length;
 const stepCounter = (idx: number) => (STEPS[idx]?.done ? "Done" : `Step ${idx + 1} of ${NUMBERED}`);
@@ -160,6 +160,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
   const nextStep = currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
   const showStepNav = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
+  const navLabel = (step: (typeof STEPS)[number]) => (isMobile && step.mobileLabel ? step.mobileLabel : step.label);
   const [stepListOpen, setStepListOpen] = useState(false);
   useEffect(() => { setStepListOpen(false); }, [currentStep]);
   function stepState(i: number) {
@@ -597,7 +598,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2L4 7l5 5" />
               </svg>
-              {prevStep.label}
+              {navLabel(prevStep)}
             </Link>
           ) : (
             <div />
@@ -618,7 +619,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   fontFamily: "var(--font-manrope), sans-serif",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </button>
             ) : onNextClick ? (
               <button
@@ -635,7 +636,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   fontFamily: "var(--font-manrope), sans-serif",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </button>
             ) : (
               <Link
@@ -649,7 +650,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   background: "var(--ds-accent-400, #C17A47)",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </Link>
             )
           ) : (

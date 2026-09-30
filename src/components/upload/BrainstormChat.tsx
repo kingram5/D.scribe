@@ -84,7 +84,7 @@ const RECORDER_MIME_CANDIDATES = [
    fails, the recorded clip still delivers the whole turn through
    /api/brainstorm/stt. */
 const LIVE_STT_URL = "wss://api.deepgram.com/v1/listen" +
-  "?model=nova-3&encoding=linear16&sample_rate=16000&channels=1" +
+  "?model=nova-3&language=en&encoding=linear16&sample_rate=16000&channels=1" +
   "&interim_results=true&smart_format=true&punctuate=true&mip_opt_out=true";
 /* Audio captured while the socket is still connecting is queued so the first
    words of an answer are never lost. ~1 minute at 16 kHz bounds memory if the

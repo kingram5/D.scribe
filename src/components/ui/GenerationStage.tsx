@@ -118,7 +118,7 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
 
   if (docked) {
     return createPortal(
-      <div role="status" aria-live="polite" aria-label="Writing your chapters" style={{
+      <div className="ds-gen-dock" role="status" aria-live="polite" aria-label="Writing your chapters" style={{
         position: "fixed", left: 20, bottom: 20, zIndex: 140, width: "min(340px, calc(100vw - 40px))",
         display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14,
         background: "var(--ds-paper, #F4F1E8)", border: "1px solid rgba(193,122,71,0.3)", boxShadow: "0 12px 36px rgba(0,0,0,0.25)",

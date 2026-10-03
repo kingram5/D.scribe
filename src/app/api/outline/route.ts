@@ -121,26 +121,37 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Delete existing chapters for this project
-    await supabase.from("chapters").delete().eq("project_id", project_id);
+    // Swap the outline in ONE transaction (migration 032). The old code deleted
+    // the chapters and then inserted, as two calls: a failed insert left the
+    // project with no chapters at all. The RPC also snapshots the previous
+    // chapters and their written content into outline_snapshots first, so a
+    // regenerate is recoverable. Regenerate still replaces, as before.
+    const rows = finalChapters.map((ch) => ({
+      title: ch.title,
+      summary: ch.summary,
+      key_point_ids: ch.key_point_ids
+        .map((idx: number) => keyPoints[idx - 1]?.id)
+        .filter(Boolean),
+      target_word_count: targetWordsPerChapter,
+    }));
+    let { data: inserted, error } = await supabase.rpc("replace_project_outline", {
+      p_project_id: project_id,
+      p_user_id: user.id,
+      p_chapters: rows,
+      p_reason: "outline_regenerate",
+    });
 
-    // Insert new chapters
-    const { data: inserted, error } = await supabase
-      .from("chapters")
-      .insert(
-        finalChapters.map((ch, i) => ({
-          project_id,
-          chapter_number: i + 1,
-          title: ch.title,
-          summary: ch.summary,
-          key_point_ids: ch.key_point_ids
-            .map((idx: number) => keyPoints[idx - 1]?.id)
-            .filter(Boolean),
-          target_word_count: targetWordsPerChapter,
-          sort_order: i,
-        }))
-      )
-      .select();
+    // Deploy-order safety: if this code reaches an environment before
+    // migration 032, fall back to the previous two-step write rather than
+    // failing every outline. Remove once 032 is applied everywhere.
+    if (error && (error.code === "PGRST202" || /Could not find the function/i.test(error.message ?? ""))) {
+      logger.warn("replace_project_outline missing; using legacy outline write", { route: "/api/outline", meta: { project_id } });
+      await supabase.from("chapters").delete().eq("project_id", project_id);
+      ({ data: inserted, error } = await supabase
+        .from("chapters")
+        .insert(rows.map((r, i) => ({ ...r, project_id, chapter_number: i + 1, sort_order: i })))
+        .select());
+    }
 
     if (error) throw error;
 

@@ -23,10 +23,12 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // as /blog and /about: public marketing pages bounced every visitor AND every
 // crawler to /login. Any new public route must be added here or it is invisible.
 // 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt"];
+// 2026-10-03: /mcp (ChatGPT app endpoint; bearer tokens, never cookies), /.well-known/
+// (OAuth discovery for ChatGPT), /chatgpt (public explainer pages).
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/mcp", "/chatgpt"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
-const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
+const PUBLIC_PREFIXES = ["/api/", "/.well-known/", "/chatgpt/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -98,7 +100,9 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    // The OAuth consent page carries its authorization_id in the query string;
+    // dropping it on the way through login would break the ChatGPT account link.
+    url.searchParams.set("next", pathname.startsWith("/oauth/") ? `${pathname}${request.nextUrl.search}` : pathname);
     return NextResponse.redirect(url);
   }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { ConnectedApps } from "@/components/settings/ConnectedApps";
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -93,6 +94,8 @@ export default function SettingsPage() {
             {billingLoading ? "Opening…" : "Manage billing"}
           </button>
         </div>
+
+        <ConnectedApps cardStyle={card} h2Style={h2} subStyle={sub} buttonStyle={btn()} />
 
         {/* Danger zone */}
         <div style={{ ...card, border: "1px solid rgba(220,38,38,0.35)" }}>

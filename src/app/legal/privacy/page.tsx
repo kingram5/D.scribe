@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "September 9, 2026";
+const LAST_UPDATED = "October 3, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -53,8 +53,16 @@ export default function PrivacyPolicyPage() {
         items={[
           "Google, if you sign in with Google or connect Google Drive for export.",
           "Stripe, our payment processor: customer and subscription identifiers, plan, and payment status. We never see or store your full card number.",
+          "ChatGPT, if you use the D.scribe app inside ChatGPT: only the text you choose to share with the app (for example a transcript, notes, or an outline), plus an anonymized ChatGPT user id we use only for rate limiting.",
         ]}
       />
+      <H3>The D.scribe app in ChatGPT</H3>
+      <P>
+        If you use D.scribe inside ChatGPT, we receive only the text you choose to share with the app. We cannot see
+        your other ChatGPT conversations or memory. Unsaved plan previews, and the material they cite, are deleted
+        after 48 hours. Plans you save become D.scribe projects in your account. You can disconnect ChatGPT at any time
+        in Settings → Connected apps; projects you already saved stay in your account.
+      </P>
 
       <H2>3. How we use information</H2>
       <UL
@@ -116,6 +124,7 @@ export default function PrivacyPolicyPage() {
         items={[
           "with the service providers in sections 4 and 5, only as needed to run D.scribe;",
           "with Google Drive, only when you press Export to Drive on a project you own;",
+          "with ChatGPT, only when you use the D.scribe app there: the plan previews and project summaries you ask it for;",
           "on the public Discover page, only for projects you have chosen to list publicly, and only the title, description, audience, excerpt, and author name you set;",
           "when the law requires it, or to protect the rights, safety, and property of D.scribe, our users, or others;",
           "with a successor if the business is sold or reorganized, under this same policy;",
@@ -129,6 +138,7 @@ export default function PrivacyPolicyPage() {
           "Your projects, transcripts, chapters, and audio stay in your account until you delete the project or the account.",
           "Deleting a project removes its audio from storage. Deleting your account removes your projects, audio, transcripts, and profile, and cancels any subscription.",
           "After account deletion we keep a one-way hash of your email address so free starter Ink cannot be claimed twice. The hash cannot be turned back into your email.",
+          "Plan previews created through the D.scribe app in ChatGPT, and the shared text inside them, are deleted 48 hours after creation unless you save them.",
           "Stripe keeps billing records for as long as tax and payment rules require.",
           "Error reports and server logs are kept for up to 90 days.",
           "Copies may persist in provider backups for a limited period after deletion before they are overwritten.",
@@ -142,6 +152,7 @@ export default function PrivacyPolicyPage() {
           "Delete: remove a project from its page, or delete your whole account from Settings → Delete account. Deletion is immediate and cannot be undone.",
           "Marketing cookies: decline them in the banner, or clear site data to be asked again.",
           "Google Drive: disconnect D.scribe at any time from your Google Account permissions page.",
+          "ChatGPT: disconnect the D.scribe app at any time in Settings → Connected apps. Access stops immediately.",
         ]}
       />
       <P>

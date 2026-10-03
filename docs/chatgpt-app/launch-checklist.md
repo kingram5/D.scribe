@@ -48,7 +48,8 @@
 - [ ] Metadata/canonical/sitemap/structured data: `/chatgpt` has canonical; sitemap + structured data deferred to launch.
 - [x] No fabricated testimonials, endorsements, listing or recommendation claims.
 - [ ] Directory description, prompts, demo, reviewer instructions: drafted in `submission.md`; screenshots **BLOCKED** on live connection; demo account not created.
-- [ ] Support/privacy documents match data handling: policy additions drafted, **owner approval** needed before publishing.
+- [x] Support/privacy documents match data handling: owner approved 2026-10-03; `/legal/privacy` updated on this branch (sources, sharing, 48 h retention, disconnect) and goes live with the merge.
+- [x] Migration 032 applied to production 2026-10-03 and dry-run verified (see deployment.md step 1).
 - [ ] Observable analytics: preview requested/completed/failed and plan saved are emitted; `link_started`, `link_completed` and `handoff_opened` are defined but **not instrumented** yet (consent page and project page). Activation is measurable now through `projects.created_via = 'chatgpt'`. No recommendation impressions exist to measure.
 - [x] Beta script and feedback form drafted; no outreach done.
 

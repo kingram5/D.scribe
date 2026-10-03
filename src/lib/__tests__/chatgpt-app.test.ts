@@ -117,7 +117,7 @@ function deps(identity: typeof ALICE | null, store: FakeStore, extra: Partial<To
     db: fakeDb([], []) as never,
     ink: new FakeInk(),
     rateLimit: async () => true,
-    anonKey: "anon",
+    anonSubject: "subj-1",
     ...extra,
   };
 }
@@ -241,6 +241,16 @@ describe("flags and limits", () => {
     expect((res.structuredContent as { error: { code: string } }).error.code).toBe("rate_limited");
   });
 
+  it("anonymous limits key on ChatGPT's subject id plus a global ceiling, never on IP", async () => {
+    const keys: string[] = [];
+    const rl = async (k: string) => (keys.push(k), true);
+    await previewBookPlan({ mode: "import", import_text: "1. A" }, deps(null, new FakeStore(), { rateLimit: rl }));
+    expect(keys).toEqual(["chatgpt-preview-anon:global", "chatgpt-preview-anon:subj-1"]);
+    keys.length = 0;
+    await previewBookPlan({ mode: "import", import_text: "1. A" }, deps(null, new FakeStore(), { rateLimit: rl, anonSubject: null }));
+    expect(keys).toEqual(["chatgpt-preview-anon:global"]);
+  });
+
   it("oversized source gets an actionable error", async () => {
     const res = await previewBookPlan({ mode: "source", source_text: "x".repeat(120_001), proposed_plan: PROPOSAL }, deps(ALICE, new FakeStore()));
     expect((res.structuredContent as { error: { code: string; message: string } }).error).toMatchObject({ code: "invalid_input" });
@@ -280,6 +290,19 @@ describe("D.scribe-model generation and Ink", () => {
     const res = await previewBookPlan({ mode: "source", source_text: TRANSCRIPT, use_dscribe_model: true }, deps(ALICE, new FakeStore(), { ink, generate: gen as never }));
     expect(res.isError).toBeFalsy();
     expect(ink.settled).toEqual([expect.objectContaining({ tokens: 500 })]);
+  });
+
+  it("a billing failure after delivery still returns the plan", async () => {
+    const ink = new FakeInk();
+    ink.settle = async () => {
+      throw new Error("ledger down");
+    };
+    const { buildPlanFromProposal } = await import("@/lib/book-plan/build");
+    const { normalizeSource } = await import("@/lib/book-plan/normalize");
+    const gen = async () => ({ ...buildPlanFromProposal(PROPOSAL, "source", normalizeSource(TRANSCRIPT)), usage: { input_tokens: 1, output_tokens: 1 } });
+    const res = await previewBookPlan({ mode: "source", source_text: TRANSCRIPT, use_dscribe_model: true }, deps(ALICE, new FakeStore(), { ink, generate: gen as never }));
+    expect(res.isError).toBeFalsy();
+    expect((res.structuredContent as { plan: BookPlan }).plan.title).toBe("Not Your Title");
   });
 
   it("bills consumed tokens on malformed output, releases the hold on a pre-reply timeout", async () => {

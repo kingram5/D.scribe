@@ -41,14 +41,14 @@ export const inkPort: InkPort = {
   },
 };
 
-export function defaultDeps(identity: Identity | null, anonKey: string): ToolDeps {
+export function defaultDeps(identity: Identity | null): ToolDeps {
   const db = createServerClient();
   return {
     identity,
     db,
     store: new PlanStore(db),
     ink: inkPort,
-    anonKey,
+    anonSubject: null,
     rateLimit: async (key, limit) => (await checkRateLimit(key, "chatgpt-app", limit)).allowed,
   };
 }
@@ -103,7 +103,7 @@ export function buildMcpServer(deps: ToolDeps): McpServer {
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: false },
       _meta: { ...widgetMeta, securitySchemes: OPTIONAL_AUTH },
     },
-    async (args) => previewBookPlan(args, deps)
+    async (args, extra) => previewBookPlan(args, { ...deps, anonSubject: subjectOf(extra) })
   );
 
   server.registerTool(
@@ -156,5 +156,36 @@ export function buildMcpServer(deps: ToolDeps): McpServer {
     async (args) => getPlanStatus(args, deps)
   );
 
+  mirrorSecuritySchemes(server);
   return server;
+}
+
+/**
+ * OpenAI reads `securitySchemes` as a top-level tool field and keeps
+ * `_meta.securitySchemes` only as a back-compat mirror. The SDK's registerTool
+ * has no top-level slot, so wrap the tools/list handler it installed and copy
+ * the field up. Touches only the list output; tool dispatch is unchanged.
+ */
+function mirrorSecuritySchemes(server: McpServer): void {
+  type Handler = (req: unknown, extra: unknown) => Promise<{ tools: Array<Record<string, unknown>> }> | { tools: Array<Record<string, unknown>> };
+  const handlers = (server.server as unknown as { _requestHandlers?: Map<string, Handler> })._requestHandlers;
+  const original = handlers?.get("tools/list");
+  if (!handlers || !original) return;
+  handlers.set("tools/list", async (req, extra) => {
+    const res = await original(req, extra);
+    return {
+      ...res,
+      tools: res.tools.map((t) => {
+        const schemes = (t._meta as Record<string, unknown> | undefined)?.securitySchemes;
+        return schemes ? { ...t, securitySchemes: schemes } : t;
+      }),
+    };
+  });
+}
+
+/** ChatGPT's anonymized per-user id ("openai/subject"), when the request carries one. */
+export function subjectOf(extra: unknown): string | null {
+  const meta = (extra as { _meta?: Record<string, unknown> } | undefined)?._meta;
+  const s = meta?.["openai/subject"];
+  return typeof s === "string" && s.length > 0 && s.length <= 200 ? s : null;
 }

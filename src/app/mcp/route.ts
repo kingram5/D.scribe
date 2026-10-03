@@ -4,7 +4,6 @@ import { checkUserAccess } from "@/lib/auth";
 import { chatgptFlags, protectedResourceMetadataUrl } from "@/lib/chatgpt-app/config";
 import { buildMcpServer, defaultDeps } from "@/lib/chatgpt-app/server";
 import { bearerFrom, SupabaseTokenVerifier, TokenError } from "@/lib/chatgpt-app/token";
-import { sha256 } from "@/lib/book-plan/persist";
 import { PlanStore } from "@/lib/book-plan/persist";
 import { after } from "next/server";
 
@@ -23,12 +22,6 @@ function challenge(error: string, description: string, status = 401): NextRespon
       },
     }
   );
-}
-
-function anonKeyFor(req: NextRequest): string {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  // Hashed so raw IPs never reach the rate-limit table.
-  return sha256(`chatgpt-anon:${ip}`).slice(0, 24);
 }
 
 async function handle(req: NextRequest): Promise<Response> {
@@ -56,7 +49,9 @@ async function handle(req: NextRequest): Promise<Response> {
     }
   }
 
-  const deps = defaultDeps(identity, anonKeyFor(req));
+  // Anonymous callers are rate-limited by ChatGPT's per-user subject id (read
+  // per tool call in server.ts), not by IP: all ChatGPT traffic shares OpenAI's IPs.
+  const deps = defaultDeps(identity);
   const server = buildMcpServer(deps);
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);

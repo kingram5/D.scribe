@@ -10,6 +10,7 @@ import { PLAN_LIMITS, type BookPlan } from "@/lib/book-plan/schema";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import { chatgptFlags, protectedResourceMetadataUrl, siteUrl } from "./config";
 import { track } from "./events";
+import { logger } from "@/lib/logger";
 
 /**
  * MCP tool handlers for the D.scribe ChatGPT app. Transport-free and
@@ -56,9 +57,16 @@ export interface ToolDeps {
   ink: InkPort;
   generate?: typeof generatePlan;
   rateLimit: (key: string, limit: number) => Promise<boolean>;
-  /** Anonymous rate-limit bucket, e.g. derived from the client IP. */
-  anonKey: string;
+  /**
+   * ChatGPT's anonymized per-user id (`_meta["openai/subject"]`) for unlinked
+   * callers. Client IPs are useless here: every ChatGPT user reaches /mcp from
+   * OpenAI's servers, so an IP bucket would be one shared bucket.
+   */
+  anonSubject: string | null;
 }
+
+/** Anonymous caps: per ChatGPT subject, plus one global ceiling sized to storage cost. */
+export const ANON_LIMITS = { perSubjectPerMin: 10, globalPerMin: 120 } as const;
 
 export const WIDGET_URI = "ui://dscribe/book-plan-v1.html";
 
@@ -189,8 +197,11 @@ export async function previewBookPlan(raw: PreviewInput, deps: ToolDeps): Promis
   if (!linked && !chatgptFlags.anonPreview()) {
     return errorResult("auth_required", "Connect your D.scribe account to build a book plan.");
   }
-  const bucket = deps.identity ? `chatgpt-preview:${deps.identity.userId}` : `chatgpt-preview-anon:${deps.anonKey}`;
-  if (!(await deps.rateLimit(bucket, linked ? 20 : 5))) {
+  const allowed = deps.identity
+    ? await deps.rateLimit(`chatgpt-preview:${deps.identity.userId}`, 20)
+    : (await deps.rateLimit("chatgpt-preview-anon:global", ANON_LIMITS.globalPerMin)) &&
+      (deps.anonSubject ? await deps.rateLimit(`chatgpt-preview-anon:${deps.anonSubject}`, ANON_LIMITS.perSubjectPerMin) : true);
+  if (!allowed) {
     return errorResult("rate_limited", "Too many plan previews in a short time. Try again in a minute.");
   }
 
@@ -293,8 +304,7 @@ async function generateWithInk(
   if (!hold.allowed || !hold.reservationId) {
     return errorResult(
       "insufficient_ink",
-      `${hold.reason ?? "Not enough Ink for this."} Nothing was charged. You can draft the plan here for free, or check your balance in D.scribe.`,
-      { balance_url: `${siteUrl()}/settings` }
+      `${hold.reason ?? "Not enough Ink for this."} Nothing was charged. The plan can still be drafted here at no cost.`
     );
   }
   const reservationId = hold.reservationId;
@@ -334,7 +344,11 @@ async function generateWithInk(
     await deps.ink.settle(reservationId, result.usage).catch(() => {});
     throw err;
   }
-  await deps.ink.settle(reservationId, result.usage);
+  // The plan is already delivered and stored: a billing hiccup is a loud log
+  // line, never an error to the user (same rule as /api/outline).
+  await deps.ink.settle(reservationId, result.usage).catch((err) =>
+    logger.error("chatgpt-app: Ink settle failed after a delivered plan", { route: "/mcp", userId: identity.userId, error: err })
+  );
   track("preview_completed", { mode: args.mode, linked: true, chapters: result.plan.chapters.length, dscribe_model: true });
   return previewPayload(result.plan, stored, result.warnings, source?.segments ?? [], true);
 }

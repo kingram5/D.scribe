@@ -1,6 +1,6 @@
 # Tool contracts
 
-All tools: annotations set explicitly (`openWorldHint: false`, `destructiveHint: false` everywhere). Errors return `isError: true` and `structuredContent.error = { code, message, retryable? }`.
+All tools: `securitySchemes` emitted top-level and mirrored in `_meta` (verified on the wire in mcp-server.test). Annotations set explicitly (`openWorldHint: false`, `destructiveHint: false` everywhere). Errors return `isError: true` and `structuredContent.error = { code, message, retryable? }`.
 
 Error codes: `auth_required` (with `_meta["mcp/www_authenticate"]`), `access_denied`, `not_found`, `preview_expired`, `already_saved`, `insufficient_ink`, `invalid_input`, `rate_limited`, `generation_unavailable`, `plan_required`, `feature_disabled`, `conflict`, `internal`.
 
@@ -16,7 +16,7 @@ Error codes: `auth_required` (with `_meta["mcp/www_authenticate"]`), `access_den
   - `source` without a plan → returns numbered segments (`plan_required`, not an error) so ChatGPT can draft and cite.
   - `use_dscribe_model` → linked + `CHATGPT_APP_PAID_GENERATION` + Ink reservation; D.scribe's model drafts/refines.
 - **Output:** `{preview_id, claim_token, expires_at, saved:false, plan, warnings[], source_segment_count}`; `_meta.segments` feeds the card's source quotes.
-- **Limits:** 20/min linked, 5/min anonymous (IP-hash bucket). Duration: <1 s without the model; ~20-60 s with it.
+- **Limits:** 20/min linked; anonymous 10/min per `openai/subject` plus 120/min across all anonymous callers. Duration: <1 s without the model; ~20-60 s with it.
 - **Billing:** only `use_dscribe_model`; reserved first, settled once with actual tokens; a pre-reply failure releases the hold.
 - **Retry:** each call creates a new preview; safe.
 

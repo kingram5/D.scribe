@@ -31,7 +31,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--a
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
   var rpcId=0, pending={};
   function bridge(method,params){return new Promise(function(res,rej){var id=++rpcId;pending[id]={res:res,rej:rej};window.parent.postMessage({jsonrpc:"2.0",id:id,method:method,params:params},"*");});}
-  window.addEventListener("message",function(e){var m=e.data;if(!m||m.jsonrpc!=="2.0")return;
+  window.addEventListener("message",function(e){if(e.source!==window.parent)return;var m=e.data;if(!m||m.jsonrpc!=="2.0")return;
     if(m.id&&pending[m.id]){(m.error?pending[m.id].rej:pending[m.id].res)(m.error||m.result);delete pending[m.id];return;}
     if(m.method==="ui/notifications/tool-result"&&m.params){ingest(m.params.structuredContent,m.params._meta);}
   });
@@ -43,6 +43,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--a
   function segText(id){for(var i=0;i<segments.length;i++)if(segments[i].id===id)return segments[i].text;return "";}
   function render(){
     if(!data){return;}
+    if(data.error&&data.error.code==="plan_required"){app.innerHTML='<p class="meta" role="status">Reading your material and drafting the plan...</p>';return;}
     if(data.error){app.innerHTML='<h1>Book plan</h1><p>'+esc(data.error.message)+'</p>';return;}
     var plan=data.plan; if(!plan){app.innerHTML='<p class="meta">No plan in this result.</p>';return;}
     var label=plan.input_mode==="idea"?"Provisional: nothing here is quoted from you yet":plan.input_mode==="import"?"Imported as you wrote it":"Built from the material you shared";

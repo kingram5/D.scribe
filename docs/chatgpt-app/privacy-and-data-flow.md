@@ -17,7 +17,7 @@ Only what the user shares with a tool call: pasted transcript or notes, an outli
 
 ## Not stored or logged
 
-Access tokens, claim tokens, emails, titles and any manuscript or source text never enter analytics or routine logs (`events.ts` drops every property not on a content-free allow-list; tested). Rate limiting for anonymous calls uses a hashed IP.
+Access tokens, claim tokens, emails, titles and any manuscript or source text never enter analytics or routine logs (`events.ts` drops every property not on a content-free allow-list; tested). Rate limiting for anonymous calls uses ChatGPT's anonymized `openai/subject` id (not stored anywhere but the rate-limit counter key) plus a global ceiling.
 
 ## Disconnect and deletion
 

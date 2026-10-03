@@ -7,14 +7,14 @@ Nothing here has been run against production. Each step names who does it.
 1. **Apply migration 032** (owner, Supabase SQL editor or MCP on the owner's word). Additive only: new tables, functions, one nullable column. Back up first with a Supabase snapshot. Verify:
    `select proname from pg_proc where proname in ('save_book_plan','replace_project_outline','purge_expired_book_plans');` returns 3 rows.
 2. **Merge the branch.** With all flags unset, the only live change is `/api/outline` using the one-transaction swap (it falls back to the old write if 032 is missing) and the Settings "Connected apps" card (hidden until a grant exists).
-3. **Enable Supabase OAuth server** (owner, dashboard: Authentication → OAuth Server):
+3. **Enable Supabase OAuth server** (owner, dashboard: Authentication → OAuth Server). Public beta since Nov 2025, available on the Free plan at no extra charge; linked ChatGPT users count toward monthly active users (https://github.com/supabase/supabase/pull/49753). Beta means behavior can change; re-verify before launch.
    - Enable the OAuth 2.1 server.
    - Authorization path: `/oauth/consent` with site URL `https://www.d-scribe.app`.
    - Enable dynamic client registration (ChatGPT registers itself), or pre-register ChatGPT and put its client id in `CHATGPT_APP_ALLOWED_CLIENT_IDS`.
    - Allowed redirect: `https://chatgpt.com/connector_platform_oauth_redirect` (plus the exact URI shown on the ChatGPT app management page).
    - Check the JWT signing setup. If ChatGPT requires `aud` = the resource URL, add a custom access-token hook that sets it, then set `CHATGPT_APP_EXPECTED_AUDIENCE`.
 4. **Set Vercel env (Production)**: `CHATGPT_APP_MCP=true`, `CHATGPT_APP_RESOURCE_URL=https://www.d-scribe.app/mcp`. Leave `ANON_PREVIEW`, `PAID_GENERATION` and `WRITES` off for the first connection test, then turn on one at a time.
-5. **Developer-mode connection** (owner's ChatGPT account): add `https://www.d-scribe.app/mcp` as a connector, link the account, run the demo script in `submission.md`.
+5. **Developer-mode connection** (owner's ChatGPT account): add exactly `https://www.d-scribe.app/mcp` as a connector (the bare domain redirects to www, and MCP clients often do not follow a redirect on a POST), link the account, run the demo script in `submission.md`.
 6. **Submission** (owner, after org verification on the OpenAI Platform dashboard).
 
 Preview deployments share the production database and live Stripe. Do not set any `CHATGPT_APP_*` flag on Preview without pointing it at a separate database.

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildMcpServer } from "@/lib/chatgpt-app/server";
@@ -45,7 +46,7 @@ describe("MCP surface", () => {
     db: {} as never,
     ink: { reserve: async () => ({ allowed: false }), settle: async () => {}, release: async () => {} },
     rateLimit: async () => true,
-    anonKey: "k",
+    anonSubject: null,
   };
 
   it("lists the five tools with explicit annotations and auth schemes", async () => {
@@ -59,6 +60,13 @@ describe("MCP surface", () => {
       expect(t.annotations?.destructiveHint).toBe(false);
       expect(Array.isArray((t._meta as Record<string, unknown>)?.securitySchemes)).toBe(true);
     }
+    // OpenAI reads securitySchemes top-level; _meta is only the back-compat mirror.
+    // Read the raw wire result: the SDK client's typed listTools() strips unknown fields.
+    const raw = await client.request({ method: "tools/list" }, z.object({ tools: z.array(z.looseObject({ name: z.string() })) }));
+    const top = raw.tools.map((t) => (t as { securitySchemes?: unknown }).securitySchemes);
+    expect(top.every((s) => Array.isArray(s))).toBe(true);
+    const rawSave = raw.tools.find((t) => t.name === "save_book_plan") as unknown as { securitySchemes: Array<{ type: string }> };
+    expect(rawSave.securitySchemes.map((s) => s.type)).toEqual(["oauth2"]);
     const save = tools.find((t) => t.name === "save_book_plan")!;
     expect(save.annotations?.readOnlyHint).toBe(false);
     expect(JSON.stringify(save.inputSchema)).not.toMatch(/user_id/); // identity never comes from args

@@ -27,7 +27,7 @@
 - [ ] Token validation, scopes, revocation, redirects, ownership: claim policy + ownership tested; **BLOCKED** real token round trip and revocation against Supabase.
 - [x] Cross-account project, preview-claim access denied (tool + SQL tests). No job access exists to test.
 - [x] Ink and provider failures have defined settlement (reserve → settle once with real usage; release on pre-reply failure).
-- [x] Anonymous allowance has abuse/spend controls (no model spend, flag, IP-hash rate limit, size caps, 48 h expiry).
+- [x] Anonymous allowance has abuse/spend controls (no model spend, flag, per-`openai/subject` limit + global ceiling, size caps, 48 h expiry).
 - [x] Retention, expiry, disconnect, deletion documented and implemented (purge function, cascades, Connected apps).
 - [x] Secrets, tokens and manuscript text excluded from analytics/logs (sanitizer test).
 
@@ -36,7 +36,7 @@
 - [x] Long operations: synchronous within 120 s by design; documented decision.
 - [x] Structured errors, rate limits, input limits, recovery.
 - [x] Feature flags, monitoring events, cleanup, rollback documented.
-- [x] tsc, lint (changed files), tests pass. Build: see PR.
+- [x] tsc, lint (changed files), full test suite (443 passing, 71 of them new), `bun install --frozen-lockfile` and production build pass locally. Live smoke on a local production server: discovery JSON, 5 tools listed, junk bearer → 401 + `WWW-Authenticate`, consent link keeps `authorization_id` through login.
 - [ ] Browser journeys verified: **BLOCKED** on OAuth server + flags in a safe environment.
 - [ ] Real ChatGPT integration: **BLOCKED** (owner's ChatGPT developer mode + deployed endpoint).
 - [x] Malicious source instructions cannot change identity/permissions (fenced as data; no identity in args).
@@ -49,12 +49,12 @@
 - [x] No fabricated testimonials, endorsements, listing or recommendation claims.
 - [ ] Directory description, prompts, demo, reviewer instructions: drafted in `submission.md`; screenshots **BLOCKED** on live connection; demo account not created.
 - [ ] Support/privacy documents match data handling: policy additions drafted, **owner approval** needed before publishing.
-- [x] Observable analytics and attribution limits documented (no recommendation impressions available).
+- [ ] Observable analytics: preview requested/completed/failed and plan saved are emitted; `link_started`, `link_completed` and `handoff_opened` are defined but **not instrumented** yet (consent page and project page). Activation is measurable now through `projects.created_via = 'chatgpt'`. No recommendation impressions exist to measure.
 - [x] Beta script and feedback form drafted; no outreach done.
 
 ## Final delivery
 
-- [x] Reviewable branch supplied (PR opened from the compare link; no `gh` CLI on the build box).
+- [x] Reviewable branch pushed with a compare link; the PR itself is opened by the owner from that link (no `gh` CLI on the build box).
 - [x] Verification results supplied (`testing.md`).
 - [x] Limitations and blocked live checks listed (this file).
 - [x] Owner steps listed without secrets (`deployment.md`).

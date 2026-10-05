@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import KeepAwakeControl from "./KeepAwakeControl";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getGenerationBusy, subscribeGenerationBusy } from "@/lib/generation-guard";
@@ -542,6 +543,10 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 );
               })}
             </ol>
+          )}
+
+          {(!!busy || ["analysis", "generate", "review", "editor"].includes(currentStep ?? "")) && (
+            <KeepAwakeControl running={!!busy} />
           )}
 
           {isMobile && busy && (

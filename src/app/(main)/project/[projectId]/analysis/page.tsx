@@ -406,7 +406,7 @@ export default function AnalysisPage() {
       )}
       <div style={{ padding: "0 40px 40px" }}>
         {/* Tab bar */}
-        <div data-tut="analysis-tabs" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div data-tut="analysis-tabs" className="ds-analysis-tabs" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {[
             { key: "outline" as const, label: `Outline (${data?.chapters?.length || 0} chapters)` },
             { key: "voice" as const, label: "Voice Profile" },

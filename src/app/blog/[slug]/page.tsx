@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 export const revalidate = 3600;
 
@@ -62,16 +63,19 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <div style={{ position: "fixed", top: "10%", right: "5%", width: "30vw", height: "30vw", background: "rgba(193,122,71,0.06)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
 
       {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
+      <nav className="ds-touch-links" style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: "#C17A47", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "var(--font-playfair), var(--font-lora), serif", fontSize: 20, paddingTop: 2 }}>D.</div>
             <span style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontWeight: 600, fontSize: 18, color: "#F9F7F2" }}>scribe</span>
           </Link>
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <div className="ds-pubnav-desktop" style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link href="/blog" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, color: "#A89F94", textDecoration: "none" }}>← Blog</Link>
           </div>
-          <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Get Started</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Get Started</Link>
+            <PublicMobileMenu />
+          </div>
         </div>
       </nav>
 
@@ -115,6 +119,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <p style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(20px, 3vw, 26px)", fontStyle: "italic", color: "#F9F7F2", marginBottom: 12 }}>Ready to write your book?</p>
           <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, color: "#A89F94", marginBottom: 28, lineHeight: 1.6 }}>D. scribe turns your voice into a manuscript — no writing required.</p>
           <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 15, fontWeight: 600, color: "#fff", background: "#C17A47", padding: "13px 32px", borderRadius: 9999, textDecoration: "none", display: "inline-block" }}>Start for free</Link>
+          <div style={{ marginTop: 14 }}>
+            <Link href="/pricing" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#D98B58", textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>See pricing &rarr;</Link>
+          </div>
         </div>
       </article>
     </div>

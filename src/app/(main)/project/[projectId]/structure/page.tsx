@@ -263,6 +263,8 @@ export default function StructurePage() {
               }}>{numChapters}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button
+                  className="ds-stepper-btn"
+                  aria-label="One more chapter"
                   onClick={() => { touch(); setNumChapters(Math.min(30, numChapters + 1)); }}
                   style={{
                     width: 40, height: 32,
@@ -278,6 +280,8 @@ export default function StructurePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 ><ChevronUp /></button>
                 <button
+                  className="ds-stepper-btn"
+                  aria-label="One fewer chapter"
                   onClick={() => { touch(); setNumChapters(Math.max(1, numChapters - 1)); }}
                   style={{
                     width: 40, height: 32,
@@ -343,6 +347,8 @@ export default function StructurePage() {
               }}>{wordsPerChapter.toLocaleString()}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button
+                  className="ds-stepper-btn"
+                  aria-label="250 more words per chapter"
                   onClick={() => { touch(); setWordsPerChapter(Math.min(10000, wordsPerChapter + 250)); }}
                   style={{
                     width: 40, height: 32,
@@ -358,6 +364,8 @@ export default function StructurePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 ><ChevronUp /></button>
                 <button
+                  className="ds-stepper-btn"
+                  aria-label="250 fewer words per chapter"
                   onClick={() => { touch(); setWordsPerChapter(Math.max(500, wordsPerChapter - 250)); }}
                   style={{
                     width: 40, height: 32,

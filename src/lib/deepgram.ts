@@ -31,6 +31,9 @@ export async function transcribeAudio(
     { data: new Uint8Array(audioBuffer), contentType: mimeType },
     {
       model: "nova-3",
+      // Nova-3 is multilingual. If language is omitted it auto-detects, and
+      // English speech (especially short studio turns) can come back as Arabic.
+      language: "en",
       smart_format: true,
       diarize: true,
       paragraphs: true,
@@ -106,6 +109,7 @@ export async function transcribeUtterance(
     { data: new Uint8Array(audioBuffer), contentType: mimeType },
     {
       model: "nova-3",
+      language: "en",
       smart_format: true,
       punctuate: true,
       // Same retention opt-out as full transcription: brainstorm answers are

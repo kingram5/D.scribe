@@ -1089,10 +1089,13 @@ input[type=range] {
 
 /* ========== Landing V2 Mobile ========== */
 @media (max-width: 768px) {
-  /* Navbar */
+  /* Navbar — compact glass bar so the wordmark stays readable over the photo */
   .landing-v2 nav {
-    padding: 0 20px !important;
-    height: 60px !important;
+    height: 64px !important;
+    padding: 0 16px !important;
+    background: rgba(26, 20, 14, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
   }
   .landing-v2 nav > div:last-child > a:first-child {
     display: none !important;
@@ -1101,76 +1104,93 @@ input[type=range] {
     gap: 12px !important;
   }
 
-  /* Hero — switch from absolute to stacked flex */
+  /* Hero — stacked like the phone mock: headline, copy, CTA, then a quiet tagline.
+     The cinematic overlay (waveform + centered tagline, author hidden) made the
+     first screen look like a cropped desktop poster. */
+  .landing-v2 nav > div:first-child { margin-left: 0 !important; gap: 6px !important; }
+  .landing-v2 nav > div:first-child > span:first-child { font-size: 28px !important; }
+  .landing-v2 nav > div:first-child > span:last-child { font-size: 18px !important; }
+
   .landing-v2 .lv2-hero {
     height: auto !important;
-    min-height: 100svh !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding: 80px 24px 40px !important;
+    text-align: center !important;
+    padding: 80px 16px 28px !important;
+    gap: 16px !important;
     position: relative !important;
   }
 
-  /* Hide desktop-layout hero elements */
-  .lv2-hero-subarrow,
-  .lv2-hero-author {
+  .lv2-hero-video { opacity: 0.5 !important; }
+  .lv2-hero-overlay {
+    background-image: linear-gradient(to bottom, rgba(26, 20, 14, 0.28), rgba(26, 20, 14, 0.62)) !important;
+  }
+
+  .lv2-hero-waveform,
+  .lv2-hero-subarrow {
     display: none !important;
   }
 
-  /* Waveform sits in the upper third so the tagline can own the middle */
-  .lv2-hero-waveform {
-    position: absolute !important;
-    top: 14% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 100% !important;
-    height: 22vh !important;
-    min-height: 120px !important;
-    max-height: 180px !important;
+  .lv2-hero-author {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    order: 1 !important;
     z-index: 2 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    max-width: 560px !important;
+    width: 100% !important;
   }
-
-  /* Tagline: vertical middle of the first screen — visible on open */
-  .lv2-hero-tagline {
-    position: absolute !important;
-    top: 48% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin-top: 0 !important;
-    text-align: center !important;
-    width: min(100%, 360px) !important;
-    padding: 0 16px !important;
-    z-index: 3 !important;
+  .lv2-hero-author h1 {
+    font-size: 42px !important;
+    margin: 0 !important;
   }
-  .lv2-hero-tagline > div:first-child {
-    font-size: 34px !important;
-    margin-bottom: 8px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(2) {
-    font-size: 17px !important;
-    margin-top: 0 !important;
-  }
-  .lv2-hero-tagline > div:nth-child(3) {
+  .lv2-author-copy {
+    margin: 12px 0 8px !important;
     font-size: 16px !important;
   }
+  .lv2-author-cta { margin-top: 4px; }
+  .lv2-hero-price {
+    display: flex !important;
+    margin: 4px 0 0 !important;
+  }
 
-  /* Stats footer — reset to simple centered row */
+  .lv2-hero-tagline {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    order: 2 !important;
+    z-index: 2 !important;
+    width: auto !important;
+    max-width: 360px !important;
+    padding: 4px 12px 0 !important;
+    margin-top: 0 !important;
+  }
+  .lv2-tagline-main { font-size: 22px !important; margin-bottom: 4px !important; }
+  .lv2-tagline-sub { display: none !important; }
+  .lv2-tagline-kick { font-size: 16px !important; }
+
+  /* Stats footer — stacked band under the hero, on the first phone screen */
   .lv2-hero-stats {
     position: relative !important;
     bottom: auto !important;
     flex-direction: column !important;
     align-items: center !important;
     gap: 20px !important;
-    padding: 24px 20px !important;
-    margin-top: 32px !important;
+    padding: 28px 20px !important;
+    margin-top: 0 !important;
   }
   .lv2-hero-stats > div {
     margin-left: 0 !important;
+    text-align: center !important;
   }
-  .lv2-hero-stats > div > div {
+  .lv2-hero-stats > div > div:first-child {
     margin-left: 0 !important;
     font-size: 32px !important;
   }
@@ -1420,3 +1440,305 @@ input[type=range] {
   text-transform: uppercase;
 }
 .ds-stamp--live { color: #B3352C; }
+
+/* ========== Mobile loops pass (BMO, 2026-09-29) ==========
+   Phone-only fixes from the measured mobile audit: nothing past the right edge,
+   every control at least 44x44, nothing painted over. Desktop is untouched. */
+@media (max-width: 768px) {
+  /* On phones the app shell drops its 3D perspective (see (main)/layout.tsx), which
+     also dropped it under the fixed background glow (.nodum-env, z-index 0) on pages
+     whose content isn't positioned: Settings, Partner and Admin rendered as an empty
+     dark screen. position: relative keeps it painting above the glow without creating
+     a stacking context, so modals and the bottom step nav behave exactly as before. */
+  .ds-perspective-shell { position: relative; }
+
+  /* Top bar: logo link, account button and menu button get full-size touch targets. */
+  .ds-os-bar > a { min-height: 44px; }
+  .ds-os-bar .show-mobile > button,
+  .ds-user-menu-btn { min-width: 44px; min-height: 44px; }
+
+  /* Step rail: each marker's link is stretched to a 44px-tall, evenly shared cell;
+     the 24px circles themselves don't change. */
+  .ds-header-rail .ds-rail-markers { gap: 0 !important; justify-content: space-between; }
+  .ds-header-rail .ds-rail-markers > a,
+  .ds-header-rail .ds-rail-markers > span,
+  .ds-header-rail .ds-rail-markers > .ds-rail-help { flex: 1 1 0; min-height: 44px; display: flex !important; align-items: center; justify-content: center; }
+  .ds-rail-back { width: 44px !important; height: 44px !important; }
+
+  /* Small text links (marketing navs, legal footers, compare links) become 44px rows. */
+  .ds-touch-links a,
+  .ds-touch-links button { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* Pricing: three plan cards side by side overflowed the phone and hid Pro and
+     Premium off the right edge. Stack them. */
+  .pricing-tiers { grid-template-columns: 1fr !important; max-width: 440px; margin-left: auto; margin-right: auto; }
+
+  /* Landing book carousel: the side books sat ~650px past the right edge and
+     stretched the whole page to 1,370px wide on phones. Clip sideways only. */
+  .lbook-carousel { overflow-x: clip; }
+
+  /* Shared buttons and pills */
+  .nodum-btn, .nodum-btn-ghost { min-height: 44px; }
+  .bs-pill { min-height: 44px !important; }
+  .ds-add-more { min-height: 44px; display: inline-flex; align-items: center; }
+  .ds-step-row { min-height: 44px; }
+  .ds-structure-card button,
+  .ds-new-project form button,
+  .cinematic-root main button,
+  .ds-transcript-layout aside button { min-height: 44px !important; }
+
+  /* Transcript: one-click segment delete. Border hidden so the bigger box doesn't
+     read as a bigger button; the glyph stays where it was. */
+  .ds-seg-delete { width: 44px !important; height: 44px !important; margin-left: -11px; border-color: transparent !important; }
+  /* Transcript bottom player: 80 fixed waveform bars pushed the speed and volume
+     buttons off the right edge. Let the waveform shrink and clip instead. */
+  .ds-transcript-player { flex-wrap: wrap; height: auto !important; min-height: 0 !important; padding: 6px 8px !important; gap: 2px 6px !important; justify-content: space-between; }
+  .ds-transcript-player .ds-player-wave { min-width: 0; overflow: hidden; flex: 1 1 100% !important; order: 5; }
+  .ds-transcript-player button { min-width: 44px; min-height: 44px; justify-content: center; }
+
+  /* Outline: "+ key point" */
+  .ds-add-keypoint { min-height: 44px !important; padding: 0 12px !important; }
+
+  /* Structure: +/- steppers */
+  .ds-stepper-btn { width: 44px !important; height: 44px !important; }
+
+  /* Project page: the stage card's stats row + "View Details" ran 190px off the edge. */
+  .ds-stage-footer { flex-wrap: wrap; gap: 16px; }
+  .ds-stage-footer > div:first-child { flex-wrap: wrap; gap: 16px 24px !important; }
+  /* Editor bottom bar: the rewrite prompt plus "Save Changes" didn't fit side by side
+     and Save ran off the right edge. Each gets its own row on phones. */
+  .ds-editor-actionbar { flex-wrap: wrap; padding: 10px 12px !important; gap: 8px !important; }
+  .ds-editor-actionbar > * { flex: 1 1 100% !important; min-width: 0; }
+  .ds-editor-actionbar input,
+  .ds-editor-actionbar button { min-height: 44px; }
+  /* Landing footer: the phone rule that pins the landing top bar to 60px
+     (.landing-v2 nav) also caught the two footer link navs, so their wrapped rows
+     spilled onto each other. Footer navs size to their content. */
+  .landing-v2 footer > nav { flex: 1 1 100%; height: auto !important; }
+  /* Upload: the intake cards' 1fr column grew to its widest child (16px past the
+     edge at 360). minmax(0, 1fr) lets the column shrink to the phone. */
+  .ds-intake { grid-template-columns: minmax(0, 1fr); }
+  .ds-intake > * { min-width: 0; }
+  /* Cookie banner: while it's open it sat on top of the last screen of every page
+     (footer links included). Room at the bottom lets that content scroll clear. */
+  /* (body is height:100%, so body padding sat inside the first screen; a block after
+     the last child is what actually extends the scroll.) */
+  body:has(> div[role="dialog"][aria-label="Cookie consent"])::after { content: ""; display: block; height: 280px; }
+  /* Book carousel: the prev/next arrows are placed at half the carousel's height,
+     which on a 360px phone landed them on top of the book dots. Centre them on the
+     book instead, and give the dots full-size targets. */
+  .lbook-carousel > .lbook-arrow { top: 180px !important; margin-top: 0 !important; }
+  .lbook-dots > button { min-width: 44px !important; height: 44px !important; }
+  /* Progress dots: 24px hit areas on a 14px pitch overlapped each other. */
+  .ds-step-dots-row { gap: 16px !important; }
+  /* ---- Round 2 (inline sizes beat the round-1 rules, so these carry !important) ---- */
+  /* Toggle switches: a transparent border grows the tap area to 64x44 while the
+     visible 44x24 track and its knob stay exactly where they were. */
+  .ds-switch { box-sizing: content-box !important; border: 10px solid transparent !important; background-clip: padding-box !important; border-radius: 22px !important; margin: -10px !important; }
+  /* Landing top bar: "Sign in" and "Get Started" wrapped onto two lines and sat
+     against the wordmark. Keep them on one line at finger size. */
+  .landing-v2 > nav > div:last-child { gap: 12px !important; }
+  .landing-v2 .lv2-nav-link { white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; }
+  .landing-v2 .lv2-pill-cta { white-space: nowrap; min-height: 44px; padding: 0 16px; font-size: 15px; }
+  /* Small text links in link rows are at least 44 wide too. */
+  .ds-touch-links a { min-width: 44px; justify-content: center; }
+  /* Buttons and chips whose inline size landed just under 44. */
+  .ds-new-project form button,
+  .ds-structure-card button,
+  .ds-analysis-tabs button,
+  .ds-settings button,
+  .ds-usage-btn,
+  .ds-quotes-btn,
+  .ds-read-chip,
+  .transcribe-btn,
+  .ds-project-split button { min-height: 44px !important; }
+  .ds-usage-btn { display: flex !important; align-items: center; justify-content: center; }
+  .ds-read-chip { min-width: 44px; }
+  /* Outline cards: the editable chapter and key-point titles are the tap target
+     for editing; give single-line titles a full row. */
+  .ds-editable-title { min-height: 44px !important; }
+  /* Outline toolbar: the one colour button left on phones (add a chapter). */
+  .ds-outline-toolbar .ds-tb-color--primary { width: 44px !important; height: 44px !important; }
+  /* Step guide: close and dots stay 44px. Action pills stay one line tall —
+     the last-slide trio used to wrap into tall ovals on phones. */
+  .ds-guide-close { width: 44px !important; height: 44px !important; }
+  .ds-guide-dots { gap: 0 !important; }
+  .ds-guide-dots > button { box-sizing: content-box !important; border: 18px solid transparent !important; background-clip: padding-box !important; }
+  .ds-guide-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .ds-guide-actions {
+    width: 100%;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  button.ds-guide-btn {
+    white-space: nowrap !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 0 16px !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto;
+  }
+  /* Only the long last-slide CTA goes full-width. Short labels (Next, Got it)
+     stay compact pills so they don't stretch into a second oblong. */
+  button.ds-guide-btn--block { flex: 1 1 100% !important; width: 100% !important; }
+  /* Upload cassette: the decorative glare layer was painted over the tape's buttons. */
+  .ds-cassette-wrap .btn-3d { position: relative; z-index: 2; }
+  .ds-guide-autoshow { min-height: 44px; }
+  .ds-editor-chapter-strip button { min-height: 44px !important; }
+  .ds-back-link { min-height: 44px; display: inline-flex; align-items: center; }
+  /* ---- Round 3 ---- */
+  /* Outline: enrichment chapter chips. */
+  .ds-enrich-chip { min-height: 44px !important; }
+  /* Dashboard shelf pager: with 14 shelf dots the prev/next arrows were squeezed to
+     40px wide on a 360px phone. Arrows keep their 46px; dots and gaps tighten. */
+  .bs-pager { gap: 12px !important; }
+  .bs-pager .bs-nav { flex-shrink: 0; }
+  .bs-pager .bs-dots { gap: 6px !important; }
+  /* ---- Design pass (Kyle's picks, 2026-09-29) ---- */
+  /* Project page: the 8 step dots can't each get a finger-sized target in ~280px,
+     and the step list right below links every step. Hidden on phones. */
+  .ds-step-dots-row { display: none !important; }
+  /* Dashboard shelf pager: 14 page dots on a phone. The 46px arrows already page
+     the shelf, so the dots go. */
+  .bs-pager .bs-dots { display: none !important; }
+  .bs-pager { justify-content: center; }
+  /* Public pages: the header's inline links move into the phone menu. */
+  .ds-pubnav-desktop { display: none !important; }
+  /* Step rail: the 8 numbered circles collapse into one "Step N of 8" button that
+     opens the full list. The inline counter moves into that button. */
+  .ds-header-rail .ds-rail-markers > .ds-rail-marker,
+  .ds-header-rail .ds-rail-counter { display: none !important; }
+  .ds-header-rail .ds-rail-markers { justify-content: space-between !important; gap: 8px !important; }
+  .ds-header-rail .ds-rail-markers > .ds-rail-help { flex: 0 0 44px !important; }
+  .ds-rail-stepbtn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+    border-radius: 9999px; border: 1px solid rgba(193,122,71,0.45); background: rgba(193,122,71,0.08);
+    color: #A05526; font: 700 12px/1 var(--font-manrope), sans-serif; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .ds-rail-steplist { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; }
+  .ds-rail-steplist__item {
+    display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px;
+    border-bottom: 1px solid var(--ds-divider, rgba(44,36,25,0.08)); text-decoration: none;
+    color: var(--text-primary, #2C2419); font: 500 15px/1.2 var(--font-manrope), sans-serif;
+  }
+  .ds-rail-steplist__item.is-locked { color: var(--text-tertiary, #716A53); opacity: 0.6; }
+  .ds-rail-steplist__num {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center;
+    justify-content: center; font: 700 11px/1 var(--font-geist-mono), ui-monospace, monospace;
+    border: 1px solid var(--ds-input-border, rgba(44,36,25,0.15)); color: var(--text-tertiary, #716A53);
+  }
+  .ds-rail-steplist__num.is-done { border-color: rgba(193,122,71,0.55); color: #A05526; }
+  .ds-rail-steplist__num.is-current { background: #C17A47; border-color: #C17A47; color: #F9F7F2; }
+
+  /* ---- Publisher-Ready phone polish (2026-09-30) ----
+     Previous loops caught classed controls. The draft/review/interview chrome
+     is mostly inline, so it sat on the step nav, under the top bar, or under 44px. */
+  .lined-paper {
+    padding: 1.5rem 1rem 1.25rem 1.25rem !important;
+    transform: none !important;
+  }
+
+  .ds-review-choice--floating {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    width: min(520px, calc(100vw - 24px)) !important;
+  }
+  .ds-review-choice__dismiss {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin: -8px -8px 0 0;
+  }
+  .ds-review-choice__actions { flex-direction: column; }
+  .ds-review-choice__actions button {
+    width: 100%; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .ds-reader-pane { padding-top: env(safe-area-inset-top); }
+  .ds-reader-chrome {
+    flex-wrap: wrap;
+    padding: 8px 12px !important;
+    row-gap: 8px;
+  }
+  .ds-reader-chrome button {
+    min-height: 44px; min-width: 44px; padding: 8px 14px !important;
+  }
+
+  .ds-picker-option, .ds-picker-btn { min-height: 44px; }
+  .ds-picker-option { width: 100%; display: block; }
+  .ds-picker-btn { padding: 10px 16px !important; }
+  .ds-picker-stage {
+    min-height: 0 !important;
+    align-content: start !important;
+  }
+
+  .ds-chapter-ready {
+    top: calc(max(24px, env(safe-area-inset-top)) + 64px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+  .ds-chapter-ready button {
+    min-height: 44px; min-width: 44px; padding: 0 12px !important;
+  }
+
+  .ds-gen-dock {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 12px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+
+  .ds-chapter-row { min-height: 44px; padding: 8px 4px !important; }
+  .ds-pr-cta { min-height: 44px; width: 100%; }
+  .ds-pr-btn { min-height: 44px; }
+  .ds-pr-actions { flex-direction: column; align-items: stretch !important; }
+  .ds-pr-actions .ds-pr-btn, .ds-pr-actions button { width: 100%; min-height: 44px; }
+  .ds-text-btn {
+    min-height: 44px; display: inline-flex; align-items: center;
+    padding: 0 4px !important;
+  }
+
+  .ds-outline-toolbar .ds-tb-undo,
+  .ds-outline-toolbar .ds-tb-redo {
+    width: 44px !important; height: 44px !important;
+  }
+
+  .ds-mobile-stepnav { gap: 8px; }
+  .ds-mobile-stepnav a,
+  .ds-mobile-stepnav button {
+    max-width: 44%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ds-mobile-stepnav .ds-label {
+    flex: 0 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .ds-chapter-footer > div {
+    width: 100%; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .ds-os-menu a, .ds-os-menu button { min-height: 44px; }
+}
+@media (min-width: 769px) {
+  .ds-rail-stepbtn, .ds-rail-steplist { display: none !important; }
+}
+/* The public phone menu is phone-only; the desktop header is unchanged. */
+@media (min-width: 769px) {
+  .ds-pubmenu { display: none !important; }
+}

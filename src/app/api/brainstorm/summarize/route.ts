@@ -1,3 +1,4 @@
+import { BRAINSTORM_SPEAKER_MAP } from "@/lib/speakers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
       segments,
       word_count: wordCount,
       speaker_count: 2,
+      // Brainstorm speakers are known (the author and T.H.E.O.): never ask about them.
+      speaker_map: BRAINSTORM_SPEAKER_MAP,
+      speakers_confirmed_at: new Date().toISOString(),
     })
     .select()
     .single();

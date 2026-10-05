@@ -7,6 +7,8 @@ import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
+import SpeakerLabelPanel from "@/components/transcript/SpeakerLabelPanel";
+import { speakerLabelsEnabled } from "@/lib/speakers";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
 const P = {
@@ -120,16 +122,27 @@ export default function TranscriptPage() {
   /* Per-paragraph editing: index into `merged`, plus the working text. */
   const [editingPara, setEditingPara] = useState<number | null>(null);
   const [paraDraft, setParaDraft] = useState("");
+  /* One-click segment delete (Kyle 9/28) keeps the previous segments for Undo. */
+  const [undoDelete, setUndoDelete] = useState<{ transcriptId: string; segments: TranscriptSegment[] } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /* Reading view (Kyle's note 7): "segments" keeps speakers, timestamps and the
      5-minute markers; "full" is the same text as continuous prose for a straight
      read-through. A view choice only — editing still writes back into segments. */
   const [view, setView] = useState<"segments" | "full">("segments");
+  const [insightsOpen, setInsightsOpen] = useState(true);
 
   const active = transcripts[activeIdx] ?? null;
   // Plain computation, not useMemo: an optional-chained dependency defeats the
   // React Compiler ("existing memoization could not be preserved") and it
   // auto-memoizes this anyway.
   const merged = active?.segments ? mergeSegments(active.segments) : [];
+  const labelsOn = speakerLabelsEnabled();
+  /** Display name for a raw speaker label, using the author's labels when set. */
+  const nameFor = (raw: string): string => {
+    const l = active?.speaker_map?.[raw];
+    if (!l) return speakerLabel(raw);
+    return l.role === "author" ? "Author" : l.name || speakerLabel(raw);
+  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -171,6 +184,25 @@ export default function TranscriptPage() {
     }));
   }, [merged]);
 
+  /** Re-read transcripts (speaker labels, confirmation) from the server. */
+  async function refreshTranscripts() {
+    const refreshed = await fetch(`/api/project/${projectId}`).then((r) => r.json());
+    setTranscripts(refreshed.transcripts || []);
+  }
+
+  /** Move one paragraph (a run of segments) to another speaker. */
+  async function reassignParagraph(fromIdx: number, toIdx: number, speaker: string) {
+    if (!active) return;
+    const reassign = [];
+    for (let i = fromIdx; i <= toIdx; i++) reassign.push({ index: i, speaker });
+    await fetch("/api/transcript-speakers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript_id: active.id, speaker_map: active.speaker_map ?? {}, reassign }),
+    });
+    await refreshTranscripts();
+  }
+
   /** PATCH segments + full_text + word_count together, then refresh from the server.
    *  Both text copies are always written from the SAME segment array, so the
    *  rendered view and the AI pipeline can never diverge again. */
@@ -189,6 +221,29 @@ export default function TranscriptPage() {
     });
     const refreshed = await fetch(`/api/project/${projectId}`).then((r) => r.json());
     setTranscripts(refreshed.transcripts || []);
+  }
+
+  /** Delete a whole paragraph (its run of segments) in one click; Undo restores it. */
+  async function deleteParagraph(paraIdx: number) {
+    if (!active || saving) return;
+    const para = merged[paraIdx];
+    if (!para) return;
+    const segments = active.segments || [];
+    setSaving(true);
+    setUndoDelete({ transcriptId: active.id, segments });
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndoDelete(null), 8000);
+    await persistSegments([...segments.slice(0, para.fromIdx), ...segments.slice(para.toIdx + 1)]);
+    setSaving(false);
+  }
+
+  async function undoLastDelete() {
+    if (!undoDelete || !active || active.id !== undoDelete.transcriptId) return;
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setSaving(true);
+    await persistSegments(undoDelete.segments);
+    setUndoDelete(null);
+    setSaving(false);
   }
 
   /** Save one edited paragraph back into the segments it was rendered from.
@@ -260,6 +315,16 @@ export default function TranscriptPage() {
       };
     });
     await persistSegments(nextSegments);
+    // A full edit re-spreads speakers by paragraph index, so labeled speakers
+    // need a second look before the next analysis.
+    if (active.speaker_map && Object.keys(active.speaker_map).length) {
+      await fetch("/api/transcript-speakers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript_id: active.id, action: "unconfirm" }),
+      });
+      await refreshTranscripts();
+    }
     setFullEditMode(false);
     setSaving(false);
   }
@@ -427,7 +492,15 @@ export default function TranscriptPage() {
           .ds-transcript-layout { flex-direction: column !important; }
           .ds-transcript-layout > aside { width: 100% !important; min-width: 100% !important; height: auto !important; max-height: 300px !important; overflow-y: auto !important; }
           .ds-transcript-layout > div:last-child { flex: 1 !important; }
+          /* Edit Transcript sits first in the side panel on a phone, so it's on
+             screen without scrolling inside the panel. */
+          .ds-tx-side { display: flex; flex-direction: column; }
+          .ds-tx-side > .ds-tx-edit { display: contents; }
+          .ds-tx-side > .ds-tx-edit > button { order: -2; margin-top: 12px; }
+          .ds-tx-side > .ds-tx-insights { order: -1; }
         }
+        .ds-tx-insights > summary::-webkit-details-marker { display: none; }
+        .ds-tx-insights:not([open]) .ds-tx-insights__chev { transform: rotate(-90deg); }
       `}</style>
       <div className="ds-transcript-layout" style={{
         display: "flex",
@@ -495,31 +568,25 @@ export default function TranscriptPage() {
           </div>
 
           {/* ── scrollable middle ── */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar">
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar ds-tx-side">
 
-            {/* insights */}
-            <div style={{ paddingTop: 20, paddingBottom: 16 }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 12,
+            {/* Insights & speakers: collapsible so a phone can fold it away; open by default. */}
+            <details open={insightsOpen} onToggle={(e) => setInsightsOpen(e.currentTarget.open)} className="ds-tx-insights" style={{ paddingTop: 16 }}>
+              <summary style={{
+                display: "flex", alignItems: "center", gap: 6, minHeight: 44, cursor: "pointer", listStyle: "none",
+                fontSize: 11, fontWeight: 600, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: P.sans,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: P.muted,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  fontFamily: P.sans,
-                }}>
-                  Insights
-                </span>
-              </div>
+                Insights &amp; speakers
+                <svg className="ds-tx-insights__chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: "auto" }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </summary>
+            {/* insights */}
+            <div style={{ paddingTop: 4, paddingBottom: 16 }}>
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -555,6 +622,11 @@ export default function TranscriptPage() {
                 </div>
               </div>
             </div>
+
+            {/* who is speaking (labels feed every later step) */}
+            {labelsOn && active && (active.segments?.length ?? 0) > 0 && (
+              <SpeakerLabelPanel key={`${active.id}:${active.speakers_confirmed_at ?? ""}`} transcript={active} onSaved={refreshTranscripts} />
+            )}
 
             {/* speakers */}
             {speakerStats.length > 0 && (
@@ -608,7 +680,7 @@ export default function TranscriptPage() {
                             {speakerInitial(s.speaker, s.idx)}
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 600, color: P.text, fontFamily: P.sans }}>
-                            {speakerLabel(s.speaker)}
+                            {nameFor(s.speaker)}
                           </span>
                         </div>
                         <span style={{ fontSize: 12, color: P.muted, fontFamily: P.mono }}>
@@ -637,6 +709,7 @@ export default function TranscriptPage() {
                 </div>
               </div>
             )}
+            </details>
 
             {/* transcript selector (if multiple) */}
             {transcripts.length > 1 && (
@@ -721,7 +794,7 @@ export default function TranscriptPage() {
             </div>
 
             {/* Edit transcript button */}
-            <div style={{ paddingBottom: 20 }}>
+            <div className="ds-tx-edit" style={{ paddingBottom: 20 }}>
               <button
                 onClick={() => {
                   // Build the editable text from SEGMENTS joined by blank lines,
@@ -1015,7 +1088,21 @@ export default function TranscriptPage() {
                           }}>
                             {formatTime(para.start)}
                           </span>
-                          {show && (
+                          {labelsOn && speakerStats.length > 1 ? (
+                            // Fix a paragraph the speaker detection got wrong.
+                            <select
+                              value={para.speaker}
+                              onChange={(e) => reassignParagraph(para.fromIdx, para.toIdx, e.target.value)}
+                              aria-label="Who said this paragraph"
+                              style={{
+                                fontSize: 10, fontFamily: P.mono, fontWeight: 600, color, background: "transparent",
+                                border: "1px solid transparent", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.04em",
+                                maxWidth: 90, cursor: "pointer",
+                              }}
+                            >
+                              {speakerStats.map((s) => <option key={s.speaker} value={s.speaker}>{nameFor(s.speaker)}</option>)}
+                            </select>
+                          ) : show && (
                             <span style={{
                               fontSize: 10,
                               fontFamily: P.mono,
@@ -1024,9 +1111,24 @@ export default function TranscriptPage() {
                               textTransform: "uppercase",
                               letterSpacing: "0.04em",
                             }}>
-                              {speakerLabel(para.speaker)}
+                              {nameFor(para.speaker)}
                             </span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => deleteParagraph(i)}
+                            disabled={saving}
+                            aria-label="Delete this segment"
+                            title="Delete this segment"
+                            className="ds-seg-delete"
+                            style={{
+                              marginTop: 4, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+                              borderRadius: 6, border: `1px solid ${P.border}`, background: "transparent", color: P.muted,
+                              cursor: saving ? "wait" : "pointer", fontSize: 13, lineHeight: 1, padding: 0,
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
 
                         {/* timeline line */}
@@ -1173,7 +1275,7 @@ export default function TranscriptPage() {
           )}
 
           {/* ═══════ BOTTOM AUDIO PLAYER BAR ═══════ */}
-          <div style={{
+          <div className="ds-transcript-player" style={{
             height: 96,
             minHeight: 96,
             background: P.card,
@@ -1186,7 +1288,7 @@ export default function TranscriptPage() {
             {/* playback controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {/* rewind */}
-              <button style={{
+              <button aria-label="Rewind" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -1201,7 +1303,7 @@ export default function TranscriptPage() {
                 </svg>
               </button>
               {/* play */}
-              <button style={{
+              <button aria-label="Play" style={{
                 width: 40,
                 height: 40,
                 borderRadius: "50%",
@@ -1217,7 +1319,7 @@ export default function TranscriptPage() {
                 </svg>
               </button>
               {/* forward */}
-              <button style={{
+              <button aria-label="Skip forward" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -1239,7 +1341,7 @@ export default function TranscriptPage() {
             </span>
 
             {/* waveform + scrubber */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
+            <div className="ds-player-wave" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
               {/* waveform bars */}
               <div style={{ display: "flex", alignItems: "end", gap: 2, height: 28 }}>
                 {Array.from({ length: 80 }).map((_, i) => {
@@ -1292,7 +1394,7 @@ export default function TranscriptPage() {
 
             {/* speed + volume */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button style={{
+              <button aria-label="Playback speed" style={{
                 background: P.inputBg,
                 border: `1px solid ${P.border}`,
                 borderRadius: 6,
@@ -1305,7 +1407,7 @@ export default function TranscriptPage() {
               }}>
                 1.5x
               </button>
-              <button style={{
+              <button aria-label="Volume" style={{
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -1323,6 +1425,19 @@ export default function TranscriptPage() {
           </div>
         </div>
       </div>
+      {undoDelete && (
+        <div role="status" style={{
+          position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 60,
+          display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", borderRadius: 12,
+          background: "var(--text-primary)", color: "var(--ds-card-bg, #fff)", fontSize: 13, fontFamily: P.sans,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+        }}>
+          Segment deleted
+          <button type="button" onClick={undoLastDelete} disabled={saving} style={{
+            border: "none", background: "transparent", color: "#E8A06E", fontWeight: 700, cursor: "pointer", fontSize: 13, padding: 0,
+          }}>Undo</button>
+        </div>
+      )}
     </PageShell>
   );
 }

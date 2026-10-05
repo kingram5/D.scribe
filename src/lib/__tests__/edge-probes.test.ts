@@ -625,3 +625,13 @@ describe("extractExcerptsForChapter: LLM-supplied quote handling", () => {
     expect(out.split("ALPHA").length - 1).toBe(1);
   });
 });
+
+describe("auth config detection", () => {
+  it("rejects missing, placeholder, and non-supabase hosts", async () => {
+    const { isAuthConfigured } = await import("../supabase");
+    expect(isAuthConfigured(undefined, undefined)).toBe(false);
+    expect(isAuthConfigured("https://placeholder.supabase.co", "placeholder-anon-key")).toBe(false);
+    expect(isAuthConfigured("https://imjkauxdlwfrblrgidgj.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.")).toBe(true);
+    expect(isAuthConfigured("http://evil.example", "key")).toBe(false);
+  });
+});

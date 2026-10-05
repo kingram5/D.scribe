@@ -7,13 +7,15 @@ import { Project, AudioUpload, Transcript, KeyPoint, Chapter } from "@/types";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
-import { PIPELINE, getActiveStep, isStepNavigable } from "@/lib/pipeline-step";
+import { PIPELINE, getActiveStep, isStepNavigable, PIPELINE_V2, PIPELINE_V2_COUNTED, getActiveStepV2, isStepNavigableV2, publisherReadyUi } from "@/lib/pipeline-step";
 
 interface ProjectDetail extends Project {
   audio_uploads: AudioUpload[];
   transcripts: Transcript[];
   key_points: KeyPoint[];
   chapters: Chapter[];
+  /** Newest Publisher-Ready run status (9-step pipeline), null when none. */
+  pr_status?: string | null;
 }
 
 function CheckIcon() {
@@ -34,7 +36,10 @@ function ArrowIcon() {
 }
 
 /* Step-specific animations for the pipeline detail card */
-function StepAnimation({ stepKey }: { stepKey: string }) {
+function StepAnimation({ stepKey: rawKey }: { stepKey: string }) {
+  // Flow v2 reuses the closest animation: the interview is a conversation
+  // (transcription waves), the editor review is analysis.
+  const stepKey = rawKey === "interview" ? "transcribe" : rawKey === "review" ? "analyze" : rawKey === "revise" ? "editor" : rawKey;
   const wrapStyle: React.CSSProperties = {
     width: "100%",
     flex: 1,
@@ -438,8 +443,12 @@ export default function ProjectPage() {
     return <PageShell><EmptyState message="Project not found" /></PageShell>;
   }
 
-  const activeStep = getActiveStep(project);
-  const currentPipeline = PIPELINE[activeStep] || PIPELINE[0];
+  const v2 = publisherReadyUi();
+  const pipeline = v2 ? PIPELINE_V2 : PIPELINE;
+  const activeStep = v2 ? getActiveStepV2(project) : getActiveStep(project);
+  const hasDraft = project.chapters.some((c) => c.status === "generated" || c.status === "edited");
+  const navigable = (i: number) => (v2 ? isStepNavigableV2(i, activeStep, hasDraft) : isStepNavigable(i, activeStep));
+  const currentPipeline = pipeline[activeStep] || pipeline[0];
   const totalWordCount = project.transcripts.reduce((sum, t) => sum + (t.word_count || 0), 0);
   const generatedChapters = project.chapters.filter((c) => c.status === "generated" || c.status === "edited");
   const generatedWordCount = generatedChapters.reduce((sum, c) => sum + (c.target_word_count || 0), 0);
@@ -566,11 +575,11 @@ export default function ProjectPage() {
 
           {/* Timeline */}
           <div style={{ position: "relative", width: "100%", maxWidth: 400, marginLeft: 8 }}>
-            {PIPELINE.map((step, i) => {
+            {pipeline.map((step, i) => {
               const isComplete = i < activeStep;
               const isActive = i === activeStep;
-              const isNavigable = isStepNavigable(i, activeStep);
-              const isLast = i === PIPELINE.length - 1;
+              const isNavigable = navigable(i);
+              const isLast = i === pipeline.length - 1;
               const stepPath = `/project/${projectId}/${step.path}`;
 
               const rowStyle: React.CSSProperties = {
@@ -736,9 +745,9 @@ export default function ProjectPage() {
               zIndex: 1,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {PIPELINE.map((step, i) => {
-                    const navigable = isStepNavigable(i, activeStep);
+                <div className="ds-step-dots-row" style={{ display: "flex", gap: 6 }}>
+                  {pipeline.map((step, i) => {
+                    const stepNavigable = navigable(i);
                     const dot = (
                       <span style={{
                         width: 8,
@@ -750,7 +759,7 @@ export default function ProjectPage() {
                         opacity: i <= activeStep ? 1 : 0.4,
                       }} />
                     );
-                    return navigable ? (
+                    return stepNavigable ? (
                       <Link
                         key={step.key}
                         href={`/project/${projectId}/${step.path}`}
@@ -780,7 +789,7 @@ export default function ProjectPage() {
                   color: "#C17A47",
                   fontWeight: 600,
                   fontFamily: "var(--font-manrope), sans-serif",
-                }}>Step {activeStep + 1} of {PIPELINE.length}</span>
+                }}>{v2 && activeStep >= PIPELINE_V2_COUNTED ? "Done" : `Step ${activeStep + 1} of ${v2 ? PIPELINE_V2_COUNTED : pipeline.length}`}</span>
               </div>
             </div>
 
@@ -816,7 +825,7 @@ export default function ProjectPage() {
             </Link>
 
             {/* Footer metadata */}
-            <div style={{
+            <div className="ds-stage-footer" style={{
               position: "relative",
               zIndex: 1,
               display: "flex",

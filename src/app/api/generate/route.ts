@@ -15,6 +15,8 @@ import { sanitizeGenerated } from "@/lib/sanitize-output";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkInk, recordInkUsage } from "@/lib/ink";
 import { MODELS } from "@/lib/claude-lite";
+import { loadVoiceDialsBlock } from "@/lib/voice-dials-store";
+import { projectSourceText, hasOtherSpeakers, keyPointForPrompt, OTHER_SPEAKERS_RULE, speakerWritingBlock, otherSpeakerNames } from "@/lib/speakers";
 
 // Full chapters can take 60-180s to stream from Claude. On the 60s cap the
 // Vercel function was killed before the save block ran, leaving blank chapters
@@ -127,7 +129,8 @@ export async function POST(req: NextRequest) {
   const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes] =
     await Promise.all([
       supabase.from("projects").select("*").eq("id", chapter.project_id).single(),
-      supabase.from("transcripts").select("full_text").eq("project_id", chapter.project_id),
+      // Segments + labels for [Author] / [Name] tags (needs migration 031; unlabeled = plain text, as before).
+      supabase.from("transcripts").select("full_text, segments, speaker_map").eq("project_id", chapter.project_id),
       supabase.from("key_points").select("*").in("id", chapter.key_point_ids || []),
       supabase.from("enrichments").select("*").eq("chapter_id", chapter_id),
       supabase.from("chapters").select("title, summary").eq("project_id", chapter.project_id)
@@ -156,7 +159,9 @@ export async function POST(req: NextRequest) {
     previousChapterTail = words.slice(-500).join(" ");
   }
 
-  const fullText = transcripts.map((t) => t.full_text).join("\n\n");
+  // Tagged [Author] / [Name] where the author labeled speakers; plain text otherwise.
+  const fullText = projectSourceText(transcripts);
+  const otherSpeakers = transcripts.some(hasOtherSpeakers);
   const excerpts = extractExcerptsForChapter(fullText, keyPoints.map((kp) => kp.supporting_quotes || []));
 
   const tracker = project.narrative_tracker;
@@ -170,15 +175,15 @@ export async function POST(req: NextRequest) {
   const styleMemory = await loadStyleMemory(user.id);
   const system = generateSystem(
     project.voice_profile,
-    styleMemoryPromptBlock(styleMemory),
-    generationProfileBlock(project.audience, project.scripture_translation)
+    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)),
+    generationProfileBlock(project.audience, project.scripture_translation) + (otherSpeakers ? `\n\n${OTHER_SPEAKERS_RULE}` : "")
   );
   const prompt = generatePrompt({
     chapterNumber: chapter.chapter_number,
     chapterTitle: chapter.title,
     chapterSummary: chapter.summary,
     transcriptExcerpts: excerpts,
-    keyPoints: keyPoints.map((kp) => ({ title: kp.title, summary: kp.summary })),
+    keyPoints: keyPoints.map((kp) => keyPointForPrompt(kp)).map((kp) => ({ title: kp.title, summary: kp.summary })),
     enrichments,
     previousChapters,
     coveredPoints,
@@ -187,7 +192,7 @@ export async function POST(req: NextRequest) {
     targetWords: chapter.target_word_count,
     audience: project.audience,
     freedomInstruction,
-  });
+  }) + speakerWritingBlock(otherSpeakerNames(transcripts));
 
   // Stream from Anthropic API. Abortable: when the client walks away we stop
   // paying for tokens nobody will read (see the ReadableStream cancel below).

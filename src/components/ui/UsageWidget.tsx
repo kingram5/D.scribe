@@ -108,6 +108,14 @@ export default function UsageWidget() {
         <div style={{ marginTop: 6 }}>
           <AddMoreButton sku="ink_pack" />
         </div>
+        {ink && inkPct < 15 && (
+          <a
+            href="/pricing"
+            style={{ display: "inline-flex", alignItems: "center", minHeight: 32, fontSize: 12, fontWeight: 600, color: "#A05526", textDecoration: "none" }}
+          >
+            Running low. Compare plans &rarr;
+          </a>
+        )}
       </div>
 
       {tier !== "free" && (
@@ -150,6 +158,7 @@ export default function UsageWidget() {
            upgrade, switch down, or cancel. Stripe still owns card details. */
         <a
           href="/pricing"
+          className="ds-usage-btn"
           style={{
             display: "block",
             width: "100%",
@@ -172,6 +181,7 @@ export default function UsageWidget() {
       {tier === "free" ? (
         <a
           href="/pricing"
+          className="ds-usage-btn"
           style={{
             display: "block",
             width: "100%",

@@ -20,7 +20,7 @@ interface PageShellProps {
   disabledStepKeys?: string[];
 }
 
-const STEPS = [
+const STEPS_V1 = [
   { key: "upload", label: "Upload", path: "upload" },
   { key: "transcript", label: "Transcript", path: "transcript" },
   { key: "structure", label: "Structure", path: "structure" },
@@ -29,6 +29,28 @@ const STEPS = [
   { key: "editor", label: "Editor", path: "editor" },
   { key: "export", label: "Export", path: "export" },
 ];
+
+// Publisher-Ready (Kyle 2026-09-27): nine steps. Interview and Revision both
+// live on the publisher-ready page, which reports whichever one it is on.
+// Flow v2 (Kyle 9/28): eight numbered steps; Export is "done", not a step,
+// so the count stays in single digits. Indexes line up with the 9/27 rail, so
+// the remembered-progress key carries over unchanged.
+const STEPS_V2: { key: string; label: string; path: string; done?: boolean; mobileLabel?: string }[] = [
+  { key: "upload", label: "Upload", path: "upload" },
+  { key: "transcript", label: "Transcript", path: "transcript" },
+  { key: "structure", label: "Structure", path: "structure" },
+  { key: "analysis", label: "Analysis", path: "analysis" },
+  { key: "generate", label: "First Draft", path: "generate", mobileLabel: "Draft" },
+  { key: "review", label: "Editor review", path: "publisher-ready", mobileLabel: "Editor" },
+  { key: "interview", label: "Interview", path: "interview" },
+  { key: "editor", label: "Final Draft", path: "editor", mobileLabel: "Final" },
+  { key: "export", label: "Done · Export", path: "export", done: true, mobileLabel: "Export" },
+];
+
+const STEPS: { key: string; label: string; path: string; done?: boolean; mobileLabel?: string }[] = process.env.NEXT_PUBLIC_PUBLISHER_READY === "true" ? STEPS_V2 : STEPS_V1;
+/** Steps that count toward "Step N of M" (Export is the finish line, not a step). */
+const NUMBERED = STEPS.filter((s) => !s.done).length;
+const stepCounter = (idx: number) => (STEPS[idx]?.done ? "Done" : `Step ${idx + 1} of ${NUMBERED}`);
 
 /** Project title for the header rail, cached per session so every step page
  *  doesn't re-fetch it. Falls back to empty (rail renders without a title). */
@@ -66,11 +88,17 @@ function useReachedStep(projectId: string | undefined, currentIdx: number): numb
   const [reached, setReached] = useState(currentIdx);
   useEffect(() => {
     if (!projectId || currentIdx < 0) return;
-    const key = `ds_reached_${projectId}`;
+    // The 9-step pipeline has its own key: its indexes mean different steps.
+    const key = STEPS === STEPS_V2 ? `ds_reached_v2_${projectId}` : `ds_reached_${projectId}`;
     let stored = -1;
     try {
       const raw = localStorage.getItem(key);
       if (raw !== null) stored = parseInt(raw, 10);
+      else if (STEPS === STEPS_V2) {
+        // Carry progress over from the 7-step pipeline (Editor 5 -> 7, Export 6 -> 8).
+        const old = localStorage.getItem(`ds_reached_${projectId}`);
+        if (old !== null) stored = [0, 1, 2, 3, 4, 7, 8][parseInt(old, 10)] ?? -1;
+      }
     } catch { /* storage unavailable — fall back to position only */ }
     const next = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
     setReached(next);
@@ -132,6 +160,24 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const prevStep = currentIdx > 0 ? STEPS[currentIdx - 1] : null;
   const nextStep = currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
   const showStepNav = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
+  const navLabel = (step: (typeof STEPS)[number]) => (isMobile && step.mobileLabel ? step.mobileLabel : step.label);
+  const [stepListOpen, setStepListOpen] = useState(false);
+  useEffect(() => { setStepListOpen(false); }, [currentStep]);
+  function stepState(i: number) {
+    const step = STEPS[i];
+    const isStepDisabled = !!disabledStepKeys?.includes(step.key);
+    const isCurrent = i === currentIdx;
+    // Done and reachable both key off the furthest step reached, not the current
+    // one, so navigating backward no longer strips checks off finished steps or
+    // traps the user into clicking forward one at a time.
+    const isDone = !isCurrent && i <= reachedIdx;
+    // Editor review and Interview are optional: once the First Draft step is
+    // reached, the Final Draft and Export stay one click away.
+    const skipAhead = STEPS === STEPS_V2 && reachedIdx >= 4 && (step.key === "editor" || step.key === "export");
+    const isClickable = !isStepDisabled && !isCurrent
+      && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep) || skipAhead);
+    return { isStepDisabled, isCurrent, isDone, isClickable };
+  }
 
   // Step tutorial: an illustrated intro modal shown automatically on the first
   // visit to each step (per browser, across projects), re-openable anytime via
@@ -186,6 +232,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               onClick={(e) => guardNav(e, `/project/${projectId}`)}
               aria-label="Back to progress dashboard"
               title="Back to Progress dashboard"
+              className="ds-rail-back"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -221,8 +268,8 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 }}>
                   {currentLabel}
                 </span>
-                <span className="ds-label ds-label--accent" style={{ whiteSpace: "nowrap" }}>
-                  Step {currentIdx + 1} of {STEPS.length}
+                <span className="ds-label ds-label--accent ds-rail-counter" style={{ whiteSpace: "nowrap" }}>
+                  {stepCounter(currentIdx)}
                 </span>
               </div>
             </div>
@@ -263,15 +310,21 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
 
           {/* Numbered step markers */}
           <div className="ds-rail-markers" style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+            {/* Phones: one "Step N of 8" button opens the full step list below the row. */}
+            <button
+              type="button"
+              className="ds-rail-stepbtn"
+              aria-expanded={stepListOpen}
+              aria-controls="ds-rail-steplist"
+              onClick={() => setStepListOpen((o) => !o)}
+            >
+              {stepCounter(currentIdx)}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: stepListOpen ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
             {STEPS.map((step, i) => {
-              const isStepDisabled = disabledStepKeys?.includes(step.key);
-              const isCurrent = i === currentIdx;
-              // Done and reachable both key off the furthest step reached, not the current
-              // one, so navigating backward no longer strips checks off finished steps or
-              // traps the user into clicking forward one at a time.
-              const isDone = !isCurrent && i <= reachedIdx;
-              const isClickable = !isStepDisabled && !isCurrent
-                && (i <= reachedIdx || (i === currentIdx + 1 && !disableNextStep));
+              const { isStepDisabled, isCurrent, isDone, isClickable } = stepState(i);
               const marker = (
                 <span
                   className="ds-rail-marker-num"
@@ -301,7 +354,12 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     transition: "all 0.2s",
                   }}
                 >
-                  {isDone ? (
+                  {step.done ? (
+                    // The finish line: a flag, never a number.
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 22V4" /><path d="M4 4h13l-2 4 2 4H4" />
+                    </svg>
+                  ) : isDone ? (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
@@ -317,7 +375,8 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                     href={`/project/${projectId}/${step.path}`}
                     onClick={(e) => guardNav(e, `/project/${projectId}/${step.path}`)}
                     title={step.label}
-                    aria-label={`Go to step ${i + 1}: ${step.label}`}
+                    aria-label={step.done ? `Go to ${step.label}` : `Go to step ${i + 1}: ${step.label}`}
+                    className="ds-rail-marker"
                     style={{ textDecoration: "none", display: "block" }}
                   >
                     {marker}
@@ -325,7 +384,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 );
               }
               return (
-                <span key={step.key} title={step.label} aria-label={`Step ${i + 1}: ${step.label}${isCurrent ? " (current)" : ""}`}>
+                <span key={step.key} className="ds-rail-marker" title={step.label} aria-label={`${step.done ? step.label : `Step ${i + 1}: ${step.label}`}${isCurrent ? " (current)" : ""}`}>
                   {marker}
                 </span>
               );
@@ -335,28 +394,32 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 onClick={() => { setTourOpen(false); setTutorialOpen(true); }}
                 title={`How ${currentLabel} works`}
                 aria-label={`Open the guide for the ${currentLabel} step`}
-                style={{
-                  width: 24,
-                  height: 24,
-                  marginLeft: 8,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  border: "1px dashed rgba(193,122,71,0.6)",
-                  background: "rgba(193,122,71,0.08)",
-                  color: "#A05526",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#C17A47"; e.currentTarget.style.color = "#F9F7F2"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(193,122,71,0.08)"; e.currentTarget.style.color = "#A05526"; }}
+                className="ds-rail-help"
+                style={{ background: "none", border: "none", padding: 0, marginLeft: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                onMouseEnter={(e) => { const c = e.currentTarget.firstElementChild as HTMLElement | null; if (c) { c.style.background = "#C17A47"; c.style.color = "#F9F7F2"; } }}
+                onMouseLeave={(e) => { const c = e.currentTarget.firstElementChild as HTMLElement | null; if (c) { c.style.background = "rgba(193,122,71,0.08)"; c.style.color = "#A05526"; } }}
               >
-                ?
+                <span
+                  aria-hidden
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    border: "1px dashed rgba(193,122,71,0.6)",
+                    background: "rgba(193,122,71,0.08)",
+                    color: "#A05526",
+                    transition: "all 0.2s",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  ?
+                </span>
               </button>
             )}
           </div>
@@ -448,6 +511,39 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
           )}
           </div>
 
+          {stepListOpen && (
+            <ol id="ds-rail-steplist" className="ds-rail-steplist" aria-label="All steps">
+              {STEPS.map((step, i) => {
+                const { isStepDisabled, isCurrent, isDone, isClickable } = stepState(i);
+                const num = step.done ? "⚑" : isDone ? "✓" : String(i + 1);
+                const body = (
+                  <>
+                    <span className={`ds-rail-steplist__num${isCurrent ? " is-current" : isDone ? " is-done" : ""}`} aria-hidden="true">{num}</span>
+                    <span>{step.label}</span>
+                    {isCurrent && <span className="ds-label ds-label--accent" style={{ marginLeft: "auto" }}>You are here</span>}
+                  </>
+                );
+                return (
+                  <li key={step.key}>
+                    {isClickable ? (
+                      <Link
+                        href={`/project/${projectId}/${step.path}`}
+                        onClick={(e) => { setStepListOpen(false); guardNav(e, `/project/${projectId}/${step.path}`); }}
+                        className="ds-rail-steplist__item"
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <span className={`ds-rail-steplist__item${isStepDisabled || !isCurrent ? " is-locked" : ""}`} aria-current={isCurrent ? "step" : undefined}>
+                        {body}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
           {isMobile && busy && (
             <div role="status" className="ds-generation-busy-banner" aria-live="polite">
               <span className="ds-generation-busy-dot" aria-hidden />
@@ -502,13 +598,13 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 2L4 7l5 5" />
               </svg>
-              {prevStep.label}
+              {navLabel(prevStep)}
             </Link>
           ) : (
             <div />
           )}
           <span className="ds-label">
-            Step {currentIdx + 1} of {STEPS.length}
+            {stepCounter(currentIdx)}
           </span>
           {nextStep ? (
             disableNextStep ? (
@@ -523,7 +619,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   fontFamily: "var(--font-manrope), sans-serif",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </button>
             ) : onNextClick ? (
               <button
@@ -540,7 +636,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   fontFamily: "var(--font-manrope), sans-serif",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </button>
             ) : (
               <Link
@@ -554,7 +650,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                   background: "var(--ds-accent-400, #C17A47)",
                 }}
               >
-                {nextStep.label}
+                {navLabel(nextStep)}
               </Link>
             )
           ) : (

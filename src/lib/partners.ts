@@ -4,7 +4,7 @@
 import { createHash } from "crypto";
 import type Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase";
-import { stripe, STRIPE_PRICES } from "@/lib/stripe";
+import { stripe, STRIPE_PRICES, TIER_INK } from "@/lib/stripe";
 import { ensureBalance } from "@/lib/ink";
 import { canonicalizeEmail } from "@/lib/email";
 import { isDisposableEmail } from "@/lib/disposable-domains";
@@ -206,7 +206,7 @@ export async function grantCompPremium(userId: string) {
   // never touch a paying subscriber's plan
   const { error } = await supabase
     .from("ink_balances")
-    .update({ tier: "premium", comp_partner: true, ink_balance: 1500, ink_period_start: new Date().toISOString() })
+    .update({ tier: "premium", comp_partner: true, ink_balance: TIER_INK.premium, ink_period_start: new Date().toISOString() })
     .eq("user_id", userId)
     .is("stripe_subscription_id", null);
   if (error) logger.error("grantCompPremium failed", { route: "partners", meta: { user_id: userId }, error });

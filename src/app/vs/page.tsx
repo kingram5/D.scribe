@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { VS_PAGES, SOURCED_NOTE } from "@/lib/vs-pages";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 /**
  * /vs — index of the comparison pages (HeyCatch action plan).
@@ -40,9 +41,12 @@ export default function VsIndex() {
   return (
     <main style={{ background: COLORS.bg, color: COLORS.body, minHeight: "100vh", fontFamily: SANS, padding: "0 24px" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "72px 0 96px" }}>
-        <Link href="/" style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none" }}>
-          &larr; D.scribe
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Link href="/" style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none" }}>
+            &larr; D.scribe
+          </Link>
+          <PublicMobileMenu />
+        </div>
 
         <h1
           style={{
@@ -92,6 +96,12 @@ export default function VsIndex() {
             </span>
           </Link>
         ))}
+
+        <div className="ds-touch-links" style={{ marginTop: 8 }}>
+          <Link href="/pricing" style={{ color: COLORS.accent, fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
+            See D.scribe pricing &rarr;
+          </Link>
+        </div>
 
         <p
           style={{

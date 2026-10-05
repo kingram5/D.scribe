@@ -81,7 +81,9 @@ export function extractExcerptsForChapter(
   // straight from the model: drop empty/whitespace strings ("".indexOf() is 0
   // for any haystack, silently citing the transcript's opening) and dedup so
   // one quote cited by several key points ships one excerpt, not several.
-  const quotes = [...new Set(keyPointQuotes.flat().filter((q) => q.trim().length > 0))];
+  // A model may copy a leading "[Speaker]: " tag from a labeled transcript into a
+  // quote; strip it or indexOf never matches and the excerpt silently falls back.
+  const quotes = [...new Set(keyPointQuotes.flat().map((q) => q.replace(/^\[[^\]\n]{1,80}\]:\s*/, "")).filter((q) => q.trim().length > 0))];
   if (quotes.length === 0) return fullText.slice(0, 3000);
 
   // Find surrounding context for each quote in the transcript
@@ -92,7 +94,12 @@ export function extractExcerptsForChapter(
 
     const contextStart = Math.max(0, idx - 200);
     const contextEnd = Math.min(fullText.length, idx + quote.length + 200);
-    excerpts.push("..." + fullText.slice(contextStart, contextEnd) + "...");
+    // In speaker-labeled text, carry the speaker tag in force at this point so
+    // the excerpt still says who is talking. Labeled text puts tags only at the
+    // very start or after a blank line; unlabeled text has none, so it is unchanged.
+    const before = fullText.slice(0, contextStart);
+    const tag = [...before.matchAll(/(?:^|\n\n)(\[[^\]\n]{1,80}\]): /g)].pop()?.[1];
+    excerpts.push((tag ? `${tag}: ` : "") + "..." + fullText.slice(contextStart, contextEnd) + "...");
   }
 
   return excerpts.length > 0 ? excerpts.join("\n\n") : fullText.slice(0, 3000);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { startTopupCheckout } from "@/lib/start-topup-checkout";
 import type { TopupSku } from "@/lib/topups";
+import { PLANS } from "@/lib/tiers";
 
 interface InkUpgradeModalProps {
   onClose: () => void;
@@ -10,9 +11,9 @@ interface InkUpgradeModalProps {
 }
 
 const TIERS = [
-  { name: "Starter", price: 25, ink: 300, ttsChars: "8K", highlight: false },
-  { name: "Pro", price: 50, ink: 660, ttsChars: "20K", badge: "Most Popular", highlight: true },
-  { name: "Premium", price: 100, ink: 1500, ttsChars: "60K", highlight: false },
+  { name: "Starter", price: PLANS.starter.price, ink: PLANS.starter.ink, ttsChars: "8K", highlight: false },
+  { name: "Pro", price: PLANS.pro.price, ink: PLANS.pro.ink, ttsChars: "20K", badge: "Most Popular", highlight: true },
+  { name: "Premium", price: PLANS.premium.price, ink: PLANS.premium.ink, ttsChars: "60K", highlight: false },
 ];
 
 function getHeader(reason: "ink" | "tts" | "tts_locked") {
@@ -190,11 +191,11 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
                 {reason === "tts" ? "Upgrade to Premium" : "Upgrade your plan"}
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#191816", marginBottom: 6 }}>
-                {reason === "tts" ? "$100" : "$50"}
+                {reason === "tts" ? `$${PLANS.premium.price}` : `$${PLANS.pro.price}`}
                 <span style={{ fontSize: 13, fontWeight: 500, color: "#78705F" }}>/mo</span>
               </div>
               <div style={{ fontSize: 12, color: "#7a7369" }}>
-                {reason === "tts" ? "80 min of voice every month." : "660 Ink every month on Pro."}
+                {reason === "tts" ? "80 min of voice every month." : `${PLANS.pro.ink.toLocaleString()} Ink every month on Pro.`}
               </div>
               <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "#191816" }}>
                 {loadingTier === (reason === "tts" ? "premium" : "pro") ? "Loading..." : "Choose plan →"}
@@ -299,6 +300,16 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
           ))}
         </div>
 
+        <a
+          href="/pricing"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", minHeight: 44,
+            fontSize: 13, fontWeight: 600, color: "var(--ds-accent-500, #C17A47)", textDecoration: "none",
+            fontFamily: "var(--font-manrope), sans-serif",
+          }}
+        >
+          Compare all plans on the pricing page &rarr;
+        </a>
         <button
           onClick={onClose}
           style={{

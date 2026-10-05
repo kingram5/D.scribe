@@ -160,6 +160,7 @@ function ChapterNoteComponent({
       {/* Editable title */}
       <div
         ref={titleRef}
+        className="ds-editable-title"
         contentEditable
         suppressContentEditableWarning
         onFocus={() => setEditing(true)}
@@ -198,6 +199,7 @@ function ChapterNoteComponent({
         </span>
         {(hovered || isMobile) && (
           <button
+            className="ds-add-keypoint"
             onClick={(e) => { e.stopPropagation(); onAddKeyPoint(); }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{

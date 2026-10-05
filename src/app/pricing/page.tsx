@@ -2,15 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButton";
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
+import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+
+const FROM = PLANS.starter.price;
 
 export const metadata: Metadata = {
-  title: "Pricing — AI Book Writing Plans Starting at $25",
-  description: "D.scribe pricing starts at $25/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.",
+  title: `Pricing — AI Book Writing Plans Starting at $${FROM}`,
+  description: `D.scribe pricing starts at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.`,
   alternates: {
     canonical: "https://d-scribe.app/pricing",
   },
   openGraph: {
-    title: "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+    title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
     description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
     url: "https://d-scribe.app/pricing",
     siteName: "D.scribe",
@@ -19,7 +23,7 @@ export const metadata: Metadata = {
   // og:image / twitter:image come from ./opengraph-image.tsx and ./twitter-image.tsx (HeyCatch item 7).
   twitter: {
     card: "summary_large_image",
-    title: "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+    title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
     description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
   },
 };
@@ -45,9 +49,9 @@ const orgSchema = {
 const TIERS = [
   {
     name: "Starter",
-    price: 25,
-    ink: 300,
-    books: "about 1.5 books",
+    price: PLANS.starter.price,
+    ink: PLANS.starter.ink,
+    books: PLANS.starter.books,
     // Voice allotment powers the SPOKEN brainstorm — the AI interviewer talking
     // out loud while you answer by voice. Characters are its speech budget;
     // ~750 chars ≈ 1 minute of it talking, so the tiers advertise minutes.
@@ -58,9 +62,9 @@ const TIERS = [
   },
   {
     name: "Pro",
-    price: 50,
-    ink: 660,
-    books: "~3 books",
+    price: PLANS.pro.price,
+    ink: PLANS.pro.ink,
+    books: PLANS.pro.books,
     talk: { minutes: "≈30 min / month", chars: "20,000 voice characters" },
     tagline: "For the regular author who writes consistently.",
     badge: "Best Value",
@@ -68,9 +72,9 @@ const TIERS = [
   },
   {
     name: "Premium",
-    price: 100,
-    ink: 1500,
-    books: "~7 books",
+    price: PLANS.premium.price,
+    ink: PLANS.premium.ink,
+    books: PLANS.premium.books,
     talk: { minutes: "≈80 min / month", chars: "60,000 voice characters" },
     tagline: "High-volume authors, coaches, and teams.",
     badge: null,
@@ -164,7 +168,7 @@ export default function PricingPage() {
         }}
       />
 
-      <nav
+      <nav className="ds-touch-links"
         style={{
           position: "sticky",
           top: 0,
@@ -223,7 +227,7 @@ export default function PricingPage() {
             </span>
           </Link>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <div className="ds-pubnav-desktop" style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link
               href="/pricing"
               style={{
@@ -253,6 +257,7 @@ export default function PricingPage() {
           >
             Get Started
           </Link>
+          <PublicMobileMenu />
         </div>
       </nav>
 
@@ -323,11 +328,12 @@ export default function PricingPage() {
             }}
           >
             Traditional ghostwriters charge $30,000&ndash;$80,000 and take 12&ndash;24 months.{" "}
-            <span style={{ color: "#F0A878" }}>D.scribe starts at $25/month and delivers your first draft in under an hour.</span>
+            <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>
           </p>
         </div>
 
         <div
+          className="pricing-tiers"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
@@ -609,10 +615,15 @@ export default function PricingPage() {
                 title: "Ink is your generation budget",
                 body: "Every action that calls the AI — transcription, chapter generation, enrichment passes, coherence rewrites — costs Ink. Think of it like tokens on a prepaid meter. You can see exactly how much each action will cost before you run it.",
               },
-              {
-                title: "One book ≈ 200 Ink",
-                body: "A standard 40,000-word book runs roughly 200 Ink end to end, including the interview sessions with T.H.E.O that draw it out of you. The Starter plan (300 Ink) covers about a book and a half each month. Pro (660 Ink) handles about 3. Premium (1,500 Ink) covers about 7, built for high-volume authors, coaches, or teams producing content consistently. Shorter books and fewer interview sessions use less.",
-              },
+              plansV2()
+                ? {
+                    title: `One Publisher-Ready book ≈ ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink`,
+                    body: `A 40,000-word book taken all the way through Publisher-Ready (drafted, read by an editor, your answers to the editor's questions worked in, then a final check) runs roughly ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink. Starter (${PLANS.starter.ink.toLocaleString("en-US")} Ink) covers one of those a month, Pro (${PLANS.pro.ink.toLocaleString("en-US")}) two, and Premium (${PLANS.premium.ink.toLocaleString("en-US")}) five. A quick draft without the editor pass uses far less, so the same Ink stretches across several drafts.`,
+                  }
+                : {
+                    title: "One book ≈ 200 Ink",
+                    body: "A standard 40,000-word book runs roughly 200 Ink end to end, including the interview sessions with T.H.E.O that draw it out of you. The Starter plan (300 Ink) covers about a book and a half each month. Pro (660 Ink) handles about 3. Premium (1,500 Ink) covers about 7, built for high-volume authors, coaches, or teams producing content consistently. Shorter books and fewer interview sessions use less.",
+                  },
               {
                 title: "No surprise overages",
                 body: "D.scribe shows you an Ink estimate before every major action. If you're running low, you'll see a warning — you'll never hit a wall mid-chapter without knowing it's coming.",

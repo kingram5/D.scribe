@@ -62,7 +62,7 @@ export default function SettingsPage() {
   const sub: React.CSSProperties = { fontSize: 13, color: "#A89F94", lineHeight: 1.6, marginBottom: 16 };
 
   return (
-    <div style={{ minHeight: "100%", background: "#2C2419", overflowY: "auto" }}>
+    <div className="ds-settings" style={{ minHeight: "100%", background: "#2C2419", overflowY: "auto" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "112px 24px 64px", fontFamily: "var(--font-manrope), sans-serif" }}>
         <h1 style={{ fontFamily: "var(--font-lora), serif", fontSize: 36, color: "#F9F7F2", marginBottom: 28 }}>
           Settings
@@ -89,9 +89,14 @@ export default function SettingsPage() {
           <h2 style={h2}>Billing</h2>
           <p style={sub}>Manage your subscription, payment method, and invoices in the Stripe customer portal.</p>
           {billingError && <p style={{ fontSize: 12.5, color: "#E5896B", marginBottom: 12 }}>{billingError}</p>}
-          <button onClick={openBilling} disabled={billingLoading} style={btn()}>
-            {billingLoading ? "Opening…" : "Manage billing"}
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            <button onClick={openBilling} disabled={billingLoading} style={btn()}>
+              {billingLoading ? "Opening…" : "Manage billing"}
+            </button>
+            <Link href="/pricing" style={{ ...btn(), textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#C17A47", borderColor: "transparent", color: "#F9F7F2" }}>
+              Compare plans
+            </Link>
+          </div>
         </div>
 
         {/* Danger zone */}

@@ -1,3 +1,4 @@
+import { voiceSourceText } from "@/lib/speakers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJsonLite } from "@/lib/claude-lite";
@@ -37,13 +38,14 @@ export async function POST(req: NextRequest) {
 
   const { data: transcript } = await supabase
     .from("transcripts")
-    .select("id, full_text")
+    .select("id, full_text, segments, speaker_map")
     .eq("id", transcript_id)
     .eq("project_id", project_id)
     .single();
   if (!transcript) return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
 
-  const words = transcript.full_text.split(/\s+/);
+  // Only the author's own lines once speakers are labeled (never another speaker's voice).
+  const words = voiceSourceText(transcript).split(/\s+/);
   const sampleSize = Math.min(1000, Math.floor(words.length / 3));
   const samples = [
     words.slice(0, sampleSize).join(" "),

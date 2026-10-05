@@ -61,3 +61,70 @@ export function getActiveStep(p: PipelineProgress): number {
 export function isStepNavigable(index: number, activeStep: number): boolean {
   return index <= activeStep + 1;
 }
+
+// ─── Publisher-Ready pipeline, flow v2 (Kyle 2026-09-28) ────────────────────
+// 1 Upload · 2 Transcript · 3 Structure · 4 Analysis · 5 First Draft ·
+// 6 Editor review · 7 Interview · 8 Final Draft, then DONE = Export (not
+// counted, so the step count stays in single digits). Review and Interview
+// are optional: skipping them goes straight to the Final Draft. Live with
+// NEXT_PUBLIC_PUBLISHER_READY=true; the 7-step pipeline above stays as-is
+// until then (and its tests keep pinning it).
+
+export interface PipelineStepV2 extends PipelineStep {
+  /** Steps a quick-draft author may skip on the way to the Final Draft. */
+  optional?: boolean;
+  /** The finish line (Export): shown, but not counted as a step. */
+  done?: boolean;
+}
+
+export const PIPELINE_V2: PipelineStepV2[] = [
+  { key: "upload", label: "Audio Upload", desc: "Upload your sermon, lecture, or recording", path: "upload" },
+  { key: "transcribe", label: "Transcription", desc: "Your words, captured and ready to shape", path: "transcript" },
+  { key: "structure", label: "Structure Setup", desc: "Set chapters and word targets for your manuscript", path: "structure" },
+  { key: "analyze", label: "Content Analysis", desc: "AI is identifying key themes, voice patterns, and building the structural foundation for your book.", path: "analysis" },
+  { key: "generate", label: "First Draft", desc: "Every chapter drafted in your voice, readable as each one lands", path: "generate" },
+  { key: "review", label: "Editor Review", desc: "Optional: an editor reads the draft while you pick how you'd say things", path: "publisher-ready", optional: true },
+  { key: "interview", label: "Interview", desc: "Optional: T.H.E.O. asks the editor's questions, only you can answer them", path: "interview", optional: true },
+  { key: "editor", label: "Final Draft", desc: "Your answers go into the book; then review, refine, and polish", path: "editor" },
+  { key: "export", label: "Done · Export", desc: "Download your finished book in any format", path: "export", done: true },
+];
+
+/** Steps counted in "Step N of M" (Export is the finish line). */
+export const PIPELINE_V2_COUNTED = PIPELINE_V2.filter((s) => !s.done).length;
+
+export interface PipelineProgressV2 extends PipelineProgress {
+  /** Status of the newest Publisher-Ready run, if any. */
+  pr_status?: string | null;
+}
+
+export function publisherReadyUi(): boolean {
+  return process.env.NEXT_PUBLIC_PUBLISHER_READY === "true";
+}
+
+const drafted = (c: { status?: string }) => c.status === "generated" || c.status === "edited";
+
+/** Index into PIPELINE_V2 for the step the user is on. Furthest evidence wins. */
+export function getActiveStepV2(p: PipelineProgressV2): number {
+  const chapters = p.chapters ?? [];
+  if (chapters.some((c) => c.status === "edited")) return 7;                            // editing → Final Draft
+  if (p.pr_status && ["revising", "checking", "done"].includes(p.pr_status)) return 7;  // revision runs on the Final Draft
+  if (p.pr_status === "interviewing") return 6;
+  if (p.pr_status === "editing") return 5;
+  if (chapters.length > 0 && chapters.every(drafted)) return 5;                         // drafted → Editor review is next
+  if (p.pr_status === "drafting" || chapters.length > 0) return 4;                      // outlined / drafting → First Draft
+  if ((p.key_points ?? []).length > 0) return 3;
+  if ((p.transcripts ?? []).length > 0) return 2;
+  if ((p.audio_uploads ?? []).length > 0) return 1;
+  return 0;
+}
+
+/**
+ * Navigable: done steps, the current one, one ahead; and once a draft exists
+ * the Final Draft and Export too, because Editor review and Interview are
+ * optional (skipping them goes straight to the Final Draft).
+ */
+export function isStepNavigableV2(index: number, activeStep: number, hasDraft: boolean): boolean {
+  if (index <= activeStep + 1) return true;
+  const key = PIPELINE_V2[index]?.key;
+  return hasDraft && (key === "editor" || key === "export");
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe, TIER_INK } from "@/lib/stripe";
+import { stripe, TIER_INK, tierForPrice } from "@/lib/stripe";
 import { createServerClient } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { grantTopupPurchase, clawbackTopupPurchase } from "@/lib/topup-purchases";
@@ -153,12 +153,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       });
     } else {
       const priceId = subscription.items.data[0]?.price.id;
-      const PRICE_TO_TIER: Record<string, string> = {
-        [process.env.STRIPE_PRICE_STARTER!]: "starter",
-        [process.env.STRIPE_PRICE_PRO!]: "pro",
-        [process.env.STRIPE_PRICE_PREMIUM!]: "premium",
-      };
-      const newTier = priceId ? PRICE_TO_TIER[priceId] : undefined;
+      const newTier = tierForPrice(priceId);
 
       if (newTier) {
         const { data: balance } = await supabase

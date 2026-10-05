@@ -41,6 +41,8 @@ export interface ShelfBook {
   status: ShelfStatus;
   updated_at: string;
   href: string;
+  /** Second line under the title, set only when another book shares the title. */
+  subtitle?: string;
 }
 
 export interface ShelfCounts {
@@ -63,6 +65,11 @@ interface BookshelfProps {
   erasingId: string | null;
   loading: boolean;
   quote: { text: string; author: string };
+  /** Holds the quote's space without showing it (the page picks one after mount). */
+  quoteHidden?: boolean;
+  /** Title search above the shelf. Omit onSearch to hide the box. */
+  search?: string;
+  onSearch?: (q: string) => void;
   /** Rendered on the wall to the right of the sign (the usage widget). */
   aside?: ReactNode;
   /** Brand mark rendered inside the hanging sign. */
@@ -164,7 +171,7 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export default function Bookshelf(props: BookshelfProps) {
   const {
     ownerName, books, counts, filter, onFilter, eraseMode, onToggleErase, onEraseClick,
-    erasingId, loading, quote, aside, brand, progressOverride, hoverPreviewId, openPreviewId, stylesOnly,
+    erasingId, loading, quote, quoteHidden, search = "", onSearch, aside, brand, progressOverride, hoverPreviewId, openPreviewId, stylesOnly,
   } = props;
   // Open book (the reader): which one, and where the animation is.
   const [openBook, setOpenBook] = useState<ShelfBook | null>(() => openPreviewId ? books.find((b) => b.id === openPreviewId) ?? null : null);
@@ -190,7 +197,7 @@ export default function Bookshelf(props: BookshelfProps) {
   const rows = allRows.slice(safePage * SHELVES_PER_PAGE, safePage * SHELVES_PER_PAGE + SHELVES_PER_PAGE);
   const goto = (p: number) => { setPage(Math.max(0, Math.min(pageCount - 1, p))); setPageKey((k) => k + 1); };
   // A new filter starts at the first shelf.
-  useEffect(() => { setPage(0); }, [filter]);
+  useEffect(() => { setPage(0); }, [filter, search]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const lit = hoverPreviewId ?? hoverId;
 
@@ -274,7 +281,7 @@ export default function Bookshelf(props: BookshelfProps) {
                 {title.shown}
                 {!title.done && <span className="ds-stage-cursor bs-title-cursor" aria-hidden="true" />}
               </h1>
-              <p className="bs-quote">
+              <p className="bs-quote" style={quoteHidden ? { visibility: "hidden" } : undefined}>
                 &ldquo;{quote.text}&rdquo; <span className="bs-quote-author">&mdash; {quote.author}</span>
               </p>
             </div>
@@ -318,6 +325,26 @@ export default function Bookshelf(props: BookshelfProps) {
           </div>
         </div>
         {eraseMode && <p className="bs-erase-hint">Pick a book to move it to the Erased shelf.</p>}
+        {onSearch && (
+          <div className="bs-search" role="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
+            </svg>
+            <input
+              type="search"
+              className="bs-search-input"
+              placeholder="Search your books by title"
+              aria-label="Search your books by title"
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              autoComplete="off"
+              enterKeyHint="search"
+            />
+            {search && (
+              <button type="button" className="bs-search-clear" onClick={() => onSearch("")} aria-label="Clear search">✕</button>
+            )}
+          </div>
+        )}
 
         {/* The bookcase: a piece of furniture, not planks on a wall */}
         <div className="bs-case">
@@ -351,7 +378,14 @@ export default function Bookshelf(props: BookshelfProps) {
 
           {isEmptyFilter && (
             <Shelf perShelf={perShelf}>
-              <p className="bs-empty-note">No {filter.replace("_", " ")} books on this shelf.</p>
+              {search.trim() ? (
+                <p className="bs-empty-note">
+                  No books match &ldquo;{search.trim()}&rdquo;.{" "}
+                  {onSearch && <button type="button" className="bs-search-reset" onClick={() => onSearch("")}>Clear the search</button>}
+                </p>
+              ) : (
+                <p className="bs-empty-note">No {filter.replace("_", " ")} books on this shelf.</p>
+              )}
             </Shelf>
           )}
 
@@ -544,12 +578,13 @@ function BookCard({ book, step, lit, onHover, onOpen }: { book: ShelfBook; step:
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       role="button"
       tabIndex={0}
-      aria-label={`${book.title}: open`}
+      aria-label={`${book.title}${book.subtitle ? ` (${book.subtitle})` : ""}: open`}
     >
       <div className="bs-card-head">
         <span className="bs-card-title" title={book.title}>{book.title}</span>
         <span className="bs-card-date">{date}</span>
       </div>
+      {book.subtitle && <div className="bs-card-sub">{book.subtitle}</div>}
       <div className="bs-card-audience ds-label">{book.audience}</div>
       <div className="bs-progress" aria-label={`Step ${Math.min(step + 1, 7)} of 7: ${PIPELINE_STEPS[Math.min(step, 6)]}`}>
         <div className="bs-progress-track"><i style={{ transform: `scaleX(${pct / 100})` }} /></div>
@@ -779,6 +814,22 @@ const BOOKSHELF_CSS = `
 .bs-pill-primary:hover { background: #CE8A57; }
 .bs-pill-ghost { background: none; color: var(--bs-ink-dim); border-color: rgba(249,247,242,0.25); }
 .bs-pill-ghost.is-danger { color: #ffb4ad; border-color: #dc2626; background: rgba(220,38,38,0.12); }
+/* Title search: a glass strip between the toolbar and the case. */
+.bs-search {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; position: relative; z-index: 4;
+  background: var(--bs-glass); border: 1px solid var(--bs-line); border-top: 1px solid var(--bs-line-soft); border-bottom: 0;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--bs-ink-dim);
+}
+.bs-search-input {
+  flex: 1; min-width: 0; min-height: 44px; background: transparent; border: 0; outline: none;
+  color: var(--bs-ink); font: 500 14px/1.2 var(--font-manrope), sans-serif;
+}
+.bs-search-input::placeholder { color: var(--bs-ink-dim); opacity: 0.8; }
+.bs-search-input::-webkit-search-cancel-button { display: none; }
+.bs-search:focus-within { border-color: rgba(193,122,71,0.6); }
+.bs-search-clear { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--bs-ink-dim); cursor: pointer; font-size: 14px; }
+.bs-search-reset { background: none; border: 0; padding: 0; color: var(--bs-copper-hi); text-decoration: underline; cursor: pointer; font: inherit; min-height: 44px; }
+.bs-card-sub { margin-top: 1px; font-family: var(--font-geist-mono), monospace; font-size: 10.5px; color: rgba(249,247,242,0.65); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bs-erase-hint { font-family: var(--font-geist-mono), monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb4ad; margin: 0; padding: 6px 12px; background: rgba(220,38,38,0.12); border: 1px solid rgba(220,38,38,0.35); border-top: 0; position: relative; z-index: 4; }
 /* THEO's presence chip: the studio's live-mic pulse, in copper */
 .bs-theo-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; color: var(--bs-ink-dim) !important; align-self: center; }

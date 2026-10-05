@@ -7,6 +7,7 @@ import { useLandingData } from "@/components/landing/LandingDataContext";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 // FOUNDER import removed (Kyle 2026-09-19): the footer no longer carries his name.
 import "../cinematic-landing.css";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
   return (
@@ -918,11 +919,11 @@ function BookCarousel({ books }: { books: typeof LANDING_BOOKS }) {
       </div>
 
       {/* Arrows */}
-      <button onClick={goPrev} aria-label="Previous book" style={{ ...arrowStyle, left: 16 }}>‹</button>
-      <button onClick={goNext} aria-label="Next book" style={{ ...arrowStyle, right: 16 }}>›</button>
+      <button onClick={goPrev} aria-label="Previous book" className="lbook-arrow" style={{ ...arrowStyle, left: 16 }}>‹</button>
+      <button onClick={goNext} aria-label="Next book" className="lbook-arrow" style={{ ...arrowStyle, right: 16 }}>›</button>
 
       {/* Dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
+      <div className="lbook-dots" style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
         {books.map((_, i) => (
           <button
             key={i}
@@ -1075,9 +1076,10 @@ export default function LandingV2() {
           <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontStyle: "italic", fontWeight: 500, fontSize: 23, color: "#F9F7F2", letterSpacing: "0.01em" }}>scribe</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <Link href="/pricing" className="lv2-nav-link">Pricing</Link>
-          <Link href="/login" className="lv2-nav-link">Sign in</Link>
+          <Link href="/pricing" className="lv2-nav-link ds-pubnav-desktop">Pricing</Link>
+          <Link href="/login" className="lv2-nav-link ds-pubnav-desktop">Sign in</Link>
           <Link href="/login" className="lv2-pill-cta">Get Started <span style={{ fontSize: 15 }}>→</span></Link>
+          <PublicMobileMenu />
         </div>
       </nav>
 
@@ -1104,7 +1106,7 @@ export default function LandingV2() {
         </video>
 
         {/* Overlay */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
+        <div className="lv2-hero-overlay" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
 
         {/* Waveform Logo */}
         <div className="lv2-hero-waveform">
@@ -1156,6 +1158,7 @@ export default function LandingV2() {
           >
             See how it works
           </a>
+          <Link href="/pricing" className="lv2-price-link lv2-hero-price">See pricing &rarr;</Link>
         </div>
 
       </section>
@@ -1177,7 +1180,7 @@ export default function LandingV2() {
         </div>
 
       {/* ─── Pipeline Section ─── */}
-      <section id="how-it-works" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto", scrollMarginTop: 80 }}>
+      <section id="how-it-works" className="lv2-section" style={{ padding: "80px 40px", maxWidth: 1600, margin: "0 auto", scrollMarginTop: 80 }}>
         <FadeSection>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{
@@ -1205,7 +1208,7 @@ export default function LandingV2() {
           </div>
 
           {/* Right: step list — shifted left into middle space */}
-          <div style={{ position: "relative", transform: "translateX(-15%)" }}>
+          <div className="lv2-pipeline-steps" style={{ position: "relative", transform: "translateX(-15%)" }}>
             <div style={{
               position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
               background: "rgba(193,122,71,0.2)",
@@ -1240,6 +1243,9 @@ export default function LandingV2() {
               </FadeSection>
             ))}
           </div>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 48 }}>
+          <Link href="/pricing" className="lv2-price-link">What does it cost? See the plans &rarr;</Link>
         </div>
       </section>
 
@@ -1328,10 +1334,12 @@ export default function LandingV2() {
             </div>
             <BookCarousel books={LANDING_BOOKS} />
 
-            <div className="text-center mt-16">
+            <div className="text-center mt-16 ds-touch-links">
               <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
                 Explore all books →
               </Link>
+              <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span>
+              <Link href="/pricing" className="lv2-price-link">See pricing &rarr;</Link>
             </div>
           </div>
         </section>
@@ -1412,6 +1420,9 @@ export default function LandingV2() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
+          <div style={{ marginTop: 18 }}>
+            <Link href="/pricing" className="lv2-price-link">Compare plans &rarr;</Link>
+          </div>
         </section>
       </FadeSection>
 
@@ -1440,7 +1451,8 @@ export default function LandingV2() {
         <span style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, color: "#A89F94" }}>
           D. scribe &mdash; Your Voice, Written
         </span>
-        <nav aria-label="Legal" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+        <nav aria-label="Legal" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+          <Link href="/pricing" style={{ color: "#C17A47", textDecoration: "none", fontWeight: 600 }}>Pricing</Link>
           {[
             ["/legal/terms", "Terms"],
             ["/legal/privacy", "Privacy"],
@@ -1454,7 +1466,7 @@ export default function LandingV2() {
         </nav>
         {/* Compare links (HeyCatch action plan): competitor-intent search traffic
             needs a crawlable path from the homepage, not only a sitemap entry. */}
-        <nav aria-label="Compare" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
+        <nav aria-label="Compare" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
           <Link href="/vs" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Compare</Link>
           {[
             ["/vs/builtwritten", "vs Built&Written"],
@@ -1565,6 +1577,23 @@ export default function LandingV2() {
           transition: background 0.2s ease;
         }
         .lv2-pill-cta:hover { background: #D98B58; }
+
+        /* Pricing funnel links: quiet copper text, a full 44px tap row */
+        .lv2-price-link {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          font-family: var(--font-inter), var(--font-manrope), sans-serif;
+          font-size: 15px;
+          font-weight: 600;
+          color: #D98B58;
+          text-decoration: none;
+          border-bottom: 1px solid transparent;
+          transition: color 0.2s ease;
+        }
+        .lv2-price-link:hover { color: #F0A878; }
+        .lv2-hero-price { margin-left: 20px; vertical-align: middle; }
+        @media (max-width: 1279px) { .lv2-hero-price { margin: 6px 0 0; } }
 
         /* Footer founder block */
         .lv2-founder {
@@ -1682,6 +1711,7 @@ export default function LandingV2() {
         .lv2-pipeline-dash { height: 1122px; }
         @media (max-width: 1279px) {
           .lv2-dashboard-wrap { transform: none !important; }
+          .lv2-pipeline-steps { transform: none !important; }
           .lv2-brainstorm-wrap { margin-left: 0 !important; }
           .lv2-pipeline-dash { height: 900px; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 640px !important; margin: 0 auto; }
@@ -1695,18 +1725,30 @@ export default function LandingV2() {
 
         /* Mobile */
         @media (max-width: 768px) {
-          .landing-v2 nav { padding: 0 20px !important; }
+          .landing-v2 nav { padding: 0 16px !important; }
           .lv2-pillars { grid-template-columns: 1fr !important; }
           .lv2-pipeline-grid { grid-template-columns: 1fr !important; gap: 40px !important; max-width: 600px !important; }
           .lv2-humanai-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lv2-pipeline-dash { min-height: 480px; }
-          .lv2-hero-stats { gap: 16px; }
+          .lv2-hero { padding: 80px 16px 28px !important; gap: 16px !important; min-height: 0 !important; justify-content: flex-start !important; }
+          .lv2-hero-waveform, .lv2-hero-subarrow { display: none !important; }
+          .lv2-hero-author h1 { font-size: 42px; }
+          .lv2-author-copy { font-size: 16px !important; padding: 0 4px; }
+          .lv2-hero-tagline { padding: 4px 12px 0; }
+          .lv2-tagline-main { font-size: 22px; }
+          .lv2-hero-stats {
+            flex-direction: column;
+            gap: 20px !important;
+            padding: 28px 20px !important;
+          }
+          .lv2-hero-stats > div > div:first-child { font-size: 32px !important; }
+          .lv2-section { padding: 56px 20px !important; }
           .lbook-carousel { padding: 0 16px; }
           .lbook-review-card {
             max-width: none;
             width: 100%;
             margin: 48px 0 0;
-            padding: 32px 28px;
+            padding: 32px 20px;
           }
         }
 

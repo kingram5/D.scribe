@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import BookDesignStudio from "@/components/book-design/BookDesignStudio";
 import Link from "next/link";
 import PageShell from "@/components/ui/PageShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -366,6 +367,7 @@ export default function ExportPage() {
           padding: "40px 24px 48px",
         }}
       >
+        <details style={{ width: "100%", maxWidth: 1100, marginBottom: 28 }}><summary style={{ cursor: "pointer", padding: 16 }}>Page style, chapter openings & back-cover hook</summary><BookDesignStudio key={projectId} projectId={projectId} /></details>
         {/* Header — the manuscript as an object: 3D book + real stats */}
         <div className="ds-export-hero" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 48, marginBottom: 40, flexWrap: "wrap" }}>
           <div style={{ perspective: 700, flexShrink: 0 }} aria-hidden="true">

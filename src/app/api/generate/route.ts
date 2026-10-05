@@ -1,3 +1,5 @@
+import { verifiedEnrichments } from "@/lib/enrichment-policy";
+import { loadAnalysisGuidance } from "@/lib/analysis-moments-server";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import {
@@ -77,9 +79,10 @@ export async function POST(req: NextRequest) {
       ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
       : "";
 
+    const authorGuidance = await loadAnalysisGuidance(project.id);
     const { text: content, usage } = await askClaudeWithUsage(
       `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter in FIRST PERSON as the author (never refer to "the author" or "the speaker" in third person). ${voiceNote}\n${HUMANIZER_RULES}`,
-      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.`,
+      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.${authorGuidance}`,
       { temperature, maxTokens: 8192 }
     );
 
@@ -126,7 +129,7 @@ export async function POST(req: NextRequest) {
     .from("projects").select("id").eq("id", chapter.project_id).eq("user_id", user.id).single();
   if (!projectOwner) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes] =
+  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes, researchRes] =
     await Promise.all([
       supabase.from("projects").select("*").eq("id", chapter.project_id).single(),
       // Segments + labels for [Author] / [Name] tags (needs migration 031; unlabeled = plain text, as before).
@@ -143,6 +146,8 @@ export async function POST(req: NextRequest) {
         return supabase.from("chapter_contents").select("content")
           .eq("chapter_id", prevCh.id).order("version", { ascending: false }).limit(1).single();
       })(),
+      supabase.from("research_items").select("text, attribution, source_title, source_url")
+        .eq("project_id", chapter.project_id).eq("user_id", user.id).eq("status", "active"),
     ]);
 
   const project = projectRes.data;
@@ -150,7 +155,7 @@ export async function POST(req: NextRequest) {
 
   const transcripts = transcriptRes.data || [];
   const keyPoints = keyPointsRes.data || [];
-  const enrichments = enrichRes.data || [];
+  const enrichments = researchRes.error ? [] : verifiedEnrichments(enrichRes.data || [], researchRes.data || []);
   const previousChapters = prevChaptersRes.data || [];
 
   let previousChapterTail = "";
@@ -175,7 +180,7 @@ export async function POST(req: NextRequest) {
   const styleMemory = await loadStyleMemory(user.id);
   const system = generateSystem(
     project.voice_profile,
-    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)),
+    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)) + (await loadAnalysisGuidance(chapter.project_id)),
     generationProfileBlock(project.audience, project.scripture_translation) + (otherSpeakers ? `\n\n${OTHER_SPEAKERS_RULE}` : "")
   );
   const prompt = generatePrompt({

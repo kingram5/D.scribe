@@ -8,6 +8,7 @@
  * interview Sonnet 5 -> revise Opus 5.5 -> final check Sonnet 5.
  */
 
+import { loadAnalysisGuidance } from "@/lib/analysis-moments-server";
 import { createServerClient } from "@/lib/supabase";
 import { recordInkUsage, type InkOperation } from "@/lib/ink";
 import { loadStyleMemory, styleMemoryPromptBlock } from "@/lib/style-memory";
@@ -87,7 +88,7 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
       scriptureTranslation: project.scripture_translation,
       voiceProfile: project.voice_profile,
       // Learned edits + the author's voice picks (both empty for a brand-new author).
-      styleMemoryBlock: styleMemoryPromptBlock(memory) + (await loadVoiceDialsBlock(userId, db)),
+      styleMemoryBlock: styleMemoryPromptBlock(memory) + (await loadVoiceDialsBlock(userId, db)) + (await loadAnalysisGuidance(project.id)),
       chapterNumber: chapter.chapter_number,
       chapterTitle: chapter.title,
       chapterSummary: chapter.summary,
@@ -260,8 +261,8 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "final",
     version_in: ctx.latest.version, version_out: version,
-    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied },
+    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied, edits_rejected: out.rejected },
     usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
   });
-  return { version, applied: out.applied, tellsScore: after.tells.score, flagsLeft: after.flags.length };
+  return { version, applied: out.applied, rejected: out.rejected, tellsScore: after.tells.score, flagsLeft: after.flags.length };
 }

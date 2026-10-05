@@ -8,7 +8,6 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
 import SpeakerLabelPanel from "@/components/transcript/SpeakerLabelPanel";
-import { speakerLabelsEnabled } from "@/lib/speakers";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
 const P = {
@@ -136,7 +135,6 @@ export default function TranscriptPage() {
   // React Compiler ("existing memoization could not be preserved") and it
   // auto-memoizes this anyway.
   const merged = active?.segments ? mergeSegments(active.segments) : [];
-  const labelsOn = speakerLabelsEnabled();
   /** Display name for a raw speaker label, using the author's labels when set. */
   const nameFor = (raw: string): string => {
     const l = active?.speaker_map?.[raw];
@@ -497,7 +495,7 @@ export default function TranscriptPage() {
           .ds-tx-side { display: flex; flex-direction: column; }
           .ds-tx-side > .ds-tx-edit { display: contents; }
           .ds-tx-side > .ds-tx-edit > button { order: -2; margin-top: 12px; }
-          .ds-tx-side > .ds-tx-insights { order: -1; }
+          .ds-tx-side > .ds-tx-speakers { order: -1; }
         }
         .ds-tx-insights > summary::-webkit-details-marker { display: none; }
         .ds-tx-insights:not([open]) .ds-tx-insights__chev { transform: rotate(-90deg); }
@@ -570,6 +568,15 @@ export default function TranscriptPage() {
           {/* ── scrollable middle ── */}
           <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }} className="no-scrollbar ds-tx-side">
 
+            {/* Speaker controls are always available for diarized recordings,
+                independently of the analysis feature flag and Insights fold. */}
+            {active && (active.segments?.length ?? 0) > 0 && (
+              <details open className="ds-tx-speakers" style={{ paddingTop: 16 }}>
+                <summary style={{ cursor: "pointer", minHeight: 44, fontWeight: 600 }}>Speaker labels</summary>
+                <SpeakerLabelPanel key={`${active.id}:${active.speakers_confirmed_at ?? ""}`} transcript={active} onSaved={refreshTranscripts} />
+              </details>
+            )}
+
             {/* Insights & speakers: collapsible so a phone can fold it away; open by default. */}
             <details open={insightsOpen} onToggle={(e) => setInsightsOpen(e.currentTarget.open)} className="ds-tx-insights" style={{ paddingTop: 16 }}>
               <summary style={{
@@ -623,10 +630,6 @@ export default function TranscriptPage() {
               </div>
             </div>
 
-            {/* who is speaking (labels feed every later step) */}
-            {labelsOn && active && (active.segments?.length ?? 0) > 0 && (
-              <SpeakerLabelPanel key={`${active.id}:${active.speakers_confirmed_at ?? ""}`} transcript={active} onSaved={refreshTranscripts} />
-            )}
 
             {/* speakers */}
             {speakerStats.length > 0 && (
@@ -1088,7 +1091,7 @@ export default function TranscriptPage() {
                           }}>
                             {formatTime(para.start)}
                           </span>
-                          {labelsOn && speakerStats.length > 1 ? (
+                          {speakerStats.length > 1 ? (
                             // Fix a paragraph the speaker detection got wrong.
                             <select
                               value={para.speaker}

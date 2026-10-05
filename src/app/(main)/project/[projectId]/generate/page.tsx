@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { setGenerationBusy } from "@/lib/generation-guard";
 import { Chapter, Enrichment } from "@/types";
+import BookDesignStudio from "@/components/book-design/BookDesignStudio";
 import GlassCard from "@/components/ui/GlassCard";
 import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
@@ -50,6 +51,14 @@ export default function GeneratePage() {
   const [readerId, setReaderId] = useState<string | null>(null);
   const [justReady, setJustReady] = useState<string | null>(null);
   const [showReviewChoice, setShowReviewChoice] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const pipelineRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (studioOpen) pipelineRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [studioOpen]);
+  useEffect(() => {
+    if (genAllRunning || regenRunning || prDrafting) setStudioOpen(true);
+  }, [genAllRunning, regenRunning, prDrafting]);
 
   // Leave-guard: chapter generation is a long streaming run — losing the tab
   // mid-stream wastes the Ink already spent. PageShell turns this into an info
@@ -164,6 +173,7 @@ export default function GeneratePage() {
       if (res.ok) {
         const data = await res.json();
         setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+        if (!data.length) setEnrichError("No verified quotes are available for this chapter yet.");
       } else if (res.status !== 402) {
         // 402 is handled by the upgrade modal via guardedFetch — skip it here
         const e = await res.json().catch(() => ({}));
@@ -177,11 +187,16 @@ export default function GeneratePage() {
   }
 
   async function toggleEnrichment(id: string, included: boolean) {
-    await fetch("/api/enrich", {
+    const res = await fetch("/api/enrich", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, included }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setEnrichError(body.error || "This quote could not be included.");
+      return;
+    }
     setEnrichments((prev) => {
       const updated = { ...prev };
       for (const key of Object.keys(updated)) {
@@ -502,8 +517,8 @@ export default function GeneratePage() {
       disabledStepKeys={!anyGenerated || isGenerating ? ["review", "interview", "editor"] : []}
     >
       <GenerationStage
-        open={isGenerating}
-        docked={publisherReady}
+        open={isGenerating && !studioOpen}
+        docked
         coherence={genIsCoherence}
         progressLabel={
           prDrafting
@@ -516,6 +531,10 @@ export default function GeneratePage() {
         }
         progress={prDrafting ? (pr.progress.total ? pr.progress.done / pr.progress.total : 0) : genTotal > 0 ? genCurrent / genTotal : undefined}
       />
+      {studioOpen && isGenerating && <div role="status" style={{ flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", padding: "10px 20px", background: "var(--ds-paper, #F4F1E8)", color: "var(--text-primary)", fontSize: 12, borderBottom: "1px solid var(--ds-card-border)" }}>
+        <span>{prDrafting ? `${pr.progress.done} of ${pr.progress.total} chapters drafted` : genIsCoherence ? "Smoothing transitions across the manuscript" : genTotal > 0 ? `Writing chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}` : "Writing your chapter…"}</span>
+        <span>Keep this page open</span>
+      </div>}
       <ChapterReader
         chapters={chapters.filter((c) => c.chapter_number > 0)}
         openId={readerId}
@@ -537,7 +556,7 @@ export default function GeneratePage() {
           </div>
         ) : null;
       })()}
-      {publisherReady && showReviewChoice && allGenerated && !isGenerating && (
+      {publisherReady && !studioOpen && showReviewChoice && allGenerated && !isGenerating && (
         <ReviewChoice
           floating
           onReview={() => router.push(`/project/${projectId}/publisher-ready`)}
@@ -545,7 +564,7 @@ export default function GeneratePage() {
           onDismiss={() => setShowReviewChoice(false)}
         />
       )}
-      <div className="ds-pipeline-grid" style={{
+      <div ref={pipelineRef} className="ds-pipeline-grid" style={{
         display: "grid",
         gridTemplateColumns: "340px 1fr",
         gap: 24,
@@ -553,6 +572,11 @@ export default function GeneratePage() {
         overflowY: "auto",
         flex: 1,
       }}>
+        {studioOpen && <BookDesignStudio key={projectId} projectId={projectId} running={isGenerating} ready={allGenerated}
+          progressLabel={prDrafting ? `${pr.progress.done} of ${pr.progress.total} chapters drafted` : genIsCoherence ? "Smoothing transitions across the manuscript" : genTotal > 0 ? `Chapter ${Math.min(genCurrent + 1, genTotal)} of ${genTotal}` : "Writing your chapter…"}
+          progress={prDrafting ? (pr.progress.total ? pr.progress.done / pr.progress.total : 0) : genTotal > 0 ? genCurrent / genTotal : undefined}
+          onContinue={() => router.push(`/project/${projectId}/editor`)} />}
+
         {/* Left sidebar: chapter list — lined paper card */}
         <div className="lined-paper" data-tut="generate-chapters" style={{ alignSelf: "start", transform: "rotate(-0.5deg)" }}>
           <div className="scribble" style={{ top: 12, right: 15, transform: "rotate(8deg)" }}>

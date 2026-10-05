@@ -16,6 +16,7 @@ export type InkOperation =
   | "foreword"
   | "rewrite"
   | "coherence"
+  | "book_hook"
   | "enrich"
   | "style_distill"
   | "transcribe"
@@ -80,6 +81,7 @@ const ESTIMATED_COST: Record<InkOperation, number> = {
   rewrite: 2,
   coherence: 2,
   enrich: 1,
+  book_hook: 1,
   style_distill: 1,
   transcribe: 2,
   youtube_import: 2,

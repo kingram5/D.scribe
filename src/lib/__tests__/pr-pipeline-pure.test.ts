@@ -43,7 +43,7 @@ describe("5-series request builder", () => {
 describe("final-check edit applier", () => {
   it("applies unique edits", () => {
     const r = applyEdits("The rain came down hard. We waited.", [{ find: "The rain came down hard.", replace: "Rain hammered the roof." }]);
-    expect(r).toEqual({ text: "Rain hammered the roof. We waited.", applied: 1 });
+    expect(r).toEqual({ text: "Rain hammered the roof. We waited.", applied: 1, rejected: 0 });
   });
 
   it("skips edits whose find text is missing or ambiguous", () => {

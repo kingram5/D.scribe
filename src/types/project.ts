@@ -1,4 +1,6 @@
-export interface Project {
+import type { BookDesign } from "@/lib/book-design";
+
+export interface Project extends BookDesign {
   id: string;
   user_id: string;
   title: string;

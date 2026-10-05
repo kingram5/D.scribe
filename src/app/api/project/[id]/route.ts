@@ -1,3 +1,4 @@
+import { validDesignPatch } from "@/lib/book-design";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
@@ -8,6 +9,9 @@ import { deleteAudioForProjects } from "@/lib/storage-cleanup";
 // (id, user_id, project_id, created_at, etc.) is dropped silently so a caller
 // can't write arbitrary columns via the raw `updates` object.
 const PROJECT_FIELDS = [
+  "page_style",
+  "chapter_opening",
+  "back_cover_hook",
   "title",
   "description",
   "audience",
@@ -217,6 +221,7 @@ export async function PATCH(
   }
 
   // Allowlist: only permit safe fields for project updates
+  if (!validDesignPatch(body)) return NextResponse.json({ error: "Invalid book design" }, { status: 400 });
   const filteredBody = pickAllowed(body, PROJECT_FIELDS);
 
   const { data, error } = await supabase

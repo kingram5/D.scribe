@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No generated content found" }, { status: 400 });
   }
 
-  const buffer = await generateDOCX({ title: project.title, chapters: ready });
+  const buffer = await generateDOCX({ title: project.title, chapters: ready, design: project });
 
   // Multipart upload; target mimeType makes Drive convert the DOCX into a
   // native Google Doc the user can edit immediately.

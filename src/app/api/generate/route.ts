@@ -1,3 +1,4 @@
+import { loadAnalysisGuidance } from "@/lib/analysis-moments-server";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import {
@@ -77,9 +78,10 @@ export async function POST(req: NextRequest) {
       ? `Match this voice: ${project.voice_profile.tone || ""}, formality ${project.voice_profile.formality_score || 3}/5.`
       : "";
 
+    const authorGuidance = await loadAnalysisGuidance(project.id);
     const { text: content, usage } = await askClaudeWithUsage(
       `You are a skilled book ghostwriter. Write a compelling foreword/introduction chapter in FIRST PERSON as the author (never refer to "the author" or "the speaker" in third person). ${voiceNote}\n${HUMANIZER_RULES}`,
-      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.`,
+      `Write a foreword for a book titled "${project.title}" aimed at a ${project.audience || "General"} audience.\n\nThe book contains these chapters:\n${chaptersInfo}\n\nThe foreword should:\n- Welcome the reader and set the tone\n- Preview what's ahead without spoiling key moments\n- Establish why these topics matter\n- Create anticipation for what's to come\n- Be warm, inviting, and written in my own authentic voice (first person)\n\nKeep it tight: 500-700 words total. Write the full foreword now.${authorGuidance}`,
       { temperature, maxTokens: 8192 }
     );
 
@@ -175,7 +177,7 @@ export async function POST(req: NextRequest) {
   const styleMemory = await loadStyleMemory(user.id);
   const system = generateSystem(
     project.voice_profile,
-    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)),
+    styleMemoryPromptBlock(styleMemory) + (await loadVoiceDialsBlock(user.id)) + (await loadAnalysisGuidance(chapter.project_id)),
     generationProfileBlock(project.audience, project.scripture_translation) + (otherSpeakers ? `\n\n${OTHER_SPEAKERS_RULE}` : "")
   );
   const prompt = generatePrompt({

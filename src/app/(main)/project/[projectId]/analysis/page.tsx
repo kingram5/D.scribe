@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { setGenerationBusy } from "@/lib/generation-guard";
 import { KeyPoint, VoiceProfile, Chapter, Audience } from "@/types";
@@ -10,6 +10,7 @@ import PanelTitle from "@/components/ui/PanelTitle";
 import PageShell from "@/components/ui/PageShell";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import AnalysisMoments from "@/components/analysis/AnalysisMoments";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 
 // Code-split: the loading screen imports three.js at module scope (as a
@@ -69,6 +70,21 @@ export default function AnalysisPage() {
   const [tab, setTab] = useState<"outline" | "voice">("outline");
   const [audience, setAudience] = useState<Audience>("General");
   const [analyzing, setAnalyzing] = useState(false);
+  const [interactionVisible, setInteractionVisible] = useState(false);
+  const [momentsReady, setMomentsReady] = useState(false);
+  const interactionDone = useRef(false);
+  const finishMoments = useRef<(() => void) | null>(null);
+  function closeMoments() {
+    interactionDone.current = true;
+    setInteractionVisible(false);
+    finishMoments.current?.();
+    finishMoments.current = null;
+  }
+  const pageMounted = useRef(true);
+  useEffect(() => {
+    pageMounted.current = true;
+    return () => { pageMounted.current = false; finishMoments.current?.(); };
+  }, []);
 
   // Leave-guard: analysis is one long run (key points + voice profile + mind
   // map); abandoning it mid-flight loses the whole pass. See generation-guard.
@@ -111,38 +127,41 @@ export default function AnalysisPage() {
 
   async function runAnalysis() {
     setAnalyzing(true);
+    setInteractionVisible(true);
+    setMomentsReady(false);
+    interactionDone.current = false;
     setAnalyzeError(null);
     setLiveKeyPoints([]);
     setLiveTraits([]);
     setLiveChapters((data?.chapters ?? []).map((c) => c.title));
     setAnalysisComplete(false);
 
-    // Save audience to project before analyzing
-    await fetch(`/api/project/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audience }),
-    }).catch(() => {});
-
-    // Get transcript ID — use the most recent transcript with actual content
-    const projRes = await fetch(`/api/project/${projectId}`);
-    const projData = await projRes.json();
-    const transcripts = projData.transcripts || [];
-    const validTranscript = [...transcripts]
-      .reverse()
-      .find((t: { full_text?: string; word_count?: number }) => t.full_text && (t.word_count ?? 0) > 0);
-    const transcriptId = validTranscript?.id;
-
-    if (!transcriptId) {
-      setAnalyzeError("No transcript with content found. Please upload and transcribe audio first.");
-      setAnalyzing(false);
-      return;
-    }
-
-    const body = { project_id: projectId, transcript_id: transcriptId };
-    const headers = { "Content-Type": "application/json" };
-
     try {
+      // Save audience to project before analyzing
+      await fetch(`/api/project/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audience }),
+      }).catch(() => {});
+
+      // Get transcript ID — use the most recent transcript with actual content
+      const projRes = await fetch(`/api/project/${projectId}`);
+      const projData = await projRes.json();
+      const transcripts = projData.transcripts || [];
+      const validTranscript = [...transcripts]
+        .reverse()
+        .find((t: { full_text?: string; word_count?: number }) => t.full_text && (t.word_count ?? 0) > 0);
+      const transcriptId = validTranscript?.id;
+
+      if (!transcriptId) {
+        setAnalyzeError("No transcript with content found. Please upload and transcribe audio first.");
+        setAnalyzing(false);
+        return;
+      }
+
+      const body = { project_id: projectId, transcript_id: transcriptId };
+      const headers = { "Content-Type": "application/json" };
+
       // Step 1: Key points — one chunk at a time
       let chunkIndex = 0;
       let totalChunks = 1;
@@ -184,6 +203,15 @@ export default function AnalysisPage() {
       }
       const vpData = await vpRes.json().catch(() => null);
       if (vpData?.voice_profile) setLiveTraits(deriveTraits(vpData.voice_profile));
+
+      // Finish the current optional card before taking the outline's guidance snapshot.
+      // Authors who chose "watch Analysis" never wait at this gate.
+      setMomentsReady(true);
+      setAnalyzeStep("Themes and voice are ready");
+      if (!interactionDone.current) await new Promise<void>(resolve => { finishMoments.current = resolve; });
+      if (!pageMounted.current) return;
+      setMomentsReady(false);
+      setInteractionVisible(false);
 
       // Step 3: Generate outline only if no chapters exist yet (prevents wiping a custom outline)
       const existingChapters = data?.chapters ?? [];
@@ -283,16 +311,19 @@ export default function AnalysisPage() {
   }
 
   // Analysis running: full-area Neural loading screen, driven by real pipeline data
-  if (analyzing) {
+  if (analyzing || interactionVisible) {
     return (
       <PageShell projectId={projectId} currentStep="analysis" hideFooterNav>
-        <AnalysisLoadingScreen
+        {analyzeError && <p role="alert" style={{ padding: "8px 24px", color: "#B4532A" }}>{analyzeError}</p>}
+        {interactionVisible ? (
+          <AnalysisMoments projectId={projectId} step={analyzeStep} ready={momentsReady || !analyzing} onFinish={closeMoments} />
+        ) : <AnalysisLoadingScreen
           step={analyzeStep}
           complete={analysisComplete}
           keyPoints={liveKeyPoints}
           traits={liveTraits}
           chapters={liveChapters}
-        />
+        />}
       </PageShell>
     );
   }

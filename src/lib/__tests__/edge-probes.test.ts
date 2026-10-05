@@ -346,8 +346,8 @@ describe("migrations: RLS is the only defence against direct PostgREST access", 
 
   it("every created table has row level security enabled", () => {
     const sql = migrationSql();
-    const created = [...sql.matchAll(/create table (?:if not exists )?(\w+)/gi)].map((m) => m[1]);
-    const rlsOn = new Set([...sql.matchAll(/alter table (\w+) enable row level security/gi)].map((m) => m[1]));
+    const created = [...sql.matchAll(/create table (?:if not exists )?([\w.]+)/gi)].map((m) => m[1]);
+    const rlsOn = new Set([...sql.matchAll(/alter table ([\w.]+) enable row level security/gi)].map((m) => m[1]));
     expect([...new Set(created)].filter((t) => !rlsOn.has(t))).toEqual([]);
   });
 

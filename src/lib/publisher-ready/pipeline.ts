@@ -260,8 +260,8 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
   await recordPass(db, {
     run_id: opts.runId, chapter_id: opts.chapterId, user_id: opts.userId, step: "final",
     version_in: ctx.latest.version, version_out: version,
-    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied },
+    scores: { tells_score: after.tells.score, rhythm_variation: Number(after.rhythmVariation.toFixed(3)), flags_left: after.flags.length, edits_applied: out.applied, edits_rejected: out.rejected },
     usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
   });
-  return { version, applied: out.applied, tellsScore: after.tells.score, flagsLeft: after.flags.length };
+  return { version, applied: out.applied, rejected: out.rejected, tellsScore: after.tells.score, flagsLeft: after.flags.length };
 }

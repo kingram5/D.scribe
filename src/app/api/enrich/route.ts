@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { ENRICH_SYSTEM, enrichPrompt } from "@/lib/prompts/enrich";
 import { requireAuth } from "@/lib/auth";
 import { checkInk, recordInkUsage } from "@/lib/ink";
+import { isVerifiedEnrichment, verifiedEnrichments } from "@/lib/enrichment-policy";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/enrich?project_id=xxx — read existing enrichments for all chapters in a project
@@ -54,10 +55,14 @@ export async function GET(req: NextRequest) {
     .select("*")
     .in("chapter_id", chapterIds);
 
+  const { data: sources, error: sourceError } = await supabase.from("research_items")
+    .select("text, attribution, source_title, source_url").eq("project_id", projectId).eq("user_id", user.id).eq("status", "active");
+  if (sourceError) return NextResponse.json({ error: "Could not verify quote sources." }, { status: 503 });
+
   // Group by chapter_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const grouped: Record<string, any[]> = {};
-  for (const e of enrichments ?? []) {
+  for (const e of verifiedEnrichments(enrichments ?? [], sources ?? [])) {
     if (!grouped[e.chapter_id]) grouped[e.chapter_id] = [];
     grouped[e.chapter_id].push(e);
   }
@@ -117,7 +122,13 @@ export async function POST(req: NextRequest) {
   // On first generation nothing is included yet, so this is a no-op.
   const { data: existingEnrichments } = await supabase
     .from("enrichments").select("*").eq("chapter_id", chapter_id);
-  const kept = (existingEnrichments || []).filter((e) => e.included);
+  const { data: researched, error: sourceError } = await supabase.from("research_items")
+    .select("text, attribution, source_title, source_url").eq("project_id", chapter.projects.id).eq("user_id", user.id).eq("status", "active");
+  if (sourceError) return NextResponse.json({ error: "Could not verify quote sources." }, { status: 503 });
+  const sources = (researched ?? []).filter((r) => isVerifiedEnrichment({ quote_text: r.text, source_author: r.attribution, source_title: r.source_title, source_type: "research" }, researched ?? []));
+  const kept = verifiedEnrichments(existingEnrichments ?? [], sources).filter((e) => e.included);
+  // No source evidence means no memory-only alternatives and no billable model call.
+  if (!sources.some((r) => !!r.attribution)) return NextResponse.json(kept);
 
   // Exclude every quote already shown ANYWHERE in this project (this chapter's
   // favorites + all other chapters' quotes) so quotes aren't recycled chapter-to-
@@ -139,13 +150,6 @@ export async function POST(req: NextRequest) {
   const targetWords = chapter.target_word_count || 1500;
   const recommendedQuotes = Math.max(1, Math.min(6, Math.round(targetWords / 750)));
 
-  const { data: researched } = await supabase
-    .from("research_items")
-    .select("text, attribution, source_title, source_url")
-    .eq("project_id", chapter.projects.id)
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .limit(20);
 
   const promptText = enrichPrompt(
     chapter.title,
@@ -154,7 +158,7 @@ export async function POST(req: NextRequest) {
     chapter.projects.audience,
     chapter.projects.scripture_translation,
     excludeTexts,
-    researched ?? [],
+    sources,
   );
 
   // Responses sometimes include unescaped quotes inside string values, which break
@@ -183,9 +187,13 @@ export async function POST(req: NextRequest) {
       items = parseItems(retry.text);
     }
 
-    if (!items || items.length === 0) {
+    if (!items) {
       return NextResponse.json({ error: "Couldn't read the quote results — please try again." }, { status: 500 });
     }
+
+    items = verifiedEnrichments(items, sources);
+    // A smaller or empty verified list is preferable to an invented substitute.
+    if (!items.length) return NextResponse.json(kept);
 
     // Replace ONLY the un-selected quotes — the user's toggled-on favorites stay put.
     await supabase.from("enrichments").delete().eq("chapter_id", chapter_id).eq("included", false);
@@ -193,19 +201,16 @@ export async function POST(req: NextRequest) {
     // Insert fresh candidates. Auto-select up to the recommended count, counting the
     // kept favorites first, so a refresh tops up toward the suggestion without
     // overriding the picks the user already made.
-    // DB CHECK constraint only allows these source_types — coerce anything else
-    // (e.g. a model returning "paraphrased" or "quote") to "book" so the insert
-    // doesn't fail the whole batch.
-    const ALLOWED_SOURCE_TYPES = ["book", "article", "scripture", "speech", "research"];
+    // The policy already validated source types; never invent a fallback type.
     const { data: inserted, error } = await supabase
       .from("enrichments")
       .insert(
         items.map((item: Record<string, unknown>, idx: number) => ({
           chapter_id,
-          quote_text: item.quote_text || "",
-          source_author: item.source_author || "Unknown",
-          source_title: item.source_title || "",
-          source_type: ALLOWED_SOURCE_TYPES.includes(item.source_type as string) ? (item.source_type as string) : "book",
+          quote_text: item.quote_text,
+          source_author: item.source_author,
+          source_title: item.source_title,
+          source_type: item.source_type,
           relevance_note: item.relevance_note || "",
           included: (kept.length + idx) < recommendedQuotes,
         }))
@@ -246,7 +251,7 @@ export async function PATCH(req: NextRequest) {
   // Verify the enrichment belongs to a chapter owned by this user
   const { data: enrichment } = await supabase
     .from("enrichments")
-    .select("chapter_id, chapters(project_id, projects(user_id))")
+    .select("*, chapters(project_id, projects(user_id))")
     .eq("id", id)
     .single();
 
@@ -260,6 +265,15 @@ export async function PATCH(req: NextRequest) {
 
   if (projectUserId !== user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (typeof included !== "boolean") return NextResponse.json({ error: "included must be a boolean" }, { status: 400 });
+  if (included) {
+    const projectId = (enrichment as unknown as { chapters: { project_id: string } }).chapters.project_id;
+    const { data: sources, error: sourceError } = await supabase.from("research_items")
+      .select("text, attribution, source_title, source_url").eq("project_id", projectId).eq("user_id", user.id).eq("status", "active");
+    if (sourceError) return NextResponse.json({ error: "Could not verify quote sources." }, { status: 503 });
+    if (!isVerifiedEnrichment(enrichment, sources ?? [])) return NextResponse.json({ error: "This quote cannot be verified for inclusion. Choose another source." }, { status: 422 });
   }
 
   const { data, error } = await supabase

@@ -14,7 +14,8 @@ import VoiceMatchBadge from "@/components/editor/VoiceMatchBadge";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
 import { useInkGuard } from "@/hooks/useInkGuard";
 import { usePrStepRunner, type PrStep } from "@/hooks/usePrStepRunner";
-import { setGenerationBusy } from "@/lib/generation-guard";
+import { useChapterEdits } from "@/hooks/useChapterEdits";
+import { setGenerationBusy, setUnsavedEdits } from "@/lib/generation-guard";
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,16 +27,19 @@ export default function EditorPage() {
   const activeIdxRef = useRef(0);
   activeIdxRef.current = activeIdx;
   const [textStylesOpen, setTextStylesOpen] = useState(false);
-  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [wordCount, setWordCount] = useState(0);
-  const [saved, setSaved] = useState(false);
   const [selection, setSelection] = useState<TipTapSelection | null>(null);
   const [isRewriting, setIsRewriting] = useState(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   const editorRef = useRef<TipTapEditorHandle>(null);
   const preRewriteContentRef = useRef<string>("");
+
+  const onSaved = useCallback((chapterId: string, data: ChapterContent) => {
+    setChapters((prev) => prev.map((ch) => ch.id === chapterId
+      ? { ...ch, latest_content: data, status: "edited" as const } : ch));
+  }, []);
+  const { content, saved, saving, saveError, dirty, loadChapter, handleContentChange, refreshChapter, saveContent } = useChapterEdits(onSaved);
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
 
   const fetchChapters = useCallback(async () => {
     try {
@@ -60,16 +64,13 @@ export default function EditorPage() {
       );
 
       setChapters(withContent);
-      if (withContent.length > 0 && withContent[0].latest_content) {
-        setContent(withContent[0].latest_content.content);
-        setWordCount(withContent[0].latest_content.word_count);
-      }
+      if (withContent.length > 0) loadChapter(withContent[0].id, withContent[0].latest_content?.content ?? "");
     } catch {
       // leave loading state, show empty chapters list
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, loadChapter]);
 
   useEffect(() => {
     fetchChapters();
@@ -81,33 +82,17 @@ export default function EditorPage() {
   const openUpgrade = useCallback(() => setShowUpgrade(true), [setShowUpgrade]);
   const pr = usePrStepRunner(guardedFetch, openUpgrade);
   const [revision, setRevision] = useState<{ runId: string; stage: PrStep | "done" } | null>(null);
+  const [rejectedFinalEdits, setRejectedFinalEdits] = useState(0);
   const [revisedReady, setRevisedReady] = useState<string | null>(null);
-  const contentRef = useRef(content);
-  contentRef.current = content;
   const revisingRef = useRef(false);
 
   /** Pull one chapter's newest text after its rewrite lands. */
   const reloadChapter = useCallback(async (chapterId: string) => {
     const data = await fetch(`/api/chapter-content/${chapterId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!data?.content) return;
-    setChapters((prev) => {
-      const idx = prev.findIndex((c) => c.id === chapterId);
-      if (idx < 0) return prev;
-      const old = prev[idx].latest_content?.content ?? "";
-      if (idx === activeIdxRef.current) {
-        // Never overwrite words the author is in the middle of changing.
-        // Whitespace-normalized: the editor may tidy text on load without any real edit.
-        const norm = (t: string) => t.replace(/\s+/g, " ").trim();
-        if (norm(contentRef.current) === norm(old)) {
-          setContent(data.content);
-          setWordCount(data.word_count ?? data.content.split(/\s+/).filter(Boolean).length);
-        } else {
-          setRevisedReady(chapterId);
-        }
-      }
-      return prev.map((c, i) => (i === idx ? { ...c, latest_content: data } : c));
-    });
-  }, []);
+    if (!refreshChapter(chapterId, data.content)) setRevisedReady(chapterId);
+    setChapters((prev) => prev.map((ch) => ch.id === chapterId ? { ...ch, latest_content: data } : ch));
+  }, [refreshChapter]);
 
   useEffect(() => {
     if (revisingRef.current) return;
@@ -122,17 +107,26 @@ export default function EditorPage() {
         const passes: { chapter_id: string; step: string }[] = d.passes ?? [];
         const todo = (step: string) => chs.filter((c) => !passes.some((p) => p.chapter_id === c.id && p.step === step));
         setRevision({ runId: run.id, stage: "revise" });
-        if (!(await pr.runStep(run.id, "revise", todo("revise"), (id) => { void reloadChapter(id); }))) { revisingRef.current = false; return; }
+        if (!(await pr.runStep(run.id, "revise", todo("revise"), reloadChapter))) { revisingRef.current = false; return; }
+        if (!alive) return;
         setRevision({ runId: run.id, stage: "final" });
-        if (!(await pr.runStep(run.id, "final", todo("final"), (id) => { void reloadChapter(id); }))) { revisingRef.current = false; return; }
-        await guardedFetch("/api/publisher-ready/run", {
+        if (!(await pr.runStep(run.id, "final", todo("final"), async (id, result) => {
+          if (result && typeof result === "object" && "rejected" in result && typeof result.rejected === "number") { const count = result.rejected; setRejectedFinalEdits((n) => n + count); }
+          await reloadChapter(id);
+        }))) { revisingRef.current = false; return; }
+        if (!alive) return;
+        const completed = await guardedFetch("/api/publisher-ready/run", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ run_id: run.id, action: "complete" }),
         });
-        setRevision({ runId: run.id, stage: "done" });
+        if (!completed.ok) throw new Error("The final draft's completion could not be saved. Reload progress before retrying.");
+        if (alive) setRevision({ runId: run.id, stage: "done" });
         revisingRef.current = false;
       })
-      .catch(() => {});
+      .catch((err) => {
+        revisingRef.current = false;
+        if (alive) pr.setError(err instanceof Error ? err.message : "The revision could not finish. Reload progress before retrying.");
+      });
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- once per project; the runner is stable
   }, [projectId]);
@@ -142,52 +136,18 @@ export default function EditorPage() {
     return () => setGenerationBusy(null);
   }, [pr.running]);
 
-  function handleContentChange(newContent: string) {
-    setContent(newContent);
-    setWordCount(newContent.split(/\s+/).filter(Boolean).length);
-    setSaved(false);
-  }
+  useEffect(() => {
+    setUnsavedEdits(dirty ? "You have unsaved chapter edits" : null);
+    return () => setUnsavedEdits(null);
+  }, [dirty]);
 
   function switchChapter(idx: number) {
-    setActiveIdx(idx);
     const ch = chapters[idx];
-    if (ch?.latest_content) {
-      setContent(ch.latest_content.content);
-      setWordCount(ch.latest_content.word_count);
-    } else {
-      setContent("");
-      setWordCount(0);
-    }
-    setSaved(false);
-  }
-
-  async function saveContent() {
-    const ch = chapters[activeIdx];
-    if (!ch || !content.trim()) return;
-    setSaving(true);
-
-    const res = await fetch(`/api/chapter-content/${ch.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-
-    if (res.ok) {
-      const savedData = await res.json();
-      setChapters((prev) =>
-        prev.map((c, i) =>
-          i === activeIdx ? { ...c, latest_content: savedData, status: "edited" as const } : c
-        )
-      );
-      setSaved(true);
-
-      // Enough edits accumulated — refresh the style memory in the background.
-      // Fire-and-forget: distillation failing never affects the save.
-      if (savedData.needs_distill) {
-        fetch("/api/voice-memory", { method: "POST" }).catch(() => {});
-      }
-    }
-    setSaving(false);
+    if (!ch || isRewriting) return;
+    activeIdxRef.current = idx;
+    setActiveIdx(idx);
+    setSelection(null);
+    loadChapter(ch.id, ch.latest_content?.content ?? "");
   }
 
   if (loading) {
@@ -255,18 +215,23 @@ export default function EditorPage() {
           )}
         </div>
       )}
+      {rejectedFinalEdits > 0 && <div role="status" style={{ padding: "8px 24px" }}>Final check preserved the original quotations and skipped {rejectedFinalEdits} suggested edits. Review those passages before publishing.</div>}
       {revisedReady && chapters[activeIdx]?.id === revisedReady && (
         <div role="status" style={{ margin: "0 clamp(16px, 4vw, 40px) 12px", fontSize: 13, color: "var(--text-secondary)", display: "flex", gap: 10, alignItems: "center" }}>
           The revised version of this chapter is ready. Your unsaved edits are still on screen.
           <button onClick={() => {
             const ch = chapters[activeIdx];
-            if (ch?.latest_content) { setContent(ch.latest_content.content); setWordCount(ch.latest_content.word_count); }
+            if (ch?.latest_content && window.confirm("Replace your unsaved edits with the revision?")) {
+              // Keep the draft until the author explicitly chooses this replacement.
+              handleContentChange(ch.latest_content.content);
+            } else return;
             setRevisedReady(null);
           }} style={{ border: "none", background: "none", color: "#A05526", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 13 }}>
             Load the revision
           </button>
         </div>
       )}
+      {saveError && <div role="alert" style={{ padding: "8px 24px", color: "#b91c1c" }}>{saveError}</div>}
       {isRewriting && (
         <div style={{
           position: "fixed",
@@ -1221,10 +1186,8 @@ export default function EditorPage() {
                         const paragraphs: string[] = [];
                         editor.state.doc.forEach((node) => paragraphs.push(node.textContent));
                         const newContent = paragraphs.join("\n\n");
-                        setContent(newContent);
-                        setWordCount(newContent.split(/\s+/).filter(Boolean).length);
-                        setSaved(false);
-                        saveContent();
+                        handleContentChange(newContent);
+                        void saveContent();
                       }
                     }}
                   />
@@ -1280,19 +1243,15 @@ export default function EditorPage() {
                   setRewriteError(null);
                 }}
                 onRewriteChunk={(accumulated) => {
-                  setContent(accumulated);
-                  setWordCount(accumulated.split(/\s+/).filter(Boolean).length);
+                  handleContentChange(accumulated);
                 }}
                 onRewriteComplete={(finalText) => {
-                  setContent(finalText);
-                  setWordCount(finalText.split(/\s+/).filter(Boolean).length);
+                  handleContentChange(finalText);
                   setIsRewriting(false);
-                  setSaved(false);
-                  setTimeout(() => saveContent(), 100);
+                  void saveContent();
                 }}
                 onRewriteError={(error) => {
-                  setContent(preRewriteContentRef.current);
-                  setWordCount(preRewriteContentRef.current.split(/\s+/).filter(Boolean).length);
+                  handleContentChange(preRewriteContentRef.current);
                   setIsRewriting(false);
                   setRewriteError(error);
                   setTimeout(() => setRewriteError(null), 5000);

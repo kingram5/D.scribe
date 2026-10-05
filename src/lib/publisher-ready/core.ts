@@ -158,37 +158,71 @@ export async function coreRevise(
   };
 }
 
-/** Apply find/replace edits; skips any whose `find` is missing or not unique, and never edits inside quotes. */
-export function applyEdits(text: string, edits: { find: string; replace: string }[]): { text: string; applied: number } {
+/** Immutable quoted spans, read from the whole chapter rather than an edit fragment. */
+function quotations(text: string): string[] {
+  const spans: string[] = [];
+  const stack: string[] = [];
+  let start = -1;
+  const word = (ch: string) => /[\p{L}\p{N}]/u.test(ch);
+  const closeFor: Record<string, string> = { '"': '"', "'": "'", "“": "”", "‘": "’" };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    // Escaped quotes and apostrophes in contractions are not delimiters.
+    let slashes = 0;
+    for (let j = i - 1; j >= 0 && text[j] === "\\"; j--) slashes++;
+    if (slashes % 2 || ((ch === "'" || ch === "’") && word(text[i - 1] ?? "") && word(text[i + 1] ?? ""))) continue;
+    if (stack.length && ch === stack[stack.length - 1]) {
+      stack.pop();
+      if (!stack.length) { spans.push(text.slice(start, i + 1)); start = -1; }
+    } else if (closeFor[ch]) {
+      // Possessives such as James' book are not quoted speech.
+      if (ch === "'" && word(text[i - 1] ?? "")) continue;
+      if (!stack.length) start = i;
+      stack.push(closeFor[ch]);
+    } else if (ch === "”" || ch === "’") {
+      // Preserve unmatched closing marks too; fail conservatively.
+      if (ch !== "’" || !word(text[i - 1] ?? "")) spans.push(ch);
+    }
+  }
+  if (start >= 0) spans.push(text.slice(start));
+  // Stored/editor block quotations use Markdown markers, including continuations.
+  spans.push(...(text.match(/^ *>[^\n]*(?:\n *>[^\n]*)*/gm) ?? []));
+  return spans;
+}
+
+/** Apply unique edits only when every quotation stays byte-for-byte identical. */
+export function applyEdits(text: string, edits: { find: string; replace: string }[]): { text: string; applied: number; rejected: number } {
   let out = text;
   let applied = 0;
+  let rejected = 0;
   for (const e of edits) {
     if (!e.find || e.find === e.replace) continue;
     const first = out.indexOf(e.find);
     if (first === -1 || out.indexOf(e.find, first + 1) !== -1) continue;
-    // Quoted speech is the author's source material: an edit that changes any
-    // quoted text is refused.
-    const quotesBefore = (e.find.match(/["“”]/g) ?? []).join("");
-    const quotesAfter = (e.replace.match(/["“”]/g) ?? []).join("");
-    const quotedBefore = e.find.match(/["“][^"”]*["”]/g) ?? [];
-    if (quotesBefore !== quotesAfter || quotedBefore.some((q) => !e.replace.includes(q))) continue;
-    out = out.slice(0, first) + e.replace + out.slice(first + e.find.length);
+    const candidate = out.slice(0, first) + e.replace + out.slice(first + e.find.length);
+    const before = quotations(out);
+    const after = quotations(candidate);
+    if (before.length !== after.length || before.some((q, i) => q !== after[i])) {
+      rejected++;
+      continue;
+    }
+    out = candidate;
     applied++;
   }
-  return { text: out, applied };
+  return { text: out, applied, rejected };
 }
 
 export async function coreFinal(
   text: string,
   otherChapters: Record<string, string>,
   mix: ModelMix = DEFAULT_MIX
-): Promise<{ text: string; applied: number; spend: Spend[] }> {
+): Promise<{ text: string; applied: number; rejected: number; spend: Spend[] }> {
   const structure = lintStructure(text);
   const flags = [...structure.flags, ...bookRepeats(text, otherChapters)];
   const tellLines = structure.tells.bannedHits.map((b) => `- banned phrase "${b.phrase}" x${b.count}`);
   if (structure.tells.negationFlips) tellLines.push(`- ${structure.tells.negationFlips} "not X, but Y" constructions`);
   // Only spend a model call when the checker found something.
-  if (!flags.length && !tellLines.length) return { text, applied: 0, spend: [] };
+  if (!flags.length && !tellLines.length) return { text, applied: 0, rejected: 0, spend: [] };
 
   const res = await callClaudeNext(
     finalCheckSystem(),

@@ -3,7 +3,7 @@ import Link from "next/link";
 import KeepAwakeControl from "./KeepAwakeControl";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getGenerationBusy, subscribeGenerationBusy } from "@/lib/generation-guard";
+import { getGenerationBusy, getNavigationWarning, subscribeGenerationBusy } from "@/lib/generation-guard";
 import { TUTORIALS } from "@/components/tutorial/tutorial-content";
 import { hasSeenTutorial, markTutorialSeen, isTutorialAutoShowOn } from "@/components/tutorial/tutorial-state";
 import StepTutorialModal from "@/components/tutorial/StepTutorialModal";
@@ -136,13 +136,15 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   // Leave-guard: while a page reports generation in progress, every navigation
   // out of the step gets an explicit confirm instead of silently losing work.
   const [busy, setBusy] = useState<string | null>(null);
+  const [leaveWarning, setLeaveWarning] = useState<string | null>(null);
   const [pendingLeave, setPendingLeave] = useState<{ href?: string; action?: () => void } | null>(null);
   useEffect(() => {
-    setBusy(getGenerationBusy());
-    return subscribeGenerationBusy(() => setBusy(getGenerationBusy()));
+    const update = () => { setBusy(getGenerationBusy()); setLeaveWarning(getNavigationWarning()); };
+    update();
+    return subscribeGenerationBusy(update);
   }, []);
   function guardNav(e: React.MouseEvent, href: string) {
-    if (!busy) return;
+    if (!leaveWarning) return;
     e.preventDefault();
     setPendingLeave({ href });
   }
@@ -470,7 +472,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
                 ) : onNextClick ? (
                   <button
                     onClick={() => {
-                      if (busy && onNextClick) setPendingLeave({ action: onNextClick });
+                      if (leaveWarning && onNextClick) setPendingLeave({ action: onNextClick });
                       else onNextClick?.();
                     }}
                     style={{
@@ -629,7 +631,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
             ) : onNextClick ? (
               <button
                 onClick={() => {
-                  if (busy && onNextClick) setPendingLeave({ action: onNextClick });
+                  if (leaveWarning && onNextClick) setPendingLeave({ action: onNextClick });
                   else onNextClick?.();
                 }}
                 style={{
@@ -693,7 +695,7 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
               Still working on this step
             </h2>
             <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary, #A89F94)", margin: "10px 0 24px" }}>
-              {busy || "Generation is in progress"}. If you leave now, this progress will be lost and you&apos;ll have to start it again.
+              {leaveWarning || "Generation is in progress"}. Save your edits or let the current step finish before leaving.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button

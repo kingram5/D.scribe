@@ -96,7 +96,7 @@ export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
     border: "1px solid var(--ds-input-border)", background: "var(--ds-input-bg)", color: "var(--text-primary)",
   };
   const chip = (on: boolean): React.CSSProperties => ({
-    fontSize: 12, fontWeight: 600, padding: "6px 10px", borderRadius: 999, cursor: "pointer",
+    fontSize: 12, fontWeight: 600, padding: "6px 10px", minHeight: 44, borderRadius: 999, cursor: "pointer",
     border: on ? "1px solid #C17A47" : "1px solid var(--ds-card-border)",
     background: on ? "rgba(193,122,71,0.12)" : "transparent", color: "var(--text-primary)",
   });
@@ -130,14 +130,14 @@ export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
               </div>
             )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              <button type="button" style={chip(d.role === "author" && !d.sameAs)} onClick={() => set(s.speaker, { role: "author", sameAs: "" })}>The book&apos;s author</button>
-              <button type="button" style={chip(d.role === "other" && !d.sameAs)} onClick={() => set(s.speaker, { role: "other", sameAs: "" })}>Someone else</button>
+              <button type="button" aria-pressed={d.role === "author" && !d.sameAs} style={chip(d.role === "author" && !d.sameAs)} onClick={() => set(s.speaker, { role: "author", sameAs: "" })}>The book&apos;s author</button>
+              <button type="button" aria-pressed={d.role === "other" && !d.sameAs} style={chip(d.role === "other" && !d.sameAs)} onClick={() => set(s.speaker, { role: "other", sameAs: "" })}>Someone else</button>
               {others.length > 0 && (
                 <select
                   value={d.sameAs}
                   onChange={(e) => set(s.speaker, { sameAs: e.target.value })}
                   aria-label={`Same person as another speaker (${s.speaker})`}
-                  style={{ ...field, width: "auto", fontSize: 12, padding: "5px 8px" }}
+                  style={{ ...field, width: "auto", fontSize: 16, minHeight: 44, padding: "5px 8px" }}
                 >
                   <option value="">Same person as…</option>
                   {others.map((o) => <option key={o.speaker} value={o.speaker}>{o.speaker}</option>)}
@@ -146,8 +146,8 @@ export default function SpeakerLabelPanel({ transcript, onSaved }: Props) {
             </div>
             {d.role === "other" && !d.sameAs && (
               <div style={{ display: "grid", gap: 6 }}>
-                <input style={field} placeholder="Their name (e.g. Pastor Mike)" value={d.name} maxLength={60} onChange={(e) => set(s.speaker, { name: e.target.value })} />
-                <input style={field} placeholder="Who they are to you (e.g. my pastor)" value={d.relationship} maxLength={60} onChange={(e) => set(s.speaker, { relationship: e.target.value })} />
+                <input aria-label={`Name for ${s.speaker}`} style={field} placeholder="Their name (e.g. Pastor Mike)" value={d.name} maxLength={60} onChange={(e) => set(s.speaker, { name: e.target.value })} />
+                <input aria-label={`Relationship for ${s.speaker}`} style={field} placeholder="Who they are to you (e.g. my pastor)" value={d.relationship} maxLength={60} onChange={(e) => set(s.speaker, { relationship: e.target.value })} />
               </div>
             )}
           </div>

@@ -1,3 +1,4 @@
+import { verifiedEnrichments } from "@/lib/enrichment-policy";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import {
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
     .from("projects").select("id").eq("id", chapter.project_id).eq("user_id", user.id).single();
   if (!projectOwner) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes] =
+  const [projectRes, transcriptRes, keyPointsRes, enrichRes, prevChaptersRes, prevChapterContentRes, researchRes] =
     await Promise.all([
       supabase.from("projects").select("*").eq("id", chapter.project_id).single(),
       // Segments + labels for [Author] / [Name] tags (needs migration 031; unlabeled = plain text, as before).
@@ -143,6 +144,8 @@ export async function POST(req: NextRequest) {
         return supabase.from("chapter_contents").select("content")
           .eq("chapter_id", prevCh.id).order("version", { ascending: false }).limit(1).single();
       })(),
+      supabase.from("research_items").select("text, attribution, source_title, source_url")
+        .eq("project_id", chapter.project_id).eq("user_id", user.id).eq("status", "active"),
     ]);
 
   const project = projectRes.data;
@@ -150,7 +153,7 @@ export async function POST(req: NextRequest) {
 
   const transcripts = transcriptRes.data || [];
   const keyPoints = keyPointsRes.data || [];
-  const enrichments = enrichRes.data || [];
+  const enrichments = researchRes.error ? [] : verifiedEnrichments(enrichRes.data || [], researchRes.data || []);
   const previousChapters = prevChaptersRes.data || [];
 
   let previousChapterTail = "";

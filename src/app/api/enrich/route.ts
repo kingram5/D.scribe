@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     chapter.projects.audience,
     chapter.projects.scripture_translation,
     excludeTexts,
-    sources,
+    sources.slice(0, 20),
   );
 
   // Responses sometimes include unescaped quotes inside string values, which break

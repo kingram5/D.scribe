@@ -17,14 +17,9 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
   const [answers, setAnswers] = useState<Record<string, SavedAnswer>>({});
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"moments" | "context" | "clarify" | "done">("moments");
-  const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -46,9 +41,6 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
     return () => {
       cancelled = true;
       mounted.current = false;
-      if (timer.current) clearTimeout(timer.current);
-      if (recorder.current?.state === "recording") recorder.current.stop();
-      stream.current?.getTracks().forEach(t => t.stop());
     };
   }, [projectId]);
 
@@ -74,7 +66,6 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
   }
 
   function nextMoment() {
-    setText("");
     const next = cards.findIndex((c, i) => i > index && !answers[c.id]);
     if (next >= 0 && !ready) { setIndex(next); setPhase("moments"); }
     else { setIndex(0); setPhase(!ready ? "clarify" : "done"); }
@@ -84,64 +75,42 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
     if (!card) return;
     const next = { card_id: card.id, importance, context: answers[card.id]?.context || "", clarification_answer: answers[card.id]?.clarification_answer || "" };
     if (!(await save(card, next))) return;
-    if (importance === "essential") { setText(next.context); setPhase("context"); }
+    if (importance === "essential") { setPhase("context"); }
     else nextMoment();
   }
 
-  async function saveText(finish = false) {
-    if (!card) { if (finish) onFinish(); return; }
-    const previous = answers[card.id];
-    if (!previous) return;
-    const next = { ...previous, ...(phase === "context" ? { context: text } : { clarification_answer: text }) };
+  async function chooseDirection(direction: string) {
+    if (!card || !answers[card.id]) return;
+    const next = { ...answers[card.id], ...(phase === "context" ? { context: direction } : { clarification_answer: direction }) };
     if (!(await save(card, next))) return;
-    setText("");
-    if (finish) { onFinish(); return; }
+    if (ready) { onFinish(); return; }
     if (phase === "clarify") {
-      if (ready || index + 1 >= clarificationCards.length) setPhase("done");
+      if (index + 1 >= clarificationCards.length) setPhase("done");
       else setIndex(index + 1);
     } else nextMoment();
   }
 
-  async function toggleRecording() {
-    if (recording) { recorder.current?.stop(); return; }
-    setError(null); setBusy(true);
-    try {
-      const media = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!mounted.current) { media.getTracks().forEach(t => t.stop()); return; }
-      stream.current = media;
-      const rec = new MediaRecorder(media, { audioBitsPerSecond: 32000 });
-      recorder.current = rec;
-      const chunks: Blob[] = [];
-      let bytes = 0;
-      const start = Date.now();
-      rec.ondataavailable = event => {
-        if (!event.data.size) return;
-        chunks.push(event.data); bytes += event.data.size;
-        if (bytes >= 3.5 * 1024 * 1024 && rec.state === "recording") rec.stop();
-      };
-      rec.onstop = async () => {
-        media.getTracks().forEach(t => t.stop());
-        if (timer.current) clearTimeout(timer.current);
-        if (!mounted.current) return;
-        setRecording(false); setBusy(true);
-        try {
-          const type = rec.mimeType || "audio/webm";
-          const blob = new Blob(chunks, { type });
-          const res = await fetch(`/api/analysis-moments/stt?project_id=${projectId}&seconds=${Math.ceil((Date.now() - start) / 1000)}`, { method: "POST", headers: { "Content-Type": type }, body: blob });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          if (mounted.current) {
-            if (data.transcript) setText(previous => `${previous}${previous ? " " : ""}${data.transcript}`.slice(0, phase === "clarify" ? 3000 : 6000));
-            else setError("No words were heard. Try again or type your answer.");
-          }
-        } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : "Couldn't transcribe that."); }
-        finally { if (mounted.current) setBusy(false); }
-      };
-      rec.start(1000); setRecording(true); setBusy(false);
-      timer.current = setTimeout(() => { if (rec.state === "recording") rec.stop(); }, 180000);
-    } catch { stream.current?.getTracks().forEach(t => t.stop()); setBusy(false); setError("Microphone unavailable. You can type your answer instead."); }
+  function skipQuestion() {
+    if (ready) onFinish();
+    else if (phase === "clarify") {
+      if (index + 1 < clarificationCards.length) setIndex(index + 1);
+      else setPhase("done");
+    } else nextMoment();
   }
 
+  const usageChoices = [
+    { label: "Opening story", value: "Editorial preference: consider this passage as an opening story in a relevant chapter. Use only facts present in the transcript." },
+    { label: "Supporting example", value: "Editorial preference: use this passage as a concise example supporting a relevant idea." },
+    { label: "Key takeaway", value: "Editorial preference: emphasize the lesson supported by this passage, without inventing facts or experiences." },
+    { label: "Let Theo decide", value: "Editorial preference: let Theo choose the role that best fits this passage." },
+  ];
+  const takeawayChoices = [
+    { label: "What changed", value: "Editorial preference: emphasize the change or turning point supported by this passage." },
+    { label: "What was learned", value: "Editorial preference: emphasize lessons that are actually supported by this passage." },
+    { label: "Why it mattered", value: "Editorial preference: emphasize the significance already expressed in this passage." },
+    { label: "What readers can use", value: "Editorial preference: emphasize practical insights supported by this passage. Do not invent advice." },
+    { label: "Let Theo decide", value: "Editorial preference: let Theo choose the reader takeaway supported by this passage." },
+  ];
   const editing = phase === "context" || phase === "clarify";
   return (
     <section className="ds-analysis-moments" aria-labelledby="analysis-moments-title">
@@ -150,8 +119,8 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
         {ready ? "Themes and voice are ready" : step || "Theo is analyzing your words…"}
       </div>
       <h1 id="analysis-moments-title">What matters most?</h1>
-      <p className="ds-analysis-moments__intro">While Theo reads, help him understand what belongs in your book. Every choice is optional.</p>
-      {ready && <p className="ds-analysis-moments__ready" role="status">Finish your current thought, then {"build your outline with your saved choices"}.</p>}
+      <p className="ds-analysis-moments__intro">While Theo reads, pick what belongs in your book. Every choice is optional—just tap your answer.</p>
+      {ready && <p className="ds-analysis-moments__ready" role="status">Pick one last direction or build your outline with your saved choices.</p>}
       <div className="ds-analysis-moments__card">
         {loading ? <p>Finding moments in your transcript…</p> : card && phase !== "done" ? (
           <>
@@ -159,20 +128,17 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
             <blockquote>{card.excerpt}</blockquote>
             {editing ? (
               <>
-                <h2>{phase === "context" ? "Tell me a little more" : "What did you mean here?"}</h2>
-                <p>{phase === "context" ? (card.is_author ? "What happened next, or why did this moment matter to you?" : "What context should readers have about this speaker's words?") : card.clarification}</p>
-                <label htmlFor="analysis-moment-answer" className="ds-analysis-moments__eyebrow">{phase === "context" ? "Additional context" : "Your clarification"}</label>
-                <textarea id="analysis-moment-answer" value={text} onChange={e => setText(e.target.value)} maxLength={phase === "clarify" ? 3000 : 6000} rows={5} disabled={busy || recording} placeholder="A few sentences are enough…" />
+                <h2>{phase === "context" ? "How should Theo use this moment?" : "What should readers take from this?"}</h2>
+                <p>{phase === "context" ? "Choose the role it could play in your book." : "Choose what Theo should emphasize, using the details already in your transcript."}</p>
                 <div className="ds-analysis-moments__actions">
-                  <button type="button" style={buttonStyle} disabled={busy} onClick={toggleRecording}>{recording ? "Stop recording" : "Record a little more"}</button>
-                  <button type="button" style={{ ...buttonStyle, background: "#C17A47", color: "#fff", borderColor: "#C17A47" }} disabled={busy || recording} onClick={() => saveText(ready)}>{busy ? "Saving…" : ready ? "Save & build outline" : "Save & next"}</button>
-                  {!text.trim() && <button type="button" style={buttonStyle} disabled={busy || recording} onClick={() => {
-                    if (ready) onFinish();
-                    else if (phase === "clarify") { if (index + 1 < clarificationCards.length) setIndex(index + 1); else setPhase("done"); }
-                    else nextMoment();
-                  }}>Skip this question</button>}
+                  {(phase === "context" ? usageChoices : takeawayChoices).map(choice => (
+                    <button key={choice.label} type="button" style={buttonStyle} disabled={busy}
+                      aria-pressed={(phase === "context" ? answers[card.id]?.context : answers[card.id]?.clarification_answer) === choice.value}
+                      onClick={() => chooseDirection(choice.value)}>{choice.label}</button>
+                  ))}
+                  <button type="button" style={buttonStyle} disabled={busy} onClick={skipQuestion}>Skip this question</button>
                 </div>
-                <small>Spoken answers use transcription Ink. Review the text before saving.</small>
+                <small>{busy ? "Saving your choice…" : "Your picks guide Theo. They don't add new facts to your story."}</small>
               </>
             ) : (
               <>
@@ -182,7 +148,7 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
                   <button type="button" style={buttonStyle} aria-pressed={answers[card.id]?.importance === "supporting"} disabled={busy} onClick={() => choose("supporting")}>Supporting</button>
                   <button type="button" style={buttonStyle} aria-pressed={answers[card.id]?.importance === "exclude"} disabled={busy} onClick={() => choose("exclude")}>Leave out</button>
                 </div>
-                {index > 0 && <button type="button" style={buttonStyle} disabled={busy} onClick={() => { setIndex(index - 1); setText(""); }}>Previous moment</button>}
+                {index > 0 && <button type="button" style={buttonStyle} disabled={busy} onClick={() => { setIndex(index - 1); }}>Previous moment</button>}
                 {!ready && <button type="button" style={buttonStyle} disabled={busy} onClick={nextMoment}>Skip this moment</button>}
               </>
             )}
@@ -191,14 +157,14 @@ export default function AnalysisMoments({ projectId, step, ready, onFinish }: {
           <>
             <h2>{savedCount ? "You've given Theo a clearer picture" : "Theo is reading your transcript"}</h2>
             {cards.length > 0 && <button type="button" style={buttonStyle} onClick={() => { setIndex(0); setPhase("moments"); }}>Review my choices</button>}
-            <p>{savedCount ? `${essentialCount} essential moments · ${contextCount} stories with added context. Your saved choices guide the outline and drafts.` : "You can simply watch the analysis. Your original transcript stays intact."}</p>
+            <p>{savedCount ? `${essentialCount} essential moments · ${contextCount} moments with a chosen direction. Your saved choices guide the outline and drafts.` : "You can simply watch the analysis. Your original transcript stays intact."}</p>
           </>
         )}
         {error && <p role="alert" className="ds-analysis-moments__error">{error}</p>}
       </div>
       <div className="ds-analysis-moments__footer">
         <span>{savedCount ? `${savedCount} choices saved` : "Skip whenever you like"}</span>
-        <button type="button" style={buttonStyle} disabled={busy || recording || (editing && !!text.trim())} onClick={onFinish}>{ready ? "Build my outline" : "I'm done · watch Analysis"}</button>
+        <button type="button" style={buttonStyle} disabled={busy} onClick={onFinish}>{ready ? "Build my outline" : "I'm done · watch Analysis"}</button>
       </div>
     </section>
   );

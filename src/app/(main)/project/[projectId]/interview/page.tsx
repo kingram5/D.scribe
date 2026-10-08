@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import GlassCard from "@/components/ui/GlassCard";
 import Spinner from "@/components/ui/Spinner";
+import LiveInterview from "@/components/publisher-ready/LiveInterview";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 
 interface RunRow { id: string; status: string }
@@ -23,6 +24,9 @@ export default function InterviewPage() {
   const [progress, setProgress] = useState<InterviewProgress | null>(null);
   const [inRoom, setInRoom] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [liveAvailable, setLiveAvailable] = useState(false);
+  const [liveRoom, setLiveRoom] = useState(false);
+  useEffect(() => { void fetch("/api/publisher-ready/live").then(r => r.ok ? r.json() : null).then(d => setLiveAvailable(d?.enabled === true)).catch(() => {}); }, []);
   const [editorDone, setEditorDone] = useState(false);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export default function InterviewPage() {
 
   return (
     <PageShell projectId={projectId} currentStep="interview" hideFooterNav>
-      <div style={{ padding: "0 clamp(16px, 4vw, 40px) 40px", display: "grid", placeItems: "center", minHeight: "60vh" }}>
+      <div style={{ padding: "0 clamp(16px, 4vw, 40px) 40px", display: liveRoom ? "none" : "grid", placeItems: "center", minHeight: "60vh" }}>
         {loading ? (
           <Spinner />
         ) : !run || (!editorDone && !pastInterview) ? (
@@ -96,6 +100,7 @@ export default function InterviewPage() {
               <button className="ds-pr-btn" onClick={() => setInRoom(true)} disabled={!ready || finishing} style={primary}>
                 {progress?.answered ? "Back into the interview" : "Start the interview"}
               </button>
+              {liveAvailable && <button className="ds-pr-btn" onClick={() => setLiveRoom(true)} disabled={!ready || finishing} style={secondary}>Live audio interview</button>}
               <button className="ds-pr-btn" onClick={finish} disabled={finishing} style={secondary}>
                 {finishing ? "Moving on…" : noQuestions ? "No questions, go to final draft" : "Skip the interview"}
               </button>
@@ -104,7 +109,8 @@ export default function InterviewPage() {
         )}
       </div>
 
-      {inRoom && run && (
+      {liveRoom && run && <LiveInterview runId={run.id} onClose={() => setLiveRoom(false)} />}
+      {inRoom && !liveRoom && run && (
         <BrainstormChat
           projectId={projectId}
           autoStart

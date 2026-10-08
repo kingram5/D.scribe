@@ -1,3 +1,4 @@
+import { resolveMixedSnapshot, readSnapshot } from "@/lib/ai/publisher-ready-routing";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { ensureBalance } from "@/lib/ink";
@@ -55,8 +56,14 @@ export async function POST(req: NextRequest) {
     const action = body.action ?? "start";
 
     if (action === "complete" || action === "cancel") {
-      const { data: run } = await db.from("pr_runs").select("id").eq("id", body.run_id).eq("user_id", user.id).single();
+      const { data: run } = await db.from("pr_runs").select("id, models").eq("id", body.run_id).eq("user_id", user.id).single();
       if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
+      if (readSnapshot(run.models) || run.models?.live_enabled === true) {
+        const { data: active, error } = await db.from("theo_live_sessions").select("id").eq("run_id", run.id).neq("state", "closed").limit(1);
+        if (error || active?.length) return NextResponse.json({ error: "End and reconcile the Live session first." }, { status: 409 });
+        const { data: pending, error: pendingError } = await db.from("ai_operations").select("id").eq("run_id", run.id).in("state", ["running", "review_needed", "resumable"]).limit(1);
+        if (pendingError || pending?.length) return NextResponse.json({ error: "Reconcile outstanding mixed operations first." }, { status: 409 });
+      }
       await db.from("pr_runs").update({
         status: action === "complete" ? "done" : "cancelled",
         finished_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -114,8 +121,9 @@ export async function POST(req: NextRequest) {
       }, { status: 402 });
     }
 
+    const mixed = resolveMixedSnapshot(user.id);
     const { data: run, error: insErr } = await db.from("pr_runs").insert({
-      project_id: projectId, user_id: user.id, status: "drafting", ink_estimate: estimate, models: STEP_MODELS,
+      project_id: projectId, user_id: user.id, status: "drafting", ink_estimate: estimate, models: { ...STEP_MODELS, ...(mixed ? { mixed } : {}) },
     }).select().single();
     if (insErr) throw insErr;
     return NextResponse.json({ run, estimate }, { status: 201 });

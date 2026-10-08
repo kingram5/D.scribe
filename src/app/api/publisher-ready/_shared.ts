@@ -1,3 +1,4 @@
+import { AIError } from "@/lib/ai/contracts";
 import { NextResponse } from "next/server";
 import type { requireAuth } from "@/lib/auth";
 import { publisherReadyEnabled } from "@/lib/ink";
@@ -31,6 +32,7 @@ export async function guard(auth: Awaited<ReturnType<typeof requireAuth>>, route
 }
 
 export function errorResponse(err: unknown, route: string, userId?: string) {
+  if (err instanceof AIError) return NextResponse.json({ error: err.code, message: err.message }, { status: err.code === "configuration" ? 503 : 409 });
   if (err instanceof StepError) return NextResponse.json({ error: err.message }, { status: err.status });
   if (err instanceof RefusalError) {
     return NextResponse.json({ error: "The editor couldn't work on this part of the book. Try again, or skip this chapter." }, { status: 422 });

@@ -8,6 +8,7 @@
  * interview Sonnet 5 -> revise Opus 5.5 -> final check Sonnet 5.
  */
 
+import { sourceLedger, relevantLedger } from "./source-ledger";
 import { loadAnalysisGuidance } from "@/lib/analysis-moments-server";
 import { createServerClient } from "@/lib/supabase";
 import { recordInkUsage, type InkOperation } from "@/lib/ink";
@@ -68,7 +69,7 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
   if (!project) throw new StepError("Project not found", 404);
 
   const [transcripts, keyPoints, prev, latest, memory] = await Promise.all([
-    db.from("transcripts").select("full_text, segments, speaker_map").eq("project_id", chapter.project_id),
+    db.from("transcripts").select("id, full_text, segments, speaker_map").eq("project_id", chapter.project_id),
     db.from("key_points").select("*").in("id", chapter.key_point_ids || []),
     db.from("chapters").select("title, summary").eq("project_id", chapter.project_id)
       .lt("chapter_number", chapter.chapter_number).gt("chapter_number", 0).order("chapter_number"),
@@ -83,6 +84,7 @@ export async function loadChapterContext(db: Db, userId: string, chapterId: stri
     projectId: project.id,
     latest: latest.data ? { content: latest.data.content, version: latest.data.version } : null,
     input: {
+      sourceLedger: relevantLedger(sourceLedger(transcripts.data || []), extractExcerptsForChapter(fullText, kps.map((kp) => kp.supporting_quotes || []))),
       projectTitle: project.title,
       audience: project.audience,
       scriptureTranslation: project.scripture_translation,

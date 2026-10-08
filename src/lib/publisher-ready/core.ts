@@ -5,7 +5,7 @@
  * the prompts production runs.
  */
 
-import { callClaudeNext, parseJsonReply, type NextModelKey, type Effort } from "@/lib/claude-next";
+import { callClaudeNext, parseJsonReply, type NextModelKey, type Effort, type NextCallOptions, type NextCallResult } from "@/lib/claude-next";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import { generateSystem, generatePrompt } from "@/lib/prompts/generate";
 import { generationProfileBlock } from "@/lib/audience-profiles";
@@ -20,6 +20,9 @@ import {
   FINAL_SCHEMA, finalCheckSystem,
 } from "./prompts";
 import { lintStructure, bookRepeats, type StructuralFlag } from "./structural-lint";
+
+export type CoreCall = (step: StepKey, system: string, user: string, options: NextCallOptions) => Promise<NextCallResult>;
+const legacyCall: CoreCall = (_step, system, user, options) => callClaudeNext(system, user, options);
 
 export type StepKey = "beats" | "draft" | "edit" | "coverage" | "interview" | "revise" | "final";
 export type ModelMix = Record<StepKey, { model: NextModelKey; effort: Effort }>;
@@ -39,6 +42,7 @@ export const DEFAULT_MIX: ModelMix = {
 export interface Spend { step: StepKey; model: NextModelKey; usage: ClaudeUsage }
 
 export interface ChapterInput {
+  sourceLedger?: import("./source-ledger").SourceLedger;
   projectTitle: string;
   audience: Audience;
   scriptureTranslation?: string | null;
@@ -65,10 +69,10 @@ export function voiceSystem(input: ChapterInput): string {
 export async function coreDraft(
   input: ChapterInput,
   mix: ModelMix = DEFAULT_MIX,
-  opts: { creativeFreedom?: number; onText?: (t: string) => void } = {}
+  opts: { creativeFreedom?: number; onText?: (t: string) => void; call?: CoreCall } = {}
 ): Promise<{ beats: Beat[]; text: string; servedBy: string; spend: Spend[] }> {
   const spend: Spend[] = [];
-  const beatsRes = await callClaudeNext(
+  const beatsRes = await (opts.call ?? legacyCall)("beats",
     beatPlanSystem(),
     `Chapter ${input.chapterNumber}: "${input.chapterTitle}"\nSummary: ${input.chapterSummary}\n\nKey points:\n${input.keyPoints.map((k) => `- ${k.title}: ${k.summary}`).join("\n")}\n\nSource material:\n---\n${input.excerpts}\n---`,
     { ...mix.beats, maxTokens: 8000, jsonSchema: BEAT_PLAN_SCHEMA as unknown as Record<string, unknown> }
@@ -88,7 +92,7 @@ export async function coreDraft(
     freedomInstruction: creativeFreedomToInstruction(opts.creativeFreedom ?? 50),
   }) + draftBeatBlock(beats) + speakerWritingBlock(input.otherSpeakerNames ?? []);
 
-  const res = await callClaudeNext(voiceSystem(input), prompt, { ...mix.draft, maxTokens: 32000, onText: opts.onText });
+  const res = await (opts.call ?? legacyCall)("draft", voiceSystem(input), prompt, { ...mix.draft, maxTokens: 32000, onText: opts.onText });
   spend.push({ step: "draft", model: mix.draft.model, usage: res.usage });
   return { beats, text: sanitizeGenerated(res.text), servedBy: res.servedBy, spend };
 }
@@ -102,14 +106,15 @@ export async function coreEdit(
   draft: string,
   beats: Beat[],
   otherChapters: Record<string, string>,
-  mix: ModelMix = DEFAULT_MIX
+  mix: ModelMix = DEFAULT_MIX,
+  call: CoreCall = legacyCall
 ): Promise<{ report: EditorReport; spend: Spend[] }> {
   const flags = [...lintStructure(draft).flags, ...bookRepeats(draft, otherChapters)];
   const bookContext = [
     `Title: ${input.projectTitle}`,
     ...input.previousChapters.map((c, i) => `Ch ${i + 1}: "${c.title}": ${c.summary}`),
   ].join("\n");
-  const res = await callClaudeNext(
+  const res = await call("edit",
     editorSystem(input.audience, input.otherSpeakers),
     editorUser({
       chapterNumber: input.chapterNumber, chapterTitle: input.chapterTitle, draft,
@@ -133,11 +138,11 @@ export async function coreRevise(
   notes: ReviseNote[],
   questions: ReviseQuestion[],
   mix: ModelMix = DEFAULT_MIX,
-  opts: { onText?: (t: string) => void } = {}
+  opts: { onText?: (t: string) => void; call?: CoreCall } = {}
 ): Promise<{ text: string; changeLog: ChangeLogEntry[]; servedBy: string; spend: Spend[] }> {
   // Voice + style + audience without the humanizer; reviseSystem appends its own copy.
   const voice = voiceSystem(input).split("\nCRITICAL — WRITE LIKE A HUMAN")[0];
-  const res = await callClaudeNext(
+  const res = await (opts.call ?? legacyCall)("revise",
     reviseSystem(voice),
     reviseUser({
       draft,

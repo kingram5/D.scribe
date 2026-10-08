@@ -1,3 +1,4 @@
+import { isProviderMetered, withRunProvider } from "@/lib/ai/execution";
 /** Database side of the voice picker (server-only). */
 
 import { createServerClient } from "@/lib/supabase";
@@ -43,7 +44,7 @@ export interface PickerState {
  * Open pairs for this book, topping up with a fresh batch from the draft when
  * the author is nearly through them. Batches never reuse a source sentence.
  */
-export async function pickerState(userId: string, projectId: string): Promise<PickerState> {
+async function executePickerState(userId: string, projectId: string): Promise<PickerState> {
   const db = createServerClient();
   const { data: rows } = await db.from("voice_pairs")
     .select("id, option_a, option_b, dimension, source_sentence, answered_at")
@@ -73,7 +74,7 @@ ${c.content}`;
     spokenLine = spokenLineFrom((txs ?? []) as LabeledTranscript[]);
   }
   const { pairs, usage } = await generatePairs({ draft, spokenLine, exclude: all.map((r) => r.source_sentence).filter(Boolean) });
-  for (const u of usage) await recordInkUsage(userId, projectId, "style_distill", "sonnet5", u);
+  if (!isProviderMetered()) for (const u of usage) await recordInkUsage(userId, projectId, "style_distill", "sonnet5", u);
   const room = PAIRS_PER_BOOK_CAP - all.length;
   if (pairs.length && room > 0) {
     const { data: inserted } = await db.from("voice_pairs")
@@ -100,4 +101,9 @@ export async function savePick(userId: string, pairId: string, choice: "a" | "b"
     user_id: userId, dials, polish_bias: polishBias, rewrites, picks: picks.length, updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });
   return { dials, polishBias, picks: picks.length };
+}
+
+export async function pickerState(userId: string, projectId: string): Promise<PickerState> {
+ const { data: run } = await createServerClient().from("pr_runs").select("id").eq("project_id", projectId).eq("user_id", userId).not("status", "in", "(done,cancelled)").order("created_at", { ascending: false }).limit(1).maybeSingle();
+ return run ? withRunProvider(userId, run.id, () => executePickerState(userId, projectId)) : executePickerState(userId, projectId);
 }

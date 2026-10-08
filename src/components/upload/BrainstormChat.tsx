@@ -1732,7 +1732,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
         headers: { "Content-Type": "application/json" },
         // Review mode: what the author said answers the question on the table.
         body: JSON.stringify(rv
-          ? { run_id: rv.runId, action: "answer", text, follow_up_of: reviewFollowUpRef.current }
+          ? { run_id: rv.runId, action: "answer", text, request_id: crypto.randomUUID(), follow_up_of: reviewFollowUpRef.current }
           : { messages: apiMessages, project_id: projectId }),
       });
 

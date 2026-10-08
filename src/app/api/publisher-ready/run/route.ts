@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { ensureBalance } from "@/lib/ink";
-import { estimateRunInk } from "@/lib/publisher-ready/estimate";
+import { estimateConfiguredRun } from "@/lib/ai/estimate";
+import { newRunConfig, savedRunConfig } from "@/lib/ai/config";
 import { STEP_MODELS } from "@/lib/publisher-ready/pipeline";
 import { progress, type RRQuestion } from "@/lib/publisher-ready/round-robin";
 import { requireAuth } from "@/lib/auth";
@@ -20,11 +21,12 @@ export async function GET(req: NextRequest) {
 
     const { data: chapters } = await db.from("chapters").select("id, chapter_number, title, target_word_count, status")
       .eq("project_id", projectId).gt("chapter_number", 0).order("chapter_number");
-    const estimate = estimateRunInk(chapters || []);
-    const estimateSkipDraft = estimateRunInk(chapters || [], { skipDraft: true });
     const { data: run } = await db.from("pr_runs").select("*").eq("project_id", projectId)
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const estimateDraft = estimateRunInk(chapters || [], { draftOnly: true });
+    const config = run ? savedRunConfig(run.models) : newRunConfig(user.id);
+    const estimate = await estimateConfiguredRun(chapters || [], config);
+    const estimateSkipDraft = await estimateConfiguredRun(chapters || [], config, { skipDraft: true });
+    const estimateDraft = await estimateConfiguredRun(chapters || [], config, { draftOnly: true });
     if (!run) return NextResponse.json({ run: null, chapters: chapters || [], estimate, estimateSkipDraft, estimateDraft });
 
     const [passes, questions] = await Promise.all([
@@ -73,12 +75,13 @@ export async function POST(req: NextRequest) {
     const { data: chapters } = await db.from("chapters").select("id, target_word_count")
       .eq("project_id", projectId).gt("chapter_number", 0);
 
+    const config = live ? savedRunConfig(live.models) : newRunConfig(user.id);
     if (live) {
       // Flow v2: First Draft opens the run on the draft's Ink alone. Starting the
       // review on that run must still check everything after the draft up front,
       // so nobody pays for an editor read and then runs dry mid-revise.
       if (body.skip_draft === true && chapters?.length) {
-        const rest = estimateRunInk(chapters, { skipDraft: true });
+        const rest = await estimateConfiguredRun(chapters, config, { skipDraft: true });
         const balance = await ensureBalance(user.id);
         const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
         if (spendable < rest) {
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
     // editor read and then run dry before the revise.
     // Keeping the current chapters as the first draft drops the draft cost.
     // Starting from the First Draft page checks only the draft's Ink: the review is optional.
-    const estimate = estimateRunInk(chapters, body.draft_only === true ? { draftOnly: true } : { skipDraft: body.skip_draft === true });
+    const estimate = await estimateConfiguredRun(chapters, config, body.draft_only === true ? { draftOnly: true } : { skipDraft: body.skip_draft === true });
     const balance = await ensureBalance(user.id);
     const spendable = Number(balance.ink_balance) + Number(balance.topup_ink ?? 0);
     if (spendable < estimate) {
@@ -115,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: run, error: insErr } = await db.from("pr_runs").insert({
-      project_id: projectId, user_id: user.id, status: "drafting", ink_estimate: estimate, models: STEP_MODELS,
+      project_id: projectId, user_id: user.id, status: "drafting", ink_estimate: estimate, models: config ?? STEP_MODELS,
     }).select().single();
     if (insErr) throw insErr;
     return NextResponse.json({ run, estimate }, { status: 201 });

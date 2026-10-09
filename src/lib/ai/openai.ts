@@ -115,8 +115,12 @@ export async function executeResponse(
       event.type === "response.completed" ||
       event.type === "response.incomplete" ||
       event.type === "response.failed"
-    )
+    ) {
       final = event.response;
+      // Terminal usage is authoritative even if the socket fails while closing.
+      // Stop consumption here so a later transport error cannot discard it.
+      break;
+    }
     if (event.type === "error")
       throw new Error("Provider stream error; reconciliation required.");
   }

@@ -74,6 +74,37 @@ describe("provider contracts", () => {
       }),
     ).toBeCloseTo(1.107);
   });
+  it("applies the long-context surcharge only above the boundary, including cached tokens", () => {
+    const base = {
+      input: 0,
+      cached: 272000,
+      cacheWrite: 0,
+      output: 100,
+      reasoning: 0,
+    };
+    expect(vendorDollars(base, rates["gpt-6.1-sol"])).toBeCloseTo(0.0282, 9);
+    expect(
+      vendorDollars({ ...base, cached: 272001 }, rates["gpt-6.1-sol"]),
+    ).toBeCloseTo(0.0559002, 9);
+  });
+  it.each([NaN, Infinity, -1, 0.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid token counts %s",
+    (value) => {
+      expect(() => normalizeUsage({ ...usage, output_tokens: value })).toThrow(
+        /usage/,
+      );
+    },
+  );
+  it("does not publish output when the provider omits usage", () => {
+    const out = interpretResponse(
+      { ...response(), usage: undefined },
+      config(),
+      { model: "sonnet5", effort: "low" },
+    );
+    expect(out.cost).toBeNull();
+    expect(out.result).toBeNull();
+    expect(out.error).toMatch(/Missing provider usage/);
+  });
   it("keeps old runs legacy and rejects malformed new configs", () => {
     expect(savedRunConfig({ draft: { model: "sonnet5" } })).toBeNull();
     expect(() => savedRunConfig({ provider: "openai" })).toThrow();

@@ -358,7 +358,44 @@ async function main() {
         corrected.rows[0].payload.before === "Original words",
       "author correction preserves original source in its audit record",
     );
+    await pool.query("update pr_runs set status='revising' where id=$1", [run]);
+    await assert.rejects(
+      pool.query("select theo_correct_answer($1,$2,$3,'Too late')", [
+        session,
+        user,
+        answer,
+      ]),
+      /no longer editable/,
+    );
+    checks++;
+    await pool.query("update pr_runs set status='interviewing' where id=$1", [
+      run,
+    ]);
     const next = (await reserve()).rows[0].id;
+    await assert.rejects(
+      pool.query(
+        "select theo_live_observe($1,'negative','session.usage.updated','{}',-1,false)",
+        [next],
+      ),
+      /Nonmonotonic/,
+    );
+    checks++;
+    await assert.rejects(
+      pool.query(
+        "select theo_live_observe($1,'missing-final','session.closed','{}',null,true)",
+        [next],
+      ),
+      /Final usage required/,
+    );
+    checks++;
+    const rejected = await pool.query(
+      "select count(*) from theo_live_events where session_id=$1",
+      [next],
+    );
+    check(
+      rejected.rows[0].count === "0",
+      "rejected usage events roll back atomically",
+    );
     check(
       Number(
         (
@@ -387,6 +424,20 @@ async function main() {
       !privileges.rows[0].wallet && !privileges.rows[0].transcripts,
       "client roles cannot settle or read raw voice events",
     );
+    await pool.query("update ink_balances set tier='pro' where user_id=$1", [
+      user,
+    ]);
+    await pool.query("update pr_runs set models='{}' where id=$1", [run]);
+    await assert.rejects(reserve(), /pinned OpenAI/);
+    checks++;
+    await pool.query(
+      "update pr_runs set models=jsonb_build_object('provider','openai'),status='cancelled' where id=$1",
+      [run],
+    );
+    await assert.rejects(begin("after-cancel"), /finished/);
+    checks++;
+    await assert.rejects(reserve(), /Interview run unavailable/);
+    checks++;
     console.log(`${checks} database checks passed.`);
   } finally {
     await pool.end();

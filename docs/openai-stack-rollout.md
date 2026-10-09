@@ -93,8 +93,8 @@ Rollback: set text provider to `legacy` for new runs, disable the Live flag, and
 
 Offline validation on this branch:
 
-- Unit/contract suite: 51 files, 583 passing tests, one pre-existing expected failure. Includes two synthetic memoir/expert workflows using the real pipeline core with mocked provider responses; these are not quality benchmarks.
-- Disposable PostgreSQL 17 integration suite: 23 checks for migrations, concurrent claims, idempotent settlement, multiplier changes, insufficient funds, unknown outcomes, author-version conflict, Live deduplication/accounting, audited corrections, and client-role denial.
+- Unit/contract suite: 52 files, 596 passing tests, one pre-existing expected failure. Includes two synthetic memoir/expert workflows using the real pipeline core with mocked provider responses; these are not quality benchmarks.
+- Disposable PostgreSQL 17 integration suite: 30 checks for migrations, concurrent claims, idempotent settlement, multiplier changes, insufficient funds, unknown outcomes, author-version conflict, Live deduplication/accounting, audited corrections, cancelled runs, invalid/missing final usage rollback, and client-role denial.
 - TypeScript and production build with the repository's CI placeholder service configuration. Placeholders do not validate login, paid APIs, or production data.
 - Built-server smoke check: homepage HTTP 200 with D.scribe content; unauthenticated Live API HTTP 401.
 - Targeted new-file lint passes. Repository-wide lint reports 18 errors in unchanged files (and 33 warnings) and remains disabled in CI.
@@ -114,3 +114,9 @@ Official references checked:
 - https://developers.openai.com/api/docs/guides/live-conversations
 - https://developers.openai.com/api/docs/guides/live-delegation
 - https://developers.openai.com/api/docs/guides/voice-latency-cost
+
+## Edge-case follow-up (2026-10-09)
+
+A reproduced transport edge case discarded final usage when the connection failed after a terminal Responses event. The adapter now stops consuming at `response.completed`, `response.incomplete`, or `response.failed`, preserving the authoritative result/cost. Regression tests failed for all three statuses before the fix and pass afterward. Incomplete streams still fail without fabricating usage or retrying purchases.
+
+Additional tests cover exact long-context pricing boundaries including cached input, malformed token counts, missing usage, response-ID persistence failure, corrections after revision begins, cancelled-run purchase attempts, missing OpenAI run configuration, and atomic rejection of negative or missing final voice usage. Live device/vendor validation remains outstanding.

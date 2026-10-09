@@ -12,6 +12,7 @@
     "eval:theo": "vitest run --config vitest.eval.config.ts evals/theo",
     "eval:pr": "vitest run --config vitest.eval.config.ts evals/publisher-ready",
     "theo:worker": "node --use-env-proxy --import tsx worker/theo-live.ts",
+    "staging:preflight": "node --use-env-proxy --import tsx scripts/openai-stack/preflight.ts",
     "test:openai-db": "tsx scripts/openai-stack/test-db.ts",
     "eval:openai": "node --use-env-proxy --import tsx scripts/openai-stack/evaluate.ts"
   },

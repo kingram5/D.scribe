@@ -1,5 +1,7 @@
 # Publisher-Ready OpenAI branch
 
+For the observed deployment bindings, exact configuration actions, read-only runtime preflight and persistent-worker template, see [the staging handoff](openai-staging-handoff.md). Its pending gates are not completed integration checks.
+
 This branch adds opt-in Publisher-Ready text routing and a staging-only Theo Live review interview. It does not enable either provider by default. It starts from master `df34467` (which already includes `cursor/refine-mobile-publisher-ready-e684` and its patches). The legacy seven-step flow, Publisher-Ready eight-counted-step flow, source ingestion, prices, and existing Ink allowances remain in place.
 
 ## Text routing and accounting

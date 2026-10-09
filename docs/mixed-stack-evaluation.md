@@ -88,3 +88,16 @@ new routes and approve the conversion from existing voice characters to seconds.
 A future word-based customer meter or new minutes entitlement requires its own
 pricing/migration decision; neither is enabled here. The pre-PR interactive
 Analysis job system and legacy large/multispeaker transcription remain unchanged.
+
+## Edge-case follow-up (2026-10-09)
+
+Seven additional cases test contradictory cache TTL totals, non-finite/negative
+word timestamps, invalid Live timing and interrupted paid-result persistence.
+Five cases failed before fixes, exposing three validation defects. Cache totals
+now require a consistent breakdown, raw words are validated before filtering,
+and invalid Live timing requests closure. Paid-result recovery already preserved
+its result and cost without redispatch.
+
+After fixes: 74 mixed-stack tests and 640 full-suite tests pass, with the same
+one expected failure. TypeScript and changed-file ESLint pass. These are local
+contract tests; real vendor/browser failure injection remains a staging gate.

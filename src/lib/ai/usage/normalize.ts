@@ -35,6 +35,16 @@ export function normalizeUsage(
     provider === "anthropic"
       ? (count(creation?.ephemeral_1h_input_tokens) ?? 0)
       : 0;
+  const fiveMinute =
+    provider === "anthropic"
+      ? count(creation?.ephemeral_5m_input_tokens)
+      : undefined;
+  const consistentCache =
+    provider !== "anthropic" ||
+    !creation ||
+    (fiveMinute !== undefined &&
+      count(creation.ephemeral_1h_input_tokens) !== undefined &&
+      fiveMinute + oneHour === written);
   const optionalCounts = [
     provider === "anthropic"
       ? u.cache_read_input_tokens
@@ -68,6 +78,7 @@ export function normalizeUsage(
         : input - cached - written;
   const known =
     validOptional &&
+    consistentCache &&
     oneHour <= written &&
     (oneHour === 0 || price.cacheWrite1h !== undefined) &&
     uncached !== undefined &&

@@ -656,3 +656,69 @@ describe("provider billing boundaries", () => {
     expect(() => groqVendorCost(NaN, 0.04)).toThrow();
   });
 });
+
+describe("adversarial edge cases", () => {
+  it("does not price contradictory Claude cache TTL totals", () => {
+    const usage = normalizeUsage(
+      "anthropic",
+      {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_creation_input_tokens: 20,
+        cache_creation: {
+          ephemeral_5m_input_tokens: 20,
+          ephemeral_1h_input_tokens: 10,
+        },
+      },
+      { ...price, cacheWrite1h: 2 },
+    );
+    expect(usage.usageStatus).toBe("unknown");
+    expect(usage.vendorCostUsd).toBeUndefined();
+  });
+  it.each([NaN, Infinity, -1])(
+    "rejects invalid word timestamps before filtering (%s)",
+    (start) => {
+      expect(() =>
+        normalizeGroqChunks([
+          {
+            offsetSeconds: 0,
+            duration: 5,
+            text: "Hello",
+            segments: [{ start: 0, end: 5, text: "Hello" }],
+            words: [{ start, end: 1, word: "Hello" }],
+          },
+        ]),
+      ).toThrow(/word timing/);
+    },
+  );
+  it.each([NaN, Infinity])(
+    "closes Live when persisted timing is invalid (%s)",
+    (invalid) => {
+      expect(shouldCloseLive(1000, invalid, 1000, 300, 1000)).toBe(true);
+      expect(shouldCloseLive(1000, 0, invalid, 300, 1000)).toBe(true);
+      expect(shouldCloseLive(1000, 0, 1000, invalid, 1000)).toBe(true);
+    },
+  );
+  it("retains a paid result when its first persistence write fails, without redispatch", async () => {
+    const memory = store();
+    const finish = memory.finish.bind(memory);
+    let first = true;
+    memory.finish = async (...args) => {
+      if (first) {
+        first = false;
+        throw new Error("storage interrupted");
+      }
+      await finish(...args);
+    };
+    const send = vi.fn().mockResolvedValue(result);
+    await expect(
+      durableText(memory, "paid", route, request, 1, send),
+    ).rejects.toMatchObject({ code: "reconcile" });
+    expect(memory.rows[0].result).toEqual(result);
+    expect(memory.rows[0].vendor_cost_usd).toBe(result.usage.vendorCostUsd);
+    await expect(
+      durableText(memory, "paid", route, request, 1, send),
+    ).rejects.toMatchObject({ code: "reconcile" });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});

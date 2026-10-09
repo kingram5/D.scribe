@@ -21,6 +21,20 @@ export function normalizeGroqChunks(chunks: GroqChunk[]): TranscriptionResult {
       chunk.duration < 0
     )
       throw new AIError("malformed", "Invalid audio timing");
+    // Validate before assigning words to segments; filtering must not hide bad usage data.
+    if (
+      (chunk.words ?? []).some(
+        (w) =>
+          !w ||
+          typeof w.word !== "string" ||
+          !Number.isFinite(w.start) ||
+          !Number.isFinite(w.end) ||
+          w.start < 0 ||
+          w.end < w.start ||
+          w.end > chunk.duration + 1,
+      )
+    )
+      throw new AIError("malformed", "Invalid word timing");
     for (const segment of chunk.segments) {
       if (
         typeof segment.text !== "string" ||

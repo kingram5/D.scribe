@@ -87,6 +87,8 @@ export function shouldCloseLive(
   lastSpeech: number,
 ): boolean {
   return (
+    ![now, created, lastClient, maxSeconds, lastSpeech].every(Number.isFinite) ||
+    maxSeconds <= 0 ||
     now - created >= maxSeconds * 1000 ||
     now - lastClient >= 30000 ||
     now - lastSpeech >= 90000

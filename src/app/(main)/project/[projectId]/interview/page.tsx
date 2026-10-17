@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import GlassCard from "@/components/ui/GlassCard";
 import Spinner from "@/components/ui/Spinner";
+import { useAuth } from "@/hooks/useAuth";
 import LiveInterview from "@/components/publisher-ready/LiveInterview";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 
@@ -17,6 +18,7 @@ interface InterviewProgress { remaining: number; answered: number; skipped: numb
  * out loud; "I'm done" sends them to the Final Draft, where the revision runs.
  */
 export default function InterviewPage() {
+  const { user } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -109,7 +111,7 @@ export default function InterviewPage() {
         )}
       </div>
 
-      {liveRoom && run && <LiveInterview key={run.id} runId={run.id} onClose={() => setLiveRoom(false)} />}
+      {liveRoom && run && user && <LiveInterview key={`${user.id}:${run.id}`} accountId={user.id} runId={run.id} onClose={() => setLiveRoom(false)} />}
       {inRoom && !liveRoom && run && (
         <BrainstormChat
           projectId={projectId}

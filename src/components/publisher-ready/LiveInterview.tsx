@@ -1,17 +1,15 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 
+import { liveDraftKey, readLiveDraft, writeLiveDraft, subscribeLiveDraft, isDraftSavePending, beginDraftSave, finishDraftSave, isLiveDraftAccount } from "@/lib/live-draft-storage";
+
 interface TypedDraft { text: string; questionId: string; answerId: string | null }
 const EMPTY_DRAFT: TypedDraft = { text: "", questionId: "", answerId: null };
-const DRAFT_EVENT = "ds:live-draft";
 const buttonStyle: CSSProperties = {
   minHeight: 44, padding: "10px 16px", borderRadius: 10,
   border: "1px solid var(--ds-input-border, #aaa)", cursor: "pointer",
 };
 // Session-scoped recovery keeps private author text out of durable localStorage.
-function readDraft(key: string): string {
-  try { return sessionStorage.getItem(key) ?? ""; } catch { return ""; }
-}
 function parseDraft(raw: string): TypedDraft {
   try {
     const value = JSON.parse(raw);
@@ -20,18 +18,14 @@ function parseDraft(raw: string): TypedDraft {
   } catch { /* Missing or invalid recovery data. */ }
   return EMPTY_DRAFT;
 }
-function subscribeDraft(notify: () => void) {
-  window.addEventListener(DRAFT_EVENT, notify);
-  window.addEventListener("storage", notify);
-  return () => { window.removeEventListener(DRAFT_EVENT, notify); window.removeEventListener("storage", notify); };
-}
-
 /** Only mounted after the server enables Live; legacy TTS is unmounted while this is active. */
 export default function LiveInterview({
   runId,
+  accountId,
   onClose,
 }: {
   runId: string;
+  accountId: string;
   onClose: () => void;
 }) {
   const peer = useRef<RTCPeerConnection | null>(null),
@@ -44,29 +38,31 @@ export default function LiveInterview({
   const starting = useRef(false);
   const saving = useRef(false);
   const [savingTyped, setSavingTyped] = useState(false);
-  const draftKey = `ds:live-draft:${runId}`;
-  const rawDraft = useSyncExternalStore(subscribeDraft, () => readDraft(draftKey), () => "");
+  const draftKey = liveDraftKey(accountId, runId);
+  const accountActive = useSyncExternalStore(subscribeLiveDraft, () => isLiveDraftAccount(accountId), () => false);
+  const pendingSave = useSyncExternalStore(subscribeLiveDraft, () => isDraftSavePending(draftKey), () => false);
+  const rawDraft = useSyncExternalStore(subscribeLiveDraft, () => readLiveDraft(accountId, draftKey), () => "");
   const draft = parseDraft(rawDraft);
   const volatileDraft = useRef<TypedDraft | null>(null);
   const [fallbackDraft, setFallbackDraft] = useState<TypedDraft | null>(null);
-  const currentDraft = fallbackDraft ?? draft;
-  function updateDraft(next: TypedDraft) {
+  const currentDraft = accountActive ? fallbackDraft ?? draft : EMPTY_DRAFT;
+  const updateDraft = useCallback((next: TypedDraft) => {
     try {
-      sessionStorage.setItem(draftKey, JSON.stringify(next));
+      if (!writeLiveDraft(accountId, draftKey, JSON.stringify(next))) return;
       volatileDraft.current = null;
       setFallbackDraft(null);
-      window.dispatchEvent(new Event(DRAFT_EVENT));
     } catch {
       volatileDraft.current = next;
       setFallbackDraft(next);
       setError("This browser cannot keep a recovery copy. Save your writing before leaving this tab.");
     }
-  }
+  }, [accountId, draftKey]);
   const seen = useRef(new Set<string>()),
     pulse = useRef<ReturnType<typeof setInterval> | null>(null);
   const [state, setState] = useState("idle"),
     [error, setError] = useState(""),
     [lines, setLines] = useState<{ role: string; text: string }[]>([]);
+  const sessionQuestion = useRef("");
   const [question, setQuestion] = useState(""),
     [answerId, setAnswerId] = useState<string | null>(null);
   const api = useCallback(
@@ -123,6 +119,10 @@ export default function LiveInterview({
         if (status.state === "closed") {
           release();
           setAnswerId(status.answerId);
+          const latest = volatileDraft.current ?? parseDraft(readLiveDraft(accountId, draftKey));
+          if (latest.text && (!latest.questionId || latest.questionId === sessionQuestion.current)) {
+            updateDraft({ ...latest, questionId: sessionQuestion.current, answerId: status.answerId ?? null });
+          }
           id.current = null;
           setState("closed");
           return;
@@ -143,8 +143,9 @@ export default function LiveInterview({
     } finally {
       stopping.current = false;
     }
-  }, [api, release]);
+  }, [api, release, accountId, draftKey, updateDraft]);
   useEffect(() => {
+    if (!accountActive) return;
     mounted.current = true;
     const hidden = () => {
       if (document.hidden) void stop();
@@ -164,9 +165,9 @@ export default function LiveInterview({
       if (id.current) void api("stop").catch(() => {});
       release();
     };
-  }, [api, release, stop]);
+  }, [api, release, stop, accountActive]);
   async function start() {
-    if (starting.current || !mounted.current) return;
+    if (starting.current || !mounted.current || !isLiveDraftAccount(accountId)) return;
     starting.current = true;
     const attempt = ++generation.current;
     const isCurrent = () => mounted.current && generation.current === attempt;
@@ -252,6 +253,7 @@ export default function LiveInterview({
         return;
       }
       id.current = data.id;
+      sessionQuestion.current = data.questionId;
       setQuestion(data.questionId);
       await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
       if (!isCurrent()) return;
@@ -278,7 +280,7 @@ export default function LiveInterview({
       answerId: currentDraft.questionId && currentDraft.questionId !== question
         ? currentDraft.answerId : answerId ?? currentDraft.answerId,
     };
-    if (!submitted.text.trim() || !submitted.questionId || saving.current) return;
+    if (["active", "starting", "stopping"].includes(state) || !submitted.text.trim() || !submitted.questionId || saving.current || !beginDraftSave(accountId, draftKey)) return;
     saving.current = true;
     setSavingTyped(true);
     try {
@@ -289,14 +291,13 @@ export default function LiveInterview({
           transcript: submitted.text, source: "typed", follow_up_of: submitted.answerId }),
       });
       if (!response.ok) throw new Error("Save failed");
-      const latest = volatileDraft.current ?? parseDraft(readDraft(draftKey));
+      const latest = volatileDraft.current ?? parseDraft(readLiveDraft(accountId, draftKey));
       if (latest.text === submitted.text && latest.questionId === currentDraft.questionId) {
         // Clear only the submitted revision, even if the component has since unmounted.
         const cleared = { ...submitted, text: "" };
         if (mounted.current) updateDraft(cleared);
         else {
-          sessionStorage.setItem(draftKey, JSON.stringify(cleared));
-          window.dispatchEvent(new Event(DRAFT_EVENT));
+          writeLiveDraft(accountId, draftKey, JSON.stringify(cleared));
         }
       }
       if (mounted.current) setError("Typed answer saved.");
@@ -304,6 +305,7 @@ export default function LiveInterview({
       if (mounted.current) setError("Could not save the typed answer. Your text is still here. Try again.");
     } finally {
       saving.current = false;
+      finishDraftSave(draftKey);
       if (mounted.current) setSavingTyped(false);
     }
   }
@@ -321,7 +323,7 @@ export default function LiveInterview({
         <button
           style={buttonStyle}
           onClick={() => void start()}
-          disabled={!["idle", "closed", "error"].includes(state)}
+          disabled={!accountActive || !["idle", "closed", "error"].includes(state)}
         >
           Start audio
         </button>
@@ -374,9 +376,9 @@ export default function LiveInterview({
       <button
         style={buttonStyle}
         onClick={() => void saveTyped()}
-        disabled={savingTyped || !(currentDraft.questionId || question) || !currentDraft.text.trim() || state === "active"}
+        disabled={!accountActive || savingTyped || pendingSave || !(currentDraft.questionId || question) || !currentDraft.text.trim() || ["active", "starting", "stopping"].includes(state)}
       >
-        {savingTyped ? "Saving…" : "Save typed answer"}
+        {savingTyped || pendingSave ? "Saving…" : "Save typed answer"}
       </button>
     </section>
   );

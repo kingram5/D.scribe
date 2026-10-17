@@ -117,3 +117,11 @@ mobile checks cover public pages and local UI fixtures at five widths; they are
 not authenticated account, actual-device, vendor or paid Live verification. See
 [the detailed follow-up and screenshots](edge-test/pr46-follow-up-2026-10-17.md).
 The existing live-provider/staging rollout gates remain open.
+
+Independent review then reproduced and fixed legacy-to-v2 hydration progress
+loss, voice-answer linkage loss after remount, and pending-save guard loss after
+remount. Recovery drafts are account/run scoped and purged on logout/account
+change. The client save guard is shared across same-page remounts independently
+of legacy/mixed routing; it does not introduce cross-tab/full-reload server
+idempotency. Final local suite: 669 passed, one expected failure, 57 files.
+Seventeen additional regressions cover these review cases and auth lifecycle.

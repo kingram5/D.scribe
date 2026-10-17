@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setLiveDraftAccount, liveDraftKey } from "@/lib/live-draft-storage";
 import LiveInterview from "../LiveInterview";
 
 function deferred<T>() {
@@ -45,9 +46,9 @@ async function type(text: string) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
-async function mount() {
+async function mount(id = runId, accountId = "isolated-account") {
   root = createRoot(host);
-  await act(async () => root!.render(<LiveInterview runId={runId} onClose={() => {}} />));
+  await act(async () => root!.render(<LiveInterview accountId={accountId} runId={id} onClose={() => {}} />));
 }
 async function unmount() { await act(async () => root?.unmount()); root = null; }
 async function readyToWrite() { await click("Start audio"); await click("Pause / save"); }
@@ -55,6 +56,7 @@ beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.useFakeTimers();
   sessionStorage.clear();
+  setLiveDraftAccount("isolated-account");
   peers = []; pendingOffer = null;
   track = { stop: vi.fn(), enabled: true };
   media = vi.fn(async () => ({ getTracks: () => [track] }));
@@ -131,6 +133,63 @@ describe("Live interview cancellation and author draft recovery (no vendor calls
     await type("ISOLATED newer text after returning");
     await act(async () => pending.resolve(ok()));
     expect(host.querySelector("textarea")!.value).toBe("ISOLATED newer text after returning");
+  });
+  it("revokes a pending microphone startup when account recovery is purged", async () => {
+    const pending = deferred<MediaStream>(); media.mockReturnValue(pending.promise);
+    await click("Start audio"); await type("ISOLATED private pending draft");
+    await act(async () => setLiveDraftAccount(null));
+    expect(host.querySelector("textarea")!.value).toBe("");
+    expect(findButton("Start audio").disabled).toBe(true);
+    await act(async () => pending.resolve({ getTracks: () => [track] } as unknown as MediaStream));
+    expect(track.stop).toHaveBeenCalledOnce(); expect(actions()).toEqual([]);
+  });
+  it("retains the closed voice answer linkage when typing precedes pause and remount", async () => {
+    await click("Start audio"); await type("ISOLATED writing while audio active");
+    await click("Pause / save"); await unmount(); await mount();
+    request.mockClear(); await click("Save typed answer");
+    expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({
+      transcript: "ISOLATED writing while audio active", follow_up_of: "isolated-author-answer",
+    });
+  });
+  it("links the latest writing when voice-close confirmation arrives after more typing", async () => {
+    await click("Start audio"); await type("ISOLATED first voice correction");
+    const closed = deferred<ReturnType<typeof ok>>();
+    request.mockImplementation(async (_url: string, init: RequestInit) => JSON.parse(init.body as string).action === "status" ? closed.promise : ok());
+    await click("Pause / save");
+    await type("ISOLATED newer writing during close confirmation");
+    expect(findButton("Save typed answer").disabled).toBe(true);
+    await act(async () => closed.resolve(ok({ state: "closed", answerId: "confirmed-voice-answer" })));
+    await unmount(); await mount();
+    request.mockClear(); await click("Save typed answer");
+    expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({
+      transcript: "ISOLATED newer writing during close confirmation", follow_up_of: "confirmed-voice-answer",
+    });
+  });
+  it.each(["legacy-live-fixture", "mixed-live-fixture"])("shares pending-save protection across remounts without server dedupe: %s", async (fixtureRun) => {
+    await unmount(); await mount(fixtureRun);
+    await readyToWrite(); await type("ISOLATED pending author answer");
+    const pending = deferred<ReturnType<typeof ok>>(); request.mockReturnValueOnce(pending.promise);
+    await click("Save typed answer"); await unmount(); await mount(fixtureRun);
+    expect(findButton("Saving…").disabled).toBe(true);
+    await click("Saving…");
+    expect(request.mock.calls.filter(([url]) => url === "/api/publisher-ready/interview")).toHaveLength(1);
+    await act(async () => pending.resolve({ ...ok(), ok: false }));
+    expect(findButton("Save typed answer").disabled).toBe(false);
+    expect(host.querySelector("textarea")!.value).toBe("ISOLATED pending author answer");
+    await click("Save typed answer");
+    expect(request.mock.calls.filter(([url]) => url === "/api/publisher-ready/interview")).toHaveLength(2);
+    expect(host.querySelector("textarea")!.value).toBe("");
+  });
+  it("keys recovery by account and prevents late saves from recreating logged-out text", async () => {
+    await readyToWrite(); await type("ISOLATED private account A draft");
+    expect(sessionStorage.getItem(liveDraftKey("isolated-account", runId))).toContain("private account A");
+    const pending = deferred<ReturnType<typeof ok>>(); request.mockReturnValue(pending.promise);
+    await click("Save typed answer"); await unmount();
+    setLiveDraftAccount("isolated-account-b");
+    await mount(runId, "isolated-account-b");
+    expect(host.querySelector("textarea")!.value).toBe("");
+    await act(async () => pending.resolve(ok()));
+    expect([...Array(sessionStorage.length)].map((_, i) => sessionStorage.key(i)).filter((k) => k?.startsWith("ds:live-draft:"))).toEqual([]);
   });
   it("retains recoverable text and reports a network save failure, allowing retry", async () => {
     await readyToWrite(); await type("ISOLATED retry draft"); request.mockRejectedValueOnce(new TypeError("offline"));

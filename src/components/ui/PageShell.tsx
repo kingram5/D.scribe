@@ -88,13 +88,20 @@ function useReachedStep(projectId: string | undefined, currentIdx: number): numb
   const stored = raw ? parseInt(raw, 10) : STEPS === STEPS_V2 && old ? [0, 1, 2, 3, 4, 7, 8][parseInt(old, 10)] ?? -1 : -1;
   const reached = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
   useEffect(() => {
-    if (!projectId || currentIdx < 0 || reached <= stored) return;
+    if (!projectId || currentIdx < 0) return;
     try {
-      // Hydration starts with the server snapshot; never overwrite newer stored progress.
-      const actual = parseInt(localStorage.getItem(key) ?? "-1", 10);
-      if (!Number.isFinite(actual) || reached > actual) localStorage.setItem(key, String(reached));
+      // Read both keys directly: hydration's server snapshots do not contain
+      // browser progress yet, so writing from those snapshots can erase migration.
+      const actualRaw = localStorage.getItem(key);
+      const legacyRaw = STEPS === STEPS_V2 ? localStorage.getItem(`ds_reached_${projectId}`) : null;
+      const actual = actualRaw !== null ? parseInt(actualRaw, 10)
+        : legacyRaw !== null ? [0, 1, 2, 3, 4, 7, 8][parseInt(legacyRaw, 10)] ?? -1 : -1;
+      const next = Math.max(Number.isFinite(actual) ? actual : -1, currentIdx);
+      if (actualRaw === null || !Number.isFinite(actual) || next > actual) {
+        localStorage.setItem(key, String(next));
+      }
     } catch { /* storage unavailable */ }
-  }, [projectId, currentIdx, key, reached, stored]);
+  }, [projectId, currentIdx, key]);
   return reached;
 }
 

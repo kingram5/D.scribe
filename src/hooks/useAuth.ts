@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { setLiveDraftAccount } from "@/lib/live-draft-storage";
 import { identifyUser, resetIdentity, trackSignupCompletedOnce } from "@/lib/heycatch";
 
 export function useAuth() {
@@ -11,13 +12,17 @@ export function useAuth() {
 
   useEffect(() => {
     const supabase = createBrowserClient();
+    let disposed = false;
+    let authChanged = false;
 
     // getSession() reads the locally stored session (no network round-trip);
     // the onAuthStateChange listener below keeps it current. getUser() hit
     // /auth/v1/user once per mounted hook (Sentry DSCRIBE-10). Server routes
     // still verify the user on every API call via requireAuth().
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (disposed || authChanged) return;
       const user = session?.user ?? null;
+      setLiveDraftAccount(user?.id ?? null);
       setUser(user);
       setLoading(false);
       // HeyCatch: this is where the app first sees a signed-in session
@@ -31,16 +36,21 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (disposed) return;
+        authChanged = true;
+        setLiveDraftAccount(session?.user?.id ?? null);
+        setLoading(false);
         setUser(session?.user ?? null);
         if (session?.user) identifyUser(session.user);
         else if (event === "SIGNED_OUT") resetIdentity();
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => { disposed = true; subscription.unsubscribe(); };
   }, []);
 
   async function signOut() {
+    setLiveDraftAccount(null);
     const supabase = createBrowserClient();
     await supabase.auth.signOut();
     // Explicit reset before the hard navigation: the SIGNED_OUT listener above

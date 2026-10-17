@@ -1,0 +1,330 @@
+[
+  {
+    "file": "geist-cyrillic-ext-wght-normal.woff2",
+    "sha256": "2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e"
+  },
+  {
+    "file": "geist-cyrillic-wght-normal.woff2",
+    "sha256": "6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09"
+  },
+  {
+    "file": "geist-latin-ext-wght-normal.woff2",
+    "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f"
+  },
+  {
+    "file": "geist-latin-wght-normal.woff2",
+    "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+  },
+  {
+    "file": "geist-vietnamese-wght-normal.woff2",
+    "sha256": "8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1"
+  },
+  {
+    "file": "geist-mono-cyrillic-ext-wght-normal.woff2",
+    "sha256": "cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4"
+  },
+  {
+    "file": "geist-mono-cyrillic-wght-normal.woff2",
+    "sha256": "4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df"
+  },
+  {
+    "file": "geist-mono-latin-ext-wght-normal.woff2",
+    "sha256": "1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b"
+  },
+  {
+    "file": "geist-mono-latin-wght-normal.woff2",
+    "sha256": "684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc"
+  },
+  {
+    "file": "geist-mono-symbols2-wght-normal.woff2",
+    "sha256": "5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad"
+  },
+  {
+    "file": "geist-mono-vietnamese-wght-normal.woff2",
+    "sha256": "d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175"
+  },
+  {
+    "file": "inter-cyrillic-ext-wght-normal.woff2",
+    "sha256": "ca157063339ac4ad418f214f3abfed119b0798ab4d377386ce5c9e5a7a435ebd"
+  },
+  {
+    "file": "inter-cyrillic-wght-normal.woff2",
+    "sha256": "71d5ee93cc1e9f1d520a3a8b66456de18c7879d8df09d57fcd2eaff75fef0075"
+  },
+  {
+    "file": "inter-greek-ext-wght-normal.woff2",
+    "sha256": "6e9e020a25f9b56d418f2c085b1d3c09725a4da23fe693a5b463064606732190"
+  },
+  {
+    "file": "inter-greek-wght-normal.woff2",
+    "sha256": "1be3448e292fbf05ffe176fe1e43f135013d50b1e7d324ad1a558f623d3bb6f6"
+  },
+  {
+    "file": "inter-latin-ext-wght-normal.woff2",
+    "sha256": "34b9c504cab7a73e37b746343a449132e56cf7b5481af2cb81dc74dcff25c956"
+  },
+  {
+    "file": "inter-latin-wght-normal.woff2",
+    "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62"
+  },
+  {
+    "file": "inter-vietnamese-wght-normal.woff2",
+    "sha256": "5c66f9e07e90c6d4ac4922cc68d60de26c17b1858e677fb5e603fce3952b3ff2"
+  },
+  {
+    "file": "kalam-devanagari-300-normal.woff",
+    "sha256": "f1ce823f2882cc4266c16b5b30e866d297003f7b99998c12a45d3d4b99d3b90a"
+  },
+  {
+    "file": "kalam-devanagari-300-normal.woff2",
+    "sha256": "95f0f84fa329233de5277bdb677d360129417115f9af11864debaedb0b2a2130"
+  },
+  {
+    "file": "kalam-devanagari-400-normal.woff",
+    "sha256": "d7ad7274d07b49ff26e365dc13921f57a56164346f3494f857ae58bc151dfad1"
+  },
+  {
+    "file": "kalam-devanagari-400-normal.woff2",
+    "sha256": "b79d6614aac600d3bf950ae2d6924f72725366d9b5cfb8e9ff88dbc5152044c0"
+  },
+  {
+    "file": "kalam-devanagari-700-normal.woff",
+    "sha256": "67bae396bccb06b780f3291eeea4833a952c0edb0df374b5f7705fbc6aa2e7f1"
+  },
+  {
+    "file": "kalam-devanagari-700-normal.woff2",
+    "sha256": "7deb08192e5f12f885cab3826284b68fb44c44447aa7e6dbafa27160fe90aa5c"
+  },
+  {
+    "file": "kalam-latin-300-normal.woff",
+    "sha256": "ba00e2cccd45b57c788f7c6600ebc761543bd491a0b7f21bcfd5f50fca17d918"
+  },
+  {
+    "file": "kalam-latin-300-normal.woff2",
+    "sha256": "19f8586a22fbcb870f9d2490381d76b9f2e868c56e44b7bbc28d9efe05522a41"
+  },
+  {
+    "file": "kalam-latin-400-normal.woff",
+    "sha256": "70ab8c1d2c10a28f213c6f1c359888624d5e650ffcd64f93a8194c3e14403746"
+  },
+  {
+    "file": "kalam-latin-400-normal.woff2",
+    "sha256": "954410601a823f37e219f7930b7446f86afa15621326a7078d56fb9c910135cb"
+  },
+  {
+    "file": "kalam-latin-700-normal.woff",
+    "sha256": "c873bc1baaf504ff4ef11a733a0a857e2cf2fb1ad1be125b0f15ce2d57adefa0"
+  },
+  {
+    "file": "kalam-latin-700-normal.woff2",
+    "sha256": "252063af6ade8b9a744cde4ddad0fc21ea53b8ba711eed121a0c2e8610ea9c93"
+  },
+  {
+    "file": "kalam-latin-ext-300-normal.woff",
+    "sha256": "a364fa0246f8dad682fefea05ddb9572303f216b344392f34a4cb3cdd4f3c5c6"
+  },
+  {
+    "file": "kalam-latin-ext-300-normal.woff2",
+    "sha256": "5e1f8697ade10b1b0c1992b23f7532076538ae8db69c2ba9c3dec7aa7d546a83"
+  },
+  {
+    "file": "kalam-latin-ext-400-normal.woff",
+    "sha256": "04a1685116ea8d1a278dd24e94f6ac7bee8e34abe4f535510f6d03e5d1ab7b6d"
+  },
+  {
+    "file": "kalam-latin-ext-400-normal.woff2",
+    "sha256": "1099e56781c48f97dc66c8df2039a640ded07742acd4c6f2c9dc6350c3e3f324"
+  },
+  {
+    "file": "kalam-latin-ext-700-normal.woff",
+    "sha256": "5b2250fd5522e6f93b2d7d6d745850f57eca656a306e65acb00e33f43b41cb1c"
+  },
+  {
+    "file": "kalam-latin-ext-700-normal.woff2",
+    "sha256": "1fc176f6b1fbc091d4321ef2c9b683a6f512f645b9f22c460c2e2f3d298fcf74"
+  },
+  {
+    "file": "manrope-cyrillic-ext-wght-normal.woff2",
+    "sha256": "de37de877dc17e4577341fa68bb5cb526b53d54cb29721e674208546a3c7849d"
+  },
+  {
+    "file": "manrope-cyrillic-wght-normal.woff2",
+    "sha256": "c268b459a9329e59fecf39a17618efd44c71735532048d60b12aab76a8c14914"
+  },
+  {
+    "file": "manrope-greek-wght-normal.woff2",
+    "sha256": "2fb2e8cbfd52ae46179a8b6024eb162f1f9c6de3d22d6e3a30d8f395de7220be"
+  },
+  {
+    "file": "manrope-latin-ext-wght-normal.woff2",
+    "sha256": "3911b66d9f2e005a4b989223405d0e5032619c668597ba467cc76a23c8fffcfb"
+  },
+  {
+    "file": "manrope-latin-wght-normal.woff2",
+    "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972"
+  },
+  {
+    "file": "manrope-vietnamese-wght-normal.woff2",
+    "sha256": "6bbb044ab420e07edb0a3042d2eb314b85e83a0182e945a15ab3b9092668dfd5"
+  },
+  {
+    "file": "lora-cyrillic-ext-wght-italic.woff2",
+    "sha256": "b67b0f50d1d03fc36a1b3ded113de24a0ab71b838cc27e493d4f62cea00be99b"
+  },
+  {
+    "file": "lora-cyrillic-ext-wght-normal.woff2",
+    "sha256": "0e523e4bc3c6308f002a3208ea2990cb4f64282d4fbb67c12f5726d13b66eef6"
+  },
+  {
+    "file": "lora-cyrillic-wght-italic.woff2",
+    "sha256": "405b30a5bea8b70446e08e40e5d70b7bf5262ef3c4a9e4f3e4672e079a01a4cd"
+  },
+  {
+    "file": "lora-cyrillic-wght-normal.woff2",
+    "sha256": "c57d9ca3bd42e6bc093badc7744dd2059a78f66a3a4dc6ca40574480c870f553"
+  },
+  {
+    "file": "lora-latin-ext-wght-italic.woff2",
+    "sha256": "45f989df83f3a9f40007d2ecdea98bff248c8767a1a0bbe60e94fb37b605ecee"
+  },
+  {
+    "file": "lora-latin-ext-wght-normal.woff2",
+    "sha256": "2a2d9c22c9863086a23f5013fede1428585321812b25f2662542c39d02967c5e"
+  },
+  {
+    "file": "lora-latin-wght-italic.woff2",
+    "sha256": "d824d807d4d832d12c87932d0b8ec1314dcfd502157a56dee6bb04cf8a3768ae"
+  },
+  {
+    "file": "lora-latin-wght-normal.woff2",
+    "sha256": "ddb8c66035104e233fc024669183aad3738b6daa16deee2ebb1241bd0f98ace1"
+  },
+  {
+    "file": "lora-math-wght-italic.woff2",
+    "sha256": "49e796554ee2343f0d7a7f111d5dbc64fc5da47ad7168734e9a2d1f302ef3245"
+  },
+  {
+    "file": "lora-math-wght-normal.woff2",
+    "sha256": "a8c4cb778ab6202d22bdea2ccc8d7e7caf802cfe0a7ce37df7b212f82341468f"
+  },
+  {
+    "file": "lora-symbols-wght-italic.woff2",
+    "sha256": "db2a8b067f0fd836ae1e5155575a1afdb93e7ebc07b4680c4c2438e69e37515f"
+  },
+  {
+    "file": "lora-symbols-wght-normal.woff2",
+    "sha256": "2df52199eac56e2ec7a735e609bb151bdab79422c3e73948f4b6580c66bb5a50"
+  },
+  {
+    "file": "lora-vietnamese-wght-italic.woff2",
+    "sha256": "3acfc1db6992c092405884cf12763e512e21229cc040a1eea94549869006736a"
+  },
+  {
+    "file": "lora-vietnamese-wght-normal.woff2",
+    "sha256": "98c22de85f6e83bcd6ae1a443e12e256fbc8de7142bec4f76b059f8ff9c2797e"
+  },
+  {
+    "file": "instrument-serif-latin-400-italic.woff",
+    "sha256": "9bc25f743ba6bf9091d37de465dedb2d2cb0c0614738bec1c551922fb2794d1d"
+  },
+  {
+    "file": "instrument-serif-latin-400-italic.woff2",
+    "sha256": "5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7"
+  },
+  {
+    "file": "instrument-serif-latin-400-normal.woff",
+    "sha256": "6d0b022af858becb27f1a033de5d3c0604fc6f2191a7f3ff4dba5d3515e95051"
+  },
+  {
+    "file": "instrument-serif-latin-400-normal.woff2",
+    "sha256": "5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31"
+  },
+  {
+    "file": "instrument-serif-latin-ext-400-italic.woff",
+    "sha256": "f393f76db28120fbfee2844ba6ca2be0fa3e28ecd27f72dcc1c00045e32e377b"
+  },
+  {
+    "file": "instrument-serif-latin-ext-400-italic.woff2",
+    "sha256": "d0014821252a8a770bf7551641572f239a8ede83d75652d84fef0c3627751baf"
+  },
+  {
+    "file": "instrument-serif-latin-ext-400-normal.woff",
+    "sha256": "1719ae18b98d033d2555f5a5971a30f5bb610ed849fc5a1119fe39db6d40eb3e"
+  },
+  {
+    "file": "instrument-serif-latin-ext-400-normal.woff2",
+    "sha256": "290e6267dd833bf5f899eba4c29ad0a9b09dbe53f6075b18af38057159e1ff20"
+  },
+  {
+    "file": "playfair-display-cyrillic-wght-italic.woff2",
+    "sha256": "51b2dac698333379dc3a3486393fba787d17f1dcbcb50f46582ca759d53c25fc"
+  },
+  {
+    "file": "playfair-display-cyrillic-wght-normal.woff2",
+    "sha256": "c108681cba6a9820bff52f4a1a4a1d9edf356b347bd79b7c61e916028e8a8b54"
+  },
+  {
+    "file": "playfair-display-latin-ext-wght-italic.woff2",
+    "sha256": "b9dff4aec6d8ef27af595330c808c455fcc3ff46881642aa6028ed4e27a96f89"
+  },
+  {
+    "file": "playfair-display-latin-ext-wght-normal.woff2",
+    "sha256": "42898ad49a6b23f32b109243e1df596edf831015ed685f429e4dafbb181d599d"
+  },
+  {
+    "file": "playfair-display-latin-wght-italic.woff2",
+    "sha256": "54af24bd0f911f0fd7399d5445ea2023ff501d6a69f2d728f1213072f977ab14"
+  },
+  {
+    "file": "playfair-display-latin-wght-normal.woff2",
+    "sha256": "e0c764a8e9e1cce92163c55bac4b2ad6cd4cf8c696ce2289ab5c41565e65b7e2"
+  },
+  {
+    "file": "playfair-display-vietnamese-wght-italic.woff2",
+    "sha256": "6b8bfd228577635a5f45bee13c8dd4a900eba6aeb36af1680838aea3cbd7e412"
+  },
+  {
+    "file": "playfair-display-vietnamese-wght-normal.woff2",
+    "sha256": "ef6446229b59773e671021650ef3882cf35806dae723ce047de87c0a6633039a"
+  },
+  {
+    "file": "cormorant-garamond-cyrillic-ext-wght-italic.woff2",
+    "sha256": "ae25de0507a445fd9e953e90432ae75b1ee2eccb48370a6ced4934551eb56fc3"
+  },
+  {
+    "file": "cormorant-garamond-cyrillic-ext-wght-normal.woff2",
+    "sha256": "a4d7cf345b8091e1d2c8c5c8fa3bd0f9bb9d00bc8988185471db398ddb5ae4c4"
+  },
+  {
+    "file": "cormorant-garamond-cyrillic-wght-italic.woff2",
+    "sha256": "cb13c04533ee98c94e49a053b9f4d39bf616fd7ba6360d71aead92a78dc571f7"
+  },
+  {
+    "file": "cormorant-garamond-cyrillic-wght-normal.woff2",
+    "sha256": "017fab69b4be8ffc08ca312823327989ade6dc3d948f0afa125e12ec2e5e7ca1"
+  },
+  {
+    "file": "cormorant-garamond-latin-ext-wght-italic.woff2",
+    "sha256": "cd5bf126b2c84ab41b254a6a9a1ffb5c326a0f9f82c22fb4704daa31c9aaa415"
+  },
+  {
+    "file": "cormorant-garamond-latin-ext-wght-normal.woff2",
+    "sha256": "cfa9a397d86f66c5c51775a2500a712d5f632a04f0c5eca6930dfaf612d4566d"
+  },
+  {
+    "file": "cormorant-garamond-latin-wght-italic.woff2",
+    "sha256": "6f2f5c3b1abc3d0bb035a927f66a90ca873f94fc31c4966c8d024142c2036e55"
+  },
+  {
+    "file": "cormorant-garamond-latin-wght-normal.woff2",
+    "sha256": "d80df8ff5aecd299a61549f9e29ab1ed0b9b05f4ea71d50fe978e07d5240b235"
+  },
+  {
+    "file": "cormorant-garamond-vietnamese-wght-italic.woff2",
+    "sha256": "b8ecb4ae898cd9ccae2f2d18fd364f6593bb67776060f9b5d833cec65d34d112"
+  },
+  {
+    "file": "cormorant-garamond-vietnamese-wght-normal.woff2",
+    "sha256": "6252e819a7665ae512c2d046308a9016ada63c06d0d8f96984c4b29f6c9e1bd2"
+  }
+]

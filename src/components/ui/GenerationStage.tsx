@@ -9,6 +9,7 @@
 // would resolve against the host page and paint dark ink on dark.
 
 import { useEffect, useRef, useState } from "react";
+import { useClientReady } from "@/hooks/use-browser-state";
 import { type OrbState } from "thinking-orbs";
 import { createPortal } from "react-dom";
 import TheoOrb from "./TheoOrb";
@@ -74,10 +75,9 @@ function PhaseSlide({ phase, leaving }: { phase: Phase; leaving?: boolean }) {
 
 export default function GenerationStage({ open, coherence, progressLabel, progress, docked }: GenerationStageProps) {
   const [i, setI] = useState(0);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientReady();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMounted(true), []);
 
   // Cycle phases while open. Coherence pins, so no timer runs then.
   useEffect(() => {
@@ -87,7 +87,11 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
   }, [open, coherence]);
 
   // Reset to the first phase on each new run so it never opens mid-cycle.
-  useEffect(() => { if (open) setI(0); }, [open]);
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) {
+    setPreviousOpen(open);
+    if (open) setI(0);
+  }
 
   // Carousel: the outgoing phase stays mounted for one animation so it can slide left
   // while the incoming one slides in from the right. Keyed by phase identity, which also

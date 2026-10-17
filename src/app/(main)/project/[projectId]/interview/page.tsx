@@ -109,7 +109,7 @@ export default function InterviewPage() {
         )}
       </div>
 
-      {liveRoom && run && <LiveInterview runId={run.id} onClose={() => setLiveRoom(false)} />}
+      {liveRoom && run && <LiveInterview key={run.id} runId={run.id} onClose={() => setLiveRoom(false)} />}
       {inRoom && !liveRoom && run && (
         <BrainstormChat
           projectId={projectId}

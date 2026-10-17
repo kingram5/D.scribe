@@ -1,4 +1,5 @@
 "use client";
+import { useLocalValue, useSessionValue, writeSessionValue } from "@/hooks/use-browser-state";
 import Link from "next/link";
 import KeepAwakeControl from "./KeepAwakeControl";
 import { useEffect, useState } from "react";
@@ -56,29 +57,24 @@ const stepCounter = (idx: number) => (STEPS[idx]?.done ? "Done" : `Step ${idx + 
 /** Project title for the header rail, cached per session so every step page
  *  doesn't re-fetch it. Falls back to empty (rail renders without a title). */
 function useProjectTitle(projectId?: string): string {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState({ projectId, text: "" });
+  const cacheKey = `ds_title_${projectId}`;
+  const cached = useSessionValue(cacheKey);
   useEffect(() => {
     if (!projectId) return;
-    const cacheKey = `ds_title_${projectId}`;
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        setTitle(cached);
-        return;
-      }
-    } catch { /* storage unavailable — fetch anyway */ }
+    if (cached) return;
     let cancelled = false;
     fetch(`/api/project/${projectId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((p) => {
         if (cancelled || !p?.title) return;
-        setTitle(p.title);
-        try { sessionStorage.setItem(cacheKey, p.title); } catch { /* ignore */ }
+        setTitle({ projectId, text: p.title });
+        try { writeSessionValue(cacheKey, p.title); } catch { /* ignore */ }
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [projectId]);
-  return title;
+  }, [projectId, cacheKey, cached]);
+  return cached || (title.projectId === projectId ? title.text : "");
 }
 
 /** Furthest pipeline step this project has reached, remembered across navigation.
@@ -86,28 +82,20 @@ function useProjectTitle(projectId?: string): string {
  *  done-marks on steps the user had genuinely finished and made them unreachable — you had to
  *  click forward one at a time to get back. */
 function useReachedStep(projectId: string | undefined, currentIdx: number): number {
-  const [reached, setReached] = useState(currentIdx);
+  const key = STEPS === STEPS_V2 ? `ds_reached_v2_${projectId}` : `ds_reached_${projectId}`;
+  const raw = useLocalValue(key);
+  const old = useLocalValue(`ds_reached_${projectId}`);
+  const stored = raw ? parseInt(raw, 10) : STEPS === STEPS_V2 && old ? [0, 1, 2, 3, 4, 7, 8][parseInt(old, 10)] ?? -1 : -1;
+  const reached = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
   useEffect(() => {
-    if (!projectId || currentIdx < 0) return;
-    // The 9-step pipeline has its own key: its indexes mean different steps.
-    const key = STEPS === STEPS_V2 ? `ds_reached_v2_${projectId}` : `ds_reached_${projectId}`;
-    let stored = -1;
+    if (!projectId || currentIdx < 0 || reached <= stored) return;
     try {
-      const raw = localStorage.getItem(key);
-      if (raw !== null) stored = parseInt(raw, 10);
-      else if (STEPS === STEPS_V2) {
-        // Carry progress over from the 7-step pipeline (Editor 5 -> 7, Export 6 -> 8).
-        const old = localStorage.getItem(`ds_reached_${projectId}`);
-        if (old !== null) stored = [0, 1, 2, 3, 4, 7, 8][parseInt(old, 10)] ?? -1;
-      }
-    } catch { /* storage unavailable — fall back to position only */ }
-    const next = Math.max(Number.isNaN(stored) ? -1 : stored, currentIdx);
-    setReached(next);
-    if (next > stored) {
-      try { localStorage.setItem(key, String(next)); } catch { /* ignore */ }
-    }
-  }, [projectId, currentIdx]);
-  return Math.max(reached, currentIdx);
+      // Hydration starts with the server snapshot; never overwrite newer stored progress.
+      const actual = parseInt(localStorage.getItem(key) ?? "-1", 10);
+      if (!Number.isFinite(actual) || reached > actual) localStorage.setItem(key, String(reached));
+    } catch { /* storage unavailable */ }
+  }, [projectId, currentIdx, key, reached, stored]);
+  return reached;
 }
 
 function useIsMobile(maxWidth = 768): boolean {
@@ -165,7 +153,11 @@ export default function PageShell({ children, projectId, currentStep, hideFooter
   const showStepNav = projectId && currentStep && !hideFooterNav && currentIdx >= 0;
   const navLabel = (step: (typeof STEPS)[number]) => (isMobile && step.mobileLabel ? step.mobileLabel : step.label);
   const [stepListOpen, setStepListOpen] = useState(false);
-  useEffect(() => { setStepListOpen(false); }, [currentStep]);
+  const [previousStep, setPreviousStep] = useState(currentStep);
+  if (previousStep !== currentStep) {
+    setPreviousStep(currentStep);
+    setStepListOpen(false);
+  }
   function stepState(i: number) {
     const step = STEPS[i];
     const isStepDisabled = !!disabledStepKeys?.includes(step.key);

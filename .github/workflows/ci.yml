@@ -15,6 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
@@ -34,12 +39,11 @@ jobs:
           done
           exit 1
 
-      # TODO: make this blocking once the latent type errors suppressed by
-      # next.config.ts `typescript: { ignoreBuildErrors: true }` are fixed.
-      # TODO: re-enable lint once zod/eslint-config-next is pinned
-      - name: Type-check (non-blocking)
+      - name: Type-check
         run: bunx tsc --noEmit
-        continue-on-error: true
+
+      - name: Lint
+        run: bun run lint
 
       - name: Unit tests
         run: bun run test

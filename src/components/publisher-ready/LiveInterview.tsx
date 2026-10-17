@@ -1,5 +1,30 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+
+interface TypedDraft { text: string; questionId: string; answerId: string | null }
+const EMPTY_DRAFT: TypedDraft = { text: "", questionId: "", answerId: null };
+const DRAFT_EVENT = "ds:live-draft";
+const buttonStyle: CSSProperties = {
+  minHeight: 44, padding: "10px 16px", borderRadius: 10,
+  border: "1px solid var(--ds-input-border, #aaa)", cursor: "pointer",
+};
+// Session-scoped recovery keeps private author text out of durable localStorage.
+function readDraft(key: string): string {
+  try { return sessionStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function parseDraft(raw: string): TypedDraft {
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value.text === "string" && typeof value.questionId === "string")
+      return { text: value.text, questionId: value.questionId, answerId: typeof value.answerId === "string" ? value.answerId : null };
+  } catch { /* Missing or invalid recovery data. */ }
+  return EMPTY_DRAFT;
+}
+function subscribeDraft(notify: () => void) {
+  window.addEventListener(DRAFT_EVENT, notify);
+  window.addEventListener("storage", notify);
+  return () => { window.removeEventListener(DRAFT_EVENT, notify); window.removeEventListener("storage", notify); };
+}
 
 /** Only mounted after the server enables Live; legacy TTS is unmounted while this is active. */
 export default function LiveInterview({
@@ -14,14 +39,36 @@ export default function LiveInterview({
     audio = useRef<HTMLAudioElement | null>(null),
     id = useRef<string | null>(null);
   const stopping = useRef(false);
+  const mounted = useRef(false);
+  const generation = useRef(0);
+  const starting = useRef(false);
+  const saving = useRef(false);
+  const [savingTyped, setSavingTyped] = useState(false);
+  const draftKey = `ds:live-draft:${runId}`;
+  const rawDraft = useSyncExternalStore(subscribeDraft, () => readDraft(draftKey), () => "");
+  const draft = parseDraft(rawDraft);
+  const volatileDraft = useRef<TypedDraft | null>(null);
+  const [fallbackDraft, setFallbackDraft] = useState<TypedDraft | null>(null);
+  const currentDraft = fallbackDraft ?? draft;
+  function updateDraft(next: TypedDraft) {
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify(next));
+      volatileDraft.current = null;
+      setFallbackDraft(null);
+      window.dispatchEvent(new Event(DRAFT_EVENT));
+    } catch {
+      volatileDraft.current = next;
+      setFallbackDraft(next);
+      setError("This browser cannot keep a recovery copy. Save your writing before leaving this tab.");
+    }
+  }
   const seen = useRef(new Set<string>()),
     pulse = useRef<ReturnType<typeof setInterval> | null>(null);
   const [state, setState] = useState("idle"),
     [error, setError] = useState(""),
     [lines, setLines] = useState<{ role: string; text: string }[]>([]);
   const [question, setQuestion] = useState(""),
-    [answerId, setAnswerId] = useState<string | null>(null),
-    [typed, setTyped] = useState("");
+    [answerId, setAnswerId] = useState<string | null>(null);
   const api = useCallback(
     async (action: string, extra: Record<string, unknown> = {}) => {
       const response = await fetch("/api/publisher-ready/live", {
@@ -57,6 +104,7 @@ export default function LiveInterview({
   const stop = useCallback(async () => {
     if (stopping.current) return;
     stopping.current = true;
+    generation.current += 1;
     if (!id.current) {
       release();
       setState("closed");
@@ -97,16 +145,20 @@ export default function LiveInterview({
     }
   }, [api, release]);
   useEffect(() => {
+    mounted.current = true;
     const hidden = () => {
-      if (document.hidden && id.current) void stop();
+      if (document.hidden) void stop();
     };
     const pagehide = () => {
+      generation.current += 1;
       if (id.current) void api("stop").catch(() => {});
       release();
     };
     document.addEventListener("visibilitychange", hidden);
     window.addEventListener("pagehide", pagehide);
     return () => {
+      mounted.current = false;
+      generation.current += 1;
       document.removeEventListener("visibilitychange", hidden);
       window.removeEventListener("pagehide", pagehide);
       if (id.current) void api("stop").catch(() => {});
@@ -114,6 +166,10 @@ export default function LiveInterview({
     };
   }, [api, release, stop]);
   async function start() {
+    if (starting.current || !mounted.current) return;
+    starting.current = true;
+    const attempt = ++generation.current;
+    const isCurrent = () => mounted.current && generation.current === attempt;
     setError("");
     setState("starting");
     setAnswerId(null);
@@ -127,22 +183,27 @@ export default function LiveInterview({
       // Playback unlock stays inside the user's click on Safari; only one audio element/path.
       audio.current ??= new Audio();
       audio.current.autoplay = true;
-      mic.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!isCurrent()) { stream.getTracks().forEach((track) => track.stop()); return; }
+      mic.current = stream;
       const pc = new RTCPeerConnection();
       peer.current = pc;
       mic.current.getTracks().forEach((t) => pc.addTrack(t, mic.current!));
       pc.ontrack = (e) => {
+        if (!isCurrent()) return;
         audio.current!.srcObject = e.streams[0];
         void audio
           .current!.play()
           .catch(() => setError("Tap Play Theo to enable sound."));
       };
       pc.onconnectionstatechange = () => {
+        if (!isCurrent()) return;
         if (["failed", "disconnected"].includes(pc.connectionState))
           void stop();
       };
       const channel = pc.createDataChannel("oai-events");
       channel.onmessage = (e) => {
+        if (!isCurrent()) return;
         try {
           const event = JSON.parse(e.data);
           if (event.event_id && seen.current.has(event.event_id)) return;
@@ -166,7 +227,10 @@ export default function LiveInterview({
           /* Unknown events do not alter manuscript state. */
         }
       };
-      await pc.setLocalDescription(await pc.createOffer());
+      const offer = await pc.createOffer();
+      if (!isCurrent()) return;
+      await pc.setLocalDescription(offer);
+      if (!isCurrent()) return;
       if (pc.iceGatheringState !== "complete")
         await new Promise<void>((resolve, reject) => {
           const timer = setTimeout(
@@ -180,10 +244,17 @@ export default function LiveInterview({
             }
           };
         });
+      if (!isCurrent()) return;
+      // Do not abort this request: a late allocated session must be explicitly closed.
       const data = await api("start", { sdp: pc.localDescription?.sdp });
+      if (!isCurrent()) {
+        void api("stop", { id: data.id }).catch(() => {});
+        return;
+      }
       id.current = data.id;
       setQuestion(data.questionId);
       await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+      if (!isCurrent()) return;
       setState("active");
       pulse.current = setInterval(() => {
         void api("pulse").catch(() => {
@@ -191,31 +262,50 @@ export default function LiveInterview({
         });
       }, 10000);
     } catch (e) {
+      if (!isCurrent()) return;
       release();
       setState("error");
       setError(e instanceof Error ? e.message : "Live failed");
       if (id.current) void stop();
+    } finally {
+      starting.current = false;
     }
   }
   async function saveTyped() {
-    if (!typed.trim() || !question) return;
-    const response = await fetch("/api/publisher-ready/interview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        run_id: runId,
-        action: "answer",
-        question_id: question,
-        transcript: typed,
-        source: "typed",
-        follow_up_of: answerId,
-      }),
-    });
-    if (response.ok) {
-      setTyped("");
-      setError("Typed answer saved.");
-    } else
-      setError("Could not save the typed answer. Your text is still here.");
+    const submitted = {
+      ...currentDraft,
+      questionId: currentDraft.questionId || question,
+      answerId: currentDraft.questionId && currentDraft.questionId !== question
+        ? currentDraft.answerId : answerId ?? currentDraft.answerId,
+    };
+    if (!submitted.text.trim() || !submitted.questionId || saving.current) return;
+    saving.current = true;
+    setSavingTyped(true);
+    try {
+      const response = await fetch("/api/publisher-ready/interview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: runId, action: "answer", question_id: submitted.questionId,
+          transcript: submitted.text, source: "typed", follow_up_of: submitted.answerId }),
+      });
+      if (!response.ok) throw new Error("Save failed");
+      const latest = volatileDraft.current ?? parseDraft(readDraft(draftKey));
+      if (latest.text === submitted.text && latest.questionId === currentDraft.questionId) {
+        // Clear only the submitted revision, even if the component has since unmounted.
+        const cleared = { ...submitted, text: "" };
+        if (mounted.current) updateDraft(cleared);
+        else {
+          sessionStorage.setItem(draftKey, JSON.stringify(cleared));
+          window.dispatchEvent(new Event(DRAFT_EVENT));
+        }
+      }
+      if (mounted.current) setError("Typed answer saved.");
+    } catch {
+      if (mounted.current) setError("Could not save the typed answer. Your text is still here. Try again.");
+    } finally {
+      saving.current = false;
+      if (mounted.current) setSavingTyped(false);
+    }
   }
   return (
     <section
@@ -229,21 +319,24 @@ export default function LiveInterview({
       </p>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button
+          style={buttonStyle}
           onClick={() => void start()}
           disabled={!["idle", "closed", "error"].includes(state)}
         >
           Start audio
         </button>
         <button
+          style={buttonStyle}
           onClick={() => void stop()}
           disabled={!["active", "reconcile"].includes(state)}
         >
           Pause / save
         </button>
-        <button onClick={() => void audio.current?.play().catch(() => {})}>
+        <button style={buttonStyle} onClick={() => void audio.current?.play().catch(() => {})}>
           Play Theo
         </button>
         <button
+          style={buttonStyle}
           onClick={onClose}
           disabled={["active", "starting", "stopping", "reconcile"].includes(
             state,
@@ -270,19 +363,20 @@ export default function LiveInterview({
           </span>
         ))}
       </div>
-      <label>
+      <label style={{ display: "block", marginTop: 16, marginBottom: 12 }}>
         Continue in writing
         <textarea
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          style={{ display: "block", width: "100%", minHeight: 100 }}
+          value={currentDraft.text}
+          onChange={(e) => updateDraft({ text: e.target.value, questionId: currentDraft.text ? currentDraft.questionId || question : question, answerId: currentDraft.text ? currentDraft.answerId : answerId })}
+          style={{ display: "block", width: "100%", minHeight: 100, fontSize: 16, padding: 12, border: "1px solid var(--ds-input-border, #aaa)", borderRadius: 8 }}
         />
       </label>
       <button
+        style={buttonStyle}
         onClick={() => void saveTyped()}
-        disabled={!question || !typed.trim() || state === "active"}
+        disabled={savingTyped || !(currentDraft.questionId || question) || !currentDraft.text.trim() || state === "active"}
       >
-        Save typed answer
+        {savingTyped ? "Saving…" : "Save typed answer"}
       </button>
     </section>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useId } from "react";
 
 // The D.scribe wordmark on the hanging sign, in five readings. Kyle found the
 // original (thin bars racing inside the letters) hard to read at sign size. Each
@@ -31,7 +31,7 @@ const SERIF = "var(--font-playfair),'Playfair Display',serif";
 
 function WaveText({ width, height, bars, speed, fill, inlay }: { width: number; height: number; bars: number; speed: number; fill: string; inlay?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const id = useRef(`wm${Math.random().toString(36).slice(2, 8)}`);
+  const id = `wm${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -47,16 +47,16 @@ function WaveText({ width, height, bars, speed, fill, inlay }: { width: number; 
       const dur = (1.5 + Math.random() * 1.5) * speed;
       const sMin = 0.35 + Math.abs(fast) * 0.3;
       const sMax = 0.75 + Math.abs(combined) * 0.25;
-      rects += `<rect x="${i * bw}" y="0" width="${bw - gap}" height="100%" style="fill:${fill};transform-box:fill-box;transform-origin:center;animation:${id.current} ${dur}s cubic-bezier(0.4,0,0.2,1) ${delay}s infinite alternate;--smin:${sMin};--smax:${sMax}" />`;
+      rects += `<rect x="${i * bw}" y="0" width="${bw - gap}" height="100%" style="fill:${fill};transform-box:fill-box;transform-origin:center;animation:${id} ${dur}s cubic-bezier(0.4,0,0.2,1) ${delay}s infinite alternate;--smin:${sMin};--smax:${sMax}" />`;
     }
     el.innerHTML = `
-      <style>@keyframes ${id.current} { 0% { transform: scaleY(var(--smin)); opacity: 0.85; } 100% { transform: scaleY(var(--smax)); opacity: 1; } }</style>
+      <style>@keyframes ${id} { 0% { transform: scaleY(var(--smin)); opacity: 0.85; } 100% { transform: scaleY(var(--smax)); opacity: 1; } }</style>
       <svg viewBox="0 0 ${vw} ${vh}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.6));">
-        <defs><clipPath id="${id.current}c"><text x="50%" y="65%" text-anchor="middle" alignment-baseline="middle" font-family="${SERIF}" font-style="italic" font-weight="500" font-size="100px" letter-spacing="-0.02em">D. scribe</text></clipPath></defs>
+        <defs><clipPath id="${id}c"><text x="50%" y="65%" text-anchor="middle" alignment-baseline="middle" font-family="${SERIF}" font-style="italic" font-weight="500" font-size="100px" letter-spacing="-0.02em">D. scribe</text></clipPath></defs>
         <text x="50%" y="65%" text-anchor="middle" alignment-baseline="middle" font-family="${SERIF}" font-style="italic" font-weight="500" font-size="100px" letter-spacing="-0.02em" fill="rgba(0,0,0,0.35)">D. scribe</text>
-        <g clip-path="url(#${id.current}c)">${rects}</g>
+        <g clip-path="url(#${id}c)">${rects}</g>
       </svg>`;
-  }, [bars, speed, fill]);
+  }, [bars, speed, fill, id]);
   return (
     <div style={{ width, height, borderRadius: 6, padding: inlay ? "2px 6px" : 0, background: inlay ? "rgba(20,12,6,0.45)" : "transparent", boxShadow: inlay ? "inset 0 2px 4px rgba(0,0,0,0.6), 0 1px 0 rgba(255,220,170,0.25)" : "none" }}>
       <div ref={ref} style={{ width: "100%", height: "100%" }} />

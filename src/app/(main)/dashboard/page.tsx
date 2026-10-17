@@ -49,7 +49,10 @@ export default function Dashboard() {
   // load threw React hydration error #418 and re-rendered the whole tree. Until
   // the pick lands, the first quote holds the space invisibly (same on both sides).
   const [quoteIdx, setQuoteIdx] = useState<number | null>(null);
-  useEffect(() => { setQuoteIdx(Math.floor(Math.random() * WORKSPACE_QUOTES.length)); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuoteIdx(Math.floor(Math.random() * WORKSPACE_QUOTES.length)), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ShelfFilter>("all");

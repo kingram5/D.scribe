@@ -101,3 +101,19 @@ its result and cost without redispatch.
 After fixes: 74 mixed-stack tests and 640 full-suite tests pass, with the same
 one expected failure. TypeScript and changed-file ESLint pass. These are local
 contract tests; real vendor/browser failure injection remains a staging gate.
+
+## Usability follow-up (2026-10-17)
+
+Local follow-up fixes Live startup cancellation, typed-answer save/recovery races,
+dashboard keyboard tabs and the new-project title label. All 18 repository lint
+errors are resolved without weakening rules. Fontsource files and licenses replace
+Google font downloads at build and runtime. CI selects Node 24 and runs blocking
+lint/type checks.
+
+652 tests pass, with the same one expected failure, including 12 new DOM/hydration
+regressions. TypeScript and repository lint pass (32 existing warnings); the
+placeholder-environment production build generates 93 pages. Thirty Chromium
+mobile checks cover public pages and local UI fixtures at five widths; they are
+not authenticated account, actual-device, vendor or paid Live verification. See
+[the detailed follow-up and screenshots](edge-test/pr46-follow-up-2026-10-17.md).
+The existing live-provider/staging rollout gates remain open.

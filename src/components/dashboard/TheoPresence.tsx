@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMediaQuery } from "@/hooks/use-browser-state";
 import Link from "next/link";
 
 // THEO in the room. His idle loop (the studio's alpha video) stands beside the
@@ -17,10 +18,9 @@ export interface TheoPresenceProps {
 
 export default function TheoPresence({ ownerName, pickUp }: TheoPresenceProps) {
   const [phase, setPhase] = useState<"dots" | "hello" | "offer">("dots");
-  const [still, setStill] = useState(false);
+  const still = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) setStill(true);
     const a = window.setTimeout(() => setPhase("hello"), 1400);
     const b = window.setTimeout(() => setPhase("offer"), 4200);
     return () => { window.clearTimeout(a); window.clearTimeout(b); };

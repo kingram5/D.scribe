@@ -85,7 +85,9 @@ export default function NewProject() {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <div>
+              <label htmlFor="project-title" style={{ display: "block", marginBottom: 8 }}>Project title</label>
               <input
+                id="project-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}

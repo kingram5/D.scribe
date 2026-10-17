@@ -1,0 +1,237 @@
+[
+  {
+    "width": 320,
+    "view": "shelf",
+    "errors": [],
+    "arrowRightSelected": "true",
+    "arrowRightFocused": true,
+    "endSelected": "true",
+    "overflow": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Geist Mono Variable",
+      "Manrope Variable",
+      "Lora Variable",
+      "Lora Variable",
+      "Playfair Display Variable"
+    ]
+  },
+  {
+    "width": 320,
+    "view": "new",
+    "errors": [],
+    "titleNamed": 1,
+    "overflow": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable",
+      "Lora Variable"
+    ]
+  },
+  {
+    "width": 320,
+    "view": "live",
+    "errors": [],
+    "draftRecovered": "ISOLATED mobile fixture draft",
+    "saveDisabledWithoutQuestion": true,
+    "overflow": false,
+    "scrollWidth": 320,
+    "innerWidth": 320,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable"
+    ]
+  },
+  {
+    "width": 375,
+    "view": "shelf",
+    "errors": [],
+    "arrowRightSelected": "true",
+    "arrowRightFocused": true,
+    "endSelected": "true",
+    "overflow": false,
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Geist Mono Variable",
+      "Manrope Variable",
+      "Lora Variable",
+      "Lora Variable",
+      "Playfair Display Variable"
+    ]
+  },
+  {
+    "width": 375,
+    "view": "new",
+    "errors": [],
+    "titleNamed": 1,
+    "overflow": false,
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable",
+      "Lora Variable"
+    ]
+  },
+  {
+    "width": 375,
+    "view": "live",
+    "errors": [],
+    "draftRecovered": "ISOLATED mobile fixture draft",
+    "saveDisabledWithoutQuestion": true,
+    "overflow": false,
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable"
+    ]
+  },
+  {
+    "width": 390,
+    "view": "shelf",
+    "errors": [],
+    "arrowRightSelected": "true",
+    "arrowRightFocused": true,
+    "endSelected": "true",
+    "overflow": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Geist Mono Variable",
+      "Manrope Variable",
+      "Lora Variable",
+      "Lora Variable",
+      "Playfair Display Variable"
+    ]
+  },
+  {
+    "width": 390,
+    "view": "new",
+    "errors": [],
+    "titleNamed": 1,
+    "overflow": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable",
+      "Lora Variable"
+    ]
+  },
+  {
+    "width": 390,
+    "view": "live",
+    "errors": [],
+    "draftRecovered": "ISOLATED mobile fixture draft",
+    "saveDisabledWithoutQuestion": true,
+    "overflow": false,
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable"
+    ]
+  },
+  {
+    "width": 430,
+    "view": "shelf",
+    "errors": [],
+    "arrowRightSelected": "true",
+    "arrowRightFocused": true,
+    "endSelected": "true",
+    "overflow": false,
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Geist Mono Variable",
+      "Manrope Variable",
+      "Lora Variable",
+      "Lora Variable",
+      "Playfair Display Variable"
+    ]
+  },
+  {
+    "width": 430,
+    "view": "new",
+    "errors": [],
+    "titleNamed": 1,
+    "overflow": false,
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable",
+      "Lora Variable"
+    ]
+  },
+  {
+    "width": 430,
+    "view": "live",
+    "errors": [],
+    "draftRecovered": "ISOLATED mobile fixture draft",
+    "saveDisabledWithoutQuestion": true,
+    "overflow": false,
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable"
+    ]
+  },
+  {
+    "width": 768,
+    "view": "shelf",
+    "errors": [],
+    "arrowRightSelected": "true",
+    "arrowRightFocused": true,
+    "endSelected": "true",
+    "overflow": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Geist Mono Variable",
+      "Manrope Variable",
+      "Lora Variable",
+      "Lora Variable",
+      "Playfair Display Variable"
+    ]
+  },
+  {
+    "width": 768,
+    "view": "new",
+    "errors": [],
+    "titleNamed": 1,
+    "overflow": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable",
+      "Lora Variable"
+    ]
+  },
+  {
+    "width": 768,
+    "view": "live",
+    "errors": [],
+    "draftRecovered": "ISOLATED mobile fixture draft",
+    "saveDisabledWithoutQuestion": true,
+    "overflow": false,
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "fonts": "loaded",
+    "loadedFonts": [
+      "Manrope Variable"
+    ]
+  }
+]

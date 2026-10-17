@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useClientReady } from "@/hooks/use-browser-state";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -34,11 +35,10 @@ const SERIF = "var(--font-playfair), var(--font-lora), serif";
 
 export default function PublicMobileMenu() {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientReady();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;

@@ -1,0 +1,102 @@
+[
+  {
+    "id": "case-01",
+    "category": "memoir",
+    "source": "I moved to Leeds in 1999."
+  },
+  {
+    "id": "case-02",
+    "category": "expert nonfiction",
+    "source": "We test each pump before opening the valve."
+  },
+  {
+    "id": "case-03",
+    "category": "sparse source",
+    "source": "I remember rain, but I do not remember the date."
+  },
+  {
+    "id": "case-04",
+    "category": "fragmented chronology",
+    "source": "Before I graduated, I had already opened the shop."
+  },
+  {
+    "id": "case-05",
+    "category": "multiple speakers",
+    "source": "Mara said the meeting was Monday. I remember Tuesday."
+  },
+  {
+    "id": "case-06",
+    "category": "emotional material",
+    "source": "I cried when the letter arrived."
+  },
+  {
+    "id": "case-07",
+    "category": "user correction",
+    "source": "I said 2001 earlier. That was wrong; it was 2002."
+  },
+  {
+    "id": "case-08",
+    "category": "uncertain motive",
+    "source": "I do not know why he left."
+  },
+  {
+    "id": "case-09",
+    "category": "quotation",
+    "source": "She said, “Keep the light on.”"
+  },
+  {
+    "id": "case-10",
+    "category": "repeated speech",
+    "source": "I waited. I waited another hour."
+  },
+  {
+    "id": "case-11",
+    "category": "faith community",
+    "source": "We served meals every Friday in the church hall."
+  },
+  {
+    "id": "case-12",
+    "category": "business advice",
+    "source": "Our first three customers arrived by referral."
+  },
+  {
+    "id": "case-13",
+    "category": "family ambiguity",
+    "source": "My uncle drove us, but I cannot recall which uncle."
+  },
+  {
+    "id": "case-14",
+    "category": "timeline conflict",
+    "source": "My journal says May. My sister remembers June."
+  },
+  {
+    "id": "case-15",
+    "category": "medical memoir",
+    "source": "The doctor gave me a leaflet. I do not recall its title."
+  },
+  {
+    "id": "case-16",
+    "category": "speaker ownership",
+    "source": "Ana had climbed the mountain. I had only seen pictures."
+  },
+  {
+    "id": "case-17",
+    "category": "multilingual source",
+    "source": "Mi madre dijo que volvería el martes."
+  },
+  {
+    "id": "case-18",
+    "category": "source gap",
+    "source": "I cannot remember the conversation after that."
+  },
+  {
+    "id": "case-19",
+    "category": "chapter continuity",
+    "source": "The same red notebook traveled with me to both cities."
+  },
+  {
+    "id": "case-20",
+    "category": "author voice",
+    "source": "Well, I was tired, and the bus was late again."
+  }
+]

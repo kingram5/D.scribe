@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useClientReady } from "@/hooks/use-browser-state";
 import { readConsent, writeConsent } from "@/lib/consent";
 
 /**
@@ -8,22 +9,17 @@ import { readConsent, writeConsent } from "@/lib/consent";
  * pixels stay off until consent is granted here. Copy mirrors docs/legal/consent-banner-copy.md.
  */
 export function ConsentBanner() {
-  const [show, setShow] = useState(false);
+  const ready = useClientReady();
+  const [dismissed, setDismissed] = useState(false);
   const [managing, setManaging] = useState(false);
   const [analytics, setAnalytics] = useState(true);
   const [marketing, setMarketing] = useState(true);
 
-  useEffect(() => {
-    // No prior choice (or a stale version) → ask. Reads client-side only, so SSR
-    // and first client render both produce null → no hydration mismatch.
-    if (readConsent() === null) setShow(true);
-  }, []);
-
-  if (!show) return null;
+  if (!ready || dismissed || readConsent() !== null) return null;
 
   const decide = (a: boolean, m: boolean) => {
     writeConsent({ analytics: a, marketing: m });
-    setShow(false);
+    setDismissed(true);
   };
 
   const card: React.CSSProperties = {

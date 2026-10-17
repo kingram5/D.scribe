@@ -1484,7 +1484,6 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 
         /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
         .circular-text {

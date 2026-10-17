@@ -47,7 +47,7 @@ export default function TheoOrb({
   const rendered = display ?? size;
   const ref = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
-  pausedRef.current = paused;
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   useEffect(() => {
     const canvas = ref.current;

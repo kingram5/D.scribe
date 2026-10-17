@@ -1,3 +1,6 @@
+import { readSnapshot } from "@/lib/ai/publisher-ready-routing";
+import { mixedAuxiliary } from "@/lib/ai/auxiliary";
+import { digest } from "./source-ledger";
 /**
  * Second interview (server side). Serves the next question in round-robin
  * order, drops questions an earlier answer already covered, stores answers,
@@ -108,10 +111,11 @@ async function coveredByEarlierAnswer(
     const q = (a as unknown as { pr_questions: { question: string } }).pr_questions;
     return `${i + 1}. Q: ${q?.question ?? ""}\n   A: ${a.transcript}`;
   }).join("\n");
-  const res = await callClaudeNext(coverageSystem(), `PENDING QUESTION: ${row.question}\n\nANSWERS SO FAR:\n${list}`, {
+  const mixed = await mixedAuxiliary({ actorId: userId, runId, key: `coverage:${row.id}:${digest(answers.map(a => a.id))}`, workload: "coverage", system: coverageSystem(), user: `PENDING QUESTION: ${row.question}\n\nANSWERS SO FAR:\n${list}`, maxTokens: 2000, schema: COVERAGE_SCHEMA });
+  const res = mixed ?? await callClaudeNext(coverageSystem(), `PENDING QUESTION: ${row.question}\n\nANSWERS SO FAR:\n${list}`, {
     ...m, maxTokens: 2000, jsonSchema: COVERAGE_SCHEMA as unknown as Record<string, unknown>,
   });
-  await recordInkUsage(userId, projectId, "pr_interview", m.model, res.usage);
+  if (!mixed) await recordInkUsage(userId, projectId, "pr_interview", m.model, res.usage as import("@/lib/claude-lite").ClaudeUsage);
   const out = parseJsonReply<{ covered: boolean; covered_by_index: number | null }>(res.text);
   if (!out.covered || !out.covered_by_index) return null;
   return answers[out.covered_by_index - 1]?.id ?? null;
@@ -131,17 +135,29 @@ export async function submitAnswer(opts: {
   const { data: q } = await db.from("pr_questions").select("id, question, status").eq("id", opts.questionId).eq("run_id", opts.runId).single();
   if (!q) throw new StepError("Question not found", 404);
 
-  const { data: answer, error } = await db.from("pr_answers").insert({
+  const mixedRun = readSnapshot(run.models);
+  if (mixedRun && opts.followUpOf) {
+    const { data: parent } = await db.from("pr_answers").select("id").eq("id", opts.followUpOf).eq("question_id", q.id).eq("run_id", opts.runId).eq("user_id", opts.userId).single();
+    if (!parent) throw new StepError("Follow-up answer not found", 404);
+  }
+  const requestKey = mixedRun ? digest([q.id, text, opts.followUpOf ?? null]) : null;
+  let { data: answer, error } = await db.from("pr_answers").insert({
     question_id: q.id, run_id: opts.runId, user_id: opts.userId, transcript: text, source: opts.source,
     follow_up_of: opts.followUpOf ?? null,
+    ...(requestKey ? { mixed_request_key: requestKey } : {}),
   }).select("id").single();
+  if (requestKey && error?.code === "23505") {
+    const existing = await db.from("pr_answers").select("id").eq("run_id", opts.runId).eq("question_id", q.id).eq("mixed_request_key", requestKey).single();
+    answer = existing.data; error = existing.error;
+  }
   if (error || !answer) throw error ?? new StepError("Could not save answer", 500);
 
   let followUp: string | null = null;
   if (!opts.followUpOf) {
     const m = STEP_MODELS.interview;
-    const res = await callClaudeNext(followUpSystem(), `QUESTION: ${q.question}\n\nANSWER: ${text}`, { ...m, maxTokens: 1500 });
-    await recordInkUsage(opts.userId, run.project_id, "pr_interview", m.model, res.usage);
+    const mixed = await mixedAuxiliary({ actorId: opts.userId, runId: opts.runId, key: `interview:${q.id}:${digest(text)}`, workload: "interview", system: followUpSystem(), user: `QUESTION: ${q.question}\n\nANSWER: ${text}`, maxTokens: 1500 });
+    const res = mixed ?? await callClaudeNext(followUpSystem(), `QUESTION: ${q.question}\n\nANSWER: ${text}`, { ...m, maxTokens: 1500 });
+    if (!mixed) await recordInkUsage(opts.userId, run.project_id, "pr_interview", m.model, res.usage as import("@/lib/claude-lite").ClaudeUsage);
     const reply = res.text.trim();
     if (reply && !/^DONE\b/i.test(reply)) followUp = reply.slice(0, 400);
   }
@@ -169,7 +185,11 @@ export async function finishChapter(userId: string, runId: string, chapterId: st
 /** "Done with all": everything left becomes unanswered, and the run moves to revising. */
 export async function finishInterview(userId: string, runId: string) {
   const db = createServerClient();
-  await loadRun(db, userId, runId);
+  const run = await loadRun(db, userId, runId);
+  if (readSnapshot(run.models) || run.models?.live_enabled === true) {
+    const { data: active, error } = await db.from("theo_live_sessions").select("id").eq("run_id", runId).eq("user_id", userId).neq("state", "closed").limit(1);
+    if (error || active?.length) throw new StepError("End and reconcile the Live session before finishing the interview", 409);
+  }
   await db.from("pr_questions").update({ status: "unanswered", updated_at: new Date().toISOString() })
     .eq("run_id", runId).in("status", ["queued", "asked"]);
   await db.from("pr_runs").update({ status: "revising", updated_at: new Date().toISOString() }).eq("id", runId);

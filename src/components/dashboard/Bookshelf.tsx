@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useClientReady, useMediaQuery } from "@/hooks/use-browser-state";
 import Link from "next/link";
 import BookReader, { type ReaderStage } from "./BookReader";
 import TheoPresence from "./TheoPresence";
@@ -8,12 +9,13 @@ import TheoPresence from "./TheoPresence";
 /** The studio's typing idiom: text arrives a character at a time behind a copper cursor. */
 function useTyped(text: string, startMs = 700, cps = 28): { shown: string; done: boolean } {
   const [n, setN] = useState(0);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setN(text.length); return; }
-    setN(0);
+    if (reducedMotion) return;
     let i = 0;
     let timer = 0;
     const start = window.setTimeout(() => {
+      setN(0);
       timer = window.setInterval(() => {
         i += 1;
         setN(i);
@@ -21,8 +23,8 @@ function useTyped(text: string, startMs = 700, cps = 28): { shown: string; done:
       }, 1000 / cps);
     }, startMs);
     return () => { window.clearTimeout(start); if (timer) window.clearInterval(timer); };
-  }, [text, startMs, cps]);
-  return { shown: text.slice(0, n), done: n >= text.length };
+  }, [text, startMs, cps, reducedMotion]);
+  return { shown: reducedMotion ? text : text.slice(0, n), done: reducedMotion || n >= text.length };
 }
 
 // ── Bookshelf ──────────────────────────────────────────────────────────────
@@ -121,22 +123,18 @@ function stepFor(book: ShelfBook, override?: Record<string, number>, reached?: R
 }
 
 function useReachedSteps(ids: string[]): Record<string, number> {
-  const [reached, setReached] = useState<Record<string, number>>({});
-  const key = ids.join("|");
-  useEffect(() => {
-    const out: Record<string, number> = {};
-    for (const id of key.split("|").filter(Boolean)) {
-      try {
-        const raw = localStorage.getItem(`ds_reached_${id}`);
-        if (raw !== null) {
-          const n = parseInt(raw, 10);
-          if (!Number.isNaN(n)) out[id] = Math.max(0, Math.min(6, n));
-        }
-      } catch { /* storage unavailable */ }
-    }
-    setReached(out);
-  }, [key]);
-  return reached;
+  const ready = useClientReady();
+  const out: Record<string, number> = {};
+  if (ready) for (const id of ids) {
+    try {
+      const raw = localStorage.getItem(`ds_reached_${id}`);
+      if (raw !== null) {
+        const n = parseInt(raw, 10);
+        if (!Number.isNaN(n)) out[id] = Math.max(0, Math.min(6, n));
+      }
+    } catch { /* storage unavailable */ }
+  }
+  return out;
 }
 
 /** Books per plank, from the measured width of the shelf column. Measured before
@@ -197,7 +195,11 @@ export default function Bookshelf(props: BookshelfProps) {
   const rows = allRows.slice(safePage * SHELVES_PER_PAGE, safePage * SHELVES_PER_PAGE + SHELVES_PER_PAGE);
   const goto = (p: number) => { setPage(Math.max(0, Math.min(pageCount - 1, p))); setPageKey((k) => k + 1); };
   // A new filter starts at the first shelf.
-  useEffect(() => { setPage(0); }, [filter, search]);
+  const [previousQuery, setPreviousQuery] = useState({ filter, search });
+  if (previousQuery.filter !== filter || previousQuery.search !== search) {
+    setPreviousQuery({ filter, search });
+    setPage(0);
+  }
   const [hoverId, setHoverId] = useState<string | null>(null);
   const lit = hoverPreviewId ?? hoverId;
 
@@ -297,13 +299,23 @@ export default function Bookshelf(props: BookshelfProps) {
         </header>
 
         {/* Toolbar: parchment filter pills + actions */}
-        <div className="bs-toolbar" role="tablist" aria-label="Filter books">
-          <div className="bs-pills">
+        <div className="bs-toolbar">
+          <div className="bs-pills" role="tablist" aria-label="Filter books">
             {pills.map((p, i) => (
               <button
                 key={p.key}
                 role="tab"
                 aria-selected={filter === p.key}
+                tabIndex={filter === p.key ? 0 : -1}
+                onKeyDown={(event) => {
+                  const next = event.key === "ArrowRight" ? (i + 1) % pills.length
+                    : event.key === "ArrowLeft" ? (i + pills.length - 1) % pills.length
+                    : event.key === "Home" ? 0 : event.key === "End" ? pills.length - 1 : -1;
+                  if (next < 0) return;
+                  event.preventDefault();
+                  onFilter(pills[next].key);
+                  event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+                }}
                 className={`bs-pill${filter === p.key ? " is-active" : ""}`}
                 style={{ ["--i" as string]: i }}
                 onClick={() => onFilter(p.key)}

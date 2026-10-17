@@ -1,3 +1,5 @@
+import { selectTranscriptionProvider } from "@/lib/transcription/select-provider";
+import { groqUpload } from "@/lib/transcription/store";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { transcribeAudio } from "@/lib/deepgram";
@@ -86,6 +88,20 @@ export async function POST(req: NextRequest) {
         ? "audio/wav"
         : "audio/mp4";
 
+    // An explicit server-audited single-speaker cohort may use Groq; unknown recordings retain diarization.
+    const provider = selectTranscriptionProvider(user.id, audio_upload_id, {
+      bytes: buffer.length, diarization: false, wordTimings: true, nativeLiveTranscript: false,
+    });
+    if (provider === "groq") {
+      const { data: existing } = await supabase.from("groq_transcription_attempts").select("state,transcript_id").eq("upload_id", audio_upload_id).eq("user_id", user.id).maybeSingle();
+      if (existing?.state === "complete") {
+        const { data: transcript, error } = await supabase.from("transcripts").select("*").eq("id", existing.transcript_id).eq("project_id", upload.project_id).single();
+        if (error) throw error;
+        await supabase.from("audio_uploads").update({ status: "transcribed" }).eq("id", audio_upload_id);
+        return NextResponse.json(transcript);
+      }
+      return NextResponse.json(await groqUpload(user.id, { id: audio_upload_id, project_id: upload.project_id }, buffer, mimeType), { status: 201 });
+    }
     // Transcribe with Deepgram
     const result = await transcribeAudio(buffer, mimeType);
 

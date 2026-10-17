@@ -1,3 +1,4 @@
+import { mixedStep } from "@/lib/publisher-ready/mixed";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { checkInk } from "@/lib/ink";
@@ -24,9 +25,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "run_id, chapter_id and step (draft|edit|revise|final) required" }, { status: 400 });
   }
   const db = createServerClient();
-  const { data: run } = await db.from("pr_runs").select("id, status").eq("id", run_id).eq("user_id", user.id).single();
+  const { data: run } = await db.from("pr_runs").select("id, status, project_id").eq("id", run_id).eq("user_id", user.id).single();
   if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
   if (run.status === "done" || run.status === "cancelled") return NextResponse.json({ error: "This run is finished." }, { status: 409 });
+
+  const { data: chapter } = await db.from("chapters").select("id").eq("id", chapter_id).eq("project_id", run.project_id).single();
+  if (!chapter) return NextResponse.json({ error: "Chapter not in run" }, { status: 404 });
 
   const ink = await checkInk(user.id, OP[step]);
   if (!ink.allowed) return NextResponse.json({ error: "out_of_ink", message: ink.reason }, { status: 402 });
@@ -43,7 +47,9 @@ export async function POST(req: NextRequest) {
       try {
         const base = { userId: user.id, runId: run_id, chapterId: chapter_id };
         let result: unknown;
-        if (step === "draft") result = await stepDraft({ ...base, creativeFreedom: creative_freedom, onText: (chunk) => send({ chunk }) });
+        const mixed = await mixedStep({ ...base, step, creativeFreedom: creative_freedom, onText: (chunk) => send({ chunk }), signal: req.signal });
+        if (mixed) result = mixed.result;
+        else if (step === "draft") result = await stepDraft({ ...base, creativeFreedom: creative_freedom, onText: (chunk) => send({ chunk }) });
         else if (step === "edit") result = await stepEdit(base);
         else if (step === "revise") result = await stepRevise(base);
         else result = await stepFinal(base);

@@ -1453,6 +1453,8 @@ export default function LandingV2() {
         </span>
         <nav aria-label="Legal" className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "#A89F94" }}>
           <Link href="/pricing" style={{ color: "#C17A47", textDecoration: "none", fontWeight: 600 }}>Pricing</Link>
+          {/* /partners had no inbound link from any page (2026-10-30 crawl). */}
+          <Link href="/partners" style={{ color: "inherit", textDecoration: "none", opacity: 0.85 }}>Partners</Link>
           {[
             ["/legal/terms", "Terms"],
             ["/legal/privacy", "Privacy"],

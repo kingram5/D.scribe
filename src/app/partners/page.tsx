@@ -8,11 +8,12 @@ import {
   PARTNER_DISCOUNT_PERCENT,
   PAYOUT_MINIMUM_CENTS,
 } from "@/lib/partner-rules";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Partner Program — Share D.scribe, Earn 30%",
   description: `Speakers, pastors, coaches and podcasters: give your audience ${PARTNER_BONUS_INK} free Ink and ${PARTNER_DISCOUNT_PERCENT}% off their first month of D.scribe, and earn ${Math.round(PARTNER_COMMISSION_RATE * 100)}% of their plan payments for a year.`,
-  alternates: { canonical: "https://d-scribe.app/partners" },
+  alternates: { canonical: `${SITE_URL}/partners` },
 };
 
 const serif = "var(--font-playfair), var(--font-lora), serif";

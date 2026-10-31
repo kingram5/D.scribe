@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { LegalShell, H2, P, UL, Strong, Clause } from "../LegalShell";
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
   description:
     "D.scribe Terms of Service — the agreement governing your use of the D.scribe voice-to-manuscript service.",
   robots: { index: true, follow: true },
+  alternates: { canonical: `${SITE_URL}/legal/terms` },
 };
 
 const LAST_UPDATED = "September 9, 2026";

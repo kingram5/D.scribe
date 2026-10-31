@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 export const revalidate = 3600;
 
@@ -32,11 +33,15 @@ async function getPost(slug: string): Promise<Post | null> {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: "Not Found | D. scribe" };
+  // The root layout's title template already appends " | D.scribe"; adding it
+  // here too rendered "Title | D. scribe | D.scribe".
+  if (!post) return { title: "Not Found" };
   return {
-    title: `${post.seo_title ?? post.title} | D. scribe`,
+    title: post.seo_title ?? post.title,
     description: post.seo_description ?? post.excerpt ?? undefined,
+    alternates: { canonical: `${SITE_URL}/blog/${slug}` },
     openGraph: {
+      url: `${SITE_URL}/blog/${slug}`,
       title: post.seo_title ?? post.title,
       description: post.seo_description ?? post.excerpt ?? undefined,
       type: "article",

@@ -3,6 +3,7 @@ import LandingPage from "@/app/landing-v2/page";
 import { LandingDataProvider } from "@/components/landing/LandingDataContext";
 import { faqSchema as buildFaqSchema } from "@/components/landing/faq";
 import { getLandingData } from "@/lib/landing-data";
+import { SITE_URL } from "@/lib/site";
 
 // Server data for the landing page refreshes hourly (founder headshot presence,
 // and from HeyCatch item 3 the live usage count).
@@ -12,12 +13,12 @@ export const metadata: Metadata = {
   title: "D.scribe — Turn Your Voice Into a Published Book with AI",
   description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
   alternates: {
-    canonical: "https://d-scribe.app",
+    canonical: SITE_URL,
   },
   openGraph: {
     title: "D.scribe — Turn Your Voice Into a Published Book with AI",
     description: "Upload any audio, set your structure, and watch AI write your manuscript chapter by chapter — in your voice.",
-    url: "https://d-scribe.app",
+    url: SITE_URL,
     siteName: "D.scribe",
     type: "website",
   },
@@ -33,7 +34,7 @@ const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "D.scribe",
-  url: "https://d-scribe.app",
+  url: SITE_URL,
   description: "AI-powered voice-to-manuscript software for coaches, pastors, and speakers",
 };
 
@@ -41,9 +42,9 @@ const webPageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
   name: "D.scribe — Turn Your Voice Into a Published Book with AI",
-  url: "https://d-scribe.app",
+  url: SITE_URL,
   description: "Upload audio, transcribe, and generate your book manuscript with AI",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
+  isPartOf: { "@type": "WebSite", name: "D.scribe", url: SITE_URL },
 };
 
 // FAQPage JSON-LD is built from the same list the page renders (HeyCatch item 8).

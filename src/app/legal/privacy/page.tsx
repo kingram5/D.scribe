@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import { LegalShell, H2, H3, P, UL, Strong } from "../LegalShell";
 
 export const metadata: Metadata = {
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "D.scribe Privacy Policy — what information we collect, how we use it, who we share it with, and the choices you have.",
   robots: { index: true, follow: true },
+  alternates: { canonical: `${SITE_URL}/legal/privacy` },
 };
 
 const LAST_UPDATED = "September 9, 2026";

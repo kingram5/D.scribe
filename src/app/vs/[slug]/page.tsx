@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VS_PAGES, SOURCED_NOTE, getVsPage } from "@/lib/vs-pages";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /vs/[slug] comparison pages (HeyCatch action plan, "Do this quarter").
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!page) return { title: "Compare" };
   const title = `D.scribe vs ${page.competitor}`;
   const description = `${page.verdict} An honest side-by-side of D.scribe and ${page.competitor} on price, input, and output.`;
-  const url = `https://d-scribe.app/vs/${page.slug}`;
+  const url = `${SITE_URL}/vs/${page.slug}`;
   return {
     title,
     description,
@@ -74,13 +75,13 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "D.scribe", item: "https://d-scribe.app" },
-      { "@type": "ListItem", position: 2, name: "Compare", item: "https://d-scribe.app/vs" },
+      { "@type": "ListItem", position: 1, name: "D.scribe", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Compare", item: `${SITE_URL}/vs` },
       {
         "@type": "ListItem",
         position: 3,
         name: `D.scribe vs ${page.competitor}`,
-        item: `https://d-scribe.app/vs/${page.slug}`,
+        item: `${SITE_URL}/vs/${page.slug}`,
       },
     ],
   };

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { VS_PAGES, SOURCED_NOTE } from "@/lib/vs-pages";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /vs — index of the comparison pages (HeyCatch action plan).
@@ -12,12 +13,12 @@ export const metadata: Metadata = {
   title: "Compare D.scribe",
   description:
     "Honest side-by-side comparisons of D.scribe against Built&Written, Squibler, and Dictate on price, input, and output.",
-  alternates: { canonical: "https://d-scribe.app/vs" },
+  alternates: { canonical: `${SITE_URL}/vs` },
   openGraph: {
     title: "Compare D.scribe",
     description:
       "Honest side-by-side comparisons of D.scribe against Built&Written, Squibler, and Dictate.",
-    url: "https://d-scribe.app/vs",
+    url: `${SITE_URL}/vs`,
     siteName: "D.scribe",
     type: "website",
   },

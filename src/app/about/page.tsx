@@ -4,6 +4,7 @@ import { FOUNDER_STORY } from "@/lib/founder";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 import { PLANS } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /about — the founding story (HeyCatch 2026-09-10 item 2), expanded into a
@@ -21,12 +22,12 @@ export const metadata: Metadata = {
   title: "About",
   description: "D.scribe is voice-to-manuscript software for speakers, pastors, and coaches.",
   alternates: {
-    canonical: "https://d-scribe.app/about",
+    canonical: `${SITE_URL}/about`,
   },
   openGraph: {
     title: "About D.scribe",
     description: "Voice-to-manuscript software for speakers, pastors, and coaches.",
-    url: "https://d-scribe.app/about",
+    url: `${SITE_URL}/about`,
     siteName: "D.scribe",
     type: "website",
   },
@@ -144,7 +145,7 @@ function organizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "D.scribe",
-    url: "https://d-scribe.app",
+    url: SITE_URL,
     description:
       "AI book creation platform: D.scribe turns recorded talks, sermons, and coaching sessions into export-ready manuscripts in the speaker's own voice.",
     foundingDate: "2025",

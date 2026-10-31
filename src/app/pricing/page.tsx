@@ -4,6 +4,7 @@ import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButt
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 const FROM = PLANS.starter.price;
 
@@ -11,12 +12,12 @@ export const metadata: Metadata = {
   title: `Pricing — AI Book Writing Plans Starting at $${FROM}`,
   description: `D.scribe pricing starts at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.`,
   alternates: {
-    canonical: "https://d-scribe.app/pricing",
+    canonical: `${SITE_URL}/pricing`,
   },
   openGraph: {
     title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
     description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
-    url: "https://d-scribe.app/pricing",
+    url: `${SITE_URL}/pricing`,
     siteName: "D.scribe",
     type: "website",
   },
@@ -32,16 +33,16 @@ const pricingSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
   name: "D.scribe Pricing — AI Book Writing Plans",
-  url: "https://d-scribe.app/pricing",
+  url: `${SITE_URL}/pricing`,
   description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
+  isPartOf: { "@type": "WebSite", name: "D.scribe", url: SITE_URL },
 };
 
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "D.scribe",
-  url: "https://d-scribe.app",
+  url: SITE_URL,
 };
 
 // Every tier includes the full toolkit — plans differ only on capacity (Ink),
@@ -101,7 +102,7 @@ const productSchema = {
   name: "D.scribe",
   description: "Voice-to-manuscript software for speakers, pastors, and coaches. Upload recordings, get a transcribed, structured manuscript written chapter by chapter in your voice, then edit and export to PDF or DOCX.",
   brand: { "@type": "Brand", name: "D.scribe" },
-  url: "https://d-scribe.app/pricing",
+  url: `${SITE_URL}/pricing`,
   category: "Software subscription",
   offers: TIERS.map((tier) => ({
     "@type": "Offer",
@@ -109,7 +110,7 @@ const productSchema = {
     description: `${tier.ink.toLocaleString("en-US")} Ink per month (${tier.books}). ${tier.tagline}`,
     price: tier.price.toFixed(2),
     priceCurrency: "USD",
-    url: "https://d-scribe.app/pricing",
+    url: `${SITE_URL}/pricing`,
     availability: "https://schema.org/InStock",
     priceSpecification: {
       "@type": "UnitPriceSpecification",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import { LegalShell, H2, P, UL, Strong } from "../LegalShell";
 import {
   COMMISSION_HOLD_DAYS,
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   title: "Partner Program Terms",
   description: "D.scribe Partner Program Terms: what creators earn, what their audience gets, how payouts work, and the rules for promoting D.scribe.",
   robots: { index: true, follow: true },
+  alternates: { canonical: `${SITE_URL}/legal/partners` },
 };
 
 const LAST_UPDATED = "September 25, 2026";

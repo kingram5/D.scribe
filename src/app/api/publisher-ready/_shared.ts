@@ -1,3 +1,4 @@
+import { ProviderUnavailable } from "@/lib/ai/config";
 import { NextResponse } from "next/server";
 import type { requireAuth } from "@/lib/auth";
 import { publisherReadyEnabled } from "@/lib/ink";
@@ -31,6 +32,7 @@ export async function guard(auth: Awaited<ReturnType<typeof requireAuth>>, route
 }
 
 export function errorResponse(err: unknown, route: string, userId?: string) {
+  if (err instanceof ProviderUnavailable) return NextResponse.json({ error: err.message }, { status: 503 });
   if (err instanceof StepError) return NextResponse.json({ error: err.message }, { status: err.status });
   if (err instanceof RefusalError) {
     return NextResponse.json({ error: "The editor couldn't work on this part of the book. Try again, or skip this chapter." }, { status: 422 });

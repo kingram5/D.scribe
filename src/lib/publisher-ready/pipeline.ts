@@ -1,3 +1,4 @@
+import { isProviderMetered, withChapterStep } from "@/lib/ai/execution";
 /**
  * Publisher-Ready pipeline steps (server-only): load from the database, call
  * the model step in core.ts, bill, save. One chapter per call so every request
@@ -42,6 +43,7 @@ const OP_FOR_STEP: Record<StepKey, InkOperation> = {
 };
 
 async function bill(userId: string, projectId: string, spend: Spend[]) {
+  if (isProviderMetered()) return;
   for (const s of spend) await recordInkUsage(userId, projectId, OP_FOR_STEP[s.step], s.model, s.usage);
 }
 
@@ -133,9 +135,15 @@ async function otherChapterTexts(db: Db, projectId: string, excludeId: string): 
   return out;
 }
 
+async function commitProviderStep(opts: { userId: string; runId: string; chapterId: string }, step: string, expected: number | null, text: string | null, params: Record<string, unknown>, pass: Record<string, unknown>, result: Record<string, unknown>, questions: unknown[] = [], notes: unknown[] = [], noteUpdates: unknown[] = []) {
+  const { data, error } = await createServerClient().rpc("pr_commit_step", { p_run: opts.runId, p_chapter: opts.chapterId, p_user: opts.userId, p_step: step, p_expected: expected ?? 0, p_text: text, p_params: params, p_pass: pass, p_result: result, p_questions: questions, p_notes: notes, p_note_updates: noteUpdates });
+  if (error) throw new StepError(error.message, 409);
+  return data;
+}
+
 // ─── Step 1: beat plan + draft ───────────────────────────────────────────────
 
-export async function stepDraft(opts: { userId: string; runId: string; chapterId: string; creativeFreedom?: number; onText?: (t: string) => void }) {
+async function executeDraft(opts: { userId: string; runId: string; chapterId: string; creativeFreedom?: number; onText?: (t: string) => void }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   await db.from("chapters").update({ status: "generating" }).eq("id", opts.chapterId);
@@ -144,6 +152,7 @@ export async function stepDraft(opts: { userId: string; runId: string; chapterId
     const out = await coreDraft(ctx.input, STEP_MODELS, { creativeFreedom: opts.creativeFreedom, onText: opts.onText });
     await bill(opts.userId, ctx.projectId, out.spend);
     if (!out.text.trim()) throw new StepError("Draft came back empty. Try again.", 502);
+    if (isProviderMetered()) return commitProviderStep(opts, "draft", ctx.latest?.version ?? null, out.text, { pipeline: "publisher_ready", step: "draft", model: out.servedBy }, { beat_plan: out.beats, usage: totalUsage(out.spend) }, { wordCount: out.text.trim().split(/\s+/).length, beats: out.beats.length });
     const version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "draft", model: out.servedBy });
     await db.from("chapters").update({ status: "generated" }).eq("id", opts.chapterId);
     await recordPass(db, {
@@ -159,7 +168,7 @@ export async function stepDraft(opts: { userId: string; runId: string; chapterId
 
 // ─── Step 2: editor read ─────────────────────────────────────────────────────
 
-export async function stepEdit(opts: { userId: string; runId: string; chapterId: string }) {
+async function executeEdit(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Draft this chapter first.");
@@ -170,6 +179,8 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
   const t0 = Date.now();
   const { report, spend } = await coreEdit(ctx.input, ctx.latest.content, beats, await otherChapterTexts(db, ctx.projectId, opts.chapterId), STEP_MODELS);
   await bill(opts.userId, ctx.projectId, spend);
+
+  if (isProviderMetered()) return commitProviderStep(opts, "edit", ctx.latest.version, null, {}, { scores: { ...report.scores, summary: report.summary }, usage: totalUsage(spend) }, { questions: report.author_questions.length, craftNotes: report.craft_notes.length, scores: report.scores, summary: report.summary }, report.author_questions, report.craft_notes);
 
   // Replace any earlier editor output for this chapter in this run.
   await db.from("pr_questions").delete().eq("run_id", opts.runId).eq("chapter_id", opts.chapterId).eq("status", "queued");
@@ -197,7 +208,7 @@ export async function stepEdit(opts: { userId: string; runId: string; chapterId:
 
 // ─── Step 4: revise ──────────────────────────────────────────────────────────
 
-export async function stepRevise(opts: { userId: string; runId: string; chapterId: string }) {
+async function executeRevise(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Draft this chapter first.");
@@ -228,6 +239,7 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
   await bill(opts.userId, ctx.projectId, out.spend);
   if (!out.text.trim()) throw new StepError("Revision came back empty. Try again.", 502);
 
+  if (isProviderMetered()) return commitProviderStep(opts, "revise", ctx.latest.version, out.text, { pipeline: "publisher_ready", step: "revise", model: out.servedBy }, { change_log: out.changeLog, usage: totalUsage(out.spend) }, { changes: out.changeLog.length }, [], [], noteRows.map(n => { const entry = out.changeLog.find(c => c.ref === n.ref); return { id: n.id, status: entry?.action === "declined" ? "declined" : "fixed", reason: entry?.what_changed ?? null }; }));
   const version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "revise", model: out.servedBy });
   const byRef = new Map(out.changeLog.map((c) => [c.ref, c]));
   for (const n of noteRows) {
@@ -246,7 +258,7 @@ export async function stepRevise(opts: { userId: string; runId: string; chapterI
 
 // ─── Step 5: final check ─────────────────────────────────────────────────────
 
-export async function stepFinal(opts: { userId: string; runId: string; chapterId: string }) {
+async function executeFinal(opts: { userId: string; runId: string; chapterId: string }) {
   const db = createServerClient();
   const ctx = await loadChapterContext(db, opts.userId, opts.chapterId);
   if (!ctx.latest) throw new StepError("Nothing to check yet.");
@@ -256,6 +268,7 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
   await bill(opts.userId, ctx.projectId, out.spend);
 
   const after = lintStructure(out.text);
+  if (isProviderMetered()) return commitProviderStep(opts, "final", ctx.latest.version, out.applied > 0 ? out.text : null, { pipeline: "publisher_ready", step: "final" }, { scores: { tells_score: after.tells.score, flags_left: after.flags.length, edits_applied: out.applied, edits_rejected: out.rejected }, usage: totalUsage(out.spend) }, { applied: out.applied, rejected: out.rejected, tellsScore: after.tells.score, flagsLeft: after.flags.length });
   let version = ctx.latest.version;
   if (out.applied > 0) version = await saveVersion(db, opts.chapterId, out.text, { pipeline: "publisher_ready", step: "final" });
   await recordPass(db, {
@@ -265,4 +278,20 @@ export async function stepFinal(opts: { userId: string; runId: string; chapterId
     usage: { ...totalUsage(out.spend), elapsed_ms: Date.now() - t0 },
   });
   return { version, applied: out.applied, rejected: out.rejected, tellsScore: after.tells.score, flagsLeft: after.flags.length };
+}
+
+export async function stepDraft(opts: Parameters<typeof executeDraft>[0] & { signal?: AbortSignal }) {
+  return withChapterStep(opts.userId, opts.runId, opts.chapterId, "draft", () => executeDraft(opts), opts.signal);
+}
+
+export async function stepEdit(opts: Parameters<typeof executeEdit>[0] & { signal?: AbortSignal }) {
+  return withChapterStep(opts.userId, opts.runId, opts.chapterId, "edit", () => executeEdit(opts), opts.signal);
+}
+
+export async function stepRevise(opts: Parameters<typeof executeRevise>[0] & { signal?: AbortSignal }) {
+  return withChapterStep(opts.userId, opts.runId, opts.chapterId, "revise", () => executeRevise(opts), opts.signal);
+}
+
+export async function stepFinal(opts: Parameters<typeof executeFinal>[0] & { signal?: AbortSignal }) {
+  return withChapterStep(opts.userId, opts.runId, opts.chapterId, "final", () => executeFinal(opts), opts.signal);
 }

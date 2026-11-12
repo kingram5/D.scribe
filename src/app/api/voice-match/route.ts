@@ -58,10 +58,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const baseline = buildVoiceBaseline(
-    transcripts.map((t) => voiceSourceText(t)),
-    project.voice_profile
-  );
+  // AI-assistant material contributes nothing (voiceSourceText gives ""); with
+  // nothing in the author's own voice left, there is no baseline to score against.
+  const voiceTexts = transcripts.map((t) => voiceSourceText(t)).filter((t) => t.trim());
+  if (voiceTexts.length === 0) {
+    return NextResponse.json(
+      { error: "No transcripts to build a voice baseline from" },
+      { status: 409 }
+    );
+  }
+  const baseline = buildVoiceBaseline(voiceTexts, project.voice_profile);
   const readsHuman = lintAITells(content.content);
   const voiceMatch = voiceMatchScore(content.content, baseline);
 

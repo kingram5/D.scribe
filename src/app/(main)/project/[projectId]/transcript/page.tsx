@@ -8,6 +8,7 @@ import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { SPEAKER_COLORS } from "@/lib/constants";
 import SpeakerLabelPanel from "@/components/transcript/SpeakerLabelPanel";
+import { ASSISTANT_SPEAKER } from "@/lib/speakers";
 
 /* ── palette tokens ─────────────────────────────────────────────── */
 const P = {
@@ -98,6 +99,7 @@ function formatTime(seconds: number): string {
 }
 
 function speakerLabel(raw: string): string {
+  if (raw === ASSISTANT_SPEAKER) return "Your AI assistant's notes";
   return raw === "Speaker 0" ? "Narrator" : raw;
 }
 
@@ -138,7 +140,8 @@ export default function TranscriptPage() {
   /** Display name for a raw speaker label, using the author's labels when set. */
   const nameFor = (raw: string): string => {
     const l = active?.speaker_map?.[raw];
-    if (!l) return speakerLabel(raw);
+    // Material an AI assistant wrote down: the author's story, not their wording.
+    if (!l || raw === ASSISTANT_SPEAKER) return speakerLabel(raw);
     return l.role === "author" ? "Author" : l.name || speakerLabel(raw);
   };
 

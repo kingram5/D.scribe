@@ -37,6 +37,27 @@ export const BRAINSTORM_SPEAKER_MAP: SpeakerMap = {
   Interviewer: { role: "other", name: "T.H.E.O.", relationship: "the D.Scribe interviewer" },
 };
 
+/**
+ * Material an AI assistant wrote down for the author (ChatGPT's add_to_project
+ * tool, 2026-11). It is the author's story (role "author", so the writer keeps
+ * it in first person and never credits it to "ChatGPT"), but the WORDING is the
+ * assistant's, so it must never teach D.Scribe the author's voice. The marker
+ * is this raw segment label, not the label map: a relabel rebuilds the map,
+ * while a full-text edit keeps each paragraph's raw speaker, so the label
+ * survives both. Every voice reader goes through authorOnlyText /
+ * voiceSourceText, which skip it.
+ */
+export const ASSISTANT_SPEAKER = "AI assistant";
+
+export const ASSISTANT_SPEAKER_MAP: SpeakerMap = {
+  [ASSISTANT_SPEAKER]: { role: "author" },
+};
+
+/** True when any segment was written by the author's AI assistant. */
+export function hasAssistantText(t: Pick<LabeledTranscript, "segments">): boolean {
+  return (t.segments ?? []).some((s) => s?.speaker === ASSISTANT_SPEAKER);
+}
+
 export function isLabeled(t: Pick<LabeledTranscript, "speaker_map">): boolean {
   return !!t.speaker_map && Object.keys(t.speaker_map).length > 0;
 }
@@ -177,8 +198,17 @@ export function ownerOfQuotes(t: LabeledTranscript, quotes: string[]): QuoteOwne
   return o.role === "author" ? { role: "author", name: null } : { role: "other", name: displayName(o) };
 }
 
-/** Text spoken by the author only, for the voice baseline. Unlabeled = everything. */
+/**
+ * Text spoken by the author only, for the voice baseline. Unlabeled = everything,
+ * except lines an AI assistant wrote down, which are never the author's voice.
+ */
 export function authorOnlyText(t: LabeledTranscript): string {
+  if (hasAssistantText(t)) {
+    return (t.segments ?? [])
+      .filter((s) => s.speaker !== ASSISTANT_SPEAKER && (!isLabeled(t) || t.speaker_map![s.speaker]?.role === "author"))
+      .map((s) => s.text)
+      .join("\n\n");
+  }
   if (!isLabeled(t)) return t.full_text;
   return (t.segments ?? [])
     .filter((s) => t.speaker_map![s.speaker]?.role === "author")
@@ -229,10 +259,13 @@ export function keyPointForPrompt<T extends { title: string; summary: string; sp
 /**
  * Text to learn the author's voice from: only their own lines when they've
  * labeled speakers and said enough (300+ words); otherwise everything, exactly
- * as before labels existed.
+ * as before labels existed. A transcript holding AI-assistant lines never falls
+ * back to full_text (that would hand the assistant's prose to the voice
+ * baseline); it gives only the author's own lines, often "".
  */
 export function voiceSourceText(t: LabeledTranscript): string {
   const own = authorOnlyText(t);
+  if (hasAssistantText(t)) return own;
   return isLabeled(t) && own.split(/\s+/).filter(Boolean).length >= 300 ? own : t.full_text;
 }
 

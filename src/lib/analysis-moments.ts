@@ -1,4 +1,5 @@
 import type { Transcript } from "@/types";
+import { ASSISTANT_SPEAKER } from "@/lib/speakers";
 
 export type Importance = "essential" | "supporting" | "exclude";
 export interface AnalysisMoment {
@@ -47,7 +48,8 @@ export function selectAnalysisMoments(transcripts: Transcript[], limit = 8): Ana
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i];
       const label = transcript.speaker_map?.[group.speaker];
-      if (group.speaker === "Interviewer" || label?.name === "T.H.E.O.") continue;
+      // T.H.E.O.'s questions and AI-assistant notes are not the author's words to quote back.
+      if (group.speaker === "Interviewer" || label?.name === "T.H.E.O." || group.speaker === ASSISTANT_SPEAKER) continue;
       const excerpt = normalizeExcerpt(group.text).split(" ").slice(0, 130).join(" ");
       if (excerpt.split(" ").length < 18 || !source.includes(excerpt)) continue;
       const ambiguous = /\b(that thing|something like that|you know what I mean|they said|he said|she said|somebody|somewhere|back then)\b/i.test(excerpt);

@@ -45,7 +45,12 @@ export async function POST(req: NextRequest) {
   if (!transcript) return NextResponse.json({ error: "Transcript not found" }, { status: 404 });
 
   // Only the author's own lines once speakers are labeled (never another speaker's voice).
-  const words = voiceSourceText(transcript).split(/\s+/);
+  const words = voiceSourceText(transcript).split(/\s+/).filter(Boolean);
+  // Nothing in the author's own voice (e.g. material their AI assistant wrote
+  // down): keep the existing profile, reserve no Ink, call no model.
+  if (words.length === 0) {
+    return NextResponse.json({ voice_profile: projectOwner.voice_profile ?? null, skipped: "no_author_voice" });
+  }
   const sampleSize = Math.min(1000, Math.floor(words.length / 3));
   const samples = [
     words.slice(0, sampleSize).join(" "),

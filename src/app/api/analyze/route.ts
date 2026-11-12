@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson, type ClaudeUsage } from "@/lib/claude-lite";
 import { logger } from "@/lib/logger";
 import { chunkTranscript } from "@/lib/chunker";
-import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled } from "@/lib/speakers";
+import { labeledRange, extractionSpeakerBlock, keyPointSpeakerColumns, stripSpeakerTags, isLabeled, voiceSourceText } from "@/lib/speakers";
 import { KEY_POINTS_SYSTEM, keyPointsPrompt } from "@/lib/prompts/key-points";
 import { extractionProfileBlock } from "@/lib/audience-profiles";
 import {
@@ -149,8 +149,11 @@ export async function POST(req: NextRequest) {
 
   // Step 2: Voice profile (run in parallel with mind map)
   const voicePromise = (async () => {
-    // Take 3 samples from the transcript (~1000 words each)
-    const words = transcript.full_text.split(/\s+/);
+    // Take 3 samples from the transcript (~1000 words each). Same voice source
+    // as /api/analyze/voice-profile: the author's own lines, never AI-assistant
+    // material. Nothing left = keep the existing profile, no model call.
+    const words = voiceSourceText(transcript).split(/\s+/).filter(Boolean);
+    if (words.length === 0) return project?.voice_profile ?? null;
     const sampleSize = Math.min(1000, Math.floor(words.length / 3));
     const samples = [
       words.slice(0, sampleSize).join(" "),

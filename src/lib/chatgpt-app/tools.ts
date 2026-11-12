@@ -527,7 +527,7 @@ export const addInput = {
     .string()
     .min(1)
     .max(MATERIAL_LIMITS.maxTextChars)
-    .describe("The material itself: only what the user asked you to save. Never invent or embellish memories. Split longer material into several calls."),
+    .describe("The material itself: only what the user asked you to save. Never invent or embellish memories. Send it in one call when it fits; split only material over the limit."),
   source_app: z.enum(SOURCE_APPS).describe("Which assistant is sending this: chatgpt, claude or other"),
   kind: z.enum(MATERIAL_KINDS).describe("conversation = an exchange from this chat; notes = notes or a summary; memory = things you remember about the user"),
 };
@@ -598,7 +598,7 @@ export async function addToProject(raw: AddInput, deps: ToolDeps): Promise<CallT
       if (upErr.code !== PG_UNIQUE_VIOLATION) throw upErr;
       const { data: existing, error: exErr } = await deps.db
         .from("audio_uploads")
-        .select("id, project_id")
+        .select("id, project_id, file_name")
         .eq("id", material.uploadId)
         .maybeSingle();
       if (exErr) throw exErr;
@@ -616,7 +616,9 @@ export async function addToProject(raw: AddInput, deps: ToolDeps): Promise<CallT
       if (txReadErr) throw txReadErr;
       if (tx) {
         track("material_added", { ...props, replayed: true });
-        return addedResult(project as { id: string; title: string }, material, args, true);
+        // Report the title the first save stored, not this call's.
+        const storedName = typeof existing.file_name === "string" && existing.file_name ? existing.file_name : material.fileName;
+        return addedResult(project as { id: string; title: string }, { ...material, fileName: storedName }, args, true);
       }
       // An earlier attempt stopped between the two inserts: finish it below.
     } else {
@@ -667,7 +669,7 @@ function addedResult(project: { id: string; title: string }, material: Assistant
         type: "text",
         text:
           `${replayed ? "Already saved earlier" : "Saved"}: "${material.fileName}" (${material.wordCount} words) is now source material in the D.scribe book "${project.title}". ` +
-          `Open it here: ${url}\nNothing was analyzed or charged. It is used when the user runs Analyze in D.scribe, and it never trains D.scribe's copy of the user's voice, because the wording is the assistant's.`,
+          `Open it here: ${url}\nNothing was analyzed or charged; the user decides in D.scribe when to work with it. It never trains D.scribe's copy of the user's voice, because the wording is the assistant's.`,
       },
     ],
     structuredContent: {

@@ -168,7 +168,7 @@ export function buildMcpServer(deps: ToolDeps): McpServer {
         "Save material from this chat into one of the user's D.scribe book projects as source material: an exchange from the conversation, notes, or things you remember about the user's life. " +
         "Use only when the user asks you to save something to D.scribe, send only what they asked for, and never invent or embellish memories. " +
         "Get project_id from list_projects and ask which book if there is more than one. Adds alongside existing material; never changes or deletes anything. " +
-        "Free (no Ink), and safe to retry: the same text is saved to a project at most once.",
+        "Send the material in one call when it fits. Free (no Ink), and safe to retry: the same text is saved to a project at most once.",
       inputSchema: addInput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true },
       _meta: {

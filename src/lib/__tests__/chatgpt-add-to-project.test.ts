@@ -217,6 +217,9 @@ describe("add_to_project: saving", () => {
     expect(sc(first).replayed).toBe(false);
     expect(sc(again)).toMatchObject({ saved: true, replayed: true, transcript_id: sc(first).transcript_id });
     expect((again.content?.[0] as { text: string }).text).toMatch(/Already saved/);
+    // The stored title wins on a replay; the retry's new title was never saved.
+    expect(sc(again).title).toBe("ChatGPT memories: Childhood in Dayton");
+    expect((again.content?.[0] as { text: string }).text).not.toContain("A different title");
     expect(db.tables.audio_uploads).toHaveLength(1);
     expect(db.tables.transcripts).toHaveLength(1);
   });

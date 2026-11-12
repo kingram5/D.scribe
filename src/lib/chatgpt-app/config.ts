@@ -32,8 +32,15 @@ export const chatgptFlags = {
   writes: () => on("CHATGPT_APP_WRITES"),
 };
 
+/**
+ * Public origin for links, the MCP resource and /agents.md. The apex
+ * d-scribe.app 308s to www (src/lib/site.ts), and MCP clients often do not
+ * follow a redirect on a POST, so an apex value (as .env.example suggests for
+ * NEXT_PUBLIC_SITE_URL) is pinned to www here.
+ */
 export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.d-scribe.app").replace(/\/+$/, "");
+  const raw = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.d-scribe.app").trim().replace(/\/+$/, "");
+  return raw.replace(/^https?:\/\/d-scribe\.app$/i, "https://www.d-scribe.app");
 }
 
 export function resourceUrl(): string {

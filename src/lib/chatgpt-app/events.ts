@@ -15,6 +15,8 @@ export type ChatgptEvent =
   | "plan_saved"
   | "save_failed"
   | "status_failed"
+  | "material_added"
+  | "material_failed"
   | "link_started"
   | "link_completed"
   | "handoff_opened";
@@ -29,6 +31,10 @@ const ALLOWED_PROPS = new Set([
   "replayed",
   "latency_ms",
   "decision",
+  // add_to_project: enum values and a count only, never the text or title.
+  "kind",
+  "source_app",
+  "words",
 ]);
 
 export function sanitizeProps(props: Record<string, unknown>): Record<string, string | number | boolean> {

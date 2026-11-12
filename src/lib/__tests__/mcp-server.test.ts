@@ -49,10 +49,10 @@ describe("MCP surface", () => {
     anonSubject: null,
   };
 
-  it("lists the five tools with explicit annotations and auth schemes", async () => {
+  it("lists the six tools with explicit annotations and auth schemes", async () => {
     const client = await connect(deps);
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["get_plan_status", "get_project_summary", "list_projects", "preview_book_plan", "save_book_plan"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["add_to_project", "get_plan_status", "get_project_summary", "list_projects", "preview_book_plan", "save_book_plan"]);
     for (const t of tools) {
       expect(typeof t.annotations?.readOnlyHint).toBe("boolean");
       expect(typeof t.annotations?.destructiveHint).toBe("boolean");
@@ -70,6 +70,12 @@ describe("MCP surface", () => {
     const save = tools.find((t) => t.name === "save_book_plan")!;
     expect(save.annotations?.readOnlyHint).toBe(false);
     expect(JSON.stringify(save.inputSchema)).not.toMatch(/user_id/); // identity never comes from args
+    const rawAdd = raw.tools.find((t) => t.name === "add_to_project") as unknown as { securitySchemes: Array<{ type: string }> };
+    expect(rawAdd.securitySchemes.map((s) => s.type)).toEqual(["oauth2"]);
+    const add = tools.find((t) => t.name === "add_to_project")!;
+    expect(add.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true });
+    expect(Object.keys((add.inputSchema as { properties: object }).properties).sort()).toEqual(["kind", "project_id", "source_app", "text", "title"]);
+    expect((add.inputSchema as unknown as { properties: { text: { maxLength: number } } }).properties.text.maxLength).toBe(120_000);
     const preview = tools.find((t) => t.name === "preview_book_plan")!;
     expect((preview._meta as Record<string, unknown>)["openai/outputTemplate"]).toBe(WIDGET_URI);
   });
@@ -95,6 +101,20 @@ describe("MCP surface", () => {
     expect(sc.plan.chapters.map((c) => c.title)).toEqual(["Start Here", "Keep Going"]);
     expect(sc.plan.chapters.every((c) => c.provenance === "imported")).toBe(true);
     expect((res.content as Array<{ text: string }>)[0].text).toMatch(/nothing has been saved/i);
+  });
+
+  it("add_to_project over the protocol: an unlinked caller gets the linking challenge, not a save", async () => {
+    process.env.CHATGPT_APP_MCP = "true";
+    process.env.CHATGPT_APP_WRITES = "true";
+    const client = await connect(deps);
+    const res = await client.callTool({
+      name: "add_to_project",
+      arguments: { project_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title: "t", text: "some memories", source_app: "chatgpt", kind: "memory" },
+    });
+    expect(res.isError).toBe(true);
+    expect((res.structuredContent as { error: { code: string } }).error.code).toBe("auth_required");
+    expect((res._meta as Record<string, unknown>)["mcp/www_authenticate"]).toBeTruthy();
+    expect((res.content as Array<{ type: string; text: string }>)[0].type).toBe("text");
   });
 
   it("protocol-level validation rejects bad arguments", async () => {

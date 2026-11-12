@@ -10,6 +10,7 @@ import { PLAN_LIMITS, type BookPlan } from "@/lib/book-plan/schema";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import { chatgptFlags, protectedResourceMetadataUrl, siteUrl } from "./config";
 import { track } from "./events";
+import { buildAssistantMaterial, EmptyMaterialError, MATERIAL_KINDS, MATERIAL_LIMITS, SOURCE_APPS, type AssistantMaterial } from "./material";
 import { logger } from "@/lib/logger";
 
 /**
@@ -515,6 +516,173 @@ export async function getPlanStatus(raw: { preview_id: string; claim_token: stri
   } catch (err) {
     return mapThrown(err, "status_failed", {});
   }
+}
+
+// --------------------------------------------------------------- add_to_project
+
+export const addInput = {
+  project_id: z.string().uuid().describe("The book project to add to: an id from list_projects. Ask the user which book if there is more than one."),
+  title: z.string().min(1).max(MATERIAL_LIMITS.maxTitleChars).describe("Short label for this material, e.g. 'Childhood in Ohio'"),
+  text: z
+    .string()
+    .min(1)
+    .max(MATERIAL_LIMITS.maxTextChars)
+    .describe("The material itself: only what the user asked you to save. Never invent or embellish memories. Split longer material into several calls."),
+  source_app: z.enum(SOURCE_APPS).describe("Which assistant is sending this: chatgpt, claude or other"),
+  kind: z.enum(MATERIAL_KINDS).describe("conversation = an exchange from this chat; notes = notes or a summary; memory = things you remember about the user"),
+};
+const addInputSchema = z.object(addInput);
+export type AddInput = z.infer<typeof addInputSchema>;
+
+/** Linked users only. Sized for a memory dump arriving as several calls in a row. */
+export const ADD_LIMITS = { perUserPerMin: 30 } as const;
+
+const PG_UNIQUE_VIOLATION = "23505";
+
+/**
+ * Save material from the user's AI assistant into one of their projects as
+ * source material. Spends nothing: no model call, no Ink, no analysis is
+ * started (analysis runs only when the user clicks Analyze in D.scribe).
+ * Retries are safe: the same text to the same project lands once.
+ */
+export async function addToProject(raw: AddInput, deps: ToolDeps): Promise<CallToolResult> {
+  if (!deps.identity) return errorResult("auth_required", "Connect your D.scribe account to save material to a book.");
+  if (!chatgptFlags.mcp() || !chatgptFlags.writes()) return errorResult("feature_disabled", "Saving material to D.scribe from an assistant is not enabled yet.");
+  const input = addInputSchema.safeParse(raw);
+  if (!input.success) {
+    const tooLong = input.error.issues.some((i) => i.code === "too_big" && i.path[0] === "text");
+    return errorResult(
+      "invalid_input",
+      tooLong
+        ? `The text is over ${MATERIAL_LIMITS.maxTextChars.toLocaleString("en-US")} characters. Split it into several smaller saves.`
+        : input.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")
+    );
+  }
+  const args = input.data;
+  const userId = deps.identity.userId;
+  if (!(await deps.rateLimit(`chatgpt-add:${userId}`, ADD_LIMITS.perUserPerMin))) {
+    return errorResult("rate_limited", "Too many saves in a short time. Wait a minute, then continue.", { retryable: true });
+  }
+
+  let material: AssistantMaterial;
+  try {
+    material = buildAssistantMaterial({ projectId: args.project_id, title: args.title, text: args.text, sourceApp: args.source_app, kind: args.kind });
+  } catch (err) {
+    if (err instanceof EmptyMaterialError) return errorResult("invalid_input", "text is empty. Send the material the user asked you to save.");
+    throw err;
+  }
+  const props = { kind: args.kind, source_app: args.source_app, words: material.wordCount };
+
+  try {
+    // Ownership: same answer for "missing", "erased" and "someone else's".
+    const { data: project, error: projErr } = await deps.db
+      .from("projects")
+      .select("id, title, status")
+      .eq("id", args.project_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (projErr) throw projErr;
+    if (!project || project.status === "erased") return errorResult("not_found", "No project with that id in your account. Call list_projects and ask the user which book.");
+
+    // The upload row's primary key is the dedupe lock (id derived from project + text).
+    let createdUpload = false;
+    const { error: upErr } = await deps.db.from("audio_uploads").insert({
+      id: material.uploadId,
+      project_id: args.project_id,
+      file_path: "",
+      file_name: material.fileName,
+      file_size_bytes: 0,
+      status: "transcribed",
+    });
+    if (upErr) {
+      if (upErr.code !== PG_UNIQUE_VIOLATION) throw upErr;
+      const { data: existing, error: exErr } = await deps.db
+        .from("audio_uploads")
+        .select("id, project_id")
+        .eq("id", material.uploadId)
+        .maybeSingle();
+      if (exErr) throw exErr;
+      // Derived ids cannot collide across projects; a row in another project means
+      // someone planted it. Refuse rather than touch it.
+      if (!existing || existing.project_id !== args.project_id) {
+        track("material_failed", { ...props, reason: "id_conflict" });
+        return errorResult("conflict", "This material could not be saved. Nothing was changed.");
+      }
+      const { data: tx, error: txReadErr } = await deps.db
+        .from("transcripts")
+        .select("id")
+        .eq("id", material.transcriptId)
+        .maybeSingle();
+      if (txReadErr) throw txReadErr;
+      if (tx) {
+        track("material_added", { ...props, replayed: true });
+        return addedResult(project as { id: string; title: string }, material, args, true);
+      }
+      // An earlier attempt stopped between the two inserts: finish it below.
+    } else {
+      createdUpload = true;
+    }
+
+    const { error: txErr } = await deps.db.from("transcripts").insert({
+      id: material.transcriptId,
+      audio_upload_id: material.uploadId,
+      project_id: args.project_id,
+      full_text: material.fullText,
+      segments: material.segments,
+      word_count: material.wordCount,
+      speaker_count: 1,
+      speaker_map: material.speakerMap,
+      // Speakers are known (the assistant wrote it all down): never ask about them.
+      speakers_confirmed_at: new Date().toISOString(),
+    });
+    if (txErr) {
+      if (txErr.code === PG_UNIQUE_VIOLATION) {
+        track("material_added", { ...props, replayed: true });
+        return addedResult(project as { id: string; title: string }, material, args, true);
+      }
+      if (createdUpload) {
+        await deps.db.from("audio_uploads").delete().eq("id", material.uploadId).eq("project_id", args.project_id).then(
+          () => undefined,
+          () => undefined
+        );
+      }
+      throw txErr;
+    }
+    track("material_added", { ...props, replayed: false });
+    return addedResult(project as { id: string; title: string }, material, args, false);
+  } catch (err) {
+    track("material_failed", { ...props, reason: "storage" });
+    logger.error("chatgpt-app: add_to_project failed", { route: "/mcp", userId, error: err });
+    return errorResult("internal", "Something went wrong saving the material. Nothing in your D.scribe account was changed. Try again.", { retryable: true });
+  }
+}
+
+function addedResult(project: { id: string; title: string }, material: AssistantMaterial, args: AddInput, replayed: boolean): CallToolResult {
+  const url = projectUrl(project.id);
+  // Deliberately no echo of the saved text: what was stored is the user's
+  // material, and replaying it here would hand it back to the model as output.
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `${replayed ? "Already saved earlier" : "Saved"}: "${material.fileName}" (${material.wordCount} words) is now source material in the D.scribe book "${project.title}". ` +
+          `Open it here: ${url}\nNothing was analyzed or charged. It is used when the user runs Analyze in D.scribe, and it never trains D.scribe's copy of the user's voice, because the wording is the assistant's.`,
+      },
+    ],
+    structuredContent: {
+      saved: true,
+      replayed,
+      project_id: project.id,
+      project_title: project.title,
+      project_url: url,
+      transcript_id: material.transcriptId,
+      title: material.fileName,
+      kind: args.kind,
+      source_app: args.source_app,
+      word_count: material.wordCount,
+    },
+  };
 }
 
 // ---------------------------------------------------------------- error mapping

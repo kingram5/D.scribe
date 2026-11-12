@@ -15,7 +15,8 @@ Nothing here has been run against production. Each step names who does it.
    - JWT signing: the project already publishes an ES256 key (checked 2026-10-03), which the `openid` scope requires.
    - Check the JWT signing setup. If ChatGPT requires `aud` = the resource URL, add a custom access-token hook that sets it, then set `CHATGPT_APP_EXPECTED_AUDIENCE`.
 4. **Set Vercel env (Production)**: `CHATGPT_APP_MCP=true`, `CHATGPT_APP_RESOURCE_URL=https://www.d-scribe.app/mcp`. Leave `ANON_PREVIEW`, `PAID_GENERATION` and `WRITES` off for the first connection test, then turn on one at a time.
-5. **Developer-mode connection** (owner's ChatGPT account): add exactly `https://www.d-scribe.app/mcp` as a connector (the bare domain redirects to www, and MCP clients often do not follow a redirect on a POST), link the account, run the demo script in `submission.md`.
+5. **Custom connection** (owner's ChatGPT account): chatgpt.com/plugins → + → "Add custom MCP server" (OpenAI's 2026-11 flow; it replaced the old developer-mode toggle), add exactly `https://www.d-scribe.app/mcp` (the bare domain redirects to www, and MCP clients often do not follow a redirect on a POST), OAuth, "Create as a plugin", link the account, run the demo script in `submission.md`. For `add_to_project`: also turn on `CHATGPT_APP_WRITES`, then in a chat type `@D.scribe`, ask it to list projects and save a short paragraph to a test book; reload the project and check the material and that a second identical save says "Already saved".
+   - `siteUrl()` now pins an apex `NEXT_PUBLIC_SITE_URL` to www, but set `CHATGPT_APP_RESOURCE_URL=https://www.d-scribe.app/mcp` anyway so the advertised resource is explicit.
 6. **Submission** (owner, after org verification on the OpenAI Platform dashboard).
 
 Preview deployments share the production database and live Stripe. Do not set any `CHATGPT_APP_*` flag on Preview without pointing it at a separate database.
@@ -23,7 +24,8 @@ Preview deployments share the production database and live Stripe. Do not set an
 ## Health checks
 
 - `GET /.well-known/oauth-protected-resource` → JSON with `resource` and `authorization_servers` (404 when the flag is off).
-- `POST /mcp` with `{"jsonrpc":"2.0","id":1,"method":"tools/list"}` and header `Accept: application/json, text/event-stream` → 5 tools.
+- `POST /mcp` with `{"jsonrpc":"2.0","id":1,"method":"tools/list"}` and header `Accept: application/json, text/event-stream` → 6 tools.
+- `GET /agents.md` → 200 `text/markdown` naming `https://www.d-scribe.app/mcp` (404 when the flag is off). Settings shows "Connect your AI" only while this answers.
 - `POST /mcp` with `Authorization: Bearer junk` → 401 with `WWW-Authenticate: Bearer resource_metadata=...`.
 - Logs: `chatgpt_app.*` events in Axiom; `preview_failed` / `save_failed` rates.
 

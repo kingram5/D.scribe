@@ -30,6 +30,10 @@ ChatGPT ──HTTPS POST /mcp (Bearer token optional)──► src/app/mcp/route
 | `src/lib/chatgpt-app/server.ts` | MCP registration: tools, annotations, `securitySchemes`, widget resource |
 | `src/lib/chatgpt-app/widget.ts` | The in-chat plan card (inline HTML/JS, empty CSP) |
 | `src/lib/chatgpt-app/events.ts` | Funnel events with a content-free property allow-list |
+| `src/lib/chatgpt-app/material.ts` | `add_to_project` rows: paragraphs as assistant-labelled segments, ids derived from project + text hash |
+| `src/lib/chatgpt-app/agents-md.ts`, `src/app/agents.md/route.ts` | Public instructions an assistant reads to connect (flag-gated, www only) |
+| `src/lib/chatgpt-app/connect-prompts.ts`, `src/components/settings/ConnectYourAI.tsx` | Settings card with the three copy prompts |
+| `src/lib/speakers.ts` (`ASSISTANT_SPEAKER`) | Keeps assistant-written material out of every voice reader |
 | `src/app/mcp/route.ts` | Stateless streamable-HTTP endpoint, `maxDuration` 120 |
 | `src/app/.well-known/oauth-protected-resource/[[...path]]` | RFC 9728 metadata (both URL forms) |
 | `src/app/oauth/consent/page.tsx` | Consent screen for Supabase's OAuth server |
@@ -46,6 +50,7 @@ ChatGPT ──HTTPS POST /mcp (Bearer token optional)──► src/app/mcp/route
 
 - Identity only from a verified token. No tool accepts a user id.
 - A save reads the plan from the stored preview, so unvalidated content cannot be saved.
-- Previews never touch `projects`/`chapters`. Saves only insert new rows.
+- Previews never touch `projects`/`chapters`. Saves only insert new rows; `add_to_project` only inserts source material into an owned project.
+- Assistant-written material never trains the author's voice (`authorOnlyText` / `voiceSourceText`).
 - Every DB write path is one transaction. Ink is reserved before a model call and settled exactly once.
 - Pushed branches build Vercel previews against the production database, so every surface is flag-gated OFF by default.

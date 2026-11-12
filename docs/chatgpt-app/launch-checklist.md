@@ -1,4 +1,4 @@
-# Acceptance and release checklist (status 2026-10-03)
+# Acceptance and release checklist (status 2026-11-11)
 
 `[x]` = done with evidence · `[ ]` = not done · **BLOCKED** = names the missing prerequisite.
 
@@ -19,6 +19,19 @@
 - [ ] Card accessible/responsive with text fallback: built (semantic HTML, focus rings, aria-live, dark mode, full text content on every tool); **BLOCKED** render check inside ChatGPT.
 - [ ] Deep link opens the correct project: returns `/project/<id>`; not verified in a browser after a real save.
 
+## Assistant saves to a book (add_to_project, /agents.md, Connect your AI) — added 2026-11-11
+
+- [x] Branch brought up to date with origin/master (50 commits incl. www canonicals 75569aa); conflict in middleware resolved to master's behavior; `/oauth` added to the app routes so master's new 404 rule doesn't break the consent link.
+- [x] Every `transcripts` reader checked. Voice profile, voice match, the voice picker and legacy `/api/analyze` would have learned from AI-written prose (300-word full-text fallback; analysis sends the newest transcript to voice-profile). Fixed with a reserved raw segment label skipped by `authorOnlyText` / `voiceSourceText`; no migration. Key points, outline, chapters and T.H.E.O.'s briefing still use the material as the author's story.
+- [x] Inserting the material starts nothing: no DB triggers or realtime listeners on `audio_uploads` / `transcripts` (migrations + code; live DB not queried), analysis runs only on the user's Analyze click. The tool spends no Ink and calls no model (tested).
+- [x] `add_to_project` built: auth + ownership, both flags, 30/min, 120k cap, PK-backed dedupe (ids from project + text hash), cleanup and repair paths, structured errors, text fallback, deep link, content-free events. 25 unit tests.
+- [x] `/agents.md` (www only, text/markdown, 404 while `CHATGPT_APP_MCP` is off, noindex until launch) + public path in middleware. Settings "Connect your AI" card with 3 copy prompts, shown only while `/agents.md` answers.
+- [ ] **Claude: not supported in v1.** Claude's custom connectors start OAuth only on a transport-level HTTP 401 and ignore `WWW-Authenticate` / `isError` on a 200 (claude.com/docs/connectors/building/authentication.md and lazy-authentication.md, read 2026-11-11). `/mcp` answers anonymous calls with 200 and returns `auth_required` as a tool result (the OpenAI convention), so Claude would connect, list tools and never sign in. Also needed for Claude: Supabase dynamic client registration on (optional toggle, "Authentication → OAuth Server"; Supabase warns it lets any MCP client register) or a pre-registered client ID entered in Claude's Advanced settings, the redirect `https://claude.ai/api/mcp/auth_callback` accepted, and `CHATGPT_APP_ALLOWED_CLIENT_IDS` left empty (DCR registers a new client per connection). Fix when wanted: a pre-SDK gate in `src/app/mcp/route.ts` that answers an unauthenticated `tools/call` of an oauth2-only tool with HTTP 401 + `WWW-Authenticate: Bearer resource_metadata=…`. Not built: it changes the ChatGPT linking path, which has never been verified live. The page and prompts say ChatGPT only.
+- [ ] Live: ChatGPT reads `/agents.md`, walks setup, links, runs `list_projects` then `add_to_project`; the saved material appears on the project page and in Analyze. **BLOCKED** on the same OAuth server + flags as below.
+- [ ] Dedupe on a real database (two parallel identical saves). Modelled in a fake DB with Postgres PK semantics only.
+- [ ] Privacy policy wording for "other AI assistants" and memory saves: drafted in `privacy-and-data-flow.md` under PENDING KYLE APPROVAL. **Blocks turning `CHATGPT_APP_WRITES` on in production**, not the branch.
+- [ ] At launch: drop `X-Robots-Tag: noindex` from `/agents.md` (with `/chatgpt`'s noindex). Keep the memoir prompt out of the directory listing's example prompts until checked against OpenAI's plugin guidelines on memory and data minimization.
+
 ## Data, identity, and accounting
 
 - [x] Preview cannot overwrite manuscripts (previews never touch projects/chapters).
@@ -36,7 +49,7 @@
 - [x] Long operations: synchronous within 120 s by design; documented decision.
 - [x] Structured errors, rate limits, input limits, recovery.
 - [x] Feature flags, monitoring events, cleanup, rollback documented.
-- [x] tsc, lint (changed files), full test suite (443 passing, 71 of them new), `bun install --frozen-lockfile` and production build pass locally. Live smoke on a local production server: discovery JSON, 5 tools listed, junk bearer → 401 + `WWW-Authenticate`, consent link keeps `authorization_id` through login.
+- [x] tsc, lint (changed files), full test suite, `bun install --frozen-lockfile` and production build pass locally (2026-10-03: 443 passing; 2026-11-11 after the master merge and add_to_project: 677 passing + 1 expected fail). Live smoke on a local production server: discovery JSON, 5 tools listed (6 on 2026-11-11, plus `/agents.md`), junk bearer → 401 + `WWW-Authenticate`, consent link keeps `authorization_id` through login.
 - [ ] Browser journeys verified: **BLOCKED** on OAuth server + flags in a safe environment.
 - [ ] Real ChatGPT integration: **BLOCKED** (owner's ChatGPT developer mode + deployed endpoint).
 - [x] Malicious source instructions cannot change identity/permissions (fenced as data; no identity in args).

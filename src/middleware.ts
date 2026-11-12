@@ -27,7 +27,9 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
 // 2026-10-03: /mcp (ChatGPT app endpoint; bearer tokens, never cookies), /.well-known/
 // (OAuth discovery for ChatGPT), /chatgpt (public explainer pages).
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/mcp", "/chatgpt"];
+// 2026-11-11: /agents.md (instructions an AI assistant reads to connect; the route
+// itself 404s while CHATGPT_APP_MCP is off).
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/mcp", "/chatgpt", "/agents.md"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
 const PUBLIC_PREFIXES = ["/api/", "/.well-known/", "/chatgpt/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];

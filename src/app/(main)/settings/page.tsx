@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ConnectedApps } from "@/components/settings/ConnectedApps";
+import { ConnectYourAI } from "@/components/settings/ConnectYourAI";
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -99,6 +100,8 @@ export default function SettingsPage() {
             </Link>
           </div>
         </div>
+
+        <ConnectYourAI cardStyle={card} h2Style={h2} subStyle={sub} />
 
         <ConnectedApps cardStyle={card} h2Style={h2} subStyle={sub} buttonStyle={btn()} />
 

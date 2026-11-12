@@ -346,8 +346,8 @@ describe("migrations: RLS is the only defence against direct PostgREST access", 
 
   it("every created table has row level security enabled", () => {
     const sql = migrationSql();
-    const created = [...sql.matchAll(/create table (?:if not exists )?(\w+)/gi)].map((m) => m[1]);
-    const rlsOn = new Set([...sql.matchAll(/alter table (\w+) enable row level security/gi)].map((m) => m[1]));
+    const created = [...sql.matchAll(/create table (?:if not exists )?([\w.]+)/gi)].map((m) => m[1]);
+    const rlsOn = new Set([...sql.matchAll(/alter table ([\w.]+) enable row level security/gi)].map((m) => m[1]));
     expect([...new Set(created)].filter((t) => !rlsOn.has(t))).toEqual([]);
   });
 
@@ -623,5 +623,15 @@ describe("extractExcerptsForChapter: LLM-supplied quote handling", () => {
     const q = "ALPHA beta gamma";
     const out = extractExcerptsForChapter(fullText, [[q], [q], [q]]);
     expect(out.split("ALPHA").length - 1).toBe(1);
+  });
+});
+
+describe("auth config detection", () => {
+  it("rejects missing, placeholder, and non-supabase hosts", async () => {
+    const { isAuthConfigured } = await import("../supabase");
+    expect(isAuthConfigured(undefined, undefined)).toBe(false);
+    expect(isAuthConfigured("https://placeholder.supabase.co", "placeholder-anon-key")).toBe(false);
+    expect(isAuthConfigured("https://imjkauxdlwfrblrgidgj.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.")).toBe(true);
+    expect(isAuthConfigured("http://evil.example", "key")).toBe(false);
   });
 });

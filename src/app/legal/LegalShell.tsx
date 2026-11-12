@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 
 /**
  * Shared layout + typography primitives for the public /legal/* pages.
@@ -194,7 +195,7 @@ export function LegalShell({
       />
 
       {/* Nav */}
-      <nav
+      <nav className="ds-touch-links"
         style={{
           position: "sticky",
           top: 0,
@@ -236,21 +237,24 @@ export function LegalShell({
             </div>
             <span style={{ fontFamily: SANS, fontWeight: 600, fontSize: 18, color: COLORS.ink }}>scribe</span>
           </Link>
-          <Link
-            href="/login"
-            style={{
-              fontFamily: SANS,
-              fontSize: 14,
-              fontWeight: 600,
-              color: COLORS.ink,
-              background: COLORS.accent,
-              padding: "10px 24px",
-              borderRadius: 9999,
-              textDecoration: "none",
-            }}
-          >
-            Get Started
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Link
+              href="/login"
+              style={{
+                fontFamily: SANS,
+                fontSize: 14,
+                fontWeight: 600,
+                color: COLORS.ink,
+                background: COLORS.accent,
+                padding: "10px 24px",
+                borderRadius: 9999,
+                textDecoration: "none",
+              }}
+            >
+              Get Started
+            </Link>
+            <PublicMobileMenu />
+          </div>
         </div>
       </nav>
 
@@ -298,6 +302,15 @@ export function LegalShell({
 
         {children}
 
+        {/* The refund terms send a reader to ask what the plans cost. */}
+        {currentPath === "/legal/refunds" && (
+          <p className="ds-touch-links" style={{ margin: "32px 0 0" }}>
+            <Link href="/pricing" style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, color: COLORS.accent, textDecoration: "none" }}>
+              See the plans and prices &rarr;
+            </Link>
+          </p>
+        )}
+
         {/* Cross-links to the other legal documents */}
         <div style={{ height: 1, background: COLORS.divider, margin: "56px 0 28px" }} />
         <p
@@ -313,7 +326,7 @@ export function LegalShell({
         >
           More legal
         </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px" }}>
+        <div className="ds-touch-links" style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px" }}>
           {LEGAL_PAGES.map((page) => {
             const isCurrent = page.href === currentPath;
             return isCurrent ? (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /chatgpt: what the D.scribe ChatGPT app does, its limits, and how data is
@@ -12,7 +13,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "D.scribe in ChatGPT",
   description: "Turn talks, sermons, workshops and drafts into a structured book plan in ChatGPT, then keep writing in D.scribe.",
-  alternates: { canonical: "https://d-scribe.app/chatgpt" },
+  alternates: { canonical: `${SITE_URL}/chatgpt` },
   robots: { index: false, follow: true },
 };
 

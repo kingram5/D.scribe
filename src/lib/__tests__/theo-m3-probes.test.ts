@@ -47,8 +47,10 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const src = chat();
     const start = src.slice(src.indexOf("const startConversation"), src.indexOf("const sendMessage"));
     expect(start).toMatch(/let streamFailed = false/);
-    expect(start).toMatch(/streamFailed = true;[\s\S]{0,180}?setMessages\(\[\]\)/);
-    expect(start).toMatch(/setRetryAction\("start"\)/);
+    // `base` is [] for the opening turn; only a review-room control tap keeps the chat.
+    expect(start).toMatch(/const base: Message\[\] = command \? messagesRef\.current : \[\];/);
+    expect(start).toMatch(/streamFailed = true;[\s\S]{0,180}?setMessages\(base\)/);
+    expect(start).toMatch(/setRetryAction\(command \? null : "start"\)/);
     expect(start).toMatch(/if \(!streamFailed && sentenceBufferRef\.current\.trim\(\)\)/);
     expect(src).toMatch(/if \(action === "start"\) startConversation\(\)/);
   });
@@ -111,6 +113,10 @@ describe("T.H.E.O. M3: interruption and returning-user recovery", () => {
     const dg = read("lib/deepgram.ts");
     expect(dg).toMatch(/export async function transcribeUtterance/);
     expect(dg).toMatch(/mip_opt_out: true/);
+    // Nova-3 is multilingual; without language=en it auto-detects and has been
+    // seen to emit Arabic for English speech. Pin English on every STT path.
+    expect(dg).toMatch(/language:\s*"en"/);
+    expect(chat()).toMatch(/[?&]language=en/);
   });
 
   it("serializes TTS sentence requests so later audio cannot overtake earlier audio", () => {

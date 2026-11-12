@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FOUNDER_STORY } from "@/lib/founder";
 import { FAQ_ITEMS } from "@/components/landing/faq";
+import { PLANS } from "@/lib/tiers";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /about — the founding story (HeyCatch 2026-09-10 item 2), expanded into a
@@ -19,12 +22,12 @@ export const metadata: Metadata = {
   title: "About",
   description: "D.scribe is voice-to-manuscript software for speakers, pastors, and coaches.",
   alternates: {
-    canonical: "https://d-scribe.app/about",
+    canonical: `${SITE_URL}/about`,
   },
   openGraph: {
     title: "About D.scribe",
     description: "Voice-to-manuscript software for speakers, pastors, and coaches.",
-    url: "https://d-scribe.app/about",
+    url: `${SITE_URL}/about`,
     siteName: "D.scribe",
     type: "website",
   },
@@ -84,7 +87,7 @@ const DIFFERENTIATORS: readonly { title: string; body: string }[] = [
   },
   {
     title: "A ghostwriter alternative at a fraction of the cost",
-    body: "Ghostwriters charge $10,000 to $50,000 per book. D.scribe starts at $25 per month. Same outcome: a finished manuscript in your voice.",
+    body: `Ghostwriters charge $10,000 to $50,000 per book. D.scribe starts at $${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
   },
   {
     title: "Pay for what you use",
@@ -130,7 +133,7 @@ const KEY_FACTS: readonly [string, string][] = [
   ["Founded", "2025"],
   ["Website", "https://d-scribe.app"],
   ["Core offering", "Upload spoken audio or a YouTube link; D.scribe transcribes it, learns your voice, and drafts an export-ready manuscript"],
-  ["Pricing", "Free trial with 10 Ink; Starter $25/mo (300 Ink); Pro $50/mo (660 Ink); Premium $100/mo (1,500 Ink)"],
+  ["Pricing", `Free trial with 10 Ink; Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink); Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink); Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink)`],
   ["Contract terms", "Month-to-month, no long-term contract; unused Ink rolls over; overage is blocked with a warning, never charged silently"],
   ["Services", "AI transcription, brainstorm studio, voice profiling, chapter structuring, manuscript generation, sentence-level editing, PDF and DOCX export"],
   ["Communication", "Email support at kyle@d-scribe.app; in-app cost preview before every AI action"],
@@ -142,7 +145,7 @@ function organizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "D.scribe",
-    url: "https://d-scribe.app",
+    url: SITE_URL,
     description:
       "AI book creation platform: D.scribe turns recorded talks, sermons, and coaching sessions into export-ready manuscripts in the speaker's own voice.",
     foundingDate: "2025",
@@ -176,7 +179,7 @@ export default function AboutPage() {
           }}
         />
 
-        <nav
+        <nav className="ds-touch-links"
           style={{
             position: "sticky",
             top: 0,
@@ -209,7 +212,7 @@ export default function AboutPage() {
               <span style={{ fontFamily: SANS, fontWeight: 600, fontSize: 18, color: COLORS.ink }}>scribe</span>
             </Link>
             <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-              <Link href="/pricing" style={{ fontFamily: SANS, fontSize: 14, color: COLORS.ink, textDecoration: "none", fontWeight: 600 }}>
+              <Link href="/pricing" className="ds-pubnav-desktop" style={{ fontFamily: SANS, fontSize: 14, color: COLORS.ink, textDecoration: "none", fontWeight: 600 }}>
                 Pricing
               </Link>
               <Link
@@ -218,6 +221,7 @@ export default function AboutPage() {
               >
                 Get Started
               </Link>
+              <PublicMobileMenu />
             </div>
           </div>
         </nav>

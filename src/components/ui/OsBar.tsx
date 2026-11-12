@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import UserMenu from "./UserMenu";
 import InkBalanceMeter from "./InkBalanceMeter";
 
@@ -11,10 +11,31 @@ interface OsBarProps {
 
 export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (barRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [mobileOpen]);
 
   return (
     <>
-      <div className="ds-os-bar" style={{
+      <div ref={barRef} className="ds-os-bar" style={{
         position: "fixed",
         top: "max(24px, env(safe-area-inset-top))",
         left: "50%",
@@ -60,12 +81,15 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
         <div className="show-mobile" style={{ marginLeft: "auto", alignItems: "center", gap: 8, color: "var(--text-primary)" }}>
           <UserMenu />
           <button
+            type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             style={{
               background: "none", border: "none", cursor: "pointer", padding: 4,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-            aria-label="Menu"
+            aria-label={mobileOpen ? "Close menu" : "Menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="ds-os-menu"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {mobileOpen ? (
@@ -87,23 +111,28 @@ export default function OsBar({ rightSlot, centerSlot }: OsBarProps) {
 
       {/* Mobile dropdown menu */}
       {mobileOpen && (
-        <div style={{
-          position: "fixed",
-          top: "calc(max(24px, env(safe-area-inset-top)) + 52px)",
-          left: 16,
-          right: 16,
-          zIndex: 99,
-          background: "var(--ds-card-bg)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid var(--ds-card-border)",
-          borderRadius: 20,
-          boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
-          padding: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}>
+        <div
+          ref={menuRef}
+          id="ds-os-menu"
+          className="ds-os-menu"
+          style={{
+            position: "fixed",
+            top: "calc(max(24px, env(safe-area-inset-top)) + 52px)",
+            left: 16,
+            right: 16,
+            zIndex: 99,
+            background: "var(--ds-card-bg)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid var(--ds-card-border)",
+            borderRadius: 20,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
           {centerSlot && (
             <div style={{ padding: "8px 0", borderBottom: "1px solid var(--ds-card-border)", marginBottom: 4 }}>
               {centerSlot}

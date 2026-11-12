@@ -126,6 +126,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
           <button
             onClick={() => onClose()}
             aria-label="Close guide"
+            className="ds-guide-close"
             style={{
               width: 28,
               height: 28,
@@ -173,9 +174,9 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
         </div>
 
         {/* Slide nav */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 24px 0" }}>
+        <div className="ds-guide-footer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 24px 0" }}>
           {multi ? (
-            <div style={{ display: "flex", gap: 6 }} aria-label={`Slide ${idx + 1} of ${slides.length}`}>
+            <div className="ds-guide-dots" style={{ display: "flex", gap: 6 }} aria-label={`Slide ${idx + 1} of ${slides.length}`}>
               {slides.map((_, i) => (
                 <button
                   key={i}
@@ -195,12 +196,15 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
               ))}
             </div>
           ) : <div />}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="ds-guide-actions" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
             {multi && idx > 0 && (
               <button
+                type="button"
+                className="ds-guide-btn"
                 onClick={() => setIdx(idx - 1)}
                 style={{
-                  padding: "10px 18px",
+                  padding: "0 16px",
+                  height: 40,
                   minHeight: 40,
                   borderRadius: 9999,
                   border: "1px solid rgba(44,36,25,0.15)",
@@ -210,6 +214,11 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
                   fontWeight: 600,
                   cursor: "pointer",
                   fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 Back
@@ -217,10 +226,13 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
             )}
             {!isLast ? (
               <button
+                type="button"
+                className="ds-guide-btn ds-guide-btn--primary"
                 onClick={() => setIdx(idx + 1)}
                 autoFocus
                 style={{
-                  padding: "10px 22px",
+                  padding: "0 18px",
+                  height: 40,
                   minHeight: 40,
                   borderRadius: 9999,
                   border: "none",
@@ -231,6 +243,11 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
                   cursor: "pointer",
                   fontFamily: "inherit",
                   boxShadow: "0 2px 10px rgba(193,122,71,0.3)",
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 Next
@@ -238,9 +255,12 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
             ) : (
               <>
                 <button
+                  type="button"
+                  className={`ds-guide-btn${hasTour ? "" : " ds-guide-btn--primary"}`}
                   onClick={() => onClose()}
                   style={{
-                    padding: "10px 18px",
+                    padding: "0 16px",
+                    height: 40,
                     minHeight: 40,
                     borderRadius: 9999,
                     border: hasTour ? "1px solid rgba(44,36,25,0.15)" : "none",
@@ -250,16 +270,24 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
                     fontWeight: 600,
                     cursor: "pointer",
                     fontFamily: "inherit",
+                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
                   Got it
                 </button>
                 {hasTour && (
                   <button
+                    type="button"
+                    className="ds-guide-btn ds-guide-btn--primary ds-guide-btn--block"
                     onClick={() => onClose({ startTour: true })}
                     autoFocus
                     style={{
-                      padding: "10px 22px",
+                      padding: "0 18px",
+                      height: 40,
                       minHeight: 40,
                       borderRadius: 9999,
                       border: "none",
@@ -270,6 +298,11 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
                       cursor: "pointer",
                       fontFamily: "inherit",
                       boxShadow: "0 2px 10px rgba(193,122,71,0.3)",
+                      whiteSpace: "nowrap",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
                     Show me on the page →
@@ -282,7 +315,7 @@ export default function StepTutorialModal({ stepLabel, slides, hasTour, onClose 
 
         {/* Auto-show toggle */}
         <div style={{ padding: "16px 24px 20px" }}>
-          <label style={{
+          <label className="ds-guide-autoshow" style={{
             display: "flex",
             alignItems: "center",
             gap: 10,

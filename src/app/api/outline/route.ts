@@ -1,3 +1,4 @@
+import { loadAnalysisGuidance } from "@/lib/analysis-moments-server";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { askClaudeWithUsage, cleanJson } from "@/lib/claude-lite";
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     project.audience,
     project.title,
     project.voice_profile
-  );
+  ) + await loadAnalysisGuidance(project_id);
 
   const parseChapters = (raw: string): DraftChapter[] => {
     const parsed = JSON.parse(cleanJson(raw));

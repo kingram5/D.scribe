@@ -2,15 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { isAllowedEmail } from "@/lib/allowlist";
+import {
+  safeNextPath,
+  safeVercelShareToken,
+  urlOnRequestHost,
+} from "@/lib/auth-redirect";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/dashboard";
-  // Validate redirect: must be a relative path, not a protocol-relative URL
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
-
-  const origin = request.nextUrl.origin;
+  const next = safeNextPath(searchParams.get("next"));
+  const vercelShare = safeVercelShareToken(searchParams.get("_vercel_share"));
 
   if (code) {
     const cookieStore = await cookies();
@@ -38,12 +40,13 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!isAllowedEmail(user?.email)) {
         await supabase.auth.signOut();
-        return NextResponse.redirect(`${origin}/unauthorized`);
+        return NextResponse.redirect(urlOnRequestHost(request, "/unauthorized", vercelShare));
       }
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(urlOnRequestHost(request, next, vercelShare));
     }
   }
 
-  // Something went wrong — redirect to login
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  const loginUrl = urlOnRequestHost(request, "/login", vercelShare);
+  loginUrl.searchParams.set("error", "auth");
+  return NextResponse.redirect(loginUrl);
 }

@@ -42,6 +42,7 @@ export default function OutlinePage() {
       if (res.ok) {
         const data = await res.json();
         setEnrichments((prev) => ({ ...prev, [chapterId]: data }));
+        if (!data.length) setEnrichError("No verified quotes are available for this chapter yet.");
       } else {
         const e = await res.json().catch(() => ({}));
         setEnrichError(e.error || `Couldn't find quotes (error ${res.status}). Try again.`);
@@ -53,11 +54,16 @@ export default function OutlinePage() {
   }
 
   async function toggleEnrichment(id: string, included: boolean) {
-    await fetch("/api/enrich", {
+    const res = await fetch("/api/enrich", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, included }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setEnrichError(body.error || "This quote could not be included.");
+      return;
+    }
     setEnrichments((prev) => {
       const updated = { ...prev };
       for (const key of Object.keys(updated)) {
@@ -165,6 +171,7 @@ export default function OutlinePage() {
               return (
                 <button
                   key={ch.id}
+                  className="ds-enrich-chip"
                   onClick={() => setActiveEnrichChapter(isActive ? null : ch.id)}
                   style={{
                     padding: "8px 14px",

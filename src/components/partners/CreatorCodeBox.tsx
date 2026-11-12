@@ -49,7 +49,7 @@ export function CreatorCodeBox() {
     );
   }
   return (
-    <div style={{ marginTop: 14, textAlign: "center", fontFamily: font }}>
+    <div className="ds-touch-links" style={{ marginTop: 14, textAlign: "center", fontFamily: font }}>
       {!open ? (
         <button
           type="button"

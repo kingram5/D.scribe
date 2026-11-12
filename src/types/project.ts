@@ -1,4 +1,6 @@
-export interface Project {
+import type { BookDesign } from "@/lib/book-design";
+
+export interface Project extends BookDesign {
   id: string;
   user_id: string;
   title: string;
@@ -41,6 +43,9 @@ export interface Transcript {
   word_count: number;
   speaker_count: number;
   created_at: string;
+  /** Who each diarized speaker is (migration 031). Null = unlabeled. */
+  speaker_map?: Record<string, { role: "author" | "other"; name?: string; relationship?: string }> | null;
+  speakers_confirmed_at?: string | null;
 }
 
 export interface TranscriptSegment {

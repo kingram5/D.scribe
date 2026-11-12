@@ -4,6 +4,7 @@ import { Inter, Kalam, Manrope, Lora, Instrument_Serif, Playfair_Display } from 
 import { MarketingPixels } from "@/components/analytics/MarketingPixels";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { ReferralBanner } from "@/components/partners/ReferralBanner";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -61,6 +62,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  // Resolves relative canonicals and the generated og:image / twitter:image URLs
+  // against the serving host instead of whatever Vercel guesses.
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s | D.scribe",
     default: "D.scribe — Turn Your Voice Into a Published Book with AI",

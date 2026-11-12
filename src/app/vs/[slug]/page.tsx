@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VS_PAGES, SOURCED_NOTE, getVsPage } from "@/lib/vs-pages";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * /vs/[slug] comparison pages (HeyCatch action plan, "Do this quarter").
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!page) return { title: "Compare" };
   const title = `D.scribe vs ${page.competitor}`;
   const description = `${page.verdict} An honest side-by-side of D.scribe and ${page.competitor} on price, input, and output.`;
-  const url = `https://d-scribe.app/vs/${page.slug}`;
+  const url = `${SITE_URL}/vs/${page.slug}`;
   return {
     title,
     description,
@@ -73,13 +75,13 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "D.scribe", item: "https://d-scribe.app" },
-      { "@type": "ListItem", position: 2, name: "Compare", item: "https://d-scribe.app/vs" },
+      { "@type": "ListItem", position: 1, name: "D.scribe", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Compare", item: `${SITE_URL}/vs` },
       {
         "@type": "ListItem",
         position: 3,
         name: `D.scribe vs ${page.competitor}`,
-        item: `https://d-scribe.app/vs/${page.slug}`,
+        item: `${SITE_URL}/vs/${page.slug}`,
       },
     ],
   };
@@ -122,12 +124,15 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       <div className="vs-wrap">
-        <Link
-          href="/"
-          style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none", letterSpacing: "0.04em" }}
-        >
-          &larr; D.scribe
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Link
+            href="/"
+            style={{ fontSize: 13, color: COLORS.muted, textDecoration: "none", letterSpacing: "0.04em" }}
+          >
+            &larr; D.scribe
+          </Link>
+          <PublicMobileMenu />
+        </div>
 
         <h1 className="vs-h1" style={{ marginTop: 28 }}>
           D.scribe vs {page.competitor}
@@ -157,6 +162,11 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
               </div>
             </div>
           ))}
+        </div>
+        <div className="ds-touch-links" style={{ marginTop: 18 }}>
+          <Link href="/pricing" style={{ color: COLORS.accent, fontSize: 14.5, fontWeight: 600, textDecoration: "none" }}>
+            See D.scribe&rsquo;s plans in full &rarr;
+          </Link>
         </div>
 
         <h2 className="vs-h2">Where {page.competitor} is better</h2>
@@ -188,7 +198,7 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
           ))}
         </dl>
 
-        <div style={{ marginTop: 56, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="ds-touch-links" style={{ marginTop: 56, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <Link href="/login" className="vs-cta">
             Start with 10 Ink free
           </Link>
@@ -201,6 +211,7 @@ export default async function VsPage({ params }: { params: Promise<{ slug: strin
 
         <nav
           aria-label="Other comparisons"
+          className="ds-touch-links"
           style={{ display: "flex", gap: "6px 18px", flexWrap: "wrap", marginTop: 32, fontSize: 13.5 }}
         >
           {VS_PAGES.filter((p) => p.slug !== page.slug).map((p) => (

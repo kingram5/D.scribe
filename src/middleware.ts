@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { urlOnRequestHost } from "@/lib/auth-redirect";
+import { isAppPath } from "@/lib/app-routes";
 
 /**
  * Inline allowlist check for Edge Runtime compatibility. Mirrors src/lib/allowlist.ts:
@@ -29,6 +31,8 @@ const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauth
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
 const PUBLIC_PREFIXES = ["/api/", "/.well-known/", "/chatgpt/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
+// Signed-in app routes (src/lib/app-routes.ts): an anonymous visitor there goes to
+// /login?next=...; any other unknown path gets a real 404 (see below).
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -60,9 +64,7 @@ export async function middleware(request: NextRequest) {
       );
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(urlOnRequestHost(request, "/dashboard"));
       }
     }
     return NextResponse.next();
@@ -98,27 +100,28 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // Not an app route either: rewrite to a path no route can match (underscore
+    // folders are private in the App Router) so Next renders not-found.tsx, 404.
+    if (!isAppPath(pathname)) {
+      return NextResponse.rewrite(new URL("/_not-found-public", request.url));
+    }
+    const login = urlOnRequestHost(request, "/login");
     // The OAuth consent page carries its authorization_id in the query string;
     // dropping it on the way through login would break the ChatGPT account link.
-    url.searchParams.set("next", pathname.startsWith("/oauth/") ? `${pathname}${request.nextUrl.search}` : pathname);
-    return NextResponse.redirect(url);
+    login.searchParams.set("next", pathname.startsWith("/oauth/") ? `${pathname}${request.nextUrl.search}` : pathname);
+    return NextResponse.redirect(login);
   }
 
   // Require a confirmed email — an unconfirmed Supabase session otherwise passes here.
   if (!user.email_confirmed_at) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("error", "confirm_email");
-    return NextResponse.redirect(url);
+    const login = urlOnRequestHost(request, "/login");
+    login.searchParams.set("error", "confirm_email");
+    return NextResponse.redirect(login);
   }
 
   // Beta allowlist — bounce users not on the approved list
   if (!isAllowedEmail(user.email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/unauthorized";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(urlOnRequestHost(request, "/unauthorized"));
   }
 
   return response;

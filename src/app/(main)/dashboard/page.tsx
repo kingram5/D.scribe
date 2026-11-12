@@ -44,10 +44,16 @@ const WORKSPACE_QUOTES: { text: string; author: string }[] = [
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [quoteIdx] = useState(() => Math.floor(Math.random() * WORKSPACE_QUOTES.length));
+  // The rotating quote is picked after mount. Picking it during render drew a
+  // different random quote on the server and in the browser, so every dashboard
+  // load threw React hydration error #418 and re-rendered the whole tree. Until
+  // the pick lands, the first quote holds the space invisibly (same on both sides).
+  const [quoteIdx, setQuoteIdx] = useState<number | null>(null);
+  useEffect(() => { setQuoteIdx(Math.floor(Math.random() * WORKSPACE_QUOTES.length)); }, []);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ShelfFilter>("all");
+  const [search, setSearch] = useState("");
   const [eraseMode, setEraseMode] = useState(false);
   const [erasingId, setErasingId] = useState<string | null>(null);
   const [confirmEraseProject, setConfirmEraseProject] = useState<Project | null>(null);
@@ -64,9 +70,21 @@ export default function Dashboard() {
   }, []);
 
   const activeProjects = projects.filter((p) => p.status !== "erased");
-  const filtered = filter === "all"
+  const byStatus = filter === "all"
     ? activeProjects
     : projects.filter((p) => p.status === filter);
+  // Title search, client-side over the projects already loaded (no new API).
+  const q = search.trim().toLowerCase();
+  const filtered = q ? byStatus.filter((p) => (p.title || "").toLowerCase().includes(q)) : byStatus;
+
+  // Many books share a title ("Untitled Project"). Those get a second line with the
+  // day they were started so they can be told apart. The project data is untouched.
+  const titleCounts = new Map<string, number>();
+  for (const p of projects) titleCounts.set(p.title, (titleCounts.get(p.title) || 0) + 1);
+  const startedLine = (p: Project) =>
+    (titleCounts.get(p.title) || 0) > 1 && p.created_at
+      ? `Started ${new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
+      : undefined;
 
   const counts = {
     all: activeProjects.length,
@@ -83,6 +101,7 @@ export default function Dashboard() {
     status: p.status,
     updated_at: p.updated_at,
     href: `/project/${p.id}`,
+    subtitle: startedLine(p),
   }));
 
   async function eraseProject(projectId: string) {
@@ -113,7 +132,10 @@ export default function Dashboard() {
         }}
         erasingId={erasingId}
         loading={loading}
-        quote={WORKSPACE_QUOTES[quoteIdx]}
+        quote={WORKSPACE_QUOTES[quoteIdx ?? 0]}
+        quoteHidden={quoteIdx === null}
+        search={search}
+        onSearch={setSearch}
         brand={<Wordmark variant="underline" width={390} />}
         aside={<UsageWidget />}
       />

@@ -20,6 +20,7 @@ import {
 import { ChapterNote } from "./ChapterNode";
 import { KeyPointNote } from "./KeyPointNode";
 import { EditorToolbar } from "./EditorToolbar";
+import { OutlineListView } from "./OutlineListView";
 
 interface OutlineEditorProps {
   projectId: string;
@@ -1349,6 +1350,30 @@ function OutlineEditorInner({
     </>
   );
 
+  const toolbar = (
+    <EditorToolbar
+      onUndo={undo}
+      onRedo={redo}
+      canUndo={canUndo}
+      canRedo={canRedo}
+      onAddChapter={handleAddChapter}
+      saveStatus={saveStatus}
+      isDirty={state.dirty}
+      onContinue={onContinue}
+      hasChapters={state.chapters.length > 0}
+    />
+  );
+
+  // Phones get a plain list instead of the canvas (Kyle's pick, 2026-09-29).
+  if (isMobileLayout) {
+    return (
+      <div className="ds-outline-listwrap">
+        <OutlineListView chapters={state.chapters} keyPoints={state.keyPoints} dispatch={dispatch} />
+        {toolbar}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={canvasRef}
@@ -1488,17 +1513,7 @@ function OutlineEditorInner({
       )}
 
       {/* Toolbar */}
-      <EditorToolbar
-        onUndo={undo}
-        onRedo={redo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onAddChapter={handleAddChapter}
-        saveStatus={saveStatus}
-        isDirty={state.dirty}
-        onContinue={onContinue}
-        hasChapters={state.chapters.length > 0}
-      />
+      {toolbar}
     </div>
   );
 }

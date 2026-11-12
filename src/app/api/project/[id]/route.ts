@@ -1,3 +1,4 @@
+import { validDesignPatch } from "@/lib/book-design";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
@@ -8,6 +9,9 @@ import { deleteAudioForProjects } from "@/lib/storage-cleanup";
 // (id, user_id, project_id, created_at, etc.) is dropped silently so a caller
 // can't write arbitrary columns via the raw `updates` object.
 const PROJECT_FIELDS = [
+  "page_style",
+  "chapter_opening",
+  "back_cover_hook",
   "title",
   "description",
   "audience",
@@ -83,13 +87,15 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
 
   // Fetch related data in parallel
-  const [audioRes, transcriptRes, keyPointsRes, chaptersRes, nodesRes, edgesRes] = await Promise.all([
+  const [audioRes, transcriptRes, keyPointsRes, chaptersRes, nodesRes, edgesRes, prRes] = await Promise.all([
     supabase.from("audio_uploads").select("*").eq("project_id", id).order("created_at"),
     supabase.from("transcripts").select("*").eq("project_id", id).order("created_at"),
     supabase.from("key_points").select("*").eq("project_id", id).order("created_at"),
     supabase.from("chapters").select("*").eq("project_id", id).order("sort_order"),
     supabase.from("mind_map_nodes").select("*").eq("project_id", id),
     supabase.from("mind_map_edges").select("*").eq("project_id", id),
+    // Newest Publisher-Ready run places the project on the 9-step pipeline (null when none).
+    supabase.from("pr_runs").select("status").eq("project_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   return NextResponse.json({
@@ -100,6 +106,7 @@ export async function GET(
     chapters: chaptersRes.data || [],
     mind_map_nodes: nodesRes.data || [],
     mind_map_edges: edgesRes.data || [],
+    pr_status: prRes.data?.status ?? null,
   });
 }
 
@@ -214,6 +221,7 @@ export async function PATCH(
   }
 
   // Allowlist: only permit safe fields for project updates
+  if (!validDesignPatch(body)) return NextResponse.json({ error: "Invalid book design" }, { status: 400 });
   const filteredBody = pickAllowed(body, PROJECT_FIELDS);
 
   const { data, error } = await supabase

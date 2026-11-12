@@ -1,3 +1,4 @@
+import { isEnrichmentCandidate } from "@/lib/enrichment-policy";
 import { Audience, VoiceProfile, Enrichment } from "@/types";
 
 // Shared humanizer rules injected into all text-generating prompts.
@@ -136,7 +137,7 @@ ${blended.map((kp, i) => `${i + 1}. ${kp.title}: ${kp.summary}`).join("\n")}`;
 - The chapter should read as one sustained piece of thinking that happens to pass through these points, not a collection that happens to share a title.`;
 
   if (opts.enrichments && opts.enrichments.length > 0) {
-    const included = opts.enrichments.filter((e) => e.included);
+    const included = opts.enrichments.filter((e) => e.included && isEnrichmentCandidate(e));
     if (included.length > 0) {
       prompt += `\n\nENRICHMENT QUOTES (optional — use with restraint): These quotes are available to deepen the chapter. Weave one in ONLY where it genuinely fits the surrounding point. It is fine to use just some of them, or to skip any that would feel forced — do not cram them in.
 SPACING IS CRITICAL: spread whatever quotes you use EVENLY across the whole chapter. Never put two quotes in consecutive paragraphs, never cluster several near the end, and use at most one quote per section — most paragraphs should have no quote at all.

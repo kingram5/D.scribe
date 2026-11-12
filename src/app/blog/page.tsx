@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
+import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
   description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
   alternates: {
-    canonical: "https://d-scribe.app/blog",
+    canonical: `${SITE_URL}/blog`,
   },
   openGraph: {
     title: "D.scribe Blog — Voice to Book Guides & Strategies",
     description: "Practical guides for coaches, pastors, and speakers ready to publish their book with AI transcription and manuscript generation.",
-    url: "https://d-scribe.app/blog",
+    url: `${SITE_URL}/blog`,
     siteName: "D.scribe",
     type: "website",
   },
@@ -21,9 +23,9 @@ const blogSchema = {
   "@context": "https://schema.org",
   "@type": "Blog",
   name: "D.scribe Blog",
-  url: "https://d-scribe.app/blog",
+  url: `${SITE_URL}/blog`,
   description: "Guides and strategies for turning voice recordings into published books with AI",
-  publisher: { "@type": "Organization", name: "D.scribe", url: "https://d-scribe.app" },
+  publisher: { "@type": "Organization", name: "D.scribe", url: SITE_URL },
 };
 
 export const revalidate = 3600;
@@ -67,17 +69,20 @@ export default async function BlogIndexPage() {
       <div style={{ position: "fixed", bottom: "10%", right: "5%", width: "25vw", height: "25vw", background: "rgba(217,139,88,0.05)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
 
       {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
+      <nav className="ds-touch-links" style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid rgba(249,247,242,0.08)", background: "rgba(44,36,25,0.9)", backdropFilter: "blur(12px)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: "#C17A47", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "var(--font-playfair), var(--font-lora), serif", fontSize: 20, paddingTop: 2 }}>D.</div>
             <span style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontWeight: 600, fontSize: 18, color: "#F9F7F2" }}>scribe</span>
           </Link>
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <div className="ds-pubnav-desktop" style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link href="/pricing" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, color: "#A89F94", textDecoration: "none" }}>Pricing</Link>
             <Link href="/blog" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, color: "#F9F7F2", textDecoration: "none", fontWeight: 600 }}>Blog</Link>
           </div>
-          <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Get Started</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Link href="/login" style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 14, fontWeight: 600, color: "#F9F7F2", background: "#C17A47", padding: "10px 24px", borderRadius: 9999, textDecoration: "none" }}>Get Started</Link>
+            <PublicMobileMenu />
+          </div>
         </div>
       </nav>
 

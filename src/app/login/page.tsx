@@ -4,7 +4,12 @@ import Link from "next/link";
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase";
+import { createBrowserClient, isAuthConfigured } from "@/lib/supabase";
+import {
+  oauthCallbackUrl,
+  oauthWouldLeaveStaging,
+  pinAuthorizeUrlToOrigin,
+} from "@/lib/auth-redirect";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -19,18 +24,39 @@ function LoginContent() {
   const [emailSuccess, setEmailSuccess] = useState("");
 
   async function signInWithGoogle() {
+    setEmailError("");
+    if (!isAuthConfigured()) {
+      setEmailError("Sign-in isn't configured in this preview. Open the Vercel preview of this branch to log in.");
+      return;
+    }
     setLoading(true);
-    const supabase = createBrowserClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error) {
+    try {
+      const origin = window.location.origin;
+      const redirectTo = oauthCallbackUrl(origin, next, vercelShare);
+      const supabase = createBrowserClient();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error || !data?.url) {
+        setLoading(false);
+        setEmailError(error?.message || "Could not start Google sign-in.");
+        return;
+      }
+      const pinned = pinAuthorizeUrlToOrigin(data.url, origin, next, vercelShare);
+      if (oauthWouldLeaveStaging(origin, pinned.redirectTo)) {
+        setLoading(false);
+        setEmailError("Google sign-in tried to send you to the live site. Stay on this preview URL and try again.");
+        return;
+      }
+      window.location.assign(pinned.url);
+    } catch (err) {
       setLoading(false);
-      setEmailError(error.message);
+      setEmailError(err instanceof Error ? err.message : "Could not start Google sign-in.");
     }
   }
 
@@ -38,6 +64,10 @@ function LoginContent() {
     e.preventDefault();
     setEmailError("");
     setEmailSuccess("");
+    if (!isAuthConfigured()) {
+      setEmailError("Sign-in isn't configured in this preview. Open the Vercel preview of this branch to log in.");
+      return;
+    }
     setLoading(true);
 
     try {

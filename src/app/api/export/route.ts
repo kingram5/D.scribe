@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
   const exportOpts = {
     title: project.title,
     chapters: ready,
+    design: project,
   };
 
   let buffer: Buffer;

@@ -120,7 +120,6 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
     },
     ref
   ) {
-    const skipNextUpdate = useRef(false);
 
     const editor = useEditor({
       immediatelyRender: false,
@@ -149,10 +148,6 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
         },
       },
       onUpdate: ({ editor }) => {
-        if (skipNextUpdate.current) {
-          skipNextUpdate.current = false;
-          return;
-        }
         onChange(htmlToText(editor));
       },
       onSelectionUpdate: ({ editor }) => {
@@ -185,14 +180,13 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(
       if (htmlToText(editor) === content) return;
 
       // Avoid triggering onChange when we're setting content programmatically
-      skipNextUpdate.current = true;
-      editor.commands.setContent(textToHtml(content));
+      editor.commands.setContent(textToHtml(content), { emitUpdate: false });
     }, [content, editor]);
 
     // Sync editable state
     useEffect(() => {
       if (!editor) return;
-      editor.setEditable(editable);
+      editor.setEditable(editable, false);
     }, [editable, editor]);
 
     if (!editor) return null;

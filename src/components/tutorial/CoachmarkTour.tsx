@@ -192,8 +192,10 @@ export default function CoachmarkTour({ steps, onClose }: CoachmarkTourProps) {
         <p style={{ fontSize: 13, lineHeight: 1.6, color: "#6B644F", margin: "8px 0 14px" }}>
           {step.body}
         </p>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div className="ds-guide-actions" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
           <button
+            type="button"
+            className="ds-guide-btn"
             onClick={onClose}
             style={{
               border: "none",
@@ -202,19 +204,27 @@ export default function CoachmarkTour({ steps, onClose }: CoachmarkTourProps) {
               fontWeight: 600,
               color: "#948C75",
               cursor: "pointer",
-              padding: "6px 0",
+              padding: "0 8px",
+              height: 40,
+              minHeight: 40,
               fontFamily: "inherit",
+              whiteSpace: "nowrap",
+              display: "inline-flex",
+              alignItems: "center",
             }}
           >
             Skip tour
           </button>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {idx > 0 && (
               <button
+                type="button"
+                className="ds-guide-btn"
                 onClick={() => setIdx(idx - 1)}
                 style={{
-                  padding: "8px 14px",
-                  minHeight: 36,
+                  padding: "0 14px",
+                  height: 40,
+                  minHeight: 40,
                   borderRadius: 9999,
                   border: "1px solid rgba(44,36,25,0.15)",
                   background: "transparent",
@@ -223,16 +233,24 @@ export default function CoachmarkTour({ steps, onClose }: CoachmarkTourProps) {
                   fontWeight: 600,
                   cursor: "pointer",
                   fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 Back
               </button>
             )}
             <button
+              type="button"
+              className="ds-guide-btn ds-guide-btn--primary"
               onClick={() => (isLast ? onClose() : setIdx(idx + 1))}
               style={{
-                padding: "8px 18px",
-                minHeight: 36,
+                padding: "0 16px",
+                height: 40,
+                minHeight: 40,
                 borderRadius: 9999,
                 border: "none",
                 background: "#C17A47",
@@ -242,6 +260,11 @@ export default function CoachmarkTour({ steps, onClose }: CoachmarkTourProps) {
                 cursor: "pointer",
                 fontFamily: "inherit",
                 boxShadow: "0 2px 10px rgba(193,122,71,0.3)",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
             >
               {isLast ? "Done" : "Next"}

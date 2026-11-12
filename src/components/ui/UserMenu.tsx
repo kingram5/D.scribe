@@ -34,22 +34,30 @@ export default function UserMenu() {
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(!open)}
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          border: "1.5px solid rgba(0,0,0,0.1)",
-          background: avatar ? `url(${avatar}) center/cover` : "#191816",
-          color: avatar ? "transparent" : "white",
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        className="ds-user-menu-btn"
+        aria-label="Account menu"
+        aria-expanded={open}
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-        {!avatar && initials}
+        <span
+          aria-hidden
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            border: "1.5px solid rgba(0,0,0,0.1)",
+            background: avatar ? `url(${avatar}) center/cover` : "#191816",
+            color: avatar ? "transparent" : "white",
+            fontSize: 12,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxSizing: "border-box",
+          }}
+        >
+          {!avatar && initials}
+        </span>
       </button>
 
       {open && (

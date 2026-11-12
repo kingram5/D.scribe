@@ -16,6 +16,7 @@ export default function AddMoreButton({
   return (
     <button
       type="button"
+      className="ds-add-more"
       disabled={busy}
       onClick={async () => {
         setBusy(true);

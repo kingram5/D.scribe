@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import { LegalShell, H2, P, UL, Strong } from "../LegalShell";
 
 export const metadata: Metadata = {
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "D.scribe Acceptable Use Policy — prohibited uses, content rules, and how we enforce them.",
   robots: { index: true, follow: true },
+  alternates: { canonical: `${SITE_URL}/legal/acceptable-use` },
 };
 
 const LAST_UPDATED = "September 9, 2026";

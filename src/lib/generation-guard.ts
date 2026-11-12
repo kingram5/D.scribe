@@ -6,6 +6,7 @@
 // siblings, so a context would need a provider above both for no extra benefit.
 
 let busyMessage: string | null = null;
+let unsavedMessage: string | null = null;
 const EVENT = "ds-generation-busy-change";
 
 function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -18,10 +19,22 @@ export function setGenerationBusy(message: string | null) {
   if (busyMessage === message) return;
   busyMessage = message;
   if (typeof window === "undefined") return;
-  if (message) window.addEventListener("beforeunload", handleBeforeUnload);
+  if (busyMessage || unsavedMessage) window.addEventListener("beforeunload", handleBeforeUnload);
   else window.removeEventListener("beforeunload", handleBeforeUnload);
   window.dispatchEvent(new Event(EVENT));
 }
+
+/** Navigation protection is independent of the generation/wake-lock signal. */
+export function setUnsavedEdits(message: string | null) {
+  if (unsavedMessage === message) return;
+  unsavedMessage = message;
+  if (typeof window === "undefined") return;
+  if (busyMessage || unsavedMessage) window.addEventListener("beforeunload", handleBeforeUnload);
+  else window.removeEventListener("beforeunload", handleBeforeUnload);
+  window.dispatchEvent(new Event(EVENT));
+}
+
+export function getNavigationWarning(): string | null { return unsavedMessage || busyMessage; }
 
 export function getGenerationBusy(): string | null {
   return busyMessage;

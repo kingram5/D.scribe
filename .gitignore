@@ -46,3 +46,6 @@ next-env.d.ts
 
 .vercel
 evals/theo/results/*.json
+evals/publisher-ready/fixtures/
+evals/publisher-ready/results/
+evals/publisher-ready/answers/

@@ -1,3 +1,4 @@
+import { voiceSourceText } from "@/lib/speakers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAuth } from "@/lib/auth";
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   const { data: transcripts } = await supabase
     .from("transcripts")
-    .select("full_text")
+    .select("full_text, segments, speaker_map")
     .eq("project_id", chapter.project_id);
   if (!transcripts || transcripts.length === 0) {
     return NextResponse.json(
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   const baseline = buildVoiceBaseline(
-    transcripts.map((t) => t.full_text),
+    transcripts.map((t) => voiceSourceText(t)),
     project.voice_profile
   );
   const readsHuman = lintAITells(content.content);

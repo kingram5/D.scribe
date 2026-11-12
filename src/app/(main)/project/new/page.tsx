@@ -73,7 +73,7 @@ export default function NewProject() {
 
   return (
     <PageShell>
-      <div className="paper-theme" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
+      <div className="paper-theme ds-new-project" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px" }}>
         <GlassCard style={{ maxWidth: 480, width: "100%", padding: 48 }}>
           <div style={{ fontSize: 11, fontFamily: "var(--font-manrope), sans-serif", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 12 }}>New Project</div>
           <h1 style={{ fontSize: 36, fontWeight: 400, fontStyle: "italic", letterSpacing: "-0.01em", color: "var(--text-primary)", marginBottom: 8, fontFamily: "var(--font-lora), serif" }}>

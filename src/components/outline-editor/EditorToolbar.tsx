@@ -72,17 +72,21 @@ export function EditorToolbar({
     }}>
       {/* Undo/Redo */}
       <button
+        className="ds-tb-undo"
         onClick={onUndo}
         disabled={!canUndo}
         title="Undo (Ctrl+Z)"
+        aria-label="Undo"
         style={btnStyle(!canUndo)}
       >
         ↩
       </button>
       <button
+        className="ds-tb-redo"
         onClick={onRedo}
         disabled={!canRedo}
         title="Redo (Ctrl+Shift+Z)"
+        aria-label="Redo"
         style={btnStyle(!canRedo)}
       >
         ↪

@@ -42,6 +42,11 @@ interface GenerationStageProps {
   progressLabel?: string;
   /** 0–1; omitted renders no bar. */
   progress?: number;
+  /**
+   * Flow v2 (Kyle 9/28): finished chapters are readable while the rest are
+   * written, so the stage docks to a corner instead of owning the screen.
+   */
+  docked?: boolean;
 }
 
 /** One carousel slide: the orb and its line, moving as a single unit. */
@@ -67,7 +72,7 @@ function PhaseSlide({ phase, leaving }: { phase: Phase; leaving?: boolean }) {
   );
 }
 
-export default function GenerationStage({ open, coherence, progressLabel, progress }: GenerationStageProps) {
+export default function GenerationStage({ open, coherence, progressLabel, progress, docked }: GenerationStageProps) {
   const [i, setI] = useState(0);
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -102,14 +107,37 @@ export default function GenerationStage({ open, coherence, progressLabel, progre
 
   // Keep focus inside the panel while it owns the screen.
   useEffect(() => {
-    if (!open) return;
+    if (!open || docked) return;
     panelRef.current?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  }, [open, docked]);
 
   if (!open || !mounted) return null;
+
+  if (docked) {
+    return createPortal(
+      <div className="ds-gen-dock" role="status" aria-live="polite" aria-label="Writing your chapters" style={{
+        position: "fixed", left: 20, bottom: 20, zIndex: 140, width: "min(340px, calc(100vw - 40px))",
+        display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14,
+        background: "var(--ds-paper, #F4F1E8)", border: "1px solid rgba(193,122,71,0.3)", boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
+      }}>
+        <div style={{ width: 40, height: 40, flexShrink: 0, display: "grid", placeItems: "center" }}><div style={{ transform: "scale(0.625)" }}><TheoOrb state={activePhase.state} size={64} /></div></div>
+        <div style={{ display: "grid", gap: 4, minWidth: 0, flex: 1 }}>
+          <span style={{ fontFamily: "var(--font-lora), serif", fontStyle: "italic", fontSize: 15, color: "var(--ds-ink, #2C2419)" }}>{activePhase.text}</span>
+          {progressLabel && <span style={{ fontSize: 11, letterSpacing: "0.06em", color: "#6B644F", fontFamily: "var(--font-geist-mono), ui-monospace, monospace" }}>{progressLabel}</span>}
+          {typeof progress === "number" && (
+            <div style={{ height: 3, background: "rgba(44,36,25,0.12)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: "100%", transform: `scaleX(${Math.max(0, Math.min(1, progress))})`, transformOrigin: "left", background: "#C17A47", transition: "transform 0.4s ease" }} />
+            </div>
+          )}
+          <span style={{ fontSize: 11.5, color: "#6B644F" }}>Finished chapters open from the list. Keep this tab open.</span>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div

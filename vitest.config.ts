@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: {
       // Belt-and-suspenders: tsconfigPaths handles this, but explicit alias

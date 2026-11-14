@@ -3,16 +3,16 @@
 //
 // Built from the same constants the pages render (PLANS, the FAQ, the /about
 // content, the /vs data), so a price or claim changes here the moment it
-// changes on the site. Rules: no invented stats, quotes, awards or reviews; no
-// personal info (Kyle, 2026-09-19); canonical www links only. The ghostwriter
-// cost figure is left out until one sourced range is chosen (/about and
-// /pricing currently disagree).
+// changes on the site. Rules: no invented stats, quotes, awards or reviews;
+// personal info limited to the founder's name and metro area (Kyle,
+// 2026-11-14); canonical www links only. The ghostwriter cost figure is the one
+// sourced range in src/lib/ghostwriter-cost.ts, always given with its source.
 
 import { SITE_URL } from "@/lib/site";
 import { PLANS, INK_LIMITS } from "@/lib/tiers";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 import { VS_PAGES, D_SCRIBE_PRICING, SOURCED_NOTE } from "@/lib/vs-pages";
-import { DIFFERENTIATORS, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-content";
+import { DIFFERENTIATORS, FOUNDING_LINE, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-content";
 import { DEFINITION, SUPPORT_EMAIL } from "@/lib/structured-data";
 
 const url = (path: string) => (path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}`);
@@ -49,7 +49,7 @@ const KEY_PAGES: readonly [string, string, string][] = [
 
 export function llmsTxt(): string {
   const out: string[] = [];
-  out.push("# D.scribe", "", `> ${DEFINITION}`, "", WHAT_IT_DOES, "");
+  out.push("# D.scribe", "", `> ${DEFINITION}`, "", WHAT_IT_DOES, "", FOUNDING_LINE, "");
   out.push("## Who it is for", "", ...WHO_USES.map((w) => `- ${w}`), "");
   out.push("## Pricing (USD)", "", ...pricingLines(), "", `Full details: ${url("/pricing")}`, "");
   out.push("## Key pages", "");
@@ -68,11 +68,11 @@ export function llmsFullTxt(): string {
   const out: string[] = [];
   out.push("# D.scribe: full reference", "", `> ${DEFINITION}`, "");
   out.push(`Canonical site: ${url("/")}. Short index: ${url("/llms.txt")}.`, "");
-  out.push("## What D.scribe does", "", WHAT_IT_DOES, "");
+  out.push("## What D.scribe does", "", WHAT_IT_DOES, "", FOUNDING_LINE, "");
   out.push("## What makes D.scribe different", "");
   for (const d of DIFFERENTIATORS) {
-    if (/ghostwriter/i.test(d.title)) continue; // cost figure pending a sourced range
     out.push(`### ${d.title}`, "", d.body, "");
+    if (d.source) out.push(`Source: ${d.source.label}, ${d.source.url}`, "");
   }
   out.push("## Who uses D.scribe", "", ...WHO_USES.map((w) => `- ${w}`), "");
   out.push("## How D.scribe works", "");

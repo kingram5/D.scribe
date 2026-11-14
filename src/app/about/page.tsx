@@ -6,7 +6,7 @@ import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { DEFINITION, ORG_ID, graph, jsonLd, webPageNode } from "@/lib/structured-data";
-import { DIFFERENTIATORS, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-content";
+import { DIFFERENTIATORS, FOUNDING_LINE, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-content";
 
 /**
  * /about — the founding story (HeyCatch 2026-09-10 item 2), expanded into a
@@ -16,8 +16,11 @@ import { DIFFERENTIATORS, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-
  *
  * Server-rendered, same warm-editorial dark theme as /pricing and /legal.
  * Kyle 2026-09-19: no personal info on this page — no name, email, location,
- * headshot or Person schema. The story carries itself; the key-facts table
- * therefore omits founder-name and headquarters rows.
+ * headshot or Person schema. The story carries itself.
+ * Kyle 2026-11-14 (SEO/GEO plan): the founder's name and the metro area are
+ * now allowed, and nothing more (no phone, address or headshot). They come
+ * from src/lib/founder.ts and appear in the value statement, the key-facts
+ * table and the Organization JSON-LD.
  */
 
 export const metadata: Metadata = {
@@ -165,7 +168,7 @@ export default function AboutPage() {
 
           {/* Hoffman block 1: the value statement, in the shape AI reads best. */}
           <p style={{ fontFamily: SANS, fontSize: 18, lineHeight: 1.7, color: COLORS.ink, margin: "0 0 40px" }}>
-            D.scribe is voice-to-manuscript software that turns the talks, sermons, and coaching sessions you have already recorded into a finished book, for speakers, pastors, and coaches.
+            D.scribe is voice-to-manuscript software that turns the talks, sermons, and coaching sessions you have already recorded into a finished book, for speakers, pastors, and coaches. {FOUNDING_LINE}
           </p>
 
           {/* Kyle's story: his words, verbatim from src/lib/founder.ts (swapped in
@@ -201,6 +204,14 @@ export default function AboutPage() {
             <div key={d.title} style={{ margin: "0 0 20px" }}>
               <h3 style={H3}>{d.title}</h3>
               <p style={{ ...P, marginBottom: 0 }}>{d.body}</p>
+              {d.source ? (
+                <p style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.6, color: COLORS.muted, margin: "6px 0 0" }}>
+                  Source:{" "}
+                  <a href={d.source.url} rel="noopener" style={{ color: COLORS.accent, textDecoration: "underline" }}>
+                    {d.source.label}
+                  </a>
+                </p>
+              ) : null}
             </div>
           ))}
 

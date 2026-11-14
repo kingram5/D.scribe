@@ -4,8 +4,13 @@
 
 import { PLANS } from "@/lib/tiers";
 import { SITE_URL } from "@/lib/site";
+import { BASED_IN, FOUNDER_NAME } from "@/lib/founder";
+import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
 
-export const DIFFERENTIATORS: readonly { title: string; body: string }[] = [
+/** One quotable line naming the company, its founder and where it is based. */
+export const FOUNDING_LINE = `D.scribe was founded in 2025 by ${FOUNDER_NAME} and is based in ${BASED_IN}.`;
+
+export const DIFFERENTIATORS: readonly { title: string; body: string; source?: { label: string; url: string } }[] = [
   {
     title: "Built for spoken content, not typing",
     body: "Fiction tools like Sudowrite and NovelCrafter start from a blank page and a prompt. D.scribe starts from the recordings you already have — a sermon, a keynote, a coaching call. Sudowrite handles paragraphs. D.scribe handles books.",
@@ -20,7 +25,9 @@ export const DIFFERENTIATORS: readonly { title: string; body: string }[] = [
   },
   {
     title: "A ghostwriter alternative at a fraction of the cost",
-    body: `Ghostwriters charge $10,000 to $50,000 per book. D.scribe starts at $${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
+    // The one sourced figure (src/lib/ghostwriter-cost.ts), same as /pricing.
+    body: `${GHOSTWRITER_COST_SENTENCE}, according to ${GHOSTWRITER_COST.source}'s pricing guide. D.scribe starts at ${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
+    source: { label: `${GHOSTWRITER_COST.source}, "${GHOSTWRITER_COST.sourceTitle}"`, url: GHOSTWRITER_COST.url },
   },
   {
     title: "Pay for what you use",
@@ -64,6 +71,8 @@ export const KEY_FACTS: readonly [string, string][] = [
   ["Company name", "D.scribe"],
   ["Type", "AI book creation platform (voice-to-manuscript software)"],
   ["Founded", "2025"],
+  ["Founder", FOUNDER_NAME],
+  ["Based in", BASED_IN],
   ["Website", SITE_URL],
   ["Core offering", "Upload spoken audio or a YouTube link; D.scribe transcribes it, learns your voice, and drafts an export-ready manuscript"],
   ["Pricing", `Free trial with 10 Ink; Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink); Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink); Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink)`],

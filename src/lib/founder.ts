@@ -4,6 +4,13 @@
 // Kyle 2026-09-19: no personal info ships on the site — the /about card, the
 // homepage footer and the Person schema are all gone. The story below is his,
 // swapped in exactly as he wrote it — do not edit his words.
+//
+// Kyle 2026-11-14 (SEO/GEO plan, his "yes" on MAIN): the founder's NAME and the
+// METRO AREA may now appear, and nothing more: no phone, email of his own,
+// street address, headshot or other personal detail. These two constants are
+// the only place they live; /about and the Organization JSON-LD read them.
+export const FOUNDER_NAME = "Kyle Ingram";
+export const BASED_IN = "Dallas-Fort Worth";
 
 /**
  * Kyle's own words, verbatim (2026-09-19). Rendered as-is on /about — this is

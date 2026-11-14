@@ -6,6 +6,9 @@ import {
 import { llmsTxt, llmsFullTxt } from "../llms";
 import { PLANS } from "../tiers";
 import { SITE_URL } from "../site";
+import { GHOSTWRITER_COST } from "../ghostwriter-cost";
+import fs from "fs";
+import path from "path";
 
 const nodes = (g: Record<string, unknown>) => g["@graph"] as Record<string, unknown>[];
 
@@ -27,9 +30,13 @@ describe("site graph (root layout)", () => {
     for (const u of SAME_AS) expect(u).toMatch(/^https:\/\//);
   });
 
-  it("carries no founder/Person data (site-wide no-personal-info rule) and no SearchAction", () => {
+  it("names the founder and metro only, with no other personal detail (Kyle 2026-11-14), and no SearchAction", () => {
+    expect(org.founder).toEqual({ "@type": "Person", name: "Kyle Ingram" });
+    expect(org.location).toEqual({ "@type": "Place", name: "Dallas-Fort Worth" });
+    expect(org.foundingLocation).toEqual({ "@type": "Place", name: "Dallas-Fort Worth" });
     const s = JSON.stringify(siteGraph());
-    expect(s).not.toMatch(/"founder"|"Person"|SearchAction/);
+    expect(s).not.toMatch(/telephone|streetAddress|postalCode|"image"|"areaServed"|SearchAction/);
+    expect(s).not.toMatch(/714|469-8951/);
   });
 });
 
@@ -106,7 +113,30 @@ describe("llms.txt", () => {
     }
   });
 
-  it("repeats no unsourced ghostwriter cost figure", () => {
-    for (const s of [short, full]) expect(s).not.toMatch(/\$10,000|\$30,000|\$50,000|\$80,000/);
+  it("names the founder and metro", () => {
+    for (const s of [short, full]) expect(s).toContain("founded in 2025 by Kyle Ingram and is based in Dallas-Fort Worth");
+  });
+
+  it("quotes only the one sourced ghostwriter range, with its source", () => {
+    expect(full).toContain(GHOSTWRITER_COST.range);
+    expect(full).toContain(GHOSTWRITER_COST.url);
+    for (const s of [short, full]) expect(s).not.toMatch(/\$10,000|\$30,000|\$80,000/);
+  });
+});
+
+describe("ghostwriter cost figure (one sourced range, Kyle 2026-11-14)", () => {
+  const read = (p: string) => fs.readFileSync(path.join(__dirname, "../..", p), "utf8");
+  const files = ["app/pricing/page.tsx", "app/pricing/opengraph-image.tsx", "lib/about-content.ts"];
+
+  it("every page that quotes a ghostwriter cost uses the shared constant", () => {
+    for (const f of files) expect(read(f)).toMatch(/GHOSTWRITER_COST/);
+  });
+
+  it("no old unsourced figures remain where they used to live", () => {
+    for (const f of files) expect(read(f)).not.toMatch(/\$10,000|30,000|80,000|12&ndash;24|12 to 24 months/);
+  });
+
+  it("the source is a real https URL", () => {
+    expect(GHOSTWRITER_COST.url).toMatch(/^https:\/\/reedsy\.com\//);
   });
 });

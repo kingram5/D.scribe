@@ -87,9 +87,9 @@ Run 2026-11-14 against the live site, https://www.d-scribe.app. Read-only: nothi
 2. robots.txt names no AI crawlers. Access works today through `User-agent: *`; explicit groups make the intent unambiguous.
 3. Entity data is fragmented: three different Organization blocks, no WebSite, no logo, no sameAs, Product instead of SoftwareApplication.
    - The about page's offer prices are hard-coded and would go stale the day the v2 plan prices switch on.
-4. **/about has no founder name and no location.** This is deliberate (an earlier site-wide no-personal-info ruling), but the plan asks for both. Needs a ruling; see SEO_GEO_LOG.md.
+4. **/about has no founder name and no location.** This is deliberate (an earlier site-wide no-personal-info ruling), but the plan asks for both. Needs a ruling; see SEO_GEO_LOG.md. **Resolved 2026-11-14:** name and metro added on Kyle's word.
 5. Thin content: the blog has 0 posts (107 words on /blog) and /vs is 143 words. There is no guide or answer content for AI engines to cite. This is Phase 4.
-6. **The ghostwriter cost claim contradicts itself:** /about says "$10,000 to $50,000 per book" and /pricing says "$30,000-$80,000". Neither cites a source. AI engines quote numbers, so pick one and source it.
+6. **The ghostwriter cost claim contradicts itself:** /about says "$10,000 to $50,000 per book" and /pricing says "$30,000-$80,000". Neither cites a source. AI engines quote numbers, so pick one and source it. **Resolved 2026-11-14:** both now use Reedsy's $18,000-$50,000 nonfiction range, with the source cited.
 
 **P2: technical SEO**
 7. **Mobile performance:** home 62 (LCP 6.3 s, the hero video), pricing 75, partners 79, about 80.

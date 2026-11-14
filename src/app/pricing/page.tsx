@@ -5,6 +5,7 @@ import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
+import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
 import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
 const FROM = PLANS.starter.price;
@@ -297,7 +298,11 @@ export default function PricingPage() {
               borderBottom: "1px solid rgba(193,122,71,0.35)",
             }}
           >
-            Traditional ghostwriters charge $30,000&ndash;$80,000 and take 12&ndash;24 months.{" "}
+            {/* One sourced figure, same as /about (src/lib/ghostwriter-cost.ts, Kyle 2026-11-14).
+                The old unsourced "12–24 months" became "months", which the source supports. */}
+            {GHOSTWRITER_COST_SENTENCE}, according to{" "}
+            <a href={GHOSTWRITER_COST.url} rel="noopener" style={{ color: "#F9F7F2", textDecoration: "underline" }}>{GHOSTWRITER_COST.source}</a>,
+            and the writing takes months.{" "}
             <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>
           </p>
         </div>

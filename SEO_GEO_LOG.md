@@ -103,21 +103,40 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
 - Paired local runs moved the LCP element from the video to the still, but LCP time did not reach green. The next lever is render-blocking CSS and fonts.
 - Nothing on this branch depends on it: no middleware `.webp` change, no poster image, no landing-page change.
 
-## Blocked on Kyle
-1. **Founder name and location on /about (ruling).**
-   - The plan asks for the founder's name and metro area on /about and in the Organization data.
-   - A standing site rule (2026-09-19) says no personal info on the site: no name, location, headshot or Person schema.
-   - The narrower standing rule wins until Kyle lifts it, so this branch adds neither.
-   - Pick: allow the name plus the metro area only (no headshot, no street address). Entity clarity is the main thing AI engines reward on an about page. It is a five-minute change once approved.
-2. **Ghostwriter cost figure (ruling).** /about says $10k-$50k and /pricing says $30k-$80k. Pick one range and give a source to cite. Until then neither figure is repeated in `llms.txt`.
-3. **The support email in site-wide data (non-blocking).** `kyle@d-scribe.app` was already public on /about. It now also appears in the Organization `contactPoint` on every page and in `llms.txt`. The 2026-09-19 rule lists "email", so say if it should come out. Pick: keep it, because a support address is the contact AI engines look for.
-4. **Real-iPhone check of the hero (2 minutes).** Open the preview on an iPhone: once with Low Power Mode off (the video should start by itself a beat after load) and once with it on (the still holds; one tap starts the video). Headless Chrome cannot test iOS autoplay rules.
-5. **Merge (ruling).** Open a PR from `seo-geo` and merge when ready. After it is live, run Google's Rich Results Test and the Schema.org validator against www. Previews sit behind Vercel login, so neither tool can read them.
-6. **GEO coverage (logins).** Claude, Grok and the Perplexity website need a signed-in session to answer, so they are "not checked" in the baseline.
+## Kyle's rulings (2026-11-14, "yes" to all four picks)
+1. **Founder name and metro on /about: done.**
+   - The name and metro live in `src/lib/founder.ts` (`FOUNDER_NAME`, `BASED_IN`). Nothing else personal was added: no phone, street address or headshot.
+   - **/about, value statement:** this sentence is appended: "D.scribe was founded in 2025 by Kyle Ingram and is based in Dallas-Fort Worth."
+   - **/about, Key facts:** new rows "Founder: Kyle Ingram" and "Based in: Dallas-Fort Worth".
+   - **Organization JSON-LD:** `founder: {Person, name: "Kyle Ingram"}`, plus `foundingLocation` and `location` set to Place "Dallas-Fort Worth".
+     - Not `areaServed`: D.scribe is web software sold everywhere, and `areaServed` would read as a local-only service.
+   - **`llms.txt` and `llms-full.txt`:** both carry the same founding sentence.
+2. **Ghostwriter cost: one sourced range, everywhere.**
+   - Source: **Reedsy, "How Much Does It Cost to Hire a Ghostwriter? [Rates and Fees]"** (updated Jun 2, 2026), https://reedsy.com/blog/guide/ghostwriter/cost-to-hire/
+   - The quoted line: "a professional ghostwriter typically costs between $18,000 and $50,000 for nonfiction books". Checked 2026-11-14.
+   - **Why Reedsy:** it gives one clear nonfiction range, and D.scribe's books are nonfiction. Gotham Ghostwriters' pricing page contradicts itself: its Basic tier is $40k-$60k in the table but $30k-$60k in the text.
+   - **The constant:** `src/lib/ghostwriter-cost.ts`.
+   - **/about:** "A professional ghostwriter typically costs $18,000 to $50,000 for a nonfiction book, according to Reedsy's pricing guide. D.scribe starts at $25 per month. Same outcome: a finished manuscript in your voice." It is followed by a linked "Source: Reedsy, …" line.
+   - **/pricing:** "A professional ghostwriter typically costs $18,000 to $50,000 for a nonfiction book, according to Reedsy (linked), and the writing takes months."
+     - The old unsourced "12–24 months" became "months", which the source supports.
+   - **/pricing share image:** same range, with "(Reedsy)".
+   - **`llms-full.txt`:** now includes that differentiator with the source URL.
+   - **Guard:** a test fails if any of those files drops the shared constant or brings back an old figure.
+3. **`kyle@d-scribe.app` stays** in the site-wide Organization data and `llms.txt`. No change.
+4. **This merge cut:**
+   - `seo-geo-merge` was built off fresh `origin/master` (`75569aa`).
+   - It carries Phase 0, 1 and 2 plus the GEO results (cherry-picked), these docs, and the rulings above.
+   - It leaves out the hero commit `58d3229` and everything in it: the poster image, the middleware `.webp` change and the landing-page change.
+
+## Still open (Kyle or BMO)
+1. **Hero (branch `seo-geo`, `58d3229`).** Kyle checks it on his iPhone: Low Power Mode off, the video starts a beat after load; on, the still holds and one tap starts it. It then ships on its own on top of master.
+2. **After merge:** run Google's Rich Results Test and the Schema.org validator against www. Previews sit behind Vercel login, so neither tool can read them.
+   - Expected Rich Results notice: SoftwareApplication wants `aggregateRating` or `review`. That stays out until real reviews exist.
+3. **GEO coverage (logins).** Claude, Grok and the Perplexity website need a signed-in session, so they are "not checked" in the baseline.
    - For the weekly checker (Phase 6), the OpenAI, Gemini and Perplexity keys already exist.
-   - Claude cannot use an API key under the subscription-only rule. It would run through a signed-in browser session or the Claude Code CLI on the subscription.
-7. **Facebook in sameAs.** The Facebook Page is left out pending a change to the Page's public contact details (reported separately).
-8. **Not done, needs a ruling or access:**
+   - Claude cannot use an API key under the subscription-only rule. It would run through a signed-in browser or the Claude Code CLI on the subscription.
+4. **Facebook in sameAs.** It stays out pending a change to the Page's public contact details (reported separately).
+5. **Not done, needs a ruling or access:**
    - The `http://d-scribe.app` two-hop redirect (Vercel domain setting).
-   - The next landing-page performance pass: critical CSS, font families, splitting the client component.
+   - The landing-page performance pass: critical CSS, font families, splitting the client component.
    - An on-page FAQ for /pricing (copy).

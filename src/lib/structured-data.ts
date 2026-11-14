@@ -10,8 +10,11 @@
 //
 // Rules:
 // - No aggregateRating or review until real reviews exist.
-// - No founder or Person data: the site carries no personal info (Kyle,
-//   2026-09-19). Article authors are the Organization.
+// - Founder: name only, plus the metro area as the Organization's location
+//   (Kyle, 2026-11-14 lifted the 2026-09-19 no-personal-info rule for exactly
+//   these two facts). No phone, address, headshot or other Person detail.
+//   Not areaServed: D.scribe is web software sold everywhere, and areaServed
+//   would read as a local-only service. Article authors stay the Organization.
 // - sameAs lists only brand profiles verified to resolve publicly.
 // - No SearchAction: the site has no search.
 //
@@ -19,6 +22,7 @@
 
 import { SITE_URL } from "@/lib/site";
 import { PLANS, INK_LIMITS } from "@/lib/tiers";
+import { BASED_IN, FOUNDER_NAME } from "@/lib/founder";
 
 export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
@@ -63,6 +67,9 @@ export function organizationNode(): Json {
     },
     description: DEFINITION,
     foundingDate: "2025",
+    founder: { "@type": "Person", name: FOUNDER_NAME },
+    foundingLocation: { "@type": "Place", name: BASED_IN },
+    location: { "@type": "Place", name: BASED_IN },
     email: SUPPORT_EMAIL,
     contactPoint: {
       "@type": "ContactPoint",

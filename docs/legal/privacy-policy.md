@@ -17,7 +17,8 @@ We may collect the following categories of information:
 - content you upload, including audio files, transcripts, notes, chapter outlines, and generated drafts;
 - billing and subscription details;
 - support messages and feedback;
-- consent choices and preferences.
+- consent choices and preferences;
+- how you found D.scribe: the answer you pick to "How did you hear about D.scribe?" when you first sign in, plus how your first visit arrived (the page you landed on, the site that linked to you, and any campaign tags in that link). We store it with your account and use it only to understand how people find D.scribe; if you decline analytics in the cookie banner, we don't record your first visit and clear anything already saved on your device. (Added 2026-11-14.)
 
 ### Information collected automatically
 - device and browser information;

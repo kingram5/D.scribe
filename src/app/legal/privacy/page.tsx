@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/legal/privacy` },
 };
 
-const LAST_UPDATED = "September 9, 2026";
+const LAST_UPDATED = "November 14, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -40,6 +40,7 @@ export default function PrivacyPolicyPage() {
           "Choices about your project, such as the target reader you pick and whether you list a project publicly.",
           "Support messages and feedback you send us.",
           "Consent choices for cookies and marketing.",
+          "How you found D.scribe: the answer you pick to \"How did you hear about D.scribe?\" when you first sign in, plus how your first visit arrived (the page you landed on, the site that linked to you, and any campaign tags in that link). We store it with your account and use it only to understand how people find D.scribe; if you decline analytics in the cookie banner, we don't record your first visit and clear anything already saved on your device.",
         ]}
       />
       <H3>Information created while you use the service</H3>

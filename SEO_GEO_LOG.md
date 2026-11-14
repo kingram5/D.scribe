@@ -187,4 +187,4 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
   2. Merge. Either order is safe, but migration first means answers are captured from the first deploy.
 - **Kyle items:**
   - Run the migration.
-  - The privacy policy does not mention referrer or UTM collection or the signup question. Consider one line before this goes live.
+  - ~~Privacy policy line~~: done 2026-11-14 (section 2 of /legal/privacy and docs/legal/privacy-policy.md; last-updated date and sitemap lastmod bumped).

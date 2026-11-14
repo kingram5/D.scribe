@@ -103,6 +103,20 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
 - Paired local runs moved the LCP element from the video to the still, but LCP time did not reach green. The next lever is render-blocking CSS and fonts.
 - Nothing on this branch depends on it: no middleware `.webp` change, no poster image, no landing-page change.
 
+## IndexNow (branch `indexnow`, 2026-11-14)
+- **Key file:** `public/37914b4d2ff2dd4260d62c0be0a12eaa.txt`, served at https://www.d-scribe.app/37914b4d2ff2dd4260d62c0be0a12eaa.txt and listed in the middleware's PUBLIC_PATHS (without that, the auth gate 404s it).
+  - The key is public by design: IndexNow proves ownership by fetching that file. No secrets anywhere.
+- **Ping:** `scripts/indexnow-ping.mjs` (plain Node, no dependencies).
+  1. Checks that the key file is live on www.
+  2. Reads every URL in the live sitemap.
+  3. POSTs them in one call to https://api.indexnow.org/indexnow, which shares the ping with Bing, Yandex, Seznam, Naver and others.
+  - If the key file isn't live yet, it sends nothing and exits 0. `--dry-run` prints the payload.
+- **When it runs:** `.github/workflows/indexnow.yml` fires on GitHub `deployment_status` events, only when Vercel reports a successful **Production** deployment, so the new sitemap and key file are already live. It can also be run by hand (workflow_dispatch). No repository secrets are used.
+- **Verified:**
+  - Unit tests (key file content, middleware entry, sitemap parsing, payload shape, workflow trigger) pass.
+  - A dry run against live www read all 15 sitemap URLs. The key file is not live yet (404 until this merges), so the real ping was correctly skipped.
+  - **After merge:** run the workflow once by hand (Actions, then IndexNow ping, then Run workflow) or wait for the next production deploy, and check for HTTP 200 or 202 in the job log.
+
 ## Kyle's rulings (2026-11-14, "yes" to all four picks)
 1. **Founder name and metro on /about: done.**
    - The name and metro live in `src/lib/founder.ts` (`FOUNDER_NAME`, `BASED_IN`). Nothing else personal was added: no phone, street address or headshot.

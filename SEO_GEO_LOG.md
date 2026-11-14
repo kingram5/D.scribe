@@ -1,6 +1,9 @@
 # SEO + GEO implementation log
 
-Running log for the `seo-geo` branch: what changed, what was verified and how, and what is waiting on Kyle. Newest entries at the bottom of each section.
+Running log for the `seo-geo-merge` branch: what changed, what was verified and how, and what is waiting on Kyle. Newest entries at the bottom of each section.
+
+- This branch is the merge-ready cut: Phases 0-2, Kyle's 2026-11-14 rulings and these docs.
+- **The hero video change is not here.** It lives on branch `seo-geo` (commit `58d3229`) and ships separately after Kyle checks it on his iPhone.
 
 ## Ground rules on this branch
 - Nothing merges to master and nothing deploys to production from here. Kyle merges.
@@ -42,7 +45,7 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
 - **Verified:**
   - Type check is clean.
   - New `seo.test.ts` (robots groups, the /partners prefix trap, description lengths) and `app-routes.test.ts` pass.
-  - Full suite: 567 of 570 pass, 1 expected-fail. The rest were 5-second timeouts in `plans-v2.test.ts` under full-suite load; that file passes 4 of 4 on its own.
+  - Full suite on a busy machine: 567 of 570 pass, 1 expected-fail. The rest were 5-second timeouts in `plans-v2.test.ts` under load; that file passes 4 of 4 on its own.
   - Live raw-HTML checks come with the preview below.
 - **Not done (needs a ruling or out of scope):**
   - The two-hop `http://d-scribe.app` redirect is a Vercel domain setting.
@@ -78,7 +81,7 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - Quotable one-paragraph definition: present.
   - Founding year (2025): present.
   - Contact email: present.
-  - **Founder name and Dallas-Fort Worth: not added.** This is held by the standing no-personal-info rule; see Blocked on Kyle #1.
+  - **Founder name and metro area: not added.** This is held by the standing no-personal-info rule; see Blocked on Kyle #1.
 - **Verified:**
   - Type check is clean.
   - New `structured-data.test.ts` covers:
@@ -93,10 +96,28 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
 - **Rich Results Test and the Schema.org validator need a public URL.** The preview sits behind Vercel login, so those run after merge on the live site (Kyle's call when to merge).
   - Expected Rich Results warning: SoftwareApplication rich results want `aggregateRating` or `review`. That stays out until real reviews exist. It is a missing-enhancement notice, not a schema error.
 
+## Hero video (not on this branch)
+- Poster-first hero: the still loads as the LCP element and the video starts after load + idle.
+- It is on branch `seo-geo` as commit `58d3229`, with its measurements in that branch's log and `seo-geo-evidence/hero-lighthouse-local.json`.
+- It is held until Kyle checks it on a real iPhone (Low Power Mode on and off).
+- Paired local runs moved the LCP element from the video to the still, but LCP time did not reach green. The next lever is render-blocking CSS and fonts.
+- Nothing on this branch depends on it: no middleware `.webp` change, no poster image, no landing-page change.
+
 ## Blocked on Kyle
 1. **Founder name and location on /about (ruling).**
-   - The plan asks for "Kyle Ingram" and "Dallas-Fort Worth" on /about and in the Organization data.
+   - The plan asks for the founder's name and metro area on /about and in the Organization data.
    - A standing site rule (2026-09-19) says no personal info on the site: no name, location, headshot or Person schema.
    - The narrower standing rule wins until Kyle lifts it, so this branch adds neither.
    - Pick: allow the name plus the metro area only (no headshot, no street address). Entity clarity is the main thing AI engines reward on an about page. It is a five-minute change once approved.
 2. **Ghostwriter cost figure (ruling).** /about says $10k-$50k and /pricing says $30k-$80k. Pick one range and give a source to cite. Until then neither figure is repeated in `llms.txt`.
+3. **The support email in site-wide data (non-blocking).** `kyle@d-scribe.app` was already public on /about. It now also appears in the Organization `contactPoint` on every page and in `llms.txt`. The 2026-09-19 rule lists "email", so say if it should come out. Pick: keep it, because a support address is the contact AI engines look for.
+4. **Real-iPhone check of the hero (2 minutes).** Open the preview on an iPhone: once with Low Power Mode off (the video should start by itself a beat after load) and once with it on (the still holds; one tap starts the video). Headless Chrome cannot test iOS autoplay rules.
+5. **Merge (ruling).** Open a PR from `seo-geo` and merge when ready. After it is live, run Google's Rich Results Test and the Schema.org validator against www. Previews sit behind Vercel login, so neither tool can read them.
+6. **GEO coverage (logins).** Claude, Grok and the Perplexity website need a signed-in session to answer, so they are "not checked" in the baseline.
+   - For the weekly checker (Phase 6), the OpenAI, Gemini and Perplexity keys already exist.
+   - Claude cannot use an API key under the subscription-only rule. It would run through a signed-in browser session or the Claude Code CLI on the subscription.
+7. **Facebook in sameAs.** The Facebook Page is left out pending a change to the Page's public contact details (reported separately).
+8. **Not done, needs a ruling or access:**
+   - The `http://d-scribe.app` two-hop redirect (Vercel domain setting).
+   - The next landing-page performance pass: critical CSS, font families, splitting the client component.
+   - An on-page FAQ for /pricing (copy).

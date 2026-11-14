@@ -3,6 +3,7 @@ import Link from "next/link";
 import { VS_PAGES, SOURCED_NOTE } from "@/lib/vs-pages";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 /**
  * /vs — index of the comparison pages (HeyCatch action plan).
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/vs`,
     siteName: "D.scribe",
     type: "website",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

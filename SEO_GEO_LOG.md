@@ -22,6 +22,34 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - `llms.txt` returns 404.
 - The GEO baseline is in `geo-baseline.md`.
 
+## Phase 1: technical SEO foundation (2026-11-14)
+- **Already in place from the 10/30 crawl fixes:**
+  - Server-rendered marketing pages, unique titles, www canonicals, sitemap, real 404s.
+  - Apex→www and http→https 308s.
+  - Not redone here.
+- **Changed:**
+  - `robots.ts`:
+    - Added a second group naming the 11 AI and search crawlers.
+    - That group repeats the exact allow and disallow lists of `*`. A crawler obeys only its most specific group, so a bare `Allow: /` group would have opened /api/ and the app to those bots.
+    - Added /vs, /partners, /llms.txt and /llms-full.txt to the allow list.
+  - Meta descriptions now fit in 155 characters on the 7 pages that ran long: /, /pricing, /blog, /partners and the three /vs pages, plus the root default.
+    - The /vs pages build theirs from whole sentences (`fitDescription` in `src/lib/seo.ts`).
+  - og:image added to /about, /blog, /vs and /vs/*. These pages' own openGraph object had dropped the inherited generated card.
+  - Sitemap lastmod no longer reports the request time.
+    - Fixed dates for /, /pricing and /about.
+    - /blog uses its newest post's date.
+  - Favicon set: added `src/app/icon.png` (192 px) and `src/app/apple-icon.png` (180 px), cut from the existing D. logo. `favicon.ico` stays.
+- **Verified:**
+  - Type check is clean.
+  - New `seo.test.ts` (robots groups, the /partners prefix trap, description lengths) and `app-routes.test.ts` pass.
+  - Full suite: 567 of 570 pass, 1 expected-fail. The rest were 5-second timeouts in `plans-v2.test.ts` under full-suite load; that file passes 4 of 4 on its own.
+  - Live raw-HTML checks come with the preview below.
+- **Not done (needs a ruling or out of scope):**
+  - The two-hop `http://d-scribe.app` redirect is a Vercel domain setting.
+  - Site-wide font payload (mobile text LCP on pricing, about and partners).
+  - Color-contrast fixes.
+  - The "HERE" link text, which was kept on purpose.
+
 ## Blocked on Kyle
 1. **Founder name and location on /about (ruling).**
    - The plan asks for "Kyle Ingram" and "Dallas-Fort Worth" on /about and in the Organization data.

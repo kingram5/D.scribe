@@ -36,28 +36,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
+  // lastmod is the date a page's content last changed, never the request time:
+  // a lastmod that is always "now" teaches search engines to ignore it
+  // (SEO/GEO audit 2026-11-14). Bump these dates when the page really changes.
+  const newestPost = (posts ?? [])
+    .map((p) => p.updated_at ?? p.published_at)
+    .filter(Boolean)
+    .sort()
+    .pop();
+
   return [
     {
       url: SITE_URL,
-      lastModified: new Date(),
+      lastModified: new Date("2026-11-14"),
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
       url: `${SITE_URL}/pricing`,
-      lastModified: new Date(),
+      lastModified: new Date("2026-11-14"),
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/about`,
-      lastModified: new Date("2026-09-10"),
+      lastModified: new Date("2026-11-14"),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${SITE_URL}/blog`,
-      lastModified: new Date(),
+      lastModified: newestPost ? new Date(newestPost) : new Date("2026-11-14"),
       changeFrequency: "daily",
       priority: 0.8,
     },

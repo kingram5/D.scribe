@@ -5,6 +5,7 @@ import { FAQ_ITEMS } from "@/components/landing/faq";
 import { PLANS } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 /**
  * /about — the founding story (HeyCatch 2026-09-10 item 2), expanded into a
@@ -30,6 +31,7 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/about`,
     siteName: "D.scribe",
     type: "website",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     template: "%s | D.scribe",
     default: "D.scribe — Turn Your Voice Into a Published Book with AI",
   },
-  description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+  description: "D.scribe turns your voice recordings into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
   openGraph: {
     siteName: "D.scribe",
     type: "website",

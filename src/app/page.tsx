@@ -11,7 +11,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "D.scribe — Turn Your Voice Into a Published Book with AI",
-  description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+  description: "D.scribe turns your voice recordings into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
   alternates: {
     canonical: SITE_URL,
   },

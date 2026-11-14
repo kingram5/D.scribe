@@ -85,6 +85,16 @@ export async function POST() {
     logger.error("Account deletion: deleted-email record failed", { route: "/api/account/delete", userId, error: err });
   }
 
+  // 3.6 Signup attribution answer (migration 033). The row also cascades with
+  // the auth user below; this explicit delete is best-effort and never blocks
+  // deletion (the table may not exist yet).
+  try {
+    const { error: attrErr } = await supabase.from("user_attribution").delete().eq("user_id", userId);
+    if (attrErr) throw new Error(attrErr.message);
+  } catch (err) {
+    logger.warn("Account deletion: attribution row not deleted explicitly (cascade still applies)", { route: "/api/account/delete", userId, error: err });
+  }
+
   // 4. Finally remove the auth user (irreversible) via the service-role admin API.
   const { error: delErr } = await supabase.auth.admin.deleteUser(userId);
   if (delErr) {

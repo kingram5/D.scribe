@@ -154,3 +154,37 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
    - The `http://d-scribe.app` two-hop redirect (Vercel domain setting).
    - The landing-page performance pass: critical CSS, font families, splitting the client component.
    - An on-page FAQ for /pricing (copy).
+
+## Phase 3b: "How did you hear about us?" (branch `signup-attribution`, Kyle approved 2026-11-14)
+- **Where it appears:**
+  - Sign-up is Google or a magic link, with no form, so the question is a first-run dialog in the signed-in app's layout.
+  - It shows for an account that has no answer and no project yet, before the first book.
+- **Required:** there is no skip or close control, and Continue stays disabled until an option is chosen. The API rejects a missing or unknown answer with a 400.
+- **Options:** the plan's 13, verbatim, shuffled on every showing with Other last. Other opens an optional free-text box (200 characters).
+- **Passive capture (first visit, this browser):** the landing path plus `utm_*` only, the referrer's origin and path (query stripped), a no-referrer flag and a timestamp, kept in localStorage under `ds_first_touch`.
+  - Never on app or auth paths.
+  - Skipped and cleared when the visitor has declined analytics in the cookie banner.
+  - Sent once, with the answer, then cleared.
+  - "Nothing captured" is stored as `null`, which is different from "captured, no referrer".
+- **AI tagging (server):** the POST route tags chatgpt.com / chat.openai.com, perplexity.ai, claude.ai, gemini.google.com and copilot.microsoft.com by exact host or subdomain (never a substring match), plus `utm_source` values such as `chatgpt.com`.
+  - Inputs are browser-supplied, so treat them as a signal, not proof.
+- **Storage:** new table `user_attribution`, one row per account (there is no profiles table).
+  - Migration: `supabase/migrations/033_signup_attribution.sql`. It is 033 because 032 is the ChatGPT app's.
+  - RLS matches 031: read your own row only. All writes go through server code with the service role.
+  - The row is deleted with the account (cascade), plus a best-effort explicit delete in `/api/account/delete`.
+  - Rollback: `supabase/rollbacks/033_signup_attribution_rollback.sql`, kept outside `migrations/` on purpose.
+- **Fails soft:** with the table missing or any query failing, GET says the question isn't needed and POST answers 200 `{stored:false}`. A deploy before the migration cannot block signup.
+- **Admin:** `/admin/attribution`, behind the same admin gate as `/admin/partners` (session only).
+  - It shows answers by source, by UTC week (last 12), what people said vs what the first-visit referrer shows, the AI self-reported vs passive gap, conversion to paid by source, and the "Other" answers.
+  - "Paid" means on a paid plan now: tier is not Free and the account is not a comp partner account.
+- **Verified:**
+  - Type check is clean.
+  - Full suite: 54 of 54 files, 622 passed plus 1 expected-fail.
+  - New tests cover: required answer (400 and disabled Continue), shuffle keeping Other last, persistence (first touch never overwritten, app paths skipped, cleared on declined analytics), AI tagging including look-alike hosts, fail-soft GET and POST, admin summary, and the SQL value lists matching the code.
+  - The dialog UI was checked as a static render in headless Chrome at 390 px and 1280 px. It has not been seen in the signed-in app.
+- **Deploy order:**
+  1. Kyle runs `033_signup_attribution.sql` in the Supabase SQL editor.
+  2. Merge. Either order is safe, but migration first means answers are captured from the first deploy.
+- **Kyle items:**
+  - Run the migration.
+  - The privacy policy does not mention referrer or UTM collection or the signup question. Consider one line before this goes live.

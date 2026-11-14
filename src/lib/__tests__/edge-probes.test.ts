@@ -515,7 +515,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
   ]);
   // Admin-only routes: every handler calls requirePartnerAdmin (Kyle's signed-in
   // email or, where allowed, the machine key). They read across users by design.
-  const ADMIN_ROUTES = new Set(["admin/partners", "admin/partners/payouts"]);
+  const ADMIN_ROUTES = new Set(["admin/partners", "admin/partners/payouts", "admin/attribution"]);
   // Ownership resolved through the caller's own partner record counts as scoped.
   const OWNER_SCOPED = /\.eq\(\s*["']user_id["']|findPartnerForUser\(\s*user\.id/;
 

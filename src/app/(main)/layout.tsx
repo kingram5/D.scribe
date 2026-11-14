@@ -1,12 +1,15 @@
 import OsBar from "@/components/ui/OsBar";
 import { CheckoutOutcome } from "@/components/analytics/CheckoutOutcome";
 import { ReferralClaimer } from "@/components/partners/ReferralClaimer";
+import { AttributionGate } from "@/components/attribution/AttributionGate";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CheckoutOutcome />
       <ReferralClaimer />
+      {/* First-run "How did you hear about us?" (Phase 3b). Fails soft. */}
+      <AttributionGate />
       <style>{`
         @media (max-width: 768px) {
           .ds-main-layout { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100dvh !important; }

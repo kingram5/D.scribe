@@ -24,9 +24,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "run_id, chapter_id and step (draft|edit|revise|final) required" }, { status: 400 });
   }
   const db = createServerClient();
-  const { data: run } = await db.from("pr_runs").select("id, status").eq("id", run_id).eq("user_id", user.id).single();
+  const { data: run } = await db.from("pr_runs").select("id, status, project_id").eq("id", run_id).eq("user_id", user.id).single();
   if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
   if (run.status === "done" || run.status === "cancelled") return NextResponse.json({ error: "This run is finished." }, { status: 409 });
+
+  const { data: chapter } = await db.from("chapters").select("id").eq("id", chapter_id).eq("project_id", run.project_id).single();
+  if (!chapter) return NextResponse.json({ error: "Chapter not found in this run" }, { status: 404 });
 
   const ink = await checkInk(user.id, OP[step]);
   if (!ink.allowed) return NextResponse.json({ error: "out_of_ink", message: ink.reason }, { status: 402 });
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
       // Heartbeat every 10s: thinking-heavy steps can be silent for minutes.
       const beat = setInterval(() => send({ heartbeat: true }), 10_000);
       try {
-        const base = { userId: user.id, runId: run_id, chapterId: chapter_id };
+        const base = { userId: user.id, runId: run_id, chapterId: chapter_id, signal: req.signal };
         let result: unknown;
         if (step === "draft") result = await stepDraft({ ...base, creativeFreedom: creative_freedom, onText: (chunk) => send({ chunk }) });
         else if (step === "edit") result = await stepEdit(base);

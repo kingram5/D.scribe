@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import PageShell from "@/components/ui/PageShell";
 import GlassCard from "@/components/ui/GlassCard";
 import Spinner from "@/components/ui/Spinner";
+import { TheoLivePanel } from "@/components/publisher-ready/TheoLivePanel";
 import BrainstormChat from "@/components/upload/BrainstormChat";
 
 interface RunRow { id: string; status: string }
@@ -21,6 +22,9 @@ export default function InterviewPage() {
   const [loading, setLoading] = useState(true);
   const [run, setRun] = useState<RunRow | null>(null);
   const [progress, setProgress] = useState<InterviewProgress | null>(null);
+  const [liveAvailable, setLiveAvailable] = useState(false);
+  const [liveRoom, setLiveRoom] = useState(false);
+  useEffect(() => { fetch("/api/theo/live").then(r => r.ok ? r.json() : null).then(d => setLiveAvailable(d?.available === true)).catch(() => {}); }, []);
   const [inRoom, setInRoom] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [editorDone, setEditorDone] = useState(false);
@@ -93,6 +97,7 @@ export default function InterviewPage() {
               </p>
             )}
             <div className="ds-pr-actions" style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginTop: 22 }}>
+              {liveAvailable && <button className="ds-pr-btn" disabled={!ready || finishing} onClick={() => setLiveRoom(true)} style={primary}>Talk with Theo Live</button>}
               <button className="ds-pr-btn" onClick={() => setInRoom(true)} disabled={!ready || finishing} style={primary}>
                 {progress?.answered ? "Back into the interview" : "Start the interview"}
               </button>
@@ -104,7 +109,8 @@ export default function InterviewPage() {
         )}
       </div>
 
-      {inRoom && run && (
+      {liveRoom && run && <TheoLivePanel runId={run.id} onBack={() => setLiveRoom(false)} onTyped={() => { setLiveRoom(false); setInRoom(true); }} />}
+      {inRoom && !liveRoom && run && (
         <BrainstormChat
           projectId={projectId}
           autoStart

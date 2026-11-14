@@ -1,3 +1,4 @@
+import { callPublisherModel, isProviderMetered, withRunProvider } from "@/lib/ai/execution";
 /**
  * Second interview (server side). Serves the next question in round-robin
  * order, drops questions an earlier answer already covered, stores answers,
@@ -5,7 +6,7 @@
  */
 
 import { createServerClient } from "@/lib/supabase";
-import { callClaudeNext, parseJsonReply } from "@/lib/claude-next";
+import { parseJsonReply } from "@/lib/claude-next";
 import { recordInkUsage } from "@/lib/ink";
 import { nextQuestion, progress, type RRQuestion } from "./round-robin";
 import { COVERAGE_SCHEMA, coverageSystem, followUpSystem } from "./prompts";
@@ -45,7 +46,7 @@ export interface InterviewState {
  * The next question to put to the author. A question already marked "asked"
  * (served but not answered, e.g. the tab was closed) is served again first.
  */
-export async function serveNext(userId: string, runId: string): Promise<InterviewState> {
+async function executeServeNext(userId: string, runId: string): Promise<InterviewState> {
   const db = createServerClient();
   const run = await loadRun(db, userId, runId);
   if (run.status === "drafting" || run.status === "editing") {
@@ -108,40 +109,94 @@ async function coveredByEarlierAnswer(
     const q = (a as unknown as { pr_questions: { question: string } }).pr_questions;
     return `${i + 1}. Q: ${q?.question ?? ""}\n   A: ${a.transcript}`;
   }).join("\n");
-  const res = await callClaudeNext(coverageSystem(), `PENDING QUESTION: ${row.question}\n\nANSWERS SO FAR:\n${list}`, {
-    ...m, maxTokens: 2000, jsonSchema: COVERAGE_SCHEMA as unknown as Record<string, unknown>,
+  const res = await callPublisherModel(coverageSystem(), `PENDING QUESTION: ${row.question}\n\nANSWERS SO FAR:\n${list}`, {
+    ...m, stage: "coverage", maxTokens: 2000, jsonSchema: COVERAGE_SCHEMA as unknown as Record<string, unknown>,
   });
-  await recordInkUsage(userId, projectId, "pr_interview", m.model, res.usage);
+  if (!isProviderMetered()) await recordInkUsage(userId, projectId, "pr_interview", m.model, res.usage);
   const out = parseJsonReply<{ covered: boolean; covered_by_index: number | null }>(res.text);
   if (!out.covered || !out.covered_by_index) return null;
   return answers[out.covered_by_index - 1]?.id ?? null;
 }
 
 /**
+ * True when PostgREST says pr_answers.source_event_key isn't there: the
+ * 20261008231000 migration hasn't run yet, or ran but the schema cache hasn't
+ * reloaded. 42703 comes back on a filter, PGRST204 on an insert. Narrow on
+ * purpose: any other error (a 23505 duplicate included) is NOT a reason to save
+ * without the key.
+ */
+export function isMissingSourceKeyColumn(err: { code?: string; message?: string } | null | undefined): boolean {
+  return !!err && (err.code === "42703" || err.code === "PGRST204") && /source_event_key/.test(err.message ?? "");
+}
+
+/**
  * Store an answer. Returns a follow-up question when the answer is vague and
  * this was not already a follow-up; otherwise marks the question answered.
+ *
+ * Two contracts (2026-11-14, PR #47 review):
+ * - Runs pinned to the OpenAI provider (and Theo Live, which only runs on them)
+ *   are strict: over 8,000 characters is refused, answers after the interview
+ *   stage are refused, and a follow-up must point at this question's answer.
+ * - Every other run keeps production's behaviour exactly: trimmed to 8,000
+ *   characters, accepted at any stage. Its request-id dedupe is best-effort and
+ *   steps aside when the source_event_key column isn't there yet, so this code
+ *   can ship before its migration without breaking anyone's interview.
  */
-export async function submitAnswer(opts: {
-  userId: string; runId: string; questionId: string; transcript: string; source: "typed" | "voice"; followUpOf?: string | null;
+async function executeSubmitAnswer(opts: {
+  userId: string; runId: string; questionId: string; transcript: string; source: "typed" | "voice"; followUpOf?: string | null; sourceEventKey?: string;
 }): Promise<{ followUp: string | null; answerId: string }> {
   const db = createServerClient();
   const run = await loadRun(db, opts.userId, opts.runId);
-  const text = opts.transcript.trim().slice(0, 8000);
+  const strict = isProviderMetered();
+  let text: string;
+  if (strict) {
+    if (!["editing", "interviewing"].includes(run.status)) throw new StepError("This interview is no longer accepting answers.", 409);
+    if (opts.transcript.length > 8000) throw new StepError("Answer exceeds 8000 characters.", 400);
+    text = opts.transcript.trim();
+  } else {
+    text = opts.transcript.trim().slice(0, 8000);
+  }
   if (!text) throw new StepError("Answer is empty.");
   const { data: q } = await db.from("pr_questions").select("id, question, status").eq("id", opts.questionId).eq("run_id", opts.runId).single();
   if (!q) throw new StepError("Question not found", 404);
 
-  const { data: answer, error } = await db.from("pr_answers").insert({
-    question_id: q.id, run_id: opts.runId, user_id: opts.userId, transcript: text, source: opts.source,
-    follow_up_of: opts.followUpOf ?? null,
-  }).select("id").single();
-  if (error || !answer) throw error ?? new StepError("Could not save answer", 500);
+  if (strict && opts.followUpOf) {
+    const { data: parent } = await db.from("pr_answers").select("id").eq("id", opts.followUpOf).eq("run_id", opts.runId).eq("question_id", q.id).eq("user_id", opts.userId).single();
+    if (!parent) throw new StepError("Answer not found", 404);
+  }
+
+  let sourceKey = opts.sourceEventKey;
+  let existing: { id: string; question_id: string; transcript: string } | null = null;
+  if (sourceKey) {
+    const found = await db.from("pr_answers").select("id, question_id, transcript").eq("run_id", opts.runId).eq("source_event_key", sourceKey).maybeSingle();
+    if (found.error) {
+      if (strict || !isMissingSourceKeyColumn(found.error)) throw found.error;
+      sourceKey = undefined; // pre-migration database: save the way production does
+    } else {
+      existing = found.data;
+    }
+  }
+  if (existing && (existing.question_id !== q.id || existing.transcript !== text)) throw new StepError("This answer was already saved. Refresh the interview.", 409);
+
+  let answer: { id: string } | null = existing;
+  if (!answer) {
+    const row: Record<string, unknown> = {
+      question_id: q.id, run_id: opts.runId, user_id: opts.userId, transcript: text, source: opts.source,
+      follow_up_of: opts.followUpOf ?? null,
+    };
+    let saved = await db.from("pr_answers").insert(sourceKey ? { ...row, source_event_key: sourceKey } : row).select("id").single();
+    if (saved.error && sourceKey && !strict && isMissingSourceKeyColumn(saved.error)) {
+      saved = await db.from("pr_answers").insert(row).select("id").single();
+    }
+    if (saved.error || !saved.data) throw saved.error ?? new StepError("Could not save answer", 500);
+    answer = saved.data;
+  }
 
   let followUp: string | null = null;
   if (!opts.followUpOf) {
     const m = STEP_MODELS.interview;
-    const res = await callClaudeNext(followUpSystem(), `QUESTION: ${q.question}\n\nANSWER: ${text}`, { ...m, maxTokens: 1500 });
-    await recordInkUsage(opts.userId, run.project_id, "pr_interview", m.model, res.usage);
+    const res = await callPublisherModel(followUpSystem(), `QUESTION: ${q.question}\n\nANSWER: ${text}`, { ...m, stage: "interview", maxTokens: 1500 });
+    if (!isProviderMetered()) await recordInkUsage(opts.userId, run.project_id, "pr_interview", m.model, res.usage);
     const reply = res.text.trim();
     if (reply && !/^DONE\b/i.test(reply)) followUp = reply.slice(0, 400);
   }
@@ -190,3 +245,6 @@ export async function editorFinished(userId: string, runId: string): Promise<boo
   const read = new Set((passes ?? []).map((p) => p.chapter_id));
   return (chapters ?? []).length > 0 && (chapters ?? []).every((c) => read.has(c.id));
 }
+
+export async function serveNext(userId: string, runId: string) { return withRunProvider(userId, runId, () => executeServeNext(userId, runId)); }
+export async function submitAnswer(opts: Parameters<typeof executeSubmitAnswer>[0]) { return withRunProvider(opts.userId, opts.runId, () => executeSubmitAnswer(opts)); }

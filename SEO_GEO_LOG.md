@@ -132,3 +132,32 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
    - The narrower standing rule wins until Kyle lifts it, so this branch adds neither.
    - Pick: allow the name plus the metro area only (no headshot, no street address). Entity clarity is the main thing AI engines reward on an about page. It is a five-minute change once approved.
 2. **Ghostwriter cost figure (ruling).** /about says $10k-$50k and /pricing says $30k-$80k. Pick one range and give a source to cite. Until then neither figure is repeated in `llms.txt`.
+3. **The support email in site-wide data (non-blocking).** `kyle@d-scribe.app` was already public on /about. It now also appears in the Organization `contactPoint` on every page and in `llms.txt`. The 2026-09-19 rule lists "email", so say if it should come out. Pick: keep it, because a support address is the contact AI engines look for.
+4. **Real-iPhone check of the hero (2 minutes).** Open the preview on an iPhone: once with Low Power Mode off (the video should start by itself a beat after load) and once with it on (the still holds; one tap starts the video). Headless Chrome cannot test iOS autoplay rules.
+5. **Merge (ruling).** Open a PR from `seo-geo` and merge when ready. After it is live, run Google's Rich Results Test and the Schema.org validator against www. Previews sit behind Vercel login, so neither tool can read them.
+6. **GEO coverage (logins).** Claude, Grok and the Perplexity website need a signed-in session to answer, so they are "not checked" in the baseline.
+   - For the weekly checker (Phase 6), the OpenAI, Gemini and Perplexity keys already exist.
+   - Claude cannot use an API key under the subscription-only rule. It would run through a signed-in browser session or the Claude Code CLI on the subscription.
+7. **Facebook in sameAs.** The Facebook Page is left out pending a change to the Page's public contact details (reported separately).
+8. **Not done, needs a ruling or access:**
+   - The `http://d-scribe.app` two-hop redirect (Vercel domain setting).
+   - The next landing-page performance pass: critical CSS, font families, splitting the client component.
+   - An on-page FAQ for /pricing (copy).
+
+## Preview verification (2026-11-14)
+- **Branch pushed:** `seo-geo` at `58d3229` (hero commit).
+- **Vercel preview:** https://d-scribe-1yjxw0rsm-kyles-projects-6adbe8c9.vercel.app (status "Deployment has completed"). It sits behind Vercel login and returns a 302 to Vercel SSO when fetched anonymously.
+- **Checked from a signed-in browser tab, reading raw responses (no JavaScript rendering):**
+  - `/robots.txt` = 200, with the named AI-crawler group.
+  - `/llms.txt` = 200, 501 words. `/llms-full.txt` = 200, 2,752 words.
+  - `/` = 200, JSON-LD Organization + WebSite + WebPage + SoftwareApplication + FAQPage, the still and its preload in the HTML, no SSR video.
+  - `/pricing` = 200, Organization + WebSite + WebPage + SoftwareApplication.
+  - `/about` = 200, AboutPage.
+  - `/legal/terms` = 200, BreadcrumbList.
+  - `/vs/dictate` = 200, FAQPage + BreadcrumbList.
+  - `/bg-video-poster.webp`, `/icon.png`, `/apple-icon.png` and `/sitemap.xml` = 200.
+  - An unknown path = 404.
+- **Lighthouse through the signed-in browser profile (needed to get past Vercel login; warm cache, extensions present, so not comparable to the paired local runs):**
+  - Live home: perf 72-73, LCP 1.5-1.6 s (element: video).
+  - Preview home: perf 54 then 75, LCP 5.6 s cold then 1.7 s warm (element: the still).
+  - Preview SEO scores 58 only because Vercel sends `noindex` on preview deployments.

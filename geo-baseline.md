@@ -28,14 +28,15 @@ Prompts 1-4 come from the plan. Prompts 5-10 cover the audiences the site target
 ### Engines
 | Engine | How it was checked | Answers | D.Scribe named | Web search |
 |---|---|---|---|---|
-| ChatGPT | chatgpt.com, signed out, fresh chat per prompt | 10 | 0 | Source links in 9 of 10 answers |
-| Gemini | gemini.google.com, signed-in session, **temporary chat** (no history, no personal context) | 10 | 0 | Not visible in the captured text |
+| ChatGPT | chatgpt.com, signed out, fresh chat per prompt | 10 | 0 | Not determined. 9 of 10 answers carried product links tagged `utm_source=chatgpt.com`. |
+| Gemini | gemini.google.com, signed-in session, **temporary chat** (no history, no personal context) | 10 | 0 | Not determined. A "Searching the web" label appears in 8 of 10 captures; it may be interface text. |
 | Perplexity | **Sonar API** (model `sonar`). The website answers signed-out visitors with "Sign up and repeat your request". | 10 | 0 | Yes, 10 citations each |
 | Claude | not checked: needs login | - | - | - |
 | Grok | not checked: needs login (signed-out visitors get "Sign up to continue") | - | - | - |
 
 - The Perplexity row comes from the API, not the consumer website. Sonar runs the same live web search, but the answer can differ from what a signed-in user sees.
-- ChatGPT answered prompt 2 ("ghostwriting software") with a clarifying question and named no tools.
+- On prompt 2 ("ghostwriting software"), ChatGPT's captured text was only a clarifying question, but the answer linked 5 products (Sudowrite, Jasper, Scrivener, Writesonic, Reedsy), probably as product cards the text capture missed.
+- **ChatGPT's links also name voice-to-book tools the text tally missed:** getthescribe.com (prompts 5 and 8), lecturetobook.com, spokenprint.com, vellu.ai, olmo.live, toldstories.co and pressrun.ai. These are the closest category rivals for the voice-first prompts.
 
 ### Who gets named instead
 Counts are how many of the 30 answers name each product. Each engine's mentions of itself are excluded.

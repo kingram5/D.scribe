@@ -79,7 +79,7 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - Quotable one-paragraph definition: present.
   - Founding year (2025): present.
   - Contact email: present.
-  - **Founder name and Dallas-Fort Worth: not added.** This is held by the standing no-personal-info rule; see Blocked on Kyle #1.
+  - **Founder name and metro area: not added.** This is held by the standing no-personal-info rule; see Blocked on Kyle #1.
 - **Verified:**
   - Type check is clean.
   - New `structured-data.test.ts` covers:
@@ -108,7 +108,7 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - **Middleware.** The matcher now excludes `.webp`. Without that, the auth gate 404s the new still for anonymous visitors. The live site already 404s `/theo-portrait.webp` the same way, though nothing links to that file.
 - **Verified on a local production build:**
   - **LCP entries:** the list ends on the IMG in 4 of 4 probe runs (412×823 viewport, 1.75 DPR, one run with cache disabled). The video ends playing, visible, full size, with the still hidden.
-  - **Same look:** the video box equals the hero box at mobile and desktop. Opacity is 0.5 on mobile and 1 on desktop, as on live. Screenshot pairs against the live site match.
+  - **Same look:** the video box equals the hero box at mobile and desktop. Opacity is 0.5 on mobile and 1 on desktop, as on live. The mobile screenshot matches the live site's. The desktop screenshot was checked on its own, not side by side with live.
   - **Raw HTML:** the still and its preload link are present, and there is no SSR `<video>`.
   - **Lighthouse mobile, local build, back-to-back runs on the same machine:**
 
@@ -118,16 +118,20 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
 | Applied (devtools) throttling | perf 63, LCP 3.0 s (one outlier run at 32 / 5.8 s) | perf 61-62, LCP 3.1 s |
 
   - CLS is 0.005-0.006 in all runs, unchanged.
-  - **Honest read:** the LCP element moved from the video to the still, and blocking time roughly halved. LCP itself is still not green.
+  - **Honest read: green LCP was not achieved.**
+    - LCP time barely moved in any measurement: 5.3 → 5.1 s simulated, 3.0 → 3.1 s applied, and 7.2 → 7.1 s in an earlier simulated set.
+    - What did change is the LCP element: it moved from the video to the still.
+    - The simulated pair also showed score +5 and TBT halved. The applied-throttling pair did not (score 63 → 61-62, TBT 1,260 → 1,310-1,390 ms). With only 2 runs each, call the score effect unproven.
     - LCP is now pinned to first paint: FCP is 2.7-3.0 s on this machine.
     - First paint is held back by 3 render-blocking stylesheets (Lighthouse estimates 1.15 s of savings) and the landing page's JavaScript.
     - Live mobile before this branch: perf 62, LCP 6.3 s.
   - The next perf steps are separate work: inline or trim the critical CSS, cut the 16 declared font families, and split the 1,700-line client landing component.
-  - Earlier local runs on this PC came in about 20 points lower across the board (machine load). Only the paired runs above are compared.
+  - Earlier local runs on this PC came in about 20 points lower across the board. The cause was not established. Only the paired runs above are compared.
+  - Desktop was not re-measured after the hero change.
 
 ## Blocked on Kyle
 1. **Founder name and location on /about (ruling).**
-   - The plan asks for "Kyle Ingram" and "Dallas-Fort Worth" on /about and in the Organization data.
+   - The plan asks for the founder's name and metro area on /about and in the Organization data.
    - A standing site rule (2026-09-19) says no personal info on the site: no name, location, headshot or Person schema.
    - The narrower standing rule wins until Kyle lifts it, so this branch adds neither.
    - Pick: allow the name plus the metro area only (no headshot, no street address). Entity clarity is the main thing AI engines reward on an about page. It is a five-minute change once approved.
@@ -157,7 +161,7 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - `/vs/dictate` = 200, FAQPage + BreadcrumbList.
   - `/bg-video-poster.webp`, `/icon.png`, `/apple-icon.png` and `/sitemap.xml` = 200.
   - An unknown path = 404.
-- **Lighthouse through the signed-in browser profile (needed to get past Vercel login; warm cache, extensions present, so not comparable to the paired local runs):**
+- **Lighthouse through the signed-in browser profile (needed to get past Vercel login; this profile's cache and storage are not reset, so the runs are not comparable to the paired local runs):**
   - Live home: perf 72-73, LCP 1.5-1.6 s (element: video).
-  - Preview home: perf 54 then 75, LCP 5.6 s cold then 1.7 s warm (element: the still).
+  - Preview home: perf 54 and 75 on two runs, LCP 5.6 s and 1.7 s (element: the still). The cause of the spread was not checked.
   - Preview SEO scores 58 only because Vercel sends `noindex` on preview deployments.

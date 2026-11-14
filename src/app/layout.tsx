@@ -46,8 +46,10 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
-// Lora is the app's serif and only a fallback behind Playfair on the public
-// pages, so it no longer preloads there (two font files off every first visit).
+// Lora is the app's serif. On public pages it is mostly a fallback behind
+// Playfair (the landing's book carousel does use it first), so it no longer
+// preloads: two fewer high-priority font files competing with first paint. It
+// still loads wherever it actually paints, signed-in pages included.
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
@@ -63,7 +65,8 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
   weight: "400",
-  style: ["italic"],
+  // Italic for the line, normal for its "→" (the old Google Fonts import loaded both).
+  style: ["normal", "italic"],
   preload: false,
 });
 

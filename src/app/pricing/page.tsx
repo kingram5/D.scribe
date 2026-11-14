@@ -5,6 +5,7 @@ import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
+import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
 const FROM = PLANS.starter.price;
 
@@ -29,21 +30,19 @@ export const metadata: Metadata = {
   },
 };
 
-const pricingSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "D.scribe Pricing — AI Book Writing Plans",
-  url: `${SITE_URL}/pricing`,
-  description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: SITE_URL },
-};
-
-const orgSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "D.scribe",
-  url: SITE_URL,
-};
+// Organization + WebSite come from the root layout. This page adds itself and
+// the SoftwareApplication, whose offers are built from PLANS (the same numbers
+// the cards render), so the structured data cannot drift from the page. It
+// replaced a separate Product block on 2026-11-14 (SEO/GEO plan Phase 2).
+const pageGraph = graph(
+  webPageNode({
+    path: "/pricing",
+    name: "D.scribe Pricing — AI Book Writing Plans",
+    description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
+    about: APP_ID,
+  }),
+  softwareApplicationNode(),
+);
 
 // Every tier includes the full toolkit — plans differ only on capacity (Ink),
 // voice (Pro+), and value (Ink per dollar scales up with tier).
@@ -94,34 +93,6 @@ const INCLUDED_FEATURES = [
   "PDF / DOCX export",
 ];
 
-// Product JSON-LD (HeyCatch item 7): one Product, three monthly Offers built
-// from TIERS so the structured data cannot drift from the cards.
-const productSchema = {
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: "D.scribe",
-  description: "Voice-to-manuscript software for speakers, pastors, and coaches. Upload recordings, get a transcribed, structured manuscript written chapter by chapter in your voice, then edit and export to PDF or DOCX.",
-  brand: { "@type": "Brand", name: "D.scribe" },
-  url: `${SITE_URL}/pricing`,
-  category: "Software subscription",
-  offers: TIERS.map((tier) => ({
-    "@type": "Offer",
-    name: `${tier.name} plan`,
-    description: `${tier.ink.toLocaleString("en-US")} Ink per month (${tier.books}). ${tier.tagline}`,
-    price: tier.price.toFixed(2),
-    priceCurrency: "USD",
-    url: `${SITE_URL}/pricing`,
-    availability: "https://schema.org/InStock",
-    priceSpecification: {
-      "@type": "UnitPriceSpecification",
-      price: tier.price.toFixed(2),
-      priceCurrency: "USD",
-      billingDuration: 1,
-      unitCode: "MON",
-    },
-  })),
-};
-
 function bonusInkPct(ink: number, price: number): number {
   const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
   return Math.round(((ink / price) / base - 1) * 100);
@@ -130,9 +101,7 @@ function bonusInkPct(ink: number, price: number): number {
 export default function PricingPage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(pageGraph)} />
     <div
       style={{
         minHeight: "100vh",

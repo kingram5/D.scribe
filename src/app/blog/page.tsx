@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { ORG_ID } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
@@ -27,7 +28,7 @@ const blogSchema = {
   name: "D.scribe Blog",
   url: `${SITE_URL}/blog`,
   description: "Guides and strategies for turning voice recordings into published books with AI",
-  publisher: { "@type": "Organization", name: "D.scribe", url: SITE_URL },
+  publisher: { "@id": ORG_ID },
 };
 
 export const revalidate = 3600;

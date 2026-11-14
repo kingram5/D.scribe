@@ -4,6 +4,7 @@ import { LandingDataProvider } from "@/components/landing/LandingDataContext";
 import { faqSchema as buildFaqSchema } from "@/components/landing/faq";
 import { getLandingData } from "@/lib/landing-data";
 import { SITE_URL } from "@/lib/site";
+import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
 // Server data for the landing page refreshes hourly (founder headshot presence,
 // and from HeyCatch item 3 the live usage count).
@@ -30,22 +31,17 @@ export const metadata: Metadata = {
   },
 };
 
-const orgSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "D.scribe",
-  url: SITE_URL,
-  description: "AI-powered voice-to-manuscript software for coaches, pastors, and speakers",
-};
-
-const webPageSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "D.scribe — Turn Your Voice Into a Published Book with AI",
-  url: SITE_URL,
-  description: "Upload audio, transcribe, and generate your book manuscript with AI",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: SITE_URL },
-};
+// Organization + WebSite come from the root layout (src/lib/structured-data.ts);
+// this page adds itself and the product, linked to them by @id.
+const pageGraph = graph(
+  webPageNode({
+    path: "/",
+    name: "D.scribe — Turn Your Voice Into a Published Book with AI",
+    description: "Upload audio, transcribe, and generate your book manuscript with AI",
+    about: APP_ID,
+  }),
+  softwareApplicationNode(),
+);
 
 // FAQPage JSON-LD is built from the same list the page renders (HeyCatch item 8).
 const faqSchema = buildFaqSchema();
@@ -54,9 +50,8 @@ export default async function Page() {
   const landingData = await getLandingData();
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(pageGraph)} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema)} />
       <LandingDataProvider value={landingData}>
         <LandingPage />
       </LandingDataProvider>

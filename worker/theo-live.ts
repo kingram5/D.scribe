@@ -381,7 +381,14 @@ async function tick() {
     ticking = false;
   }
 }
-for (const sig of ["SIGTERM", "SIGINT"] as const)
+// Windows has no SIGTERM from the OS: Ctrl+C is SIGINT, Ctrl+Break is SIGBREAK,
+// and closing the console window is SIGHUP (Windows force-kills ~10 s later).
+// All of them must still ask the vendor to close open sessions.
+const stopSignals: NodeJS.Signals[] =
+  process.platform === "win32"
+    ? ["SIGTERM", "SIGINT", "SIGBREAK", "SIGHUP"]
+    : ["SIGTERM", "SIGINT"];
+for (const sig of stopSignals)
   process.on(sig, () => {
     stopping = true;
     for (const s of active.values()) s.close();

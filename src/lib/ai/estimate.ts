@@ -2,7 +2,6 @@ import type { OpenAIRunConfig, PrStage } from "./config";
 import { createServerClient } from "@/lib/supabase";
 import {
   estimateRunInk,
-  estimateChapterUsd,
   type EstimateOpts,
 } from "@/lib/publisher-ready/estimate";
 export async function configuredMultiplier(): Promise<number> {
@@ -50,15 +49,9 @@ export async function estimateConfiguredRun(
   config: OpenAIRunConfig | null,
   opts: EstimateOpts = {},
 ): Promise<number> {
-  if (!config) {
-    if (process.env.INK_METER_V2 !== "true")
-      return estimateRunInk(chapters, opts);
-    const usd = chapters.reduce(
-      (a, c) => a + estimateChapterUsd(c.target_word_count ?? 3000, opts),
-      0,
-    );
-    return Math.ceil(usd * (await configuredMultiplier()));
-  }
+  // Legacy runs estimate exactly as production does today: no database read,
+  // so a missing ink_meter_settings row can't stop anyone starting a run.
+  if (!config) return estimateRunInk(chapters, opts);
   const usd = chapters.reduce(
     (a, c) => a + estimateOpenAIUsd(c.target_word_count ?? 3000, config, opts),
     0,

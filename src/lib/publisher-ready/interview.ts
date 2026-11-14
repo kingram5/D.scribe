@@ -119,33 +119,78 @@ async function coveredByEarlierAnswer(
 }
 
 /**
+ * True when PostgREST says pr_answers.source_event_key isn't there: the
+ * 20261008231000 migration hasn't run yet, or ran but the schema cache hasn't
+ * reloaded. 42703 comes back on a filter, PGRST204 on an insert. Narrow on
+ * purpose: any other error (a 23505 duplicate included) is NOT a reason to save
+ * without the key.
+ */
+export function isMissingSourceKeyColumn(err: { code?: string; message?: string } | null | undefined): boolean {
+  return !!err && (err.code === "42703" || err.code === "PGRST204") && /source_event_key/.test(err.message ?? "");
+}
+
+/**
  * Store an answer. Returns a follow-up question when the answer is vague and
  * this was not already a follow-up; otherwise marks the question answered.
+ *
+ * Two contracts (2026-11-14, PR #47 review):
+ * - Runs pinned to the OpenAI provider (and Theo Live, which only runs on them)
+ *   are strict: over 8,000 characters is refused, answers after the interview
+ *   stage are refused, and a follow-up must point at this question's answer.
+ * - Every other run keeps production's behaviour exactly: trimmed to 8,000
+ *   characters, accepted at any stage. Its request-id dedupe is best-effort and
+ *   steps aside when the source_event_key column isn't there yet, so this code
+ *   can ship before its migration without breaking anyone's interview.
  */
 async function executeSubmitAnswer(opts: {
   userId: string; runId: string; questionId: string; transcript: string; source: "typed" | "voice"; followUpOf?: string | null; sourceEventKey?: string;
 }): Promise<{ followUp: string | null; answerId: string }> {
   const db = createServerClient();
   const run = await loadRun(db, opts.userId, opts.runId);
-  if (!["editing", "interviewing"].includes(run.status)) throw new StepError("This interview is no longer accepting answers.", 409);
-  if (opts.transcript.length > 8000) throw new StepError("Answer exceeds 8000 characters.", 400);
-  const text = opts.transcript.trim();
+  const strict = isProviderMetered();
+  let text: string;
+  if (strict) {
+    if (!["editing", "interviewing"].includes(run.status)) throw new StepError("This interview is no longer accepting answers.", 409);
+    if (opts.transcript.length > 8000) throw new StepError("Answer exceeds 8000 characters.", 400);
+    text = opts.transcript.trim();
+  } else {
+    text = opts.transcript.trim().slice(0, 8000);
+  }
   if (!text) throw new StepError("Answer is empty.");
   const { data: q } = await db.from("pr_questions").select("id, question, status").eq("id", opts.questionId).eq("run_id", opts.runId).single();
   if (!q) throw new StepError("Question not found", 404);
 
-  if (opts.followUpOf) {
+  if (strict && opts.followUpOf) {
     const { data: parent } = await db.from("pr_answers").select("id").eq("id", opts.followUpOf).eq("run_id", opts.runId).eq("question_id", q.id).eq("user_id", opts.userId).single();
     if (!parent) throw new StepError("Answer not found", 404);
   }
-  const existing = opts.sourceEventKey ? await db.from("pr_answers").select("id, question_id, transcript").eq("run_id", opts.runId).eq("source_event_key", opts.sourceEventKey).maybeSingle() : { data: null };
-  if (existing.data && (existing.data.question_id !== q.id || existing.data.transcript !== text)) throw new StepError("This answer was already saved. Refresh the interview.", 409);
-  const { data: answer, error } = existing.data ? { data: existing.data, error: null } : await db.from("pr_answers").insert({
-    question_id: q.id, run_id: opts.runId, user_id: opts.userId, transcript: text, source: opts.source,
-    follow_up_of: opts.followUpOf ?? null,
-    ...(opts.sourceEventKey ? { source_event_key: opts.sourceEventKey } : {}),
-  }).select("id").single();
-  if (error || !answer) throw error ?? new StepError("Could not save answer", 500);
+
+  let sourceKey = opts.sourceEventKey;
+  let existing: { id: string; question_id: string; transcript: string } | null = null;
+  if (sourceKey) {
+    const found = await db.from("pr_answers").select("id, question_id, transcript").eq("run_id", opts.runId).eq("source_event_key", sourceKey).maybeSingle();
+    if (found.error) {
+      if (strict || !isMissingSourceKeyColumn(found.error)) throw found.error;
+      sourceKey = undefined; // pre-migration database: save the way production does
+    } else {
+      existing = found.data;
+    }
+  }
+  if (existing && (existing.question_id !== q.id || existing.transcript !== text)) throw new StepError("This answer was already saved. Refresh the interview.", 409);
+
+  let answer: { id: string } | null = existing;
+  if (!answer) {
+    const row: Record<string, unknown> = {
+      question_id: q.id, run_id: opts.runId, user_id: opts.userId, transcript: text, source: opts.source,
+      follow_up_of: opts.followUpOf ?? null,
+    };
+    let saved = await db.from("pr_answers").insert(sourceKey ? { ...row, source_event_key: sourceKey } : row).select("id").single();
+    if (saved.error && sourceKey && !strict && isMissingSourceKeyColumn(saved.error)) {
+      saved = await db.from("pr_answers").insert(row).select("id").single();
+    }
+    if (saved.error || !saved.data) throw saved.error ?? new StepError("Could not save answer", 500);
+    answer = saved.data;
+  }
 
   let followUp: string | null = null;
   if (!opts.followUpOf) {

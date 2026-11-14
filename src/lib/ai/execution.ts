@@ -71,8 +71,11 @@ export async function withRunProvider<T>(
     .select("models")
     .eq("id", runId)
     .eq("user_id", userId)
-    .single();
-  if (error || !data) throw new Error("Run not found");
+    .maybeSingle();
+  if (error) throw new Error("Run not found");
+  // No such run for this user: let the action's own lookup answer (a 404 StepError,
+  // as production does). Nothing paid can start without a run row.
+  if (!data) return action();
   const config = savedRunConfig(data.models);
   return config
     ? context.run({ userId, runId, config, signal }, action)

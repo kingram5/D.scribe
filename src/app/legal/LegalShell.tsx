@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { breadcrumbNode, graph, jsonLd } from "@/lib/structured-data";
 
 /**
  * Shared layout + typography primitives for the public /legal/* pages.
@@ -179,6 +180,12 @@ export function LegalShell({
 }) {
   return (
     <div style={{ minHeight: "100vh", backgroundColor: COLORS.bg, color: COLORS.ink }}>
+      {/* BreadcrumbList (SEO/GEO plan Phase 2): home > this policy. There is no
+          /legal index page, so no middle crumb. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(graph(breadcrumbNode([{ name: title, path: currentPath }])))}
+      />
       {/* Ambient glow — purely decorative, matches marketing pages */}
       <div
         style={{

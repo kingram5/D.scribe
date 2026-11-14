@@ -50,6 +50,49 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - Color-contrast fixes.
   - The "HERE" link text, which was kept on purpose.
 
+## Phase 2: structured data and AI-readable surfaces (2026-11-14)
+- **Changed:**
+  - **`src/lib/structured-data.ts`** is now the one source for JSON-LD.
+    - The root layout emits a single site graph on every page: Organization (`/#organization`) and WebSite (`/#website`).
+    - The Organization carries the logo, `foundingDate` 2025, a support contactPoint and sameAs.
+    - Pages reference those nodes by `@id` instead of repeating them.
+  - **Home and /pricing:** a WebPage plus a `SoftwareApplication` (`/#software`).
+    - It has `operatingSystem: Web` and offers built from `PLANS`: a free trial at $0 and Starter, Pro and Premium monthly.
+    - It replaces the old pricing `Product` block and the three divergent Organization blocks.
+    - No aggregateRating.
+  - **/about** is an `AboutPage` about the Organization.
+    - The hard-coded 25/50/100 offers are gone (they would have gone stale on the v2 price switch).
+    - The Key facts "Website" row now names the www host instead of the apex.
+  - **Blog posts:** `BlogPosting` (author and publisher are the Organization, per the no-personal-info rule) plus a BreadcrumbList. The blog index publisher now points at the Organization `@id`.
+  - **BreadcrumbList** added to the 6 /legal pages (home > policy). The /vs pages already had theirs.
+  - **FAQPage** kept on home (it has the visible FAQ). It is not duplicated onto /about, which renders the same list: Google wants a repeated FAQ marked up once.
+  - **`/llms.txt`** (about 500 words) and **`/llms-full.txt`** (about 2,750 words) are served as route handlers.
+    - Both are built from the constants the pages render (`PLANS`, the FAQ, the /about content, the /vs data), so prices follow the plan flag. See `src/lib/llms.ts`.
+    - The /about content constants moved verbatim into `src/lib/about-content.ts` so the page and `llms-full.txt` share one copy.
+    - Both paths were added to the middleware's public list, without which they 404 for crawlers.
+  - **sameAs:** Instagram, TikTok, YouTube and X, each checked on 2026-11-14 (details in the code comment).
+    - Facebook is left out for now.
+    - The Reddit account is personal and not included.
+  - No SearchAction (the site has no search). No HowTo (no tutorial pages yet).
+- **/about checklist:**
+  - Quotable one-paragraph definition: present.
+  - Founding year (2025): present.
+  - Contact email: present.
+  - **Founder name and Dallas-Fort Worth: not added.** This is held by the standing no-personal-info rule; see Blocked on Kyle #1.
+- **Verified:**
+  - Type check is clean.
+  - New `structured-data.test.ts` covers:
+    - stable `@id`s and www URLs
+    - logo and https-only sameAs
+    - no founder, Person or SearchAction data
+    - offers equal to `PLANS`, with no rating
+    - breadcrumb item URLs and Article author
+    - script-tag escaping
+    - `llms.txt` under 2,000 words, real prices, www-only links, no ghostwriter cost figure
+  - Local build and preview checks are below.
+- **Rich Results Test and the Schema.org validator need a public URL.** The preview sits behind Vercel login, so those run after merge on the live site (Kyle's call when to merge).
+  - Expected Rich Results warning: SoftwareApplication rich results want `aggregateRating` or `review`. That stays out until real reviews exist. It is a missing-enhancement notice, not a schema error.
+
 ## Blocked on Kyle
 1. **Founder name and location on /about (ruling).**
    - The plan asks for "Kyle Ingram" and "Dallas-Fort Worth" on /about and in the Organization data.

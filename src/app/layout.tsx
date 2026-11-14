@@ -5,6 +5,7 @@ import { MarketingPixels } from "@/components/analytics/MarketingPixels";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { ReferralBanner } from "@/components/partners/ReferralBanner";
 import { SITE_URL } from "@/lib/site";
+import { jsonLd, siteGraph } from "@/lib/structured-data";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -102,6 +103,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} ${manrope.variable} ${lora.variable} ${instrumentSerif.variable} ${playfair.variable} antialiased`}>
+        {/* Site-wide Organization + WebSite JSON-LD; pages reference these by @id. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(siteGraph())} />
         <MarketingPixels />
         <ReferralBanner />
         {children}

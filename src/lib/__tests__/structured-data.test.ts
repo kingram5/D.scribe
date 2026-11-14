@@ -7,6 +7,7 @@ import { llmsTxt, llmsFullTxt } from "../llms";
 import { PLANS } from "../tiers";
 import { SITE_URL } from "../site";
 import { GHOSTWRITER_COST } from "../ghostwriter-cost";
+import { DIFFERENTIATORS } from "../about-content";
 import fs from "fs";
 import path from "path";
 
@@ -138,5 +139,18 @@ describe("ghostwriter cost figure (one sourced range, Kyle 2026-11-14)", () => {
 
   it("the source is a real https URL", () => {
     expect(GHOSTWRITER_COST.url).toMatch(/^https:\/\/reedsy\.com\//);
+  });
+
+  it("/about's comparison keeps the dollar sign on the plan price", () => {
+    const d = DIFFERENTIATORS.find((x) => /ghostwriter/i.test(x.title))!;
+    expect(d.body).toContain(`${GHOSTWRITER_COST.range} for a nonfiction book`);
+    expect(d.body).toContain(`starts at $${PLANS.starter.price} per month`);
+    expect(d.source?.url).toBe(GHOSTWRITER_COST.url);
+  });
+});
+
+describe("sameAs", () => {
+  it("includes the D.Scribe Facebook Page (added 2026-11-14)", () => {
+    expect(SAME_AS).toContain("https://www.facebook.com/profile.php?id=61594585703328");
   });
 });

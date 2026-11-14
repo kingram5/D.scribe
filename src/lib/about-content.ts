@@ -26,7 +26,7 @@ export const DIFFERENTIATORS: readonly { title: string; body: string; source?: {
   {
     title: "A ghostwriter alternative at a fraction of the cost",
     // The one sourced figure (src/lib/ghostwriter-cost.ts), same as /pricing.
-    body: `${GHOSTWRITER_COST_SENTENCE}, according to ${GHOSTWRITER_COST.source}'s pricing guide. D.scribe starts at ${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
+    body: `${GHOSTWRITER_COST_SENTENCE}, according to ${GHOSTWRITER_COST.source}'s pricing guide. D.scribe starts at $${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
     source: { label: `${GHOSTWRITER_COST.source}, "${GHOSTWRITER_COST.sourceTitle}"`, url: GHOSTWRITER_COST.url },
   },
   {

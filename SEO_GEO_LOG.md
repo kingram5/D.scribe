@@ -128,6 +128,20 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
    - It carries Phase 0, 1 and 2 plus the GEO results (cherry-picked), these docs, and the rulings above.
    - It leaves out the hero commit `58d3229` and everything in it: the poster image, the middleware `.webp` change and the landing-page change.
 
+5. **Facebook Page added to `Organization.sameAs`** (https://www.facebook.com/profile.php?id=61594585703328).
+   - The Page stopped showing the personal phone number (verified 2026-11-14 ~3:40pm).
+   - The Page's public email stays dscribe.admin@gmail.com (Kyle's choice). That does not touch the site, so `kyle@d-scribe.app` remains the site contact.
+   - The site has no visible social-link row, so sameAs is the only place it goes.
+- **Verified (merge branch):**
+  - Type check is clean.
+  - Full suite: 52 of 52 files, 595 passed plus 1 expected-fail.
+  - Local production build (`ce13e8e`): the structured-data check passes on 15 public pages.
+  - The founding sentence, the Founder and Based in rows, and the Organization `founder`, `location` and `foundingLocation` all appear in the raw HTML.
+  - The Reedsy range and its linked source appear on /about and /pricing. `llms.txt` and `llms-full.txt` carry both.
+  - The /pricing share image returns 200.
+  - No hero still is on the page, as intended.
+- **Caught and fixed in that build check:** the /about comparison had lost the "$" before the plan price ("starts at 25 per month"). It now reads "$25", and a test pins it.
+
 ## Still open (Kyle or BMO)
 1. **Hero (branch `seo-geo`, `58d3229`).** Kyle checks it on his iPhone: Low Power Mode off, the video starts a beat after load; on, the still holds and one tap starts it. It then ships on its own on top of master.
 2. **After merge:** run Google's Rich Results Test and the Schema.org validator against www. Previews sit behind Vercel login, so neither tool can read them.
@@ -135,7 +149,7 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
 3. **GEO coverage (logins).** Claude, Grok and the Perplexity website need a signed-in session, so they are "not checked" in the baseline.
    - For the weekly checker (Phase 6), the OpenAI, Gemini and Perplexity keys already exist.
    - Claude cannot use an API key under the subscription-only rule. It would run through a signed-in browser or the Claude Code CLI on the subscription.
-4. **Facebook in sameAs.** It stays out pending a change to the Page's public contact details (reported separately).
+4. ~~Facebook in sameAs~~: done (rulings item 5).
 5. **Not done, needs a ruling or access:**
    - The `http://d-scribe.app` two-hop redirect (Vercel domain setting).
    - The landing-page performance pass: critical CSS, font families, splitting the client component.

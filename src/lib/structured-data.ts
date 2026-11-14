@@ -39,13 +39,15 @@ export const DEFINITION =
  * Instagram (profile page reads "D.Scribe (@dscribe.app)"), TikTok (profile
  * data carries uniqueId "dscribe.app"; a made-up handle carries none),
  * YouTube (channel "D-Scribe"; a made-up handle 404s), X (profile title
- * "T.H.E.O (@DScribe_ai)"). The Facebook Page is left out for now.
+ * "T.H.E.O (@DScribe_ai)"). Facebook Page "D.Scribe" added 2026-11-14 once
+ * its public contact details no longer showed a personal phone number.
  */
 export const SAME_AS: readonly string[] = [
   "https://www.instagram.com/dscribe.app/",
   "https://www.tiktok.com/@dscribe.app",
   "https://www.youtube.com/@d-scribeadmin",
   "https://x.com/DScribe_ai",
+  "https://www.facebook.com/profile.php?id=61594585703328",
 ];
 
 export const SUPPORT_EMAIL = "kyle@d-scribe.app";

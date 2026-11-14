@@ -3,6 +3,8 @@ import LandingPage from "@/app/landing-v2/page";
 import { LandingDataProvider } from "@/components/landing/LandingDataContext";
 import { faqSchema as buildFaqSchema } from "@/components/landing/faq";
 import { getLandingData } from "@/lib/landing-data";
+import { SITE_URL } from "@/lib/site";
+import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
 // Server data for the landing page refreshes hourly (founder headshot presence,
 // and from HeyCatch item 3 the live usage count).
@@ -10,14 +12,14 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "D.scribe — Turn Your Voice Into a Published Book with AI",
-  description: "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+  description: "D.scribe turns your voice recordings into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
   alternates: {
-    canonical: "https://d-scribe.app",
+    canonical: SITE_URL,
   },
   openGraph: {
     title: "D.scribe — Turn Your Voice Into a Published Book with AI",
     description: "Upload any audio, set your structure, and watch AI write your manuscript chapter by chapter — in your voice.",
-    url: "https://d-scribe.app",
+    url: SITE_URL,
     siteName: "D.scribe",
     type: "website",
   },
@@ -29,22 +31,17 @@ export const metadata: Metadata = {
   },
 };
 
-const orgSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "D.scribe",
-  url: "https://d-scribe.app",
-  description: "AI-powered voice-to-manuscript software for coaches, pastors, and speakers",
-};
-
-const webPageSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "D.scribe — Turn Your Voice Into a Published Book with AI",
-  url: "https://d-scribe.app",
-  description: "Upload audio, transcribe, and generate your book manuscript with AI",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
-};
+// Organization + WebSite come from the root layout (src/lib/structured-data.ts);
+// this page adds itself and the product, linked to them by @id.
+const pageGraph = graph(
+  webPageNode({
+    path: "/",
+    name: "D.scribe — Turn Your Voice Into a Published Book with AI",
+    description: "Upload audio, transcribe, and generate your book manuscript with AI",
+    about: APP_ID,
+  }),
+  softwareApplicationNode(),
+);
 
 // FAQPage JSON-LD is built from the same list the page renders (HeyCatch item 8).
 const faqSchema = buildFaqSchema();
@@ -53,9 +50,8 @@ export default async function Page() {
   const landingData = await getLandingData();
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(pageGraph)} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema)} />
       <LandingDataProvider value={landingData}>
         <LandingPage />
       </LandingDataProvider>

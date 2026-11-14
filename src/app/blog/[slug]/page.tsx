@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
+import { articleNode, breadcrumbNode, graph, jsonLd } from "@/lib/structured-data";
 
 export const revalidate = 3600;
 
@@ -16,6 +18,7 @@ type Post = {
   seo_title: string | null;
   seo_description: string | null;
   published_at: string;
+  updated_at?: string | null;
 };
 
 async function getPost(slug: string): Promise<Post | null> {
@@ -32,11 +35,15 @@ async function getPost(slug: string): Promise<Post | null> {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: "Not Found | D. scribe" };
+  // The root layout's title template already appends " | D.scribe"; adding it
+  // here too rendered "Title | D. scribe | D.scribe".
+  if (!post) return { title: "Not Found" };
   return {
-    title: `${post.seo_title ?? post.title} | D. scribe`,
+    title: post.seo_title ?? post.title,
     description: post.seo_description ?? post.excerpt ?? undefined,
+    alternates: { canonical: `${SITE_URL}/blog/${slug}` },
     openGraph: {
+      url: `${SITE_URL}/blog/${slug}`,
       title: post.seo_title ?? post.title,
       description: post.seo_description ?? post.excerpt ?? undefined,
       type: "article",
@@ -58,8 +65,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const post = await getPost(slug);
   if (!post) notFound();
 
+  // Article + breadcrumbs (SEO/GEO plan Phase 2). The author is the
+  // Organization: the site carries no personal bylines (Kyle, 2026-09-19).
+  const headline = post.seo_title ?? post.title;
+  const pageGraph = graph(
+    articleNode({
+      path: `/blog/${post.slug}`,
+      headline,
+      description: post.seo_description ?? post.excerpt,
+      datePublished: post.published_at,
+      dateModified: post.updated_at,
+      keywords: post.keywords,
+    }),
+    breadcrumbNode([
+      { name: "Blog", path: "/blog" },
+      { name: headline, path: `/blog/${post.slug}` },
+    ]),
+  );
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#2C2419", color: "#F9F7F2" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(pageGraph)} />
       <div style={{ position: "fixed", top: "10%", right: "5%", width: "30vw", height: "30vw", background: "rgba(193,122,71,0.06)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
 
       {/* Nav */}

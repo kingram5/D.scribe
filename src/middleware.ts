@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { urlOnRequestHost } from "@/lib/auth-redirect";
+import { isAppPath } from "@/lib/app-routes";
 
 /**
  * Inline allowlist check for Edge Runtime compatibility. Mirrors src/lib/allowlist.ts:
@@ -24,10 +25,14 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // as /blog and /about: public marketing pages bounced every visitor AND every
 // crawler to /login. Any new public route must be added here or it is invisible.
 // 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt"];
+// 2026-11-14: /llms.txt and /llms-full.txt (SEO/GEO plan). The matcher below does
+// not exclude .txt, so without these entries both 404 for every crawler.
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
 const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
+// Signed-in app routes (src/lib/app-routes.ts): an anonymous visitor there goes to
+// /login?next=...; any other unknown path gets a real 404 (see below).
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -95,6 +100,11 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    // Not an app route either: rewrite to a path no route can match (underscore
+    // folders are private in the App Router) so Next renders not-found.tsx, 404.
+    if (!isAppPath(pathname)) {
+      return NextResponse.rewrite(new URL("/_not-found-public", request.url));
+    }
     const login = urlOnRequestHost(request, "/login");
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);

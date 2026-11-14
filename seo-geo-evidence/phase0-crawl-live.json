@@ -1,0 +1,386 @@
+{
+ "origin": "https://www.d-scribe.app",
+ "at": "2026-11-14T19:01:12.939Z",
+ "pages": {
+  "/": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "D.scribe — Turn Your Voice Into a Published Book with AI",
+   "desc": "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+   "canonical": "https://www.d-scribe.app",
+   "robots": null,
+   "ogTitle": "D.scribe — Turn Your Voice Into a Published Book with AI",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "There’s an Author Inside You"
+   ],
+   "words": 1601,
+   "ld": [
+    "Organization",
+    "WebPage",
+    "FAQPage"
+   ],
+   "ldErr": []
+  },
+  "/pricing": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Pricing — AI Book Writing Plans Starting at $25 | D.scribe",
+   "desc": "D.scribe pricing starts at $25/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.",
+   "canonical": "https://www.d-scribe.app/pricing",
+   "robots": null,
+   "ogTitle": "D.scribe Pricing — AI Book Writing Plans Starting at $25",
+   "ogImage": "https://www.d-scribe.app/pricing/opengraph-image?416f7470d8e10557",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Write your book. Pick the plan that fits."
+   ],
+   "words": 438,
+   "ld": [
+    "WebPage",
+    "Organization",
+    "Product"
+   ],
+   "ldErr": []
+  },
+  "/about": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "About | D.scribe",
+   "desc": "D.scribe is voice-to-manuscript software for speakers, pastors, and coaches.",
+   "canonical": "https://www.d-scribe.app/about",
+   "robots": null,
+   "ogTitle": "About D.scribe",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Why I built this"
+   ],
+   "words": 1320,
+   "ld": [
+    "Organization"
+   ],
+   "ldErr": []
+  },
+  "/blog": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Blog — Voice to Book Guides & Strategies | D.scribe",
+   "desc": "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
+   "canonical": "https://www.d-scribe.app/blog",
+   "robots": null,
+   "ogTitle": "D.scribe Blog — Voice to Book Guides & Strategies",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Turning your voice into a published book"
+   ],
+   "words": 107,
+   "ld": [
+    "Blog"
+   ],
+   "ldErr": []
+  },
+  "/vs": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Compare D.scribe | D.scribe",
+   "desc": "Honest side-by-side comparisons of D.scribe against Built&Written, Squibler, and Dictate on price, input, and output.",
+   "canonical": "https://www.d-scribe.app/vs",
+   "robots": null,
+   "ogTitle": "Compare D.scribe",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "How D.scribe compares"
+   ],
+   "words": 143,
+   "ld": [],
+   "ldErr": []
+  },
+  "/vs/builtwritten": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "D.scribe vs Built&Written | D.scribe",
+   "desc": "Both turn what you already have into a book. The real difference is what you feed in: they read your writing, we listen to you talk. An honest side-by-side of D.scribe and Built&Written on price, input, and output.",
+   "canonical": "https://www.d-scribe.app/vs/builtwritten",
+   "robots": null,
+   "ogTitle": "D.scribe vs Built&Written | D.scribe",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "D.scribe vs Built&Written"
+   ],
+   "words": 559,
+   "ld": [
+    "FAQPage",
+    "BreadcrumbList"
+   ],
+   "ldErr": []
+  },
+  "/vs/squibler": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "D.scribe vs Squibler | D.scribe",
+   "desc": "Squibler helps you invent a story. D.scribe helps you keep the one you already told. An honest side-by-side of D.scribe and Squibler on price, input, and output.",
+   "canonical": "https://www.d-scribe.app/vs/squibler",
+   "robots": null,
+   "ogTitle": "D.scribe vs Squibler | D.scribe",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "D.scribe vs Squibler"
+   ],
+   "words": 510,
+   "ld": [
+    "FAQPage",
+    "BreadcrumbList"
+   ],
+   "ldErr": []
+  },
+  "/vs/dictate": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "D.scribe vs Dictate | D.scribe",
+   "desc": "Dictate sells you a service. D.scribe sells you the tool. One costs about 200 times more and takes far longer, and for some people that is exactly the right trade. An honest side-by-side of D.scribe and Dictate on price, input, and output.",
+   "canonical": "https://www.d-scribe.app/vs/dictate",
+   "robots": null,
+   "ogTitle": "D.scribe vs Dictate | D.scribe",
+   "ogImage": null,
+   "twCard": "summary_large_image",
+   "h1s": [
+    "D.scribe vs Dictate"
+   ],
+   "words": 540,
+   "ld": [
+    "FAQPage",
+    "BreadcrumbList"
+   ],
+   "ldErr": []
+  },
+  "/partners": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Partner Program — Share D.scribe, Earn 30% | D.scribe",
+   "desc": "Speakers, pastors, coaches and podcasters: give your audience 50 free Ink and 50% off their first month of D.scribe, and earn 30% of their plan payments for a year.",
+   "canonical": "https://www.d-scribe.app/partners",
+   "robots": null,
+   "ogTitle": "Partner Program — Share D.scribe, Earn 30% | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Your audience has books in them. Help them get written."
+   ],
+   "words": 204,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/partners": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Partner Program Terms | D.scribe",
+   "desc": "D.scribe Partner Program Terms: what creators earn, what their audience gets, how payouts work, and the rules for promoting D.scribe.",
+   "canonical": "https://www.d-scribe.app/legal/partners",
+   "robots": "index, follow",
+   "ogTitle": "Partner Program Terms | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Partner Program Terms"
+   ],
+   "words": 580,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/terms": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Terms of Service | D.scribe",
+   "desc": "D.scribe Terms of Service — the agreement governing your use of the D.scribe voice-to-manuscript service.",
+   "canonical": "https://www.d-scribe.app/legal/terms",
+   "robots": "index, follow",
+   "ogTitle": "Terms of Service | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Terms of Service"
+   ],
+   "words": 1221,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/privacy": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Privacy Policy | D.scribe",
+   "desc": "D.scribe Privacy Policy — what information we collect, how we use it, who we share it with, and the choices you have.",
+   "canonical": "https://www.d-scribe.app/legal/privacy",
+   "robots": "index, follow",
+   "ogTitle": "Privacy Policy | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Privacy Policy"
+   ],
+   "words": 1317,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/refunds": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Refund and Cancellation Policy | D.scribe",
+   "desc": "D.scribe Refund and Cancellation Policy — how subscriptions renew, how to cancel, and when charges are refunded.",
+   "canonical": "https://www.d-scribe.app/legal/refunds",
+   "robots": "index, follow",
+   "ogTitle": "Refund and Cancellation Policy | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Refund and Cancellation Policy"
+   ],
+   "words": 376,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/acceptable-use": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "Acceptable Use Policy | D.scribe",
+   "desc": "D.scribe Acceptable Use Policy — prohibited uses, content rules, and how we enforce them.",
+   "canonical": "https://www.d-scribe.app/legal/acceptable-use",
+   "robots": "index, follow",
+   "ogTitle": "Acceptable Use Policy | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "Acceptable Use Policy"
+   ],
+   "words": 192,
+   "ld": [],
+   "ldErr": []
+  },
+  "/legal/dmca": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": true,
+   "title": "DMCA Policy | D.scribe",
+   "desc": "D.scribe DMCA Policy — how to submit a notice of claimed copyright infringement and our repeat-infringer policy.",
+   "canonical": "https://www.d-scribe.app/legal/dmca",
+   "robots": "index, follow",
+   "ogTitle": "DMCA Policy | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "DMCA Policy"
+   ],
+   "words": 178,
+   "ld": [],
+   "ldErr": []
+  },
+  "/login": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": false,
+   "title": "D.scribe — Turn Your Voice Into a Published Book with AI",
+   "desc": "D.scribe transcribes your voice recordings and turns them into a fully structured manuscript. Coaches, pastors, and speakers publish their books in days — not years.",
+   "canonical": null,
+   "robots": null,
+   "ogTitle": "D.scribe — Turn Your Voice Into a Published Book with AI",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [],
+   "words": 0,
+   "ld": [],
+   "ldErr": []
+  },
+  "/discover": {
+   "status": 200,
+   "hops": [],
+   "ct": "text/html; charset=utf-8",
+   "xRobots": null,
+   "inSitemap": false,
+   "title": "Discover Books Written with D.scribe | D.scribe",
+   "desc": "Books written by real people with D.scribe: coaches, pastors and speakers who turned their talks into a manuscript.",
+   "canonical": "https://www.d-scribe.app/discover",
+   "robots": "noindex, follow",
+   "ogTitle": "Discover Books Written with D.scribe | D.scribe",
+   "ogImage": "https://www.d-scribe.app/opengraph-image?e80ee2938154fa61",
+   "twCard": "summary_large_image",
+   "h1s": [
+    "From the community"
+   ],
+   "words": 37,
+   "ld": [],
+   "ldErr": []
+  }
+ },
+ "sitemap": [
+  "https://www.d-scribe.app",
+  "https://www.d-scribe.app/pricing",
+  "https://www.d-scribe.app/about",
+  "https://www.d-scribe.app/blog",
+  "https://www.d-scribe.app/vs",
+  "https://www.d-scribe.app/vs/builtwritten",
+  "https://www.d-scribe.app/vs/squibler",
+  "https://www.d-scribe.app/vs/dictate",
+  "https://www.d-scribe.app/partners",
+  "https://www.d-scribe.app/legal/partners",
+  "https://www.d-scribe.app/legal/terms",
+  "https://www.d-scribe.app/legal/privacy",
+  "https://www.d-scribe.app/legal/refunds",
+  "https://www.d-scribe.app/legal/acceptable-use",
+  "https://www.d-scribe.app/legal/dmca"
+ ],
+ "robots": "User-Agent: *\nAllow: /\nAllow: /pricing\nAllow: /about\nAllow: /blog\nAllow: /discover\nAllow: /legal/\nDisallow: /api/\nDisallow: /dashboard\nDisallow: /project/\nDisallow: /settings\nDisallow: /auth/\nDisallow: /login\nDisallow: /unauthorized\n\nSitemap: https://www.d-scribe.app/sitemap.xml\n",
+ "sitemapStatus": 200,
+ "sitemapLastmod": 15,
+ "robotsStatus": 200
+}

@@ -4,19 +4,22 @@ import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButt
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
+import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
+import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
 const FROM = PLANS.starter.price;
 
 export const metadata: Metadata = {
   title: `Pricing — AI Book Writing Plans Starting at $${FROM}`,
-  description: `D.scribe pricing starts at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.`,
+  description: `D.scribe plans start at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`,
   alternates: {
-    canonical: "https://d-scribe.app/pricing",
+    canonical: `${SITE_URL}/pricing`,
   },
   openGraph: {
     title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
     description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
-    url: "https://d-scribe.app/pricing",
+    url: `${SITE_URL}/pricing`,
     siteName: "D.scribe",
     type: "website",
   },
@@ -28,21 +31,19 @@ export const metadata: Metadata = {
   },
 };
 
-const pricingSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "D.scribe Pricing — AI Book Writing Plans",
-  url: "https://d-scribe.app/pricing",
-  description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
-  isPartOf: { "@type": "WebSite", name: "D.scribe", url: "https://d-scribe.app" },
-};
-
-const orgSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "D.scribe",
-  url: "https://d-scribe.app",
-};
+// Organization + WebSite come from the root layout. This page adds itself and
+// the SoftwareApplication, whose offers are built from PLANS (the same numbers
+// the cards render), so the structured data cannot drift from the page. It
+// replaced a separate Product block on 2026-11-14 (SEO/GEO plan Phase 2).
+const pageGraph = graph(
+  webPageNode({
+    path: "/pricing",
+    name: "D.scribe Pricing — AI Book Writing Plans",
+    description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
+    about: APP_ID,
+  }),
+  softwareApplicationNode(),
+);
 
 // Every tier includes the full toolkit — plans differ only on capacity (Ink),
 // voice (Pro+), and value (Ink per dollar scales up with tier).
@@ -93,34 +94,6 @@ const INCLUDED_FEATURES = [
   "PDF / DOCX export",
 ];
 
-// Product JSON-LD (HeyCatch item 7): one Product, three monthly Offers built
-// from TIERS so the structured data cannot drift from the cards.
-const productSchema = {
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: "D.scribe",
-  description: "Voice-to-manuscript software for speakers, pastors, and coaches. Upload recordings, get a transcribed, structured manuscript written chapter by chapter in your voice, then edit and export to PDF or DOCX.",
-  brand: { "@type": "Brand", name: "D.scribe" },
-  url: "https://d-scribe.app/pricing",
-  category: "Software subscription",
-  offers: TIERS.map((tier) => ({
-    "@type": "Offer",
-    name: `${tier.name} plan`,
-    description: `${tier.ink.toLocaleString("en-US")} Ink per month (${tier.books}). ${tier.tagline}`,
-    price: tier.price.toFixed(2),
-    priceCurrency: "USD",
-    url: "https://d-scribe.app/pricing",
-    availability: "https://schema.org/InStock",
-    priceSpecification: {
-      "@type": "UnitPriceSpecification",
-      price: tier.price.toFixed(2),
-      priceCurrency: "USD",
-      billingDuration: 1,
-      unitCode: "MON",
-    },
-  })),
-};
-
 function bonusInkPct(ink: number, price: number): number {
   const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
   return Math.round(((ink / price) / base - 1) * 100);
@@ -129,9 +102,7 @@ function bonusInkPct(ink: number, price: number): number {
 export default function PricingPage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(pageGraph)} />
     <div
       style={{
         minHeight: "100vh",
@@ -327,7 +298,11 @@ export default function PricingPage() {
               borderBottom: "1px solid rgba(193,122,71,0.35)",
             }}
           >
-            Traditional ghostwriters charge $30,000&ndash;$80,000 and take 12&ndash;24 months.{" "}
+            {/* One sourced figure, same as /about (src/lib/ghostwriter-cost.ts, Kyle 2026-11-14).
+                The old unsourced "12–24 months" became "months", which the source supports. */}
+            {GHOSTWRITER_COST_SENTENCE}, according to{" "}
+            <a href={GHOSTWRITER_COST.url} rel="noopener" style={{ color: "#F9F7F2", textDecoration: "underline" }}>{GHOSTWRITER_COST.source}</a>,
+            and the writing takes months.{" "}
             <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>
           </p>
         </div>

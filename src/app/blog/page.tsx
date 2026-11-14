@@ -2,19 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { ORG_ID } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
-  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
+  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book.",
   alternates: {
-    canonical: "https://d-scribe.app/blog",
+    canonical: `${SITE_URL}/blog`,
   },
   openGraph: {
     title: "D.scribe Blog — Voice to Book Guides & Strategies",
     description: "Practical guides for coaches, pastors, and speakers ready to publish their book with AI transcription and manuscript generation.",
-    url: "https://d-scribe.app/blog",
+    url: `${SITE_URL}/blog`,
     siteName: "D.scribe",
     type: "website",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 
@@ -22,9 +26,9 @@ const blogSchema = {
   "@context": "https://schema.org",
   "@type": "Blog",
   name: "D.scribe Blog",
-  url: "https://d-scribe.app/blog",
+  url: `${SITE_URL}/blog`,
   description: "Guides and strategies for turning voice recordings into published books with AI",
-  publisher: { "@type": "Organization", name: "D.scribe", url: "https://d-scribe.app" },
+  publisher: { "@id": ORG_ID },
 };
 
 export const revalidate = 3600;

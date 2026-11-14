@@ -53,6 +53,30 @@ Running log for the `seo-geo-merge` branch: what changed, what was verified and 
   - Color-contrast fixes.
   - The "HERE" link text, which was kept on purpose.
 
+## Mobile speed pass (branch `perf-mobile`, 2026-11-14)
+- **Shipped on this branch: fonts.**
+  - Instrument Serif is removed (nothing used it).
+  - Geist (the third fallback in the body stack) and Lora (the app's serif, only a fallback behind Playfair on public pages) no longer preload.
+  - The live site preloads 7 font files on every page (checked in its HTML); a Linux build of this branch should preload 4: Inter, Manrope, Playfair normal and italic.
+  - Cormorant Garamond no longer comes from a third-party Google Fonts `@import` inside the landing page's styles. It is self-hosted by next/font with no preload and applied to its one desktop-only line.
+  - The look and the copy are unchanged. The hero video code is untouched.
+- **Tried, measured, and left out:**
+  1. **Inlining all CSS** (Next `experimental.inlineCss`). Home HTML grew from 24 KB to 59 KB gzipped, FCP did not move on home (2.7 s), and /pricing got worse.
+     - Paired 3-round medians on /pricing: perf 78 → 69, FCP 2.1 → 2.3 s, LCP 4.2 → 4.5 s.
+     - The App Router has no critical-CSS extraction, so a true "inline the critical part, defer the rest" isn't available without a larger CSS split.
+  2. **Splitting the landing component** (the three animated below-the-fold widgets moved to a next/dynamic chunk). Home first-load JS went from 296 to 285 KB, but in 4 paired rounds TBT and LCP did not improve (medians TBT 140 → 165 ms, LCP 5.4 → 5.65 s).
+     - The landing component is only about 27 KB. The weight is the 269 KB shared bundle (framework, Sentry, Supabase client, analytics) that every page loads.
+- **Measurements (paired local production builds, Lighthouse 12.8 mobile, 4 rounds, before = master `203d0dd`):**
+  - Home: perf 75 → 73, LCP 5.4 → 5.65 s (the LCP element is the hero video on both).
+  - /pricing: perf 78 → 77.5, LCP 4.15 → 4.2 s.
+  - Those runs were taken with the split included. The shipped branch (fonts only) was not re-measured locally, because Windows builds emit no font preloads at all (`next-font-manifest.json` comes out empty locally), so local runs cannot show the font change.
+  - Verify on the Vercel preview, which is a Linux build: count the woff2 preload links in its HTML.
+- **What would move mobile scores next (separate work):**
+  - The poster-first hero (branch `seo-geo`, waiting on Kyle's iPhone check). The video is the home LCP.
+  - Trimming the shared bundle on marketing pages (Sentry init runs twice; HeyCatch, Supabase client).
+  - Fixing the /pricing layout shift (CLS 0.117, present before and after).
+  - A real critical-CSS split of the 170 KB global stylesheet.
+
 ## Phase 2: structured data and AI-readable surfaces (2026-11-14)
 - **Changed:**
   - **`src/lib/structured-data.ts`** is now the one source for JSON-LD.

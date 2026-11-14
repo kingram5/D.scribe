@@ -1486,7 +1486,10 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+        /* Cormorant Garamond used to arrive here via @import from Google Fonts, an
+           extra third-party stylesheet on every landing visit for one desktop-only
+           line. It is now self-hosted by next/font (root layout, --font-cormorant,
+           no preload) and applied to that line below. 2026-11-14 speed pass. */
 
         /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
         .circular-text {
@@ -1682,7 +1685,7 @@ export default function LandingV2() {
         .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
         .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
         .lv2-tagline-kick { font-size: clamp(16px, 1.8vw, 24px); }
-        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
+        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); font-family: var(--font-cormorant), 'Cormorant Garamond', serif !important; }
 
         @media (min-width: 1280px) {
           .lv2-hero { height: 100vh; }

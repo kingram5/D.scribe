@@ -42,7 +42,8 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
 - **Verified:**
   - Type check is clean.
   - New `seo.test.ts` (robots groups, the /partners prefix trap, description lengths) and `app-routes.test.ts` pass.
-  - Full suite: 567 of 570 pass, 1 expected-fail. The rest were 5-second timeouts in `plans-v2.test.ts` under full-suite load; that file passes 4 of 4 on its own.
+  - Full suite on a busy machine: 567 of 570 pass, 1 expected-fail. The rest were 5-second timeouts in `plans-v2.test.ts` under load; that file passes 4 of 4 on its own.
+  - Re-run on an idle machine at the hero commit: 52 of 52 files, 589 passed plus 1 expected-fail.
   - Live raw-HTML checks come with the preview below.
 - **Not done (needs a ruling or out of scope):**
   - The two-hop `http://d-scribe.app` redirect is a Vercel domain setting.
@@ -92,6 +93,37 @@ Running log for the `seo-geo` branch: what changed, what was verified and how, a
   - Local build and preview checks are below.
 - **Rich Results Test and the Schema.org validator need a public URL.** The preview sits behind Vercel login, so those run after merge on the live site (Kyle's call when to merge).
   - Expected Rich Results warning: SoftwareApplication rich results want `aggregateRating` or `review`. That stays out until real reviews exist. It is a missing-enhancement notice, not a schema error.
+
+## Hero video: poster first (Kyle 2026-11-14: "go with your call on the video")
+- **Changed (`src/app/landing-v2/page.tsx`):**
+  - **The still (LCP element).** A still of the video's own first frame, `public/bg-video-poster.webp` (WebP, 61 KB, 1280×720, the video's size), is now server-rendered in the hero.
+    - It has explicit width and height and `fetchPriority="high"`. React adds the matching `<link rel="preload" as="image">`.
+  - **The video, a beat later.** It mounts after `load` plus `requestIdleCallback`, then autoplays muted and looping as before. The video file is unchanged. The still hides once the video is playing.
+    - Reduced Motion never mounts it. The old code paused it on the first frame, which is the same still.
+    - iOS tap-to-play is kept.
+    - It also calls `play()` explicitly in case the `autoplay` attribute alone does not start it.
+  - **The 1×1 px mount.** Chrome measures an element for LCP once, at its first frame, and it counts a video's first frame even under `visibility:hidden`.
+    - Measured with a PerformanceObserver: at full size the video's first frame out-measured the still (209,070 vs 208,884 px, because the hero box ends a fraction of a pixel taller) and became a late LCP.
+    - So the video mounts at 1×1 px. It sits top-left under the fixed nav for a few frames, then goes full size.
+  - **Middleware.** The matcher now excludes `.webp`. Without that, the auth gate 404s the new still for anonymous visitors. The live site already 404s `/theo-portrait.webp` the same way, though nothing links to that file.
+- **Verified on a local production build:**
+  - **LCP entries:** the list ends on the IMG in 4 of 4 probe runs (412×823 viewport, 1.75 DPR, one run with cache disabled). The video ends playing, visible, full size, with the still hidden.
+  - **Same look:** the video box equals the hero box at mobile and desktop. Opacity is 0.5 on mobile and 1 on desktop, as on live. Screenshot pairs against the live site match.
+  - **Raw HTML:** the still and its preload link are present, and there is no SSR `<video>`.
+  - **Lighthouse mobile, local build, back-to-back runs on the same machine:**
+
+| Run | Before (Phase 2 build) | After (this commit) |
+|---|---|---|
+| Simulated throttling (Lighthouse default), 2 runs each | perf 69, LCP 5.3 s (element: video), TBT 300-330 ms | **perf 74-75, LCP 5.1 s (element: the still), TBT 160-170 ms** |
+| Applied (devtools) throttling | perf 63, LCP 3.0 s (one outlier run at 32 / 5.8 s) | perf 61-62, LCP 3.1 s |
+
+  - CLS is 0.005-0.006 in all runs, unchanged.
+  - **Honest read:** the LCP element moved from the video to the still, and blocking time roughly halved. LCP itself is still not green.
+    - LCP is now pinned to first paint: FCP is 2.7-3.0 s on this machine.
+    - First paint is held back by 3 render-blocking stylesheets (Lighthouse estimates 1.15 s of savings) and the landing page's JavaScript.
+    - Live mobile before this branch: perf 62, LCP 6.3 s.
+  - The next perf steps are separate work: inline or trim the critical CSS, cut the 16 declared font families, and split the 1,700-line client landing component.
+  - Earlier local runs on this PC came in about 20 points lower across the board (machine load). Only the paired runs above are compared.
 
 ## Blocked on Kyle
 1. **Founder name and location on /about (ruling).**

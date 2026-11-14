@@ -128,7 +128,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all routes except static files, API routes, and the Google
-    // site-verification file (must be publicly fetchable by Google's crawler)
-    "/((?!_next/static|_next/image|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
+    // site-verification file (must be publicly fetchable by Google's crawler).
+    // .webp added 2026-11-14 for the hero still (/bg-video-poster.webp): without
+    // it the auth gate 404s the landing page's LCP image for every visitor.
+    "/((?!_next/static|_next/image|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.webp$|.*\\.svg$|.*\\.ico$).*)",
   ],
 };

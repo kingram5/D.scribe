@@ -986,6 +986,12 @@ function FadeSection({ children, className = "", delay = 0, style = {} }: { chil
 export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const heroVisibleRef = useRef(true);
+  // Poster first: the video mounts after load + idle, primes, then shows.
+  const [videoOn, setVideoOn] = useState(false);
+  const [videoStarted, setVideoStarted] = useState(false);
+  const [videoShown, setVideoShown] = useState(false);
   const { booksGenerated } = useLandingData();
 
   // HeyCatch item 3: one hero stat is a real number from Supabase. Below 100
@@ -1002,45 +1008,73 @@ export default function LandingV2() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Hero video, poster first (Kyle 2026-11-14: "go with your call on the video").
+  // The still of the video's first frame (/bg-video-poster.webp) is in the
+  // server HTML and paints as the LCP element. The video mounts only after the
+  // page has loaded and the main thread is idle, so its 1.3 MB download and
+  // decode stop competing with first paint. It sits in the same box over the
+  // still and stays visibility:hidden until it is actually playing, so the
+  // swap is invisible and CLS stays 0. Autoplay, muted, loop and the file are
+  // unchanged. Reduced Motion never mounts it (the old code paused it on its
+  // first frame, which is exactly the still).
   useEffect(() => {
-    if (videoRef.current) videoRef.current.playbackRate = 1;
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches && videoRef.current) {
-      videoRef.current.pause();
-    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let cancelled = false;
+    let idleId: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const mount = () => { if (!cancelled) setVideoOn(true); };
+    const schedule = () => {
+      if (typeof window.requestIdleCallback === "function") idleId = window.requestIdleCallback(mount, { timeout: 2000 });
+      else timer = setTimeout(mount, 400);
+    };
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", schedule);
+      if (idleId !== undefined && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   // Perf: the hero is one viewport of a very long page. Once it scrolls away,
-  // stop paying for video decode and the waveform animation entirely.
+  // stop paying for video decode and the waveform animation entirely. Observes
+  // the section itself, so the waveform pause works before the video mounts.
   useEffect(() => {
-    const video = videoRef.current;
-    const hero = video?.closest("section");
-    if (!video || !hero) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let heroVisible = true;
+    const hero = heroRef.current;
+    if (!hero) return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        heroVisible = entry.isIntersecting;
+        heroVisibleRef.current = entry.isIntersecting;
+        const video = videoRef.current;
         if (entry.isIntersecting) {
           hero.classList.remove("lv2-offscreen");
-          if (!mq.matches) video.play().catch(() => {});
+          if (video) video.play().catch(() => {});
         } else {
           hero.classList.add("lv2-offscreen");
-          video.pause();
+          if (video) video.pause();
         }
       },
       { threshold: 0.05 }
     );
     io.observe(hero);
+    return () => io.disconnect();
+  }, []);
 
-    // iOS refuses muted autoplay in Low Power Mode and Low Data Mode. The poster
-    // holds (its play button is hidden in CSS) and the first tap anywhere on the
-    // page starts the video, since a play() inside a user gesture is allowed.
+  // Once the video exists: iOS refuses muted autoplay in Low Power Mode and Low
+  // Data Mode. The still holds (the video's play button is hidden in CSS) and
+  // the first tap anywhere on the page starts the video, since a play() inside
+  // a user gesture is allowed.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!videoOn || !video) return;
+    video.playbackRate = 1;
+    // Start it explicitly too: the autoplay attribute alone may not start a
+    // video that mounts this small on every browser.
+    if (heroVisibleRef.current) video.play().catch(() => {});
+    else video.pause();
     const kick = () => {
-      if (!mq.matches && heroVisible && video.paused) video.play().catch(() => {});
+      if (heroVisibleRef.current && video.paused) video.play().catch(() => {});
     };
     const stopKicking = () => {
       document.removeEventListener("touchend", kick);
@@ -1049,13 +1083,37 @@ export default function LandingV2() {
     document.addEventListener("touchend", kick, { passive: true });
     document.addEventListener("click", kick);
     video.addEventListener("playing", stopKicking, { once: true });
-
     return () => {
-      io.disconnect();
       stopKicking();
       video.removeEventListener("playing", stopKicking);
     };
-  }, []);
+  }, [videoOn]);
+
+  // Prime, then show. Chrome measures an element for LCP once, at its first
+  // frame, and counts a video's first frame even under visibility:hidden. At
+  // full size that frame out-measured the still (the hero box is a fraction
+  // of a pixel to ~20px taller by then, once the web fonts land) and became a
+  // late LCP: 209,070 vs 208,884 px, measured 2026-11-14 with a
+  // PerformanceObserver. So the video mounts at 1x1 px (top-left, under the
+  // fixed nav, for a few frames); its LCP record is that 1 px first frame. It
+  // stays visible rather than hidden because WebKit may refuse to autoplay a
+  // hidden video. Once it is playing and a frame has been presented, it goes
+  // full size and the still hides.
+  useEffect(() => {
+    if (!videoStarted || videoShown) return;
+    const video = videoRef.current as (HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }) | null;
+    if (!video) return;
+    let done = false;
+    let raf = 0;
+    const show = () => {
+      if (done) return;
+      done = true;
+      raf = requestAnimationFrame(() => setVideoShown(true));
+    };
+    if (typeof video.requestVideoFrameCallback === "function") video.requestVideoFrameCallback(show);
+    const timer = setTimeout(show, 250);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
+  }, [videoStarted, videoShown]);
 
   return (
     <div className="landing-v2" style={{ background: "#2C2419", color: "#F9F7F2", minHeight: "100vh" }}>
@@ -1084,26 +1142,47 @@ export default function LandingV2() {
       </nav>
 
       {/* ─── Hero Section ─── */}
-      <section className="lv2-hero">
+      <section className="lv2-hero" ref={heroRef}>
 
-        {/* Video background. preload="auto" (restored 2026-09-10 on Kyle's call):
-            he wants the hero video playing immediately, not the poster holding
-            first. autoplay/loop/muted/playsInline were never changed. */}
-        <video
-          ref={videoRef}
-          className="lv2-hero-video"
+        {/* Hero backdrop, poster first (Kyle 2026-11-14, superseding the
+            2026-09-10 "video playing immediately" call for speed): the still is
+            the video's own first frame at the video's size (1280x720, so the
+            video never counts as a larger paint later), server-rendered with
+            high fetch priority as the LCP element. The video mounts after load
+            + idle, autoplays muted and looping as before, and the still steps
+            back only once the video is actually playing. Both carry
+            lv2-hero-video so the mobile 0.5 opacity rule applies to whichever
+            one shows. */}
+        <img
+          className={`lv2-hero-video lv2-hero-still${videoShown ? " lv2-hero-hidden" : ""}`}
+          src="/bg-video-poster.webp"
+          alt=""
           aria-hidden="true"
+          width={1280}
+          height={720}
+          fetchPriority="high"
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
             objectFit: "cover", objectPosition: "center center",
-            willChange: "transform", transform: "translate3d(0,0,0)",
           }}
-          autoPlay loop muted playsInline preload="auto"
-          poster="/bg-video-poster.jpg"
-          disablePictureInPicture disableRemotePlayback
-        >
-          <source src="/bg-video-desk.mp4" type="video/mp4" />
-        </video>
+        />
+        {videoOn && (
+          <video
+            ref={videoRef}
+            className={`lv2-hero-video${videoShown ? "" : " lv2-hero-prime"}`}
+            aria-hidden="true"
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%",
+              objectFit: "cover", objectPosition: "center center",
+              willChange: "transform", transform: "translate3d(0,0,0)",
+            }}
+            autoPlay loop muted playsInline preload="auto"
+            disablePictureInPicture disableRemotePlayback
+            onPlaying={() => setVideoStarted(true)}
+          >
+            <source src="/bg-video-desk.mp4" type="video/mp4" />
+          </video>
+        )}
 
         {/* Overlay */}
         <div className="lv2-hero-overlay" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(to bottom, rgba(26, 20, 14, 0.4), rgba(26, 20, 14, 0.8))", zIndex: 0, pointerEvents: "none" }} />
@@ -1668,6 +1747,12 @@ export default function LandingV2() {
            Mode, Low Data Mode) Safari paints its own play button over the poster;
            never show that button, and never let the backdrop take taps. */
         .lv2-hero-video { pointer-events: none; }
+        /* Poster-first swap: the video mounts at 1px (prime, see the effect),
+           then goes full size while the still hides, so the two never stack
+           under the mobile opacity: 0.5 rule. visibility, not opacity, so that
+           !important rule cannot fight it. */
+        .lv2-hero-hidden { visibility: hidden; }
+        .lv2-hero-prime { width: 1px !important; height: 1px !important; }
         .lv2-hero-video::-webkit-media-controls,
         .lv2-hero-video::-webkit-media-controls-panel,
         .lv2-hero-video::-webkit-media-controls-play-button,

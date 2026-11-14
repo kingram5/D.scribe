@@ -108,4 +108,16 @@ Run 2026-11-14 against the live site, https://www.d-scribe.app. Read-only: nothi
 15. `http://d-scribe.app` takes two redirect hops to reach www.
 
 ## GEO and SERP baseline
-See `geo-baseline.md`: 10 fixed prompts × 5 engines, plus Google SERP checks.
+Full detail is in `geo-baseline.md`.
+
+- **AI engines: D.Scribe was named in 0 of 30 answers.**
+  - ChatGPT was checked signed out.
+  - Gemini was checked in a temporary chat.
+  - Perplexity was checked through the Sonar API, because the website asks signed-out visitors to sign up.
+  - Claude and Grok were not checked: both need a login.
+- **Named instead:** Claude, ChatGPT, Descript, Otter.ai, Sudowrite, Scrivener, Squibler, Built&Written, Novelcrafter, Remento. The niche voice-to-book names were Aligned and SermonBook.ai (sermons) and Memoir.bot and MemoirMaker (memoir).
+- **Google:**
+  - d-scribe.app ranks #1 for "d-scribe.app", "D.Scribe book app" and "D.Scribe voice to book".
+  - It ranks #4 for bare "D.Scribe", behind dscryb.com, dscribe.in and dscribeapp.com.
+  - It is absent from the top 15 for "dscribe app" and for all 10 intent queries.
+  - No knowledge panel.

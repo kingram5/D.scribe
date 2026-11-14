@@ -1,0 +1,77 @@
+{
+ "note": "Lighthouse 12.8 mobile on a local production build (next start). before = Phase 2 commit 3df2f8b; after = hero poster-first commit. Paired back-to-back runs.",
+ "runs": {
+  "after-dt-1": {
+   "throttling": "devtools",
+   "performance": 62,
+   "lcpMs": 3058,
+   "lcpElement": "<img class=\"lv2-hero-video lv2-hero-still lv2-hero-hidden\" s",
+   "fcpMs": 3009,
+   "tbtMs": 1307,
+   "cls": 0.005732330291024481
+  },
+  "after-dt-2": {
+   "throttling": "devtools",
+   "performance": 61,
+   "lcpMs": 3101,
+   "lcpElement": "<img class=\"lv2-hero-video lv2-hero-still lv2-hero-hidden\" s",
+   "fcpMs": 3034,
+   "tbtMs": 1392,
+   "cls": 0.005732330291024481
+  },
+  "after-sim-1": {
+   "throttling": "simulate",
+   "performance": 74,
+   "lcpMs": 5131,
+   "lcpElement": "<img class=\"lv2-hero-video lv2-hero-still lv2-hero-hidden\" s",
+   "fcpMs": 2723,
+   "tbtMs": 162,
+   "cls": 0.005732330291024481
+  },
+  "after-sim-2": {
+   "throttling": "simulate",
+   "performance": 75,
+   "lcpMs": 5117,
+   "lcpElement": "<img class=\"lv2-hero-video lv2-hero-still lv2-hero-hidden\" s",
+   "fcpMs": 2717,
+   "tbtMs": 170,
+   "cls": 0.005732330291024481
+  },
+  "before-dt-1": {
+   "throttling": "devtools",
+   "performance": 32,
+   "lcpMs": 5795,
+   "lcpElement": "<video class=\"lv2-hero-video\" aria-hidden=\"true\" style=\"posi",
+   "fcpMs": 5762,
+   "tbtMs": 4428,
+   "cls": 0.005732330291024481
+  },
+  "before-dt-2": {
+   "throttling": "devtools",
+   "performance": 63,
+   "lcpMs": 2985,
+   "lcpElement": "<video class=\"lv2-hero-video\" aria-hidden=\"true\" style=\"posi",
+   "fcpMs": 2935,
+   "tbtMs": 1255,
+   "cls": 0.005144191482744034
+  },
+  "before-sim-1": {
+   "throttling": "simulate",
+   "performance": 69,
+   "lcpMs": 5280,
+   "lcpElement": "<video class=\"lv2-hero-video\" aria-hidden=\"true\" style=\"posi",
+   "fcpMs": 2730,
+   "tbtMs": 331,
+   "cls": 0.005144191482744034
+  },
+  "before-sim-2": {
+   "throttling": "simulate",
+   "performance": 69,
+   "lcpMs": 5285,
+   "lcpElement": "<video class=\"lv2-hero-video\" aria-hidden=\"true\" style=\"posi",
+   "fcpMs": 2744,
+   "tbtMs": 302,
+   "cls": 0.005732330291024481
+  }
+ }
+}

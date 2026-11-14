@@ -3,10 +3,11 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Blog — Voice to Book Guides & Strategies",
-  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book. Learn how to use AI to write your manuscript faster.",
+  description: "Practical guides, strategies, and stories for coaches, pastors, and speakers who want to turn their voice recordings into a published book.",
   alternates: {
     canonical: `${SITE_URL}/blog`,
   },
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/blog`,
     siteName: "D.scribe",
     type: "website",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

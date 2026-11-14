@@ -10,7 +10,7 @@ const FROM = PLANS.starter.price;
 
 export const metadata: Metadata = {
   title: `Pricing — AI Book Writing Plans Starting at $${FROM}`,
-  description: `D.scribe pricing starts at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Pay only for the Ink you use — cancel anytime.`,
+  description: `D.scribe plans start at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`,
   alternates: {
     canonical: `${SITE_URL}/pricing`,
   },

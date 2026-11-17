@@ -426,3 +426,155 @@ export const THEO_HERO_CSS = `
   100% { transform: rotateY(100deg) translateZ(calc(var(--th-r) * -1)); opacity: 0; }
 }
 `;
+
+/**
+ * Entrance variants (PREVIEW, /hero-preview?v=walk|door|chair). Injected only
+ * while a variant is active, and every rule is scoped under [data-variant], so
+ * the no-param hero is untouched.
+ *
+ * data-phase on .th-hero, driven by the entrance clip's own clock (JS):
+ *   intro    clip playing (its poster before that); ribbon, copy, scrim hidden
+ *   handoff  the idle loop (already playing, invisible) fades in OVER the
+ *            opaque clip in 220ms, so nothing ever shows through him mid-fade
+ *   settled  clip fades out to the room plate / stage, ribbon sweeps in behind
+ *            him, copy follows; door/chair room dims + softens so they read
+ */
+export const THEO_ENTRANCE_CSS = `
+.th-hero[data-variant] {
+  container-type: size;
+  /* One 16:9 box holds the clip, the room plate and the idle rect, scaled as
+     a unit. Wide screens: cover the hero. Narrow screens: sized so his rect
+     (38.229% of the box) is 88% of the viewport width; the box overflows
+     left/right and the hero clips it. */
+  --th-bw: min(max(100cqw, 177.7778cqh), 230.19cqw);
+  --th-bh: calc(var(--th-bw) * 0.5625);
+  /* Box shorter than the hero: stand on the bottom edge. Taller (cover on an
+     ultra-wide screen): crop 20% of the overflow from the top and 80% from
+     the bottom, so his head stays clear of the nav. */
+  --th-bt: max(calc(100cqh - var(--th-bh)), calc((100cqh - var(--th-bh)) * 0.2));
+}
+.th-ent-box {
+  position: absolute;
+  left: calc(50cqw - var(--th-bw) / 2);
+  top: var(--th-bt);
+  width: var(--th-bw);
+  height: var(--th-bh);
+  pointer-events: none;
+}
+/* globals.css caps every element at 100vw on phones; the box is ~2.3x that
+   there by design (the hero clips it). */
+.th-ent-box,
+.th-ent-box * { max-width: none; }
+.th-ent-back { z-index: 0; }
+.th-ent-front { z-index: 2; }
+.th-ent-plate,
+.th-ent-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+.th-ent-video { transition: opacity 700ms ease-in-out; }
+/* Dimmed + softened room (baked). Kept at a near-zero opacity rather than 0
+   so it is decoded and rasterised before it is needed. */
+.th-ent-plate--dim {
+  opacity: 0.004;
+  transition: opacity 800ms ease-out;
+}
+.th-ent-video::-webkit-media-controls,
+.th-ent-video::-webkit-media-controls-start-playback-button { display: none !important; }
+
+/* walk: plain backdrop over the page stage, every edge feathered into it. */
+.th-hero[data-variant="walk"] .th-ent-video {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 5%, #000 95%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%),
+    linear-gradient(to bottom, transparent 0, #000 5%, #000 95%, transparent 100%);
+  mask-composite: intersect;
+}
+/* door / chair: the room's top edge is in view on phones; feather it into the
+   stage. Stops at 7%, above his hair (~9% of the box). */
+.th-hero[data-variant="door"] .th-ent-back,
+.th-hero[data-variant="chair"] .th-ent-back {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 7%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 7%);
+}
+
+/* The idle loop, exactly where every clip's last frame put him. */
+.th-ent-rect {
+  position: absolute;
+  left: 30.885%;
+  top: 6.481%;
+  width: 38.229%;
+  height: 92.037%;
+  opacity: 0;
+  transition: opacity 220ms linear; /* HANDOFF_FADE_MS in TheoHero.tsx */
+}
+.th-ent-rect .th-theo-still,
+.th-ent-rect .th-theo-video { object-fit: fill; }
+/* While the rect is invisible the still -> video swap inside it is instant. */
+.th-hero[data-variant][data-phase="intro"] .th-ent-rect :is(.th-theo-still, .th-theo-video) {
+  transition: none;
+}
+.th-hero[data-variant]:is([data-phase="handoff"], [data-phase="settled"]) .th-ent-rect { opacity: 1; }
+
+/* Held back until he has arrived. 0.004, not 0: under one 8-bit level, so
+   invisible, but still painted and rasterised; revealing them from a true 0
+   cost a ~200ms compositor stall right after the handoff (measured). */
+.th-hero[data-variant]:is([data-phase="intro"], [data-phase="handoff"]) :is(.th-ribbon-view, .th-headline, .th-sub, .th-cta-row) {
+  animation: none;
+  opacity: 0.004;
+}
+/* Opacity only, never visibility/display, for the same reason. */
+.th-hero[data-variant] :is(.th-ribbon-view, .th-headline, .th-sub, .th-cta-row) { will-change: opacity; }
+.th-hero[data-variant]:is([data-phase="intro"], [data-phase="handoff"]) :is(.th-ribbon-view, .th-copy a) {
+  pointer-events: none;
+}
+.th-hero[data-variant]:is([data-phase="intro"], [data-phase="handoff"]) .th-ribbon-sweep {
+  animation: none;
+}
+.th-hero[data-variant="walk"]:is([data-phase="intro"], [data-phase="handoff"]) .th-stage-glow {
+  animation: none;
+  opacity: 0;
+}
+/* The scrim would sink his legs while he walks in, so it comes up after the
+   handoff, in 300ms, while the clip is still fading out under him (the idle
+   rect stops at 98.5% of the box, the clip at 100%, so the scrim has to beat
+   the clip's 700ms fade). Raising it before the handoff made headless Chrome
+   drop ~250ms of frames right at the handoff (measured, every run). */
+.th-hero[data-variant] .th-scrim { transition: opacity 300ms ease-out; }
+.th-hero[data-variant]:is([data-phase="intro"], [data-phase="handoff"]) .th-scrim { opacity: 0; }
+
+/* settled */
+.th-hero[data-variant][data-phase="settled"] .th-ent-video { opacity: 0; }
+.th-hero[data-variant][data-phase="settled"] .th-ent-plate--dim { opacity: 1; }
+.th-hero[data-variant][data-phase="settled"] .th-ribbon-view { animation: th-fade 1.4s ease-out 0.1s both; }
+.th-hero[data-variant][data-phase="settled"] .th-headline { animation: th-rise 1s ease-out 0.5s both; }
+.th-hero[data-variant][data-phase="settled"] .th-sub { animation: th-rise 1s ease-out 0.8s both; }
+.th-hero[data-variant][data-phase="settled"] .th-cta-row { animation: th-rise 0.9s ease-out 1.1s both; }
+@media (min-width: 768px) {
+  .th-hero[data-variant][data-phase="settled"] .th-ribbon-sweep {
+    animation: th-sweep 2.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+/* Reduced motion: no entrance, the finished composition at first paint. */
+@media (prefers-reduced-motion: reduce) {
+  .th-hero[data-variant] .th-ent-video { display: none; }
+  .th-hero[data-variant] .th-ent-rect { opacity: 1; transition: none; }
+  .th-hero[data-variant] :is(.th-ribbon-view, .th-headline, .th-sub, .th-cta-row, .th-scrim, .th-stage-glow) {
+    opacity: 1 !important;
+  }
+  /* data-phase stays "intro" here (no clip runs), so undo its click gating. */
+  .th-hero[data-variant] .th-copy a { pointer-events: auto !important; }
+  @media (max-width: 767px) {
+    .th-hero[data-variant] .th-ribbon-view { pointer-events: auto !important; } /* the phone row swipes */
+  }
+  .th-hero[data-variant] .th-ent-plate--dim { opacity: 1; transition: none; }
+}
+`;

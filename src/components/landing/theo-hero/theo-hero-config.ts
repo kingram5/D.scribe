@@ -53,6 +53,87 @@ export const THEO_HERO_MEDIA: TheoHeroMedia = {
   label: "T.H.E.O, the D.scribe interviewer",
 };
 
+/**
+ * ENTRANCE VARIANTS (PREVIEW, /hero-preview?v=walk|door|chair). T.H.E.O walks
+ * into frame, then hands off to the idle loop above. No param = the hero
+ * exactly as before.
+ *
+ * Every clip is 1920x1080 / 24fps / ~5.04s, locked camera, and its LAST frame
+ * was generated to match a composite with the idle loop's frame 0 drawn at
+ * THEO_IDLE_RECT inside the same 16:9 frame. The hero draws the idle at that
+ * rect inside the same 16:9 box, so the handoff has no jump.
+ *
+ * Measured (SSIM of the clip vs the target end frame, his rect + his face):
+ *   walk  body settles at ~4.25s but his head is still tilting until ~4.5s
+ *         (face SSIM 0.92 at 4.33s, 0.98 from 4.5s), so it hands off at 4.7s
+ *         while the clip keeps running under him;
+ *   door / chair keep moving until the last ~0.4s, so they hand off at the
+ *         clip's end (handoffAt null) and the ribbon waits for the handoff.
+ * Web copies (h264 crf 24, faststart, no audio) were made from gen/*-t1.mp4.
+ */
+export const THEO_ENTRANCE_VARIANTS = ["walk", "door", "chair"] as const;
+export type TheoEntranceVariant = (typeof THEO_ENTRANCE_VARIANTS)[number];
+
+export function isTheoEntranceVariant(v: unknown): v is TheoEntranceVariant {
+  return typeof v === "string" && (THEO_ENTRANCE_VARIANTS as readonly string[]).includes(v);
+}
+
+export type TheoEntrance = {
+  /** Full-frame entrance clip (h264 mp4, no audio). */
+  video: string;
+  /** Frame 0 of the clip: first paint, shown until the clip plays. */
+  poster: string;
+  /** Empty room under the idle after the handoff (same pixels as the clip's room). null = page stage. */
+  plate: string | null;
+  /**
+   * The same room baked at brightness 0.45 + ~8px blur, crossfaded in as the
+   * ribbon arrives so it and the headline read. Baked, not a live CSS filter:
+   * a filter transition on the 1080p box stalled the compositor ~200ms here.
+   */
+  plateDim: string | null;
+  /** Seconds into the clip to hand off to the idle loop. null = at the clip's end. */
+  handoffAt: number | null;
+  /**
+   * Narrow screens only see the middle ~43% of the frame, so he is off-screen
+   * for the first ~2s of walk and chair. Start the clip this far in there.
+   */
+  narrowStartAt: number;
+};
+
+export const THEO_ENTRANCES: Record<TheoEntranceVariant, TheoEntrance> = {
+  walk: {
+    video: "/theo-entrance-walk.mp4",
+    poster: "/theo-entrance-walk-poster.jpg",
+    plate: null,
+    plateDim: null,
+    handoffAt: 4.7,
+    narrowStartAt: 1.2,
+  },
+  door: {
+    video: "/theo-entrance-door.mp4",
+    poster: "/theo-entrance-door-poster.jpg",
+    plate: "/theo-room-plate.jpg",
+    plateDim: "/theo-room-plate-dim.jpg",
+    handoffAt: null,
+    narrowStartAt: 0,
+  },
+  chair: {
+    video: "/theo-entrance-chair.mp4",
+    poster: "/theo-entrance-chair-poster.jpg",
+    plate: "/theo-room-plate.jpg",
+    plateDim: "/theo-room-plate-dim.jpg",
+    handoffAt: null,
+    narrowStartAt: 1.5,
+  },
+};
+
+/**
+ * Where the idle loop sits inside the 16:9 entrance frame, in percent
+ * (x=593 y=70 w=734 h=994 of 1920x1080). Mirrored in theo-hero-styles.ts
+ * (.th-ent-rect) and in the box sizing there (88vw / 38.229%).
+ */
+export const THEO_IDLE_RECT = { left: 30.885, top: 6.481, width: 38.229, height: 92.037 };
+
 /** Placeholder copy. Change freely; nothing else reads these strings. */
 export const THEO_HERO_COPY = {
   headlineLead: "Your voice.",

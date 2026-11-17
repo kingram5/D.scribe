@@ -130,10 +130,16 @@ export default function TheoHero({ media = THEO_HERO_MEDIA }: { media?: TheoHero
     const onLoadedData = () => {
       if (!alphaComposites(v)) giveUp(); // e.g. a WebKit build that slipped through
     };
+    // Not once: if the hero scrolls away inside the pre-roll, the reveal is
+    // skipped and the next "playing" (on scroll back) gets another chance.
+    let revealed = false;
     const onPlaying = () => {
+      if (revealed) return;
       window.clearTimeout(revealTimer);
       revealTimer = window.setTimeout(() => {
-        if (!cancelled && !v.paused && alphaComposites(v)) setVideoOn(true);
+        if (cancelled || revealed || v.paused || !alphaComposites(v)) return;
+        revealed = true;
+        setVideoOn(true);
       }, PREROLL_MS);
     };
     const onError = () => giveUp();
@@ -144,7 +150,7 @@ export default function TheoHero({ media = THEO_HERO_MEDIA }: { media?: TheoHero
       if (!src) return; // Apple WebKit without an HEVC-alpha file: hold the still
       v.loop = media.loop;
       v.addEventListener("loadeddata", onLoadedData);
-      v.addEventListener("playing", onPlaying, { once: true });
+      v.addEventListener("playing", onPlaying);
       v.addEventListener("error", onError);
       v.src = src;
       if (rootRef.current?.dataset.paused !== "true") v.play().catch(() => {});

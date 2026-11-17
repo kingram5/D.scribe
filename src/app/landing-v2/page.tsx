@@ -8,6 +8,7 @@ import { FAQ_ITEMS } from "@/components/landing/faq";
 // FOUNDER import removed (Kyle 2026-09-19): the footer no longer carries his name.
 import "../cinematic-landing.css";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
+import { useHeroOverride } from "@/components/landing/HeroOverride"; // PREVIEW ONLY: /hero-preview
 
 function MicIcon({ className, size = 20 }: { className?: string; size?: number }) {
   return (
@@ -987,6 +988,8 @@ export default function LandingV2() {
   const [scrolled, setScrolled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { booksGenerated } = useLandingData();
+  // PREVIEW ONLY: /hero-preview swaps the hero section; null everywhere else.
+  const heroOverride = useHeroOverride();
 
   // HeyCatch item 3: one hero stat is a real number from Supabase. Below 100
   // books the honest framing is the "first 100 authors" invitation; at 100 and
@@ -1084,6 +1087,7 @@ export default function LandingV2() {
       </nav>
 
       {/* ─── Hero Section ─── */}
+      {heroOverride ?? (
       <section className="lv2-hero">
 
         {/* Video background. preload="auto" (restored 2026-09-10 on Kyle's call):
@@ -1162,6 +1166,7 @@ export default function LandingV2() {
         </div>
 
       </section>
+      )}
 
         {/* Bottom Stats Footer */}
         <div className="lv2-hero-stats" style={{ display: "flex", flexWrap: "wrap", gap: 24, justifyContent: "space-around", background: "rgba(26, 20, 14, 0.95)", backdropFilter: "blur(4px)" }}>

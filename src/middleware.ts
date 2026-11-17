@@ -27,7 +27,9 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
 // 2026-11-14: /llms.txt and /llms-full.txt (SEO/GEO plan). The matcher below does
 // not exclude .txt, so without these entries both 404 for every crawler.
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"];
+// PREVIEW ONLY (branch feat/theo-hero-preview): "/hero-preview" is the T.H.E.O
+// hero comparison page. Strip it with src/app/hero-preview before any merge.
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt", "/hero-preview"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
 const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];
@@ -128,7 +130,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all routes except static files, API routes, and the Google
-    // site-verification file (must be publicly fetchable by Google's crawler)
-    "/((?!_next/static|_next/image|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
+    // site-verification file (must be publicly fetchable by Google's crawler).
+    // .webp added for the T.H.E.O hero still: without it every public .webp
+    // fell through to the anonymous 404 rewrite.
+    "/((?!_next/static|_next/image|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.webp$|.*\\.svg$|.*\\.ico$).*)",
   ],
 };

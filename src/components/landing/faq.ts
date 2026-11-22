@@ -1,4 +1,4 @@
-import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+import { PLANS, plansV2, plan99, PLAN_99, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 
 // Homepage FAQ — single source for the visible list (landing-v2/page.tsx) and
 // the FAQPage JSON-LD (app/page.tsx), so the two cannot drift.
@@ -37,7 +37,9 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
   },
   {
     q: "How does Ink work?",
-    a: `Ink is D.scribe's credit system. Every action that uses AI (brainstorming, transcription, analysis, chapter generation and so on) costs a small amount of Ink. Starter plans include ${PLANS.starter.ink.toLocaleString("en-US")} Ink per month, Pro includes ${PLANS.pro.ink.toLocaleString("en-US")}, and Premium includes ${PLANS.premium.ink.toLocaleString("en-US")}. ${plansV2() ? `A full Publisher-Ready pass on a 40,000-word book runs about ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink; a quick draft uses far less.` : "A typical full manuscript runs around 100–200 Ink depending on length."} You can always see your balance before taking any action.`,
+    a: plan99()
+      ? `Ink is D.scribe's credit system. Every action that uses AI (brainstorming, transcription, analysis, chapter generation and so on) costs a small amount of Ink. The plan includes ${PLAN_99.ink.toLocaleString("en-US")} Ink per month. A full Publisher-Ready pass on a 40,000-word book runs about ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink, so that is one Publisher-Ready book a month; a quick draft uses far less. You can always see your balance before taking any action.`
+      : `Ink is D.scribe's credit system. Every action that uses AI (brainstorming, transcription, analysis, chapter generation and so on) costs a small amount of Ink. Starter plans include ${PLANS.starter.ink.toLocaleString("en-US")} Ink per month, Pro includes ${PLANS.pro.ink.toLocaleString("en-US")}, and Premium includes ${PLANS.premium.ink.toLocaleString("en-US")}. ${plansV2() ? `A full Publisher-Ready pass on a 40,000-word book runs about ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink; a quick draft uses far less.` : "A typical full manuscript runs around 100–200 Ink depending on length."} You can always see your balance before taking any action.`,
   },
   {
     q: "How long does it take to generate a manuscript?",

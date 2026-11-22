@@ -2,7 +2,7 @@
 // cannot drift (SEO/GEO plan Phase 2, 2026-11-14). Moved verbatim out of
 // src/app/about/page.tsx. Client-safe: constants only.
 
-import { PLANS } from "@/lib/tiers";
+import { PLANS, PLAN_99, plan99 } from "@/lib/tiers";
 import { SITE_URL } from "@/lib/site";
 import { BASED_IN, FOUNDER_NAME } from "@/lib/founder";
 import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
@@ -26,7 +26,7 @@ export const DIFFERENTIATORS: readonly { title: string; body: string; source?: {
   {
     title: "A ghostwriter alternative at a fraction of the cost",
     // The one sourced figure (src/lib/ghostwriter-cost.ts), same as /pricing.
-    body: `${GHOSTWRITER_COST_SENTENCE}, according to ${GHOSTWRITER_COST.source}'s pricing guide. D.scribe starts at $${PLANS.starter.price} per month. Same outcome: a finished manuscript in your voice.`,
+    body: `${GHOSTWRITER_COST_SENTENCE}, according to ${GHOSTWRITER_COST.source}'s pricing guide. ${plan99() ? `D.scribe is $${PLAN_99.price} per month` : `D.scribe starts at $${PLANS.starter.price} per month`}. Same outcome: a finished manuscript in your voice.`,
     source: { label: `${GHOSTWRITER_COST.source}, "${GHOSTWRITER_COST.sourceTitle}"`, url: GHOSTWRITER_COST.url },
   },
   {
@@ -75,7 +75,9 @@ export const KEY_FACTS: readonly [string, string][] = [
   ["Based in", BASED_IN],
   ["Website", SITE_URL],
   ["Core offering", "Upload spoken audio or a YouTube link; D.scribe transcribes it, learns your voice, and drafts an export-ready manuscript"],
-  ["Pricing", `Free trial with 10 Ink; Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink); Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink); Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink)`],
+  ["Pricing", plan99()
+    ? `Free trial with 10 Ink; one plan, ${PLAN_99.name} $${PLAN_99.price}/mo (${PLAN_99.ink.toLocaleString("en-US")} Ink, ${PLAN_99.books} a month)`
+    : `Free trial with 10 Ink; Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink); Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink); Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink)`],
   ["Contract terms", "Month-to-month, no long-term contract; unused Ink rolls over; overage is blocked with a warning, never charged silently"],
   ["Services", "AI transcription, brainstorm studio, voice profiling, chapter structuring, manuscript generation, sentence-level editing, PDF and DOCX export"],
   ["Communication", "Email support at kyle@d-scribe.app; in-app cost preview before every AI action"],

@@ -1,3 +1,4 @@
+import { callPublisherModel } from "@/lib/ai/execution";
 /**
  * Voice picker (Kyle 2026-09-27): "Which would you actually SAY out loud?"
  *
@@ -13,7 +14,7 @@
  *  5. Account level, once per author, refined over time.
  */
 
-import { callClaudeNext, parseJsonReply } from "@/lib/claude-next";
+import { parseJsonReply } from "@/lib/claude-next";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 
 export interface Dimension {
@@ -204,8 +205,8 @@ export async function generatePairs(opts: {
 
   if (sources.length) {
     const items = sources.map((s, i) => `${i}. SENTENCE: ${s}\n   DIMENSION: ${dims[i].key}. First end: ${dims[i].low}. Second end: ${dims[i].high}.`).join("\n");
-    const res = await callClaudeNext(PAIR_SYSTEM, items, {
-      model: "sonnet5", effort: "medium", maxTokens: 12000, jsonSchema: PAIR_SCHEMA as unknown as Record<string, unknown>,
+    const res = await callPublisherModel(PAIR_SYSTEM, items, {
+      model: "sonnet5", effort: "medium", stage: "voice_pairs", maxTokens: 12000, jsonSchema: PAIR_SCHEMA as unknown as Record<string, unknown>,
     });
     usage.push(res.usage);
     const out = parseJsonReply<{ pairs: { index: number; low_version: string; high_version: string }[] }>(res.text);
@@ -219,8 +220,8 @@ export async function generatePairs(opts: {
 
   const spoken = opts.spokenLine?.replace(/\s+/g, " ").trim();
   if (spoken && spoken.split(" ").length >= 8) {
-    const res = await callClaudeNext(ANCHOR_SYSTEM, spoken, {
-      model: "sonnet5", effort: "low", maxTokens: 2000, jsonSchema: ANCHOR_SCHEMA as unknown as Record<string, unknown>,
+    const res = await callPublisherModel(ANCHOR_SYSTEM, spoken, {
+      model: "sonnet5", effort: "low", stage: "voice_anchor", maxTokens: 2000, jsonSchema: ANCHOR_SCHEMA as unknown as Record<string, unknown>,
     });
     usage.push(res.usage);
     const { polished } = parseJsonReply<{ polished: string }>(res.text);

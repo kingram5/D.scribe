@@ -1,0 +1,24 @@
+[Unit]
+Description=D.scribe staging Theo Live worker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=dscribe
+WorkingDirectory=/opt/dscribe
+EnvironmentFile=/etc/dscribe/staging.env
+# Install Node 24 at this path or adjust both commands before installing the unit.
+ExecStartPre=/usr/bin/node --use-env-proxy --import tsx scripts/openai-stack/preflight.ts
+ExecStart=/usr/bin/npm run theo:worker
+Restart=on-failure
+RestartSec=5
+# Allow the worker to request vendor closure during graceful shutdown.
+TimeoutStopSec=120
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

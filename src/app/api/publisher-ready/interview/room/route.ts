@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
       if (!text) return NextResponse.json({ error: "Say something first." }, { status: 400 });
       if (current) {
         const out = await submitAnswer({
-          userId: user.id, runId, questionId: current.id, transcript: text, source: "voice",
+          userId: user.id, runId, questionId: current.id, transcript: text, source: body.source === "typed" ? "typed" : "voice",
+          sourceEventKey: typeof body.request_id === "string" && /^[0-9a-f-]{36}$/i.test(body.request_id) ? `room:${body.request_id}` : undefined,
           followUpOf: typeof body.follow_up_of === "string" ? body.follow_up_of : null,
         });
         if (out.followUp) { line = out.followUp; followUpOf = out.answerId; }

@@ -1,3 +1,4 @@
+import { callPublisherModel } from "@/lib/ai/execution";
 /**
  * The model calls behind each Publisher-Ready step, with no database access.
  * pipeline.ts wraps these with loading and saving; the scoreboard harness
@@ -5,7 +6,7 @@
  * the prompts production runs.
  */
 
-import { callClaudeNext, parseJsonReply, type NextModelKey, type Effort } from "@/lib/claude-next";
+import { parseJsonReply, type NextModelKey, type Effort } from "@/lib/claude-next";
 import type { ClaudeUsage } from "@/lib/claude-lite";
 import { generateSystem, generatePrompt } from "@/lib/prompts/generate";
 import { generationProfileBlock } from "@/lib/audience-profiles";
@@ -68,10 +69,10 @@ export async function coreDraft(
   opts: { creativeFreedom?: number; onText?: (t: string) => void } = {}
 ): Promise<{ beats: Beat[]; text: string; servedBy: string; spend: Spend[] }> {
   const spend: Spend[] = [];
-  const beatsRes = await callClaudeNext(
+  const beatsRes = await callPublisherModel(
     beatPlanSystem(),
     `Chapter ${input.chapterNumber}: "${input.chapterTitle}"\nSummary: ${input.chapterSummary}\n\nKey points:\n${input.keyPoints.map((k) => `- ${k.title}: ${k.summary}`).join("\n")}\n\nSource material:\n---\n${input.excerpts}\n---`,
-    { ...mix.beats, maxTokens: 8000, jsonSchema: BEAT_PLAN_SCHEMA as unknown as Record<string, unknown> }
+    { ...mix.beats, stage: "beats", maxTokens: 8000, jsonSchema: BEAT_PLAN_SCHEMA as unknown as Record<string, unknown> }
   );
   spend.push({ step: "beats", model: mix.beats.model, usage: beatsRes.usage });
   const { beats } = parseJsonReply<{ beats: Beat[] }>(beatsRes.text);
@@ -88,7 +89,7 @@ export async function coreDraft(
     freedomInstruction: creativeFreedomToInstruction(opts.creativeFreedom ?? 50),
   }) + draftBeatBlock(beats) + speakerWritingBlock(input.otherSpeakerNames ?? []);
 
-  const res = await callClaudeNext(voiceSystem(input), prompt, { ...mix.draft, maxTokens: 32000, onText: opts.onText });
+  const res = await callPublisherModel(voiceSystem(input), prompt, { ...mix.draft, stage: "draft", maxTokens: 32000, onText: opts.onText });
   spend.push({ step: "draft", model: mix.draft.model, usage: res.usage });
   return { beats, text: sanitizeGenerated(res.text), servedBy: res.servedBy, spend };
 }
@@ -109,13 +110,13 @@ export async function coreEdit(
     `Title: ${input.projectTitle}`,
     ...input.previousChapters.map((c, i) => `Ch ${i + 1}: "${c.title}": ${c.summary}`),
   ].join("\n");
-  const res = await callClaudeNext(
+  const res = await callPublisherModel(
     editorSystem(input.audience, input.otherSpeakers),
     editorUser({
       chapterNumber: input.chapterNumber, chapterTitle: input.chapterTitle, draft,
       beats, sourceExcerpts: input.excerpts, bookContext, lintSummary: lintSummary(flags),
     }),
-    { ...mix.edit, maxTokens: 32000, jsonSchema: EDITOR_SCHEMA as unknown as Record<string, unknown> }
+    { ...mix.edit, stage: "edit", maxTokens: 32000, jsonSchema: EDITOR_SCHEMA as unknown as Record<string, unknown> }
   );
   const report = parseJsonReply<EditorReport>(res.text);
   report.author_questions = (report.author_questions || []).map((q) => ({ ...q, impact: Math.max(1, Math.min(5, Math.round(q.impact || 3))) }));
@@ -137,7 +138,7 @@ export async function coreRevise(
 ): Promise<{ text: string; changeLog: ChangeLogEntry[]; servedBy: string; spend: Spend[] }> {
   // Voice + style + audience without the humanizer; reviseSystem appends its own copy.
   const voice = voiceSystem(input).split("\nCRITICAL — WRITE LIKE A HUMAN")[0];
-  const res = await callClaudeNext(
+  const res = await callPublisherModel(
     reviseSystem(voice),
     reviseUser({
       draft,
@@ -147,7 +148,7 @@ export async function coreRevise(
       sourceExcerpts: input.excerpts,
       targetWords: input.targetWords,
     }) + speakerWritingBlock(input.otherSpeakerNames ?? []),
-    { ...mix.revise, maxTokens: 64000, jsonSchema: REVISE_SCHEMA as unknown as Record<string, unknown>, onText: opts.onText }
+    { ...mix.revise, stage: "revise", maxTokens: 64000, jsonSchema: REVISE_SCHEMA as unknown as Record<string, unknown>, onText: opts.onText }
   );
   const out = parseJsonReply<{ chapter: string; change_log: ChangeLogEntry[] }>(res.text);
   return {
@@ -224,10 +225,10 @@ export async function coreFinal(
   // Only spend a model call when the checker found something.
   if (!flags.length && !tellLines.length) return { text, applied: 0, rejected: 0, spend: [] };
 
-  const res = await callClaudeNext(
+  const res = await callPublisherModel(
     finalCheckSystem(),
     `FLAGGED BY THE CHECKER:\n${[lintSummary(flags), ...tellLines].filter(Boolean).join("\n")}\n\nCHAPTER:\n---\n${text}\n---`,
-    { ...mix.final, maxTokens: 16000, jsonSchema: FINAL_SCHEMA as unknown as Record<string, unknown> }
+    { ...mix.final, stage: "final", maxTokens: 16000, jsonSchema: FINAL_SCHEMA as unknown as Record<string, unknown> }
   );
   const { edits } = parseJsonReply<{ edits: { find: string; replace: string }[] }>(res.text);
   const applied = applyEdits(text, edits || []);

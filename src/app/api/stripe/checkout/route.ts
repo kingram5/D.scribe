@@ -10,7 +10,7 @@ import {
 import { REF_COOKIE } from "@/lib/partner-rules";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
-import { stripe, STRIPE_PRICES, TOPUP_PRICES } from "@/lib/stripe";
+import { planPriceFor, stripe, TOPUP_PRICES } from "@/lib/stripe";
 import {
   canBuyInkPack,
   canBuyVoicePack,
@@ -92,6 +92,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
   }
 
+  // Plan 99 on: only the $99 plan is sold, and never at a fallback price.
+  const plan = planPriceFor(tier);
+  if (!plan.ok) {
+    if (plan.status === 503) {
+      logger.error("Plan 99 is on but STRIPE_PRICE_PLAN_99 is missing or reuses another price id; checkout refused", {
+        route: "/api/stripe/checkout",
+        meta: { user_id: user.id },
+      });
+    }
+    return NextResponse.json({ error: plan.error }, { status: plan.status });
+  }
+
   const customerId = await ensureStripeCustomer(user.id, user.email, existingCustomerId);
 
   // Creator program. The pricing buttons go sign-in -> checkout without ever
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
   const base: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: STRIPE_PRICES[tier], quantity: 1 }],
+    line_items: [{ price: plan.price, quantity: 1 }],
     // `plan` lets the dashboard emit HeyCatch subscription_started client-side
     // (src/components/analytics/CheckoutOutcome.tsx); nothing reads `upgraded`.
     success_url: `${siteUrl}/dashboard?upgraded=true&plan=${tier}`,

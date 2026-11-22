@@ -153,7 +153,10 @@ export async function ensurePartnerCoupon(): Promise<string> {
     const code = (err as { code?: string }).code;
     if (code !== "resource_missing") throw err;
   }
-  const priceIds = Object.values(STRIPE_PRICES).filter(Boolean);
+  // Plan 99: include its price too. This only runs when the coupon is first
+  // created; a live coupon's products are fixed, which is why the $99 price must
+  // sit on the existing Premium product (docs/plan-99-switch-day.md).
+  const priceIds = [...Object.values(STRIPE_PRICES), process.env.STRIPE_PRICE_PLAN_99 ?? ""].filter(Boolean);
   const products = await Promise.all(priceIds.map(async (p) => {
     const price = await stripe.prices.retrieve(p);
     return typeof price.product === "string" ? price.product : price.product.id;

@@ -7,6 +7,7 @@ import SessionRecapCard, { type SessionRecapData } from "@/components/upload/Ses
 import { createPortal } from "react-dom";
 import TtsMeter from "@/components/ui/TtsMeter";
 import InkUpgradeModal from "@/components/ui/InkUpgradeModal";
+import { VOICE_PLANS } from "@/lib/tiers";
 import { INTERVIEWER_NAME, interviewerRoleLine } from "@/lib/interviewer";
 import {
   BRAINSTORM_LENGTH_NUDGE_TURNS,
@@ -2289,7 +2290,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
           </h2>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-manrope), sans-serif", maxWidth: 280, lineHeight: 1.5 }}>
             {isLocked
-              ? "Speak your answers with the mic as usual. T.H.E.O reading his replies out loud unlocks on Pro and Premium."
+              ? `Speak your answers with the mic as usual. T.H.E.O reading his replies out loud unlocks on ${VOICE_PLANS}.`
               : isExhausted
               ? "You've used this month's voice. I can still take notes if you type — or add more below."
               : "AI responses can be spoken back to you using your voice allowance. You can toggle this any time."}
@@ -2303,7 +2304,7 @@ export default function BrainstormChat({ projectId, onComplete, onBack, triggerF
               background: "rgba(249,247,242,0.06)", border: "1px solid rgba(249,247,242,0.18)",
               fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-manrope), sans-serif",
             }}>
-              {isLocked ? "Spoken replies are on Pro and Premium" : "Monthly limit reached"}
+              {isLocked ? `Spoken replies are on ${VOICE_PLANS}` : "Monthly limit reached"}
             </div>
             {isExhausted && (
               <button

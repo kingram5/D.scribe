@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { PLAN_99_TIER, plan99 } from "@/lib/tiers";
 
 // Checkout hand-off for the pricing page.
 //
@@ -29,7 +30,9 @@ export default function UpgradePage() {
     if (started.current) return;
     started.current = true;
 
-    if (!isTier(tier)) {
+    // Plan 99: an old /upgrade/starter or /upgrade/pro link (bookmark, stale
+    // tab) goes back to the pricing page instead of dead-ending on an error.
+    if (!isTier(tier) || (plan99() && tier !== PLAN_99_TIER)) {
       window.location.assign("/pricing");
       return;
     }

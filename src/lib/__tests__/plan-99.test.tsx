@@ -9,7 +9,7 @@
  * only guards against drift. The assertions that prove the switch are the
  * explicit ones here: one paid offer at 99.00, no old price or plan name left
  * on a D.scribe-owned surface. Regenerate the fixture only on purpose:
- * UPDATE_PLAN_BASELINE=1 npx vitest run src/lib/__tests__/plan-99.test.tsx
+ * UPDATE_PLAN_99_RECORDING=1 npx vitest run src/lib/__tests__/plan-99.test.tsx
  */
 import fs from "fs";
 import path from "path";
@@ -282,7 +282,7 @@ describe("flag on: public price surfaces show one plan at $99 with 1,500 Ink", (
   it("matches the flag-on recording", async () => {
     setEnv({ plan99: true });
     const current = await surfaces();
-    if (process.env.UPDATE_PLAN_BASELINE === "1") {
+    if (process.env.UPDATE_PLAN_99_RECORDING === "1") {
       fs.mkdirSync(path.dirname(FIXTURE), { recursive: true });
       fs.writeFileSync(FIXTURE, JSON.stringify(current, null, 2) + "\n");
     }

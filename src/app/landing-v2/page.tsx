@@ -1391,10 +1391,17 @@ export default function LandingV2() {
             <BookCarousel books={LANDING_BOOKS} />
 
             <div className="text-center mt-16 ds-touch-links">
-              <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
-                Explore all books →
-              </Link>
-              <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span>
+              {/* "Explore all books →" (/discover) is hidden while no book is
+                  published: /discover only says "No published books yet".
+                  This page has no published-book count today (booksGenerated
+                  counts every book with a written chapter, public or not).
+                  To bring it back, add a
+                  head count of projects where is_public = true to
+                  getLandingData() in src/lib/landing-data.ts (same filter as
+                  /api/discover), then render this before "See pricing" when
+                  that count is above 0:
+                    <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Explore all books →</Link>
+                    <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span> */}
               <Link href="/pricing" className="lv2-price-link">See pricing &rarr;</Link>
             </div>
           </div>

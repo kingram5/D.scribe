@@ -175,6 +175,7 @@ function LoginContent() {
             name="email"
             type="email"
             autoComplete="email"
+            maxLength={254}
             enterKeyHint="go"
             spellCheck={false}
             placeholder="Email"

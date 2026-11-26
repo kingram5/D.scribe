@@ -363,7 +363,9 @@ describe("mobile: publisher-ready phone polish", () => {
     expect(block).toMatch(/\.lv2-hero-author \{[^}]*display:\s*flex/);
     expect(block).toMatch(/\.lv2-hero-waveform,\s*\n\s*\.lv2-hero-subarrow \{[^}]*display:\s*none/);
     expect(block).not.toMatch(/\.lv2-hero-author \{[^}]*display:\s*none/);
-    expect(block).toMatch(/justify-content:\s*flex-start/);
+    // Kyle 2026-11-25: the phone hero fills exactly one screen, content centered.
+    expect(block).toMatch(/min-height:\s*100svh/);
+    expect(block).toMatch(/\.lv2-hero \{[^}]*justify-content:\s*center/);
     expect(read("app/landing-v2/page.tsx")).toMatch(/lv2-hero-overlay/);
   });
 

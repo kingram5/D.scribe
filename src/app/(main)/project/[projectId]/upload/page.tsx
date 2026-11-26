@@ -59,16 +59,19 @@ export default function UploadPage() {
     }
   }, []);
 
-  function handleInitialize() {
+  async function handleInitialize() {
     if (engine.allDone) {
       router.push(`/project/${projectId}/transcript`);
       return;
     }
+    // A paused take is closed first (same as Stop) and sent with the rest
+    // (Kyle 2026-11-25). Pausing alone never saves or splits a recording.
+    const pausedTake = engine.isPaused ? await engine.finishRecording() : null;
     // In-app recordings live in their own list (since 8/13), apart from picked
     // files. Checking files alone made Transcribe a dead button after a
     // recording-only session (Janine, 2026-11-25). uploadAll sends both.
-    if (engine.files.length > 0 || engine.recordings.length > 0) {
-      engine.uploadAll();
+    if (pausedTake || engine.files.length > 0 || engine.recordings.length > 0) {
+      engine.uploadAll(pausedTake ? [pausedTake] : []);
     } else if (engine.youtubeUrl.trim()) {
       engine.handleYoutubeSubmit();
     }

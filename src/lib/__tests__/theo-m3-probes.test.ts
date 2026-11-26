@@ -354,7 +354,8 @@ describe("T.H.E.O. iPhone QA: no silent failures", () => {
     const engine = uploadEngine();
     expect(engine).toMatch(/const \[recordings, setRecordings\] = useState<File\[\]>\(\[\]\)/);
     expect(engine).toMatch(/setRecordings\(\(prev\) => \[\.\.\.prev, file\]\)/);
-    expect(engine).toMatch(/for \(const file of \[\.\.\.recordings, \.\.\.files\]\)/);
+    // 2026-11-25: `extra` = a paused take Transcribe closed in the same click.
+    expect(engine).toMatch(/for \(const file of \[\.\.\.recordings, (\.\.\.extra, )?\.\.\.files\]\)/);
     expect(uploadPage()).toMatch(/recordings=\{engine\.recordings\}/);
     expect(intakeGrid()).toContain("RECORDED HERE · READY TO TRANSCRIBE");
   });

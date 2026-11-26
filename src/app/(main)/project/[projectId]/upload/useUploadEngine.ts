@@ -84,6 +84,9 @@ export function useUploadEngine(projectId: string) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  // Set by finishRecording(); the recorder's onstop resolves it with the
+  // finished take (or null when nothing was captured).
+  const stopResolverRef = useRef<((file: File | null) => void) | null>(null);
 
   useEffect(() => {
     return () => {
@@ -151,6 +154,7 @@ export function useUploadEngine(projectId: string) {
         recorder.onstop = () => {
           // Keep finished clips where they were made. The Audio Files card is
           // for picked/dropped files; recording belongs to the Record card.
+          let finished: File | null = null;
           if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mimeType });
             const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -158,8 +162,13 @@ export function useUploadEngine(projectId: string) {
               type: mimeType,
             });
             setRecordings((prev) => [...prev, file]);
+            finished = file;
           }
           releaseMicrophone();
+          // finishRecording() waits on this to hand the closed take to Transcribe.
+          const resolve = stopResolverRef.current;
+          stopResolverRef.current = null;
+          resolve?.(finished);
         };
 
         mediaRecorderRef.current = recorder;
@@ -199,6 +208,29 @@ export function useUploadEngine(projectId: string) {
     setIsPaused(false);
   }, []);
 
+  // Close an open take (same as pressing Stop) and hand back the finished
+  // file, so Transcribe can send a paused recording instead of sitting greyed
+  // out (Kyle 2026-11-25). Pausing itself never saves or splits anything.
+  // Resolves null when nothing was captured, or after 5 s if the browser
+  // never fires onstop, so Transcribe can't hang.
+  const finishRecording = useCallback((): Promise<File | null> => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return Promise.resolve(null);
+    return new Promise<File | null>((resolve) => {
+      const timer = setTimeout(() => {
+        if (stopResolverRef.current) {
+          stopResolverRef.current = null;
+          resolve(null);
+        }
+      }, 5000);
+      stopResolverRef.current = (file) => {
+        clearTimeout(timer);
+        resolve(file);
+      };
+      stopRecording();
+    });
+  }, [stopRecording]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
@@ -217,10 +249,12 @@ export function useUploadEngine(projectId: string) {
     []
   );
 
-  async function uploadAll() {
+  // `extra` carries a take finished in this same click (finishRecording):
+  // its setRecordings update hasn't reached this closure yet.
+  async function uploadAll(extra: File[] = []) {
     setUploading(true);
 
-    for (const file of [...recordings, ...files]) {
+    for (const file of [...recordings, ...extra, ...files]) {
       try {
         // Step 1: Get presigned R2 URL. Mobile browsers frequently report
         // file.type as "" for picker files — fall back to octet-stream, which
@@ -349,8 +383,9 @@ export function useUploadEngine(projectId: string) {
     progressEntries.length > 0 &&
     progressEntries.every(([, status]) => status === "done");
 
+  // A paused take counts: Transcribe closes it first (finishRecording).
   const canInitialize =
-    files.length > 0 || recordings.length > 0 || youtubeUrl.trim().length > 5;
+    files.length > 0 || recordings.length > 0 || (isPaused && seconds > 0) || youtubeUrl.trim().length > 5;
 
   return {
     // File state
@@ -376,6 +411,7 @@ export function useUploadEngine(projectId: string) {
     seconds,
     toggleRecording,
     stopRecording,
+    finishRecording,
 
     // Handlers
     handleDrop,

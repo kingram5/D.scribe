@@ -1257,14 +1257,14 @@ export default function LandingV2() {
           alignItems: "center",
         }}>
           {/* Left: animated dashboard */}
-          <div className="lv2-dashboard-wrap" style={{ transform: "translateX(-20%)" }}>
+          <div className="lv2-dashboard-wrap">
             <FadeSection delay={0.1}>
               <PipelineDashboard />
             </FadeSection>
           </div>
 
           {/* Right: step list — shifted left into middle space */}
-          <div className="lv2-pipeline-steps" style={{ position: "relative", transform: "translateX(-15%)" }}>
+          <div className="lv2-pipeline-steps" style={{ position: "relative" }}>
             <div style={{
               position: "absolute", left: 36, top: 0, bottom: 0, width: 1,
               background: "rgba(193,122,71,0.2)",
@@ -1391,10 +1391,17 @@ export default function LandingV2() {
             <BookCarousel books={LANDING_BOOKS} />
 
             <div className="text-center mt-16 ds-touch-links">
-              <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>
-                Explore all books →
-              </Link>
-              <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span>
+              {/* "Explore all books →" (/discover) is hidden while no book is
+                  published: /discover only says "No published books yet".
+                  This page has no published-book count today (booksGenerated
+                  counts every book with a written chapter, public or not).
+                  To bring it back, add a
+                  head count of projects where is_public = true to
+                  getLandingData() in src/lib/landing-data.ts (same filter as
+                  /api/discover), then render this before "See pricing" when
+                  that count is above 0:
+                    <Link href="/discover" className="text-[#A89F94] hover:text-[#C17A47] transition-colors text-base font-medium" style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif" }}>Explore all books →</Link>
+                    <span aria-hidden="true" style={{ color: "#5E5448", margin: "0 14px" }}>·</span> */}
               <Link href="/pricing" className="lv2-price-link">See pricing &rarr;</Link>
             </div>
           </div>
@@ -1770,6 +1777,16 @@ export default function LandingV2() {
 
         /* Pipeline showcase: full two-pane mock on desktop, detail card only below 1024px */
         .lv2-pipeline-dash { height: 1122px; }
+        /* Desktop: the panel slides left into the empty margin beside the
+           1600px column, and the step list follows into the gap it leaves.
+           The slide is capped at the room actually there, so the panel keeps
+           at least 24px from the screen edge. From about 1995px wide the cap
+           no longer bites and both get the full 20% / 15% shift as designed.
+           0.375 keeps the list's shift in step with the panel's (15% of the
+           1fr list = 0.375 x 20% of the 2fr panel). Below 1280px both reset. */
+        .lv2-pipeline-grid { --lv2-pipe-room: max(16px, (100vw - 1600px) / 2); }
+        .lv2-dashboard-wrap { transform: translateX(calc(-1 * min(20%, var(--lv2-pipe-room)))); }
+        .lv2-pipeline-steps { transform: translateX(calc(-1 * min(15%, var(--lv2-pipe-room) * 0.375))); }
         @media (max-width: 1279px) {
           .lv2-dashboard-wrap { transform: none !important; }
           .lv2-pipeline-steps { transform: none !important; }

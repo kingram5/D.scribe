@@ -25,7 +25,7 @@ const SOCIAL_DESCRIPTION = ONE
 export const metadata: Metadata = {
   title: META_TITLE,
   description: ONE
-    ? `D.scribe is one plan at $${FROM}/month with ${INK_99} Ink, enough for one Publisher-Ready book a month. It includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`
+    ? `D.scribe is one plan: $${FROM}/month for ${INK_99} Ink, one Publisher-Ready book a month. AI transcription, voice-to-manuscript and PDF/DOCX export. Cancel anytime.`
     : `D.scribe plans start at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`,
   alternates: {
     canonical: `${SITE_URL}/pricing`,

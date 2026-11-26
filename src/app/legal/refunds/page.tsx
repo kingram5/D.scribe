@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 import { LegalShell, H2, P, UL, Strong } from "../LegalShell";
+import { PLAN_99, plan99 } from "@/lib/tiers";
 
 export const metadata: Metadata = {
   title: "Refund and Cancellation Policy",
@@ -12,6 +13,12 @@ export const metadata: Metadata = {
 
 const LAST_UPDATED = "September 9, 2026";
 
+// NEXT_PUBLIC_PLAN_99: one plan on sale; subscribers on an earlier plan keep it.
+// Flag off = the wording exactly as it was.
+const PLAN_NAMES = plan99()
+  ? `${PLAN_99.name}, plus the earlier Starter and Pro plans that existing subscribers keep`
+  : "Starter, Pro, Premium";
+
 export default function RefundPolicyPage() {
   return (
     <LegalShell
@@ -22,7 +29,7 @@ export default function RefundPolicyPage() {
     >
       <H2>1. Plans and renewal</H2>
       <P>
-        D.scribe subscriptions (Starter, Pro, Premium) bill monthly in advance through Stripe. Each renewal
+        D.scribe subscriptions ({PLAN_NAMES}) bill monthly in advance through Stripe. Each renewal
         refreshes the plan&apos;s monthly Ink and voice allowance. Unused monthly Ink does not roll over unless the
         plan says otherwise at checkout.
       </P>

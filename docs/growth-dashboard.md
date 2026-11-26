@@ -12,7 +12,7 @@ Anyone without access gets a plain "Not found".
 
 | Number | Meaning |
 |---|---|
-| **Visits** | A browser's *first ever* visit to the site, counted under the channel that sent it. Returning visitors are not counted again. People who decline analytics in the cookie banner, and obvious bots, are not counted. Nothing personal is stored: only a count per day per channel. |
+| **Visits** | A browser's *first ever* visit to the site, counted under the channel that sent it. Returning visitors are not counted again. The count is sent as the first page loads, so it happens before a new visitor answers the cookie banner; browsers that already declined analytics, and obvious bots, are not counted. Nothing personal is stored: only a count per day per channel. |
 | **Sign-ups** | New accounts in the window that answered "How did you hear about D.scribe?" (asked before the first book). Each is placed in the channel of *its own first visit* (same rules as visits). |
 | **Said so** | Of the sign-ups in the window, how many *named* this channel in their answer. Instagram and TikTok often hide where a click came from, so those people show up under Direct; "Said so" is the better signal for them. |
 | **Paying** | Of those sign-ups, how many are on a paid plan right now: an active subscription or a paid tier. Complimentary partner accounts never count. Cancelled accounts count as not paying. |

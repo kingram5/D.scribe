@@ -28,9 +28,12 @@ const notCounted = () => NextResponse.json({ counted: false });
 
 export async function POST(req: NextRequest) {
   try {
+    // Preview deployments can point at the production database: browsing a
+    // preview must never add to the real counts.
+    if (process.env.VERCEL_ENV === "preview") return notCounted();
     // Cheap filters first, before any database call.
     if (isLikelyBot(req.headers.get("user-agent"))) return notCounted();
-    if (isForeignOrigin(req.headers.get("origin"), req.nextUrl.host)) return notCounted();
+    if (isForeignOrigin(req.headers.get("origin"), [req.nextUrl.host, req.headers.get("host"), req.headers.get("x-forwarded-host")])) return notCounted();
     // Honour a decline even from a client that ignores it.
     if (parseConsentValue(req.cookies.get(CONSENT_COOKIE)?.value)?.analytics === false) return notCounted();
 

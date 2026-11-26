@@ -95,6 +95,25 @@ export interface FirstTouch {
 const MAX_URL = 2048;
 const MAX_UTM = 200;
 
+/**
+ * A referrer reduced to what attribution needs: origin + path for http(s)
+ * (query and hash dropped), and android-app://<package>/ for Android apps
+ * (Chrome on Android reports the Gmail or Google app this way; URL.origin is
+ * the string "null" for that scheme, so it needs its own branch). Anything
+ * else, or garbage, is "".
+ */
+export function cleanReferrer(raw: string): string {
+  if (!raw) return "";
+  try {
+    const r = new URL(raw);
+    if (r.protocol === "https:" || r.protocol === "http:") return `${r.origin}${r.pathname}`.slice(0, MAX_URL);
+    if (r.protocol === "android-app:" && /^[a-z0-9_.]{1,200}$/i.test(r.hostname)) return `android-app://${r.hostname.toLowerCase()}/`;
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 /** Build the first-touch record from the first page's URL and document.referrer. */
 export function buildFirstTouch(href: string, referrer: string, now: Date = new Date()): FirstTouch | null {
   let url: URL;
@@ -106,10 +125,7 @@ export function buildFirstTouch(href: string, referrer: string, now: Date = new 
     if (v) { const t = v.trim().slice(0, MAX_UTM); if (t) { utm[k] = t; kept.set(k, t); } }
   }
   const qs = kept.toString();
-  let ref = "";
-  if (referrer) {
-    try { const r = new URL(referrer); ref = `${r.origin}${r.pathname}`.slice(0, MAX_URL); } catch { ref = ""; }
-  }
+  const ref = cleanReferrer(referrer);
   return {
     landing_url: `${url.pathname}${qs ? `?${qs}` : ""}`.slice(0, MAX_URL),
     referrer: ref,
@@ -182,9 +198,7 @@ export function parseFirstTouch(raw: unknown): FirstTouch | null {
   const str = (x: unknown, max: number) => (typeof x === "string" ? x.slice(0, max) : "");
   const landing = str(o.landing_url, MAX_URL);
   if (!landing.startsWith("/")) return null;
-  let referrer = "";
-  const rawRef = str(o.referrer, MAX_URL);
-  if (rawRef) { try { const r = new URL(rawRef); if (r.protocol === "https:" || r.protocol === "http:") referrer = `${r.origin}${r.pathname}`.slice(0, MAX_URL); } catch { referrer = ""; } }
+  const referrer = cleanReferrer(str(o.referrer, MAX_URL));
   const utm: Partial<Record<UtmKey, string>> = {};
   const rawUtm = (o.utm && typeof o.utm === "object" ? o.utm : {}) as Record<string, unknown>;
   for (const k of UTM_KEYS) { const t = str(rawUtm[k], MAX_UTM).trim(); if (t) utm[k] = t; }

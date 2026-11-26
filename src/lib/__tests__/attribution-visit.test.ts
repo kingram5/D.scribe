@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { FIRST_TOUCH_KEY, VISIT_PINGED_KEY, claimVisitPing, recordFirstTouch } from "../attribution";
+import { FIRST_TOUCH_KEY, VISIT_PINGED_KEY, buildFirstTouch, claimVisitPing, cleanReferrer, parseFirstTouch, recordFirstTouch } from "../attribution";
+import { signupChannel } from "../channels";
 import { isAppPath } from "../app-routes";
 import { channelFromPingBody, hashedIpKey, isForeignOrigin, isLikelyBot } from "../visit-ping";
 
@@ -93,6 +94,20 @@ describe("POST /api/attribution/visit", () => {
     expect(state.rpc).not.toHaveBeenCalled();
   });
 
+  it("never counts on a preview deployment (previews can point at the production database)", async () => {
+    const before = process.env.VERCEL_ENV;
+    process.env.VERCEL_ENV = "preview";
+    try {
+      expect(await (await visit({ referrer: "" })).json()).toEqual({ counted: false });
+      expect(state.rpc).not.toHaveBeenCalled();
+      expect(state.limiterKeys).toHaveLength(0);
+      process.env.VERCEL_ENV = "production";
+      expect(await (await visit({ referrer: "" })).json()).toEqual({ counted: true, channel: "direct" });
+    } finally {
+      if (before === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = before;
+    }
+  });
+
   it("honours a declined-analytics cookie even if the client pings anyway", async () => {
     const declined = encodeURIComponent(JSON.stringify({ necessary: true, analytics: false, marketing: false, v: 1 }));
     const res = await visit({ referrer: "" }, { cookie: `dscribe_consent=${declined}` });
@@ -137,11 +152,15 @@ describe("visit-ping helpers", () => {
     expect(isLikelyBot("Mozilla/5.0 (compatible; bingbot/2.0)")).toBe(true);
   });
 
-  it("foreign-origin check", () => {
-    expect(isForeignOrigin(null, "www.d-scribe.app")).toBe(false);
-    expect(isForeignOrigin("https://www.d-scribe.app", "www.d-scribe.app")).toBe(false);
-    expect(isForeignOrigin("https://d-scribe.app.evil.com", "www.d-scribe.app")).toBe(true);
-    expect(isForeignOrigin("garbage", "www.d-scribe.app")).toBe(true);
+  it("foreign-origin check: any served host matches, nothing else does", () => {
+    expect(isForeignOrigin(null, ["www.d-scribe.app"])).toBe(false);
+    expect(isForeignOrigin("https://www.d-scribe.app", ["www.d-scribe.app"])).toBe(false);
+    // the URL host was rewritten by the platform, but Host / X-Forwarded-Host still carry the public name
+    expect(isForeignOrigin("https://www.d-scribe.app", ["internal.vercel.local", null, "www.d-scribe.app"])).toBe(false);
+    expect(isForeignOrigin("https://www.d-scribe.app", ["internal", "www.d-scribe.app, proxy.local"])).toBe(false);
+    expect(isForeignOrigin("https://d-scribe.app.evil.com", ["www.d-scribe.app"])).toBe(true);
+    expect(isForeignOrigin("garbage", ["www.d-scribe.app"])).toBe(true);
+    expect(isForeignOrigin("https://www.d-scribe.app", [null, undefined, ""])).toBe(true);
   });
 
   it("hashed key is stable per IP and differs between IPs", () => {
@@ -190,5 +209,57 @@ describe("one ping per browser, ever", () => {
     store.set(VISIT_PINGED_KEY, "1");
     claimVisitPing(storage, null, true);
     expect(store.has(VISIT_PINGED_KEY)).toBe(false);
+  });
+});
+
+describe("the real path, end to end (browser record -> ping -> channel; stored record -> sign-up channel)", () => {
+  const now = new Date("2026-11-25T15:00:00Z");
+  const throughPing = (href: string, referrer: string) => {
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    const touch = recordFirstTouch(storage, href, referrer, { analyticsDeclined: false, isAppPath, now });
+    const ping = claimVisitPing(storage, touch, false);
+    // the request body goes over the wire as JSON
+    return { visit: channelFromPingBody(JSON.parse(JSON.stringify(ping))), stored: store.get(FIRST_TOUCH_KEY) ?? null };
+  };
+  const throughSignup = (stored: string | null) => {
+    const t = parseFirstTouch(stored)!;
+    return signupChannel({ utm_source: t.utm.utm_source ?? null, utm_medium: t.utm.utm_medium ?? null, referrer: t.referrer || null, null_referrer: t.null_referrer });
+  };
+
+  it("Android app referrers survive the browser record and the stored record", () => {
+    expect(cleanReferrer("android-app://com.google.android.gm/")).toBe("android-app://com.google.android.gm/");
+    expect(buildFirstTouch("https://www.d-scribe.app/", "android-app://com.google.android.gm/", now)!.referrer).toBe("android-app://com.google.android.gm/");
+    for (const [ref, want] of [
+      ["android-app://com.google.android.gm/", "email"],
+      ["android-app://com.google.android.googlequicksearchbox/", "google"],
+      ["android-app://com.instagram.android/", "instagram"],
+    ] as const) {
+      const r = throughPing("https://www.d-scribe.app/", ref);
+      expect([ref, r.visit]).toEqual([ref, want]);
+      expect([ref, throughSignup(r.stored)]).toEqual([ref, want]);
+    }
+  });
+
+  it("web referrers and utm tags land in the same channel on both sides", () => {
+    for (const [href, ref, want] of [
+      ["https://www.d-scribe.app/?utm_source=ig", "", "instagram"],
+      ["https://www.d-scribe.app/pricing", "https://l.instagram.com/?u=x", "instagram"],
+      ["https://www.d-scribe.app/", "https://www.google.com/search?q=private", "google"],
+      ["https://www.d-scribe.app/", "https://chatgpt.com/c/123", "chatgpt"],
+      ["https://www.d-scribe.app/", "", "direct"],
+      ["https://www.d-scribe.app/vs/squibler", "https://someblog.example/post", "other"],
+    ] as const) {
+      const r = throughPing(href, ref);
+      expect([href, ref, r.visit]).toEqual([href, ref, want]);
+      expect([href, ref, throughSignup(r.stored)]).toEqual([href, ref, want]);
+    }
+  });
+
+  it("other schemes and garbage are dropped, never stored as 'null/'", () => {
+    expect(cleanReferrer("javascript:alert(1)")).toBe("");
+    expect(cleanReferrer("file:///C:/x.html")).toBe("");
+    expect(cleanReferrer("android-app://bad host/")).toBe("");
+    expect(buildFirstTouch("https://www.d-scribe.app/", "ftp://x.example/", now)!.referrer).toBe("");
   });
 });

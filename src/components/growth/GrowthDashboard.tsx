@@ -282,7 +282,7 @@ export function GrowthDashboard({
             : <>No visits counted yet. Counting starts with the first visitor after this goes live; rates show &ldquo;—&rdquo; until then.</>}
         </p>
         <p style={{ margin: "0 0 6px" }}>
-          A visit is a browser&rsquo;s first ever visit (people who decline analytics are not counted). Sign-ups are new accounts that answered the first question in the app. {payload.paying_definition}
+          A visit is a browser&rsquo;s first ever visit (browsers that had already declined analytics, and bots, are not counted). Sign-ups are new accounts that answered the first question in the app. {payload.paying_definition}
         </p>
         <p style={{ margin: "0 0 6px" }}>
           Raw traffic, referrers and top pages: <a href={payload.vercel_analytics_url} target="_blank" rel="noopener noreferrer">Vercel Analytics</a> (needs a Vercel login on the D.scribe team).

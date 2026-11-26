@@ -13,10 +13,12 @@ import { CONSENT_EVENT, readConsent, type ConsentState } from "@/lib/consent";
  * The first time a browser ever visits, it also sends ONE anonymous ping
  * (referrer origin/path + utm_source/utm_medium, nothing else) so the growth
  * dashboard can count visits per channel. The server stores only a daily count
- * per channel: no IP, no id, no URL. Never repeated for the same browser.
+ * per channel: no IP, no id, no URL. Never repeated for the same browser. It
+ * fires as the first page mounts, so a brand-new visitor is counted before
+ * they answer the cookie banner (the privacy policy says so).
  *
  * Skipped inside the signed-in app, and skipped (and cleared) when the visitor
- * has declined analytics in the cookie banner.
+ * has already declined analytics in the cookie banner.
  */
 export function FirstTouchCapture() {
   useEffect(() => {

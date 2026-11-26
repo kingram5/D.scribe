@@ -26,7 +26,7 @@ We may collect the following categories of information:
 - usage metrics, session data, and feature activity;
 - IP address and approximate location derived from network data;
 - cookie and tracking information, where enabled and permitted by your consent choices;
-- anonymous visit counts: the first time a browser visits, it tells us what kind of site sent it (for example Instagram, Google, or an AI assistant). We keep only a daily count per kind of site, with no IP address, account, or anything else that identifies you. Nothing is sent if you decline analytics in the cookie banner. (Added 2026-11-25.)
+- anonymous visit counts: the first time a browser visits, it tells us what kind of site sent it (for example Instagram, Google, or an AI assistant). This happens as that first page loads, before you have answered the cookie banner. We keep only a daily count per kind of site, with no IP address, account, or anything else that identifies you. If you have already declined analytics, nothing is sent. (Added 2026-11-25.)
 
 ### Information from third parties
 - authentication providers;
@@ -59,7 +59,7 @@ We may share data with the following categories of subprocessors to provide the 
 - **Anthropic** — AI text generation and related processing
 - **Deepgram** — transcription and speech processing
 - **Cloudflare R2** — file storage and delivery
-- **Vercel** — hosting, and Vercel Web Analytics (cookieless page-view counts), off if you decline analytics (added 2026-11-25)
+- **Vercel** — hosting, and Vercel Web Analytics (cookieless page-view counts), starting with the first page and stopping once you decline analytics (added 2026-11-25)
 - **Supabase** — database, authentication, and backend services
 - **Stripe** — billing and subscription processing
 - **Sentry** — error monitoring and debugging

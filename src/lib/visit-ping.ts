@@ -30,10 +30,19 @@ export function hashedIpKey(ip: string): string {
   return `visit:${createHash("sha256").update(`dscribe-visit:${secret}:${ip}`).digest("hex").slice(0, 24)}`;
 }
 
-/** True when an Origin header is present and names a different host (another site posting from a visitor's browser). */
-export function isForeignOrigin(origin: string | null, requestHost: string): boolean {
+/**
+ * True when an Origin header is present and names none of the hosts this
+ * request was served on (another site posting from a visitor's browser). The
+ * served host is taken from every place a proxy may put it (URL, Host,
+ * X-Forwarded-Host), so a platform rewrite of one of them can't make every
+ * real visit look foreign.
+ */
+export function isForeignOrigin(origin: string | null, servedHosts: readonly (string | null | undefined)[]): boolean {
   if (!origin) return false;
-  try { return new URL(origin).host.toLowerCase() !== requestHost.toLowerCase(); } catch { return true; }
+  let host = "";
+  try { host = new URL(origin).host.toLowerCase(); } catch { return true; }
+  const served = servedHosts.flatMap((h) => (h ?? "").split(",")).map((h) => h.trim().toLowerCase()).filter(Boolean);
+  return !served.includes(host);
 }
 
 /**

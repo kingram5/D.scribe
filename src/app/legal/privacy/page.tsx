@@ -97,7 +97,7 @@ export default function PrivacyPolicyPage() {
       <H2>5. Service providers (subprocessors)</H2>
       <UL
         items={[
-          <><Strong>Vercel</Strong> — hosting and delivery of the application</>,
+          <><Strong>Vercel</Strong> — hosting and delivery of the application, and Vercel Web Analytics (cookieless page-view counts), which is off if you decline analytics</>,
           <><Strong>Supabase</Strong> — database and sign-in (servers in the United States)</>,
           <><Strong>Cloudflare R2</Strong> — private storage for your audio files, served through short-lived signed links</>,
           <><Strong>Anthropic, Deepgram, ElevenLabs, Tavily, Brave Search, Supadata</Strong> — AI and research processing described in section 4</>,
@@ -113,6 +113,8 @@ export default function PrivacyPolicyPage() {
         We use strictly necessary cookies to keep you signed in and to remember your cookie choice. Marketing pixels
         from TikTok and LinkedIn load only after you click Accept in the cookie banner; you can change that choice
         at any time by clearing your browser&apos;s site data for d-scribe.app, which shows the banner again.
+        Vercel Web Analytics counts page views without cookies, and stops, along with our anonymous visit count,
+        if you decline analytics in the banner.
       </P>
 
       <H2>7. When we share information</H2>

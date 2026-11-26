@@ -128,8 +128,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all routes except static files, API routes, and the Google
-    // site-verification file (must be publicly fetchable by Google's crawler)
-    "/((?!_next/static|_next/image|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
+    // Match all routes except static files, API routes, the Google
+    // site-verification file (must be publicly fetchable by Google's crawler),
+    // and Vercel's own /_vercel/* paths (2026-11-25: Web Analytics loads
+    // /_vercel/insights/script.js and posts page views there; run through the
+    // middleware, an anonymous visitor's request would be rewritten to a 404).
+    "/((?!_next/static|_next/image|_vercel/|favicon.ico|api/|google3076b7654c75013e\\.html|.*\\.mp4$|.*\\.webm$|.*\\.jpg$|.*\\.png$|.*\\.svg$|.*\\.ico$).*)",
   ],
 };

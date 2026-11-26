@@ -59,6 +59,7 @@ We may share data with the following categories of subprocessors to provide the 
 - **Anthropic** — AI text generation and related processing
 - **Deepgram** — transcription and speech processing
 - **Cloudflare R2** — file storage and delivery
+- **Vercel** — hosting, and Vercel Web Analytics (cookieless page-view counts), off if you decline analytics (added 2026-11-25)
 - **Supabase** — database, authentication, and backend services
 - **Stripe** — billing and subscription processing
 - **Sentry** — error monitoring and debugging

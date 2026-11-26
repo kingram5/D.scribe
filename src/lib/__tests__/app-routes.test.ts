@@ -52,4 +52,16 @@ describe("app routes vs the middleware's 404 rule", () => {
   it("app routes are not also public", () => {
     for (const p of APP_PREFIXES) expect(PUBLIC_PATHS).not.toContain(p);
   });
+
+  it("the matcher skips Vercel's /_vercel/* paths (Web Analytics script + beacons) but still runs on pages", () => {
+    const m = MIDDLEWARE.match(/matcher:\s*\[\s*(?:\/\/[^\n]*\n\s*)*"([^"]+)"/);
+    expect(m).not.toBeNull();
+    const re = new RegExp(`^${m![1].replace(/\\\\/g, "\\")}$`);
+    expect(re.test("/_vercel/insights/script.js")).toBe(false);
+    expect(re.test("/_vercel/insights/view")).toBe(false);
+    expect(re.test("/api/attribution/visit")).toBe(false);
+    expect(re.test("/dashboard")).toBe(true);
+    expect(re.test("/admin/growth")).toBe(true);
+    expect(re.test("/pricing")).toBe(true);
+  });
 });

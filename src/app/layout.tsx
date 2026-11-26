@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Inter, Kalam, Manrope, Lora, Playfair_Display, Cormorant_Garamond } from "next/font/google";
 import { MarketingPixels } from "@/components/analytics/MarketingPixels";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
+import { VercelAnalytics } from "@/components/analytics/VercelAnalytics";
 import { ReferralBanner } from "@/components/partners/ReferralBanner";
 import { FirstTouchCapture } from "@/components/attribution/FirstTouchCapture";
 import { SITE_URL } from "@/lib/site";
@@ -125,6 +126,8 @@ export default function RootLayout({
         <FirstTouchCapture />
         {children}
         <ConsentBanner />
+        {/* Vercel Web Analytics: off once analytics is declined (growth dashboard, 2026-11-25). */}
+        <VercelAnalytics />
       </body>
     </html>
   );

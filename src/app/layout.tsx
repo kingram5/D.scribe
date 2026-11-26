@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Inter, Kalam, Manrope, Lora, Instrument_Serif, Playfair_Display } from "next/font/google";
+import { Inter, Kalam, Manrope, Lora, Playfair_Display, Cormorant_Garamond } from "next/font/google";
 import { MarketingPixels } from "@/components/analytics/MarketingPixels";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { ReferralBanner } from "@/components/partners/ReferralBanner";
@@ -9,9 +9,13 @@ import { SITE_URL } from "@/lib/site";
 import { jsonLd, siteGraph } from "@/lib/structured-data";
 import "./globals.css";
 
+// 2026-11-14 mobile speed pass: Geist is only the third fallback in the body
+// stack (Manrope, Inter, Geist), so it practically never paints. It stays
+// declared but no longer preloads.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  preload: false,
 });
 
 // preload: false on the decorative/rarely-painted faces — next/font preloads
@@ -43,16 +47,26 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
+// Lora is the app's serif. On public pages it is mostly a fallback behind
+// Playfair (the landing's book carousel does use it first), so it no longer
+// preloads: two fewer high-priority font files competing with first paint. It
+// still loads wherever it actually paints, signed-in pages included.
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
   style: ["normal", "italic"],
+  preload: false,
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument",
+// Instrument Serif removed 2026-11-14: nothing used --font-instrument.
+
+// One desktop-only landing line ("Your Story Starts"). Self-hosted here instead
+// of a render-blocking @import from Google Fonts; loads only where it paints.
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
   subsets: ["latin"],
   weight: "400",
+  // Italic for the line, normal for its "→" (the old Google Fonts import loaded both).
   style: ["normal", "italic"],
   preload: false,
 });
@@ -103,7 +117,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} ${manrope.variable} ${lora.variable} ${instrumentSerif.variable} ${playfair.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${kalam.variable} ${manrope.variable} ${lora.variable} ${playfair.variable} ${cormorant.variable} antialiased`}>
         {/* Site-wide Organization + WebSite JSON-LD; pages reference these by @id. */}
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(siteGraph())} />
         <MarketingPixels />

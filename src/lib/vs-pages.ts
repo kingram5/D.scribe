@@ -1,4 +1,10 @@
-import { PLANS } from "@/lib/tiers";
+import { PLANS, PLAN_99, plan99 } from "@/lib/tiers";
+
+// NEXT_PUBLIC_PLAN_99: D.scribe's side of every comparison is the one $99 plan.
+// Competitor columns are untouched (their "Pro" and "Plus" are their own tiers).
+const ONE = plan99();
+const P99 = `$${PLAN_99.price}/month`;
+const INK99 = PLAN_99.ink.toLocaleString("en-US");
 
 /**
  * /vs/[slug] comparison data (HeyCatch action plan, "Do this quarter").
@@ -38,8 +44,9 @@ export type VsPage = {
   faqs: { q: string; a: string }[];
 };
 
-export const D_SCRIBE_PRICING =
-  `Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink, ${PLANS.starter.books}), Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink, ${PLANS.pro.books}, plus about 30 min/month of spoken brainstorming), Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink, ${PLANS.premium.books}, plus about 80 min/month).`;
+export const D_SCRIBE_PRICING = ONE
+  ? `One plan, ${PLAN_99.name} $${PLAN_99.price}/mo (${INK99} Ink, ${PLAN_99.books} a month, plus ${PLAN_99.voiceMinutes} a month of spoken brainstorming).`
+  : `Starter $${PLANS.starter.price}/mo (${PLANS.starter.ink.toLocaleString("en-US")} Ink, ${PLANS.starter.books}), Pro $${PLANS.pro.price}/mo (${PLANS.pro.ink.toLocaleString("en-US")} Ink, ${PLANS.pro.books}, plus about 30 min/month of spoken brainstorming), Premium $${PLANS.premium.price}/mo (${PLANS.premium.ink.toLocaleString("en-US")} Ink, ${PLANS.premium.books}, plus about 80 min/month).`;
 
 export const SOURCED_NOTE =
   "Competitor details were read from their own public pages on 10 September 2026 and reflect what they advertised then. Prices and features change. Check their site before you buy.";
@@ -61,17 +68,19 @@ export const VS_PAGES: VsPage[] = [
       },
       {
         label: "Entry price",
-        ds: `$${PLANS.starter.price}/month (Starter).`,
+        ds: ONE ? `${P99}, one plan.` : `$${PLANS.starter.price}/month (Starter).`,
         them: "$15/month billed annually ($180/yr), or $19/month monthly.",
       },
       {
         label: "Is the cheapest tier full software?",
-        ds: "Yes. Every plan includes AI transcription, voice profile, chapter generation, coherence pass, and PDF/DOCX export. Tiers differ only on capacity.",
+        ds: ONE
+          ? "Yes. There is one plan, and it includes AI transcription, voice profile, chapter generation, coherence pass, and PDF/DOCX export."
+          : "Yes. Every plan includes AI transcription, voice profile, chapter generation, coherence pass, and PDF/DOCX export. Tiers differ only on capacity.",
         them: "No. The Author tier is editor-only and does not include AI book writing. AI generation starts on the Entrepreneur tier at $49/month.",
       },
       {
         label: "Spoken ideation",
-        ds: "Built in on Pro and above: a spoken brainstorming session where the AI interviews you out loud and you answer by voice.",
+        ds: (ONE ? "Built in" : "Built in on Pro and above") + ": a spoken brainstorming session where the AI interviews you out loud and you answer by voice.",
         them: "Not offered.",
       },
       {
@@ -99,7 +108,7 @@ export const VS_PAGES: VsPage[] = [
     faqs: [
       {
         q: "Is D.scribe cheaper than Built&Written?",
-        a: `$${PLANS.starter.price}/month monthly versus their $19/month monthly on the entry tier. Their annual rate of $15/month is lower, but that tier is editor-only. Comparable AI book generation on their side starts at $49/month.`,
+        a: `${ONE ? `${P99} for the one plan` : `$${PLANS.starter.price}/month monthly`} versus their $19/month monthly on the entry tier. Their annual rate of $15/month is lower, but that tier is editor-only. Comparable AI book generation on their side starts at $49/month.`,
       },
       {
         q: "Can I use my existing notes and posts with D.scribe?",
@@ -132,7 +141,7 @@ export const VS_PAGES: VsPage[] = [
       },
       {
         label: "Entry price",
-        ds: `$${PLANS.starter.price}/month (Starter), ${PLANS.starter.ink.toLocaleString("en-US")} Ink.`,
+        ds: ONE ? `${P99}, one plan, ${INK99} Ink.` : `$${PLANS.starter.price}/month (Starter), ${PLANS.starter.ink.toLocaleString("en-US")} Ink.`,
         them: "Free tier with 1,000 credits/month. Plus is $15.83/month billed annually, normally $29.99/month, with 10,000 credits. Pro is $49.17/month annually, normally $89.99/month, unlimited credits.",
       },
       {
@@ -147,7 +156,7 @@ export const VS_PAGES: VsPage[] = [
       },
       {
         label: "Spoken ideation",
-        ds: "Spoken brainstorming on Pro and above, where the AI interviews you out loud.",
+        ds: ONE ? "Spoken brainstorming is built in, where the AI interviews you out loud." : "Spoken brainstorming on Pro and above, where the AI interviews you out loud.",
         them: "Not offered.",
       },
       {
@@ -173,7 +182,7 @@ export const VS_PAGES: VsPage[] = [
       },
       {
         q: "How much does D.scribe cost compared to Squibler's paid tiers?",
-        a: `D.scribe Starter is $${PLANS.starter.price}/month at full price. Squibler Plus is $15.83/month billed annually, normally $29.99/month, and Pro is $49.17/month annually, normally $89.99/month.`,
+        a: `${ONE ? `D.scribe is ${P99}` : `D.scribe Starter is $${PLANS.starter.price}/month`} at full price. Squibler Plus is $15.83/month billed annually, normally $29.99/month, and Pro is $49.17/month annually, normally $89.99/month.`,
       },
     ],
   },
@@ -208,7 +217,7 @@ export const VS_PAGES: VsPage[] = [
       },
       {
         label: "How you are guided",
-        ds: "Spoken brainstorming on Pro and above. You still make every call.",
+        ds: ONE ? "Spoken brainstorming is built in. You still make every call." : "Spoken brainstorming on Pro and above. You still make every call.",
         them: "Structured AI-guided interviews with a Content Scorecard, plus phone-based sales and onboarding.",
       },
       {
@@ -231,11 +240,11 @@ export const VS_PAGES: VsPage[] = [
     faqs: [
       {
         q: "Is D.scribe a cheaper version of Dictate?",
-        a: `They are different products. Dictate is a done-for-you ghostwriting service starting around $4,997. D.scribe is software from $${PLANS.starter.price}/month that you operate yourself.`,
+        a: `They are different products. Dictate is a done-for-you ghostwriting service starting around $4,997. D.scribe is software ${ONE ? `at ${P99}` : `from $${PLANS.starter.price}/month`} that you operate yourself.`,
       },
       {
         q: "Do I get to talk to a human with D.scribe?",
-        a: "Not in the way Dictate provides. Spoken brainstorming on Pro and Premium lets the AI interview you out loud, but there is no human ghostwriter or account manager.",
+        a: "Not in the way Dictate provides. " + (ONE ? "Spoken brainstorming" : "Spoken brainstorming on Pro and Premium") + " lets the AI interview you out loud, but there is no human ghostwriter or account manager.",
       },
       {
         q: "Can I try before paying?",

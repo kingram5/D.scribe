@@ -9,7 +9,7 @@
 // sourced range in src/lib/ghostwriter-cost.ts, always given with its source.
 
 import { SITE_URL } from "@/lib/site";
-import { PLANS, INK_LIMITS } from "@/lib/tiers";
+import { PLANS, INK_LIMITS, INK_PER_PUBLISHER_READY_BOOK, PLAN_99, plan99 } from "@/lib/tiers";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 import { VS_PAGES, D_SCRIBE_PRICING, SOURCED_NOTE } from "@/lib/vs-pages";
 import { DIFFERENTIATORS, FOUNDING_LINE, HOW_IT_WORKS, KEY_FACTS, WHO_USES } from "@/lib/about-content";
@@ -25,6 +25,16 @@ const WHAT_IT_DOES =
 
 function pricingLines(): string[] {
   const p = PLANS;
+  if (plan99()) {
+    // One plan (Kyle 2026-11-19). No Studio minutes: those wait for THEO Live.
+    return [
+      `- Free trial: ${INK_LIMITS.free} Ink to start. No payment required.`,
+      `- One plan, ${PLAN_99.name}: $${PLAN_99.price}/month with ${PLAN_99.ink.toLocaleString("en-US")} Ink a month, enough for one Publisher-Ready book. A 40,000-word book taken through Publisher-Ready (drafted, read by an editor, your answers to the editor's questions worked in, then a final check) runs about ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink; the rest covers that month's interviews with T.H.E.O. Voice playback, where T.H.E.O reads his replies aloud, is included.`,
+      `- The plan includes the full toolkit: ${INCLUDED.join(", ")}.`,
+      "- One-time Ink and voice refills start at $20 and never expire.",
+      "- Month to month, cancel anytime. Ink is D.scribe's credit system: every AI action costs Ink, and the cost is shown before it runs.",
+    ];
+  }
   return [
     `- Free trial: ${INK_LIMITS.free} Ink to start. No payment required.`,
     `- Starter: $${p.starter.price}/month, ${p.starter.ink.toLocaleString("en-US")} Ink (${p.starter.books}).`,

@@ -25,9 +25,10 @@ function isAllowedEmail(email: string | undefined | null): boolean {
 // as /blog and /about: public marketing pages bounced every visitor AND every
 // crawler to /login. Any new public route must be added here or it is invisible.
 // 2026-09-25: /partners (creator program apply page) and /r/<slug> (creator share links).
+// 2026-11-14: /<key>.txt is the IndexNow key file (public by design; see scripts/indexnow-ping.mjs).
 // 2026-11-14: /llms.txt and /llms-full.txt (SEO/GEO plan). The matcher below does
 // not exclude .txt, so without these entries both 404 for every crawler.
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback", "/auth/confirm", "/unauthorized", "/landing-v2", "/pricing", "/about", "/blog", "/discover", "/vs", "/partners", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt", "/37914b4d2ff2dd4260d62c0be0a12eaa.txt"];
 // Generated social-card images (src/app/**/opengraph-image.tsx) are served at
 // /opengraph-image?<hash>; crawlers fetch them anonymously, so prefix-match them.
 const PUBLIC_PREFIXES = ["/api/", "/legal/", "/blog/", "/vs/", "/r/", "/opengraph-image", "/twitter-image", "/pricing/opengraph-image", "/pricing/twitter-image"];

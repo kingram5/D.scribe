@@ -2,23 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButton";
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
-import { PLANS, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+import { PLANS, PLAN_99, PLAN_99_TIER, plan99, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
+import Plan99Note from "@/components/pricing/Plan99Note";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
 import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
 import { APP_ID, graph, jsonLd, softwareApplicationNode, webPageNode } from "@/lib/structured-data";
 
-const FROM = PLANS.starter.price;
+// NEXT_PUBLIC_PLAN_99: one plan for new sign-ups (docs/plan-99-switch-day.md).
+// Every ONE branch below is the single-plan page; the other branch is the
+// three-plan page exactly as it was.
+const ONE = plan99();
+const FROM = ONE ? PLAN_99.price : PLANS.starter.price;
+const INK_99 = PLAN_99.ink.toLocaleString("en-US");
+
+const META_TITLE = ONE ? `Pricing: One Plan, $${FROM} a Month` : `Pricing — AI Book Writing Plans Starting at $${FROM}`;
+const SOCIAL_TITLE = ONE ? `D.scribe Pricing: One Plan, $${FROM} a Month` : `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`;
+const SOCIAL_DESCRIPTION = ONE
+  ? `One plan, $${FROM} a month, with ${INK_99} Ink: AI transcription, manuscript generation, and the full manuscript editor. Cancel anytime.`
+  : "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.";
 
 export const metadata: Metadata = {
-  title: `Pricing — AI Book Writing Plans Starting at $${FROM}`,
-  description: `D.scribe plans start at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`,
+  title: META_TITLE,
+  description: ONE
+    ? `D.scribe is one plan at $${FROM}/month with ${INK_99} Ink, enough for one Publisher-Ready book a month. It includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`
+    : `D.scribe plans start at $${FROM}/month. Every plan includes AI transcription, voice-to-manuscript generation, and PDF/DOCX export. Cancel anytime.`,
   alternates: {
     canonical: `${SITE_URL}/pricing`,
   },
   openGraph: {
-    title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
-    description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
+    title: SOCIAL_TITLE,
+    description: SOCIAL_DESCRIPTION,
     url: `${SITE_URL}/pricing`,
     siteName: "D.scribe",
     type: "website",
@@ -26,8 +40,8 @@ export const metadata: Metadata = {
   // og:image / twitter:image come from ./opengraph-image.tsx and ./twitter-image.tsx (HeyCatch item 7).
   twitter: {
     card: "summary_large_image",
-    title: `D.scribe Pricing — AI Book Writing Plans Starting at $${FROM}`,
-    description: "Starter, Pro, and Premium plans with AI transcription, manuscript generation, and full manuscript editor. Cancel anytime.",
+    title: SOCIAL_TITLE,
+    description: SOCIAL_DESCRIPTION,
   },
 };
 
@@ -38,8 +52,10 @@ export const metadata: Metadata = {
 const pageGraph = graph(
   webPageNode({
     path: "/pricing",
-    name: "D.scribe Pricing — AI Book Writing Plans",
-    description: "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
+    name: ONE ? SOCIAL_TITLE : "D.scribe Pricing — AI Book Writing Plans",
+    description: ONE
+      ? "D.scribe pricing for AI-powered voice-to-manuscript book writing"
+      : "Compare D.scribe plans for AI-powered voice-to-manuscript book writing",
     about: APP_ID,
   }),
   softwareApplicationNode(),
@@ -47,8 +63,9 @@ const pageGraph = graph(
 
 // Every tier includes the full toolkit — plans differ only on capacity (Ink),
 // voice (Pro+), and value (Ink per dollar scales up with tier).
-const TIERS = [
+const TIERS_ALL = [
   {
+    key: "starter" as Tier,
     name: "Starter",
     price: PLANS.starter.price,
     ink: PLANS.starter.ink,
@@ -62,6 +79,7 @@ const TIERS = [
     highlight: false,
   },
   {
+    key: "pro" as Tier,
     name: "Pro",
     price: PLANS.pro.price,
     ink: PLANS.pro.ink,
@@ -72,6 +90,7 @@ const TIERS = [
     highlight: true,
   },
   {
+    key: "premium" as Tier,
     name: "Premium",
     price: PLANS.premium.price,
     ink: PLANS.premium.ink,
@@ -82,6 +101,23 @@ const TIERS = [
     highlight: false,
   },
 ];
+
+// Plan 99: the one card. Voice is the premium tier's own allotment, unchanged.
+const TIERS_ONE: typeof TIERS_ALL = [
+  {
+    key: PLAN_99_TIER,
+    name: PLAN_99.name,
+    price: PLAN_99.price,
+    ink: PLAN_99.ink,
+    books: PLAN_99.books,
+    talk: { minutes: "≈80 min / month", chars: PLAN_99.voiceChars },
+    tagline: "One Publisher-Ready book a month, start to finish.",
+    badge: null,
+    highlight: true,
+  },
+];
+
+const TIERS = ONE ? TIERS_ONE : TIERS_ALL;
 
 // All AI capabilities are included on every plan — shown once, not gated per tier.
 const INCLUDED_FEATURES = [
@@ -95,7 +131,7 @@ const INCLUDED_FEATURES = [
 ];
 
 function bonusInkPct(ink: number, price: number): number {
-  const base = TIERS[0].ink / TIERS[0].price; // Starter = baseline Ink-per-dollar
+  const base = TIERS_ALL[0].ink / TIERS_ALL[0].price; // Starter = baseline Ink-per-dollar
   return Math.round(((ink / price) / base - 1) * 100);
 }
 
@@ -266,7 +302,7 @@ export default function PricingPage() {
               marginBottom: 20,
             }}
           >
-            Write your book.<br />Pick the plan that fits.
+            {ONE ? <>Write your book.<br />One plan. {`$${FROM}`} a month.</> : <>Write your book.<br />Pick the plan that fits.</>}
           </h1>
           <p
             style={{
@@ -278,8 +314,10 @@ export default function PricingPage() {
               lineHeight: 1.7,
             }}
           >
-            Every plan includes the full D.scribe toolkit — you just choose the
-            monthly Ink that matches how much you write. Cancel anytime.{" "}
+            {ONE
+              ? `One plan with the full D.scribe toolkit and ${INK_99} Ink a month, enough for one Publisher-Ready book. Cancel anytime.`
+              : <>Every plan includes the full D.scribe toolkit — you just choose the
+            monthly Ink that matches how much you write. Cancel anytime.</>}{" "}
             <Link href="/legal/refunds" style={{ color: "#C17A47", textDecoration: "underline" }}>Refund policy</Link>.
           </p>
 
@@ -303,7 +341,9 @@ export default function PricingPage() {
             {GHOSTWRITER_COST_SENTENCE}, according to{" "}
             <a href={GHOSTWRITER_COST.url} rel="noopener" style={{ color: "#F9F7F2", textDecoration: "underline" }}>{GHOSTWRITER_COST.source}</a>,
             and the writing takes months.{" "}
-            <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>
+            {ONE
+              ? <span style={{ color: "#F0A878" }}>{`D.scribe is $${FROM}/month and delivers your first draft in under an hour.`}</span>
+              : <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>}
           </p>
         </div>
 
@@ -311,7 +351,8 @@ export default function PricingPage() {
           className="pricing-tiers"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: ONE ? "minmax(0, 400px)" : "repeat(3, 1fr)",
+            ...(ONE ? { justifyContent: "center" } : {}),
             gap: 24,
             alignItems: "start",
           }}
@@ -400,7 +441,9 @@ export default function PricingPage() {
               >
                 {tier.ink.toLocaleString()} Ink &middot; {tier.books}
               </div>
-              {bonusInkPct(tier.ink, tier.price) > 0 ? (
+              {ONE ? (
+                <div style={{ height: 14 }} />
+              ) : bonusInkPct(tier.ink, tier.price) > 0 ? (
                 <div
                   style={{
                     display: "inline-block",
@@ -504,7 +547,8 @@ export default function PricingPage() {
 
               {/* Plan-aware: checkout for new customers, an in-place switch for
                   subscribers (a second checkout would open a second subscription). */}
-              <PlanButton tier={tier.name.toLowerCase() as Tier} highlight={tier.highlight} />
+              <PlanButton tier={tier.key} highlight={tier.highlight} />
+              {ONE ? <Plan99Note /> : null}
 
               {/* HeyCatch item 5: payment trust marks under every tier CTA */}
               <div
@@ -552,7 +596,7 @@ export default function PricingPage() {
         {/* Everything included — shown once, not gated per tier */}
         <div style={{ maxWidth: 760, margin: "56px auto 0", textAlign: "center" }}>
           <p style={{ fontFamily: "var(--font-manrope), sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#C17A47", marginBottom: 20 }}>
-            Every plan includes
+            {ONE ? "The plan includes" : "Every plan includes"}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px 24px" }}>
             {INCLUDED_FEATURES.map((f) => (
@@ -563,7 +607,9 @@ export default function PricingPage() {
             ))}
           </div>
           <p style={{ fontFamily: "var(--font-inter), var(--font-manrope), sans-serif", fontSize: 13, color: "#7A7358", marginTop: 20 }}>
-            Voice playback (text-to-speech) is available on Pro &amp; Premium.
+            {ONE
+              ? `Voice playback (text-to-speech) is included: ${PLAN_99.voiceMinutes} a month.`
+              : <>Voice playback (text-to-speech) is available on Pro &amp; Premium.</>}
           </p>
         </div>
 
@@ -575,7 +621,9 @@ export default function PricingPage() {
               color: "#7A7358",
             }}
           >
-            All plans include a 10 Ink free trial &middot; No payment required to start
+            {ONE
+              ? <>Start with a 10 Ink free trial &middot; No payment required to start</>
+              : <>All plans include a 10 Ink free trial &middot; No payment required to start</>}
           </p>
         </div>
 
@@ -590,7 +638,12 @@ export default function PricingPage() {
                 title: "Ink is your generation budget",
                 body: "Every action that calls the AI — transcription, chapter generation, enrichment passes, coherence rewrites — costs Ink. Think of it like tokens on a prepaid meter. You can see exactly how much each action will cost before you run it.",
               },
-              plansV2()
+              ONE
+                ? {
+                    title: `One Publisher-Ready book ≈ ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink`,
+                    body: `A 40,000-word book taken all the way through Publisher-Ready (drafted, read by an editor, your answers to the editor's questions worked in, then a final check) runs roughly ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink. The plan's ${INK_99} Ink covers one of those a month, with the rest going to that month's interview sessions with T.H.E.O. A quick draft without the editor pass uses far less, so the same Ink stretches across several drafts. Need more in a month? Add a one-time refill.`,
+                  }
+                : plansV2()
                 ? {
                     title: `One Publisher-Ready book ≈ ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink`,
                     body: `A 40,000-word book taken all the way through Publisher-Ready (drafted, read by an editor, your answers to the editor's questions worked in, then a final check) runs roughly ${INK_PER_PUBLISHER_READY_BOOK.toLocaleString("en-US")} Ink. Starter (${PLANS.starter.ink.toLocaleString("en-US")} Ink) covers one of those a month, Pro (${PLANS.pro.ink.toLocaleString("en-US")}) two, and Premium (${PLANS.premium.ink.toLocaleString("en-US")}) five. A quick draft without the editor pass uses far less, so the same Ink stretches across several drafts.`,

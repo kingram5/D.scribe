@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { plan99 } from "@/lib/tiers";
 import { SITE_URL } from "@/lib/site";
 import { LegalShell, H2, P, UL, Strong } from "../LegalShell";
 import {
@@ -43,7 +44,7 @@ export default function PartnerTermsPage() {
       <UL
         items={[
           `A new D.scribe account created through your link or code receives ${PARTNER_BONUS_INK} free Ink, once per person. Deleting and recreating an account, or opening several, does not grant it again.`,
-          `First-time subscribers who use your link or code get ${PARTNER_DISCOUNT_PERCENT}% off their first month of the Starter, Pro or Premium plan. Ink and voice refills are full price.`,
+          `First-time subscribers who use your link or code get ${PARTNER_DISCOUNT_PERCENT}% off their first month of ${plan99() ? "their D.scribe plan" : "the Starter, Pro or Premium plan"}. Ink and voice refills are full price.`,
           "Offers can't be combined with other discounts, and your code has a use limit and an expiry date that we may adjust.",
         ]}
       />
@@ -51,7 +52,7 @@ export default function PartnerTermsPage() {
       <H2>3. What you earn</H2>
       <UL
         items={[
-          `${pct}% of each referred customer's plan payments (Starter, Pro or Premium) for their first ${PARTNER_COMMISSION_MONTHS} months, starting with their first payment, after discounts and excluding taxes. Ink and voice refills don't earn commission.`,
+          `${pct}% of each referred customer's plan payments${plan99() ? "" : " (Starter, Pro or Premium)"} for their first ${PARTNER_COMMISSION_MONTHS} months, starting with their first payment, after discounts and excluding taxes. Ink and voice refills don't earn commission.`,
           "A customer counts as yours if they signed up through your link or code, or entered your code at checkout, and nobody referred them first.",
           `Each commission is held for ${COMMISSION_HOLD_DAYS} days so refunds and chargebacks can clear. A refunded or disputed payment earns nothing.`,
           "You can't earn on your own account or on accounts you control.",

@@ -21,7 +21,7 @@
 // Client-safe: constants and pure functions only.
 
 import { SITE_URL } from "@/lib/site";
-import { PLANS, INK_LIMITS } from "@/lib/tiers";
+import { PLANS, INK_LIMITS, SELLABLE_TIERS, TIER_LABELS } from "@/lib/tiers";
 import { BASED_IN, FOUNDER_NAME } from "@/lib/founder";
 
 export const ORG_ID = `${SITE_URL}/#organization`;
@@ -99,8 +99,6 @@ export function siteGraph(): Json {
   return { "@context": "https://schema.org", "@graph": [organizationNode(), websiteNode()] };
 }
 
-const TIER_ORDER = ["starter", "pro", "premium"] as const;
-
 export function planOffers(): Json[] {
   const free: Json = {
     "@type": "Offer",
@@ -111,9 +109,10 @@ export function planOffers(): Json[] {
     url: `${SITE_URL}/pricing`,
     availability: "https://schema.org/InStock",
   };
-  const paid = TIER_ORDER.map((key) => {
+  // Only the plans a new customer can buy (one, under NEXT_PUBLIC_PLAN_99).
+  const paid = SELLABLE_TIERS.map((key) => {
     const plan = PLANS[key];
-    const name = key.charAt(0).toUpperCase() + key.slice(1);
+    const name = TIER_LABELS[key];
     return {
       "@type": "Offer",
       name: `${name} plan`,

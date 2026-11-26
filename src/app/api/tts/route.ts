@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { plan99 } from "@/lib/tiers";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
 import { getTtsLimit, resolveTheoTtsModel, THEO_TTS_FALLBACK_MODEL } from "@/lib/tts";
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   if (ttsGateLocked(tier, topupTtsChars)) {
     return NextResponse.json(
-      { error: "tts_locked", message: "Voice is a Pro feature. Upgrade to unlock." },
+      { error: "tts_locked", message: plan99() ? "Voice comes with the paid plan. Upgrade to unlock." : "Voice is a Pro feature. Upgrade to unlock." },
       { status: 403 }
     );
   }

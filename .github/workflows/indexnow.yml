@@ -1,0 +1,30 @@
+# IndexNow ping after every successful Production deploy (SEO/GEO plan Phase 3).
+# Vercel reports deployments to GitHub; this runs when one reaches "success" in
+# the Production environment, so the new sitemap and the key file are already
+# live when the ping goes out. No secrets: the IndexNow key is public by design.
+name: IndexNow ping
+
+on:
+  deployment_status:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Ping api.indexnow.org with the sitemap URLs
+        run: node scripts/indexnow-ping.mjs
+        env:
+          SITE_URL: https://www.d-scribe.app

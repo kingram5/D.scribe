@@ -24,9 +24,11 @@ const PIPELINE = [
   { num: "02", title: "Transcribe", desc: "D.scribe captures every word exactly as spoken — speaker detection, timestamps, the full picture." },
   { num: "03", title: "Structure", desc: "Set your chapter count, word targets, and tone. The blueprint for your book, built before a word is written." },
   { num: "04", title: "Analyze", desc: "Key themes extracted, voice profile built, narrative arcs identified. Your ideas, mapped." },
-  { num: "05", title: "Generate", desc: "D.scribe writes your manuscript chapter by chapter — in your voice, not a robot's." },
-  { num: "06", title: "Edit", desc: "Review every sentence in a full manuscript editor. Refine, rewrite, and make it yours." },
-  { num: "07", title: "Export", desc: "Download your finished book as PDF or DOCX. Print-ready. Publisher-ready. Yours." },
+  { num: "05", title: "First Draft", desc: "D.scribe drafts every chapter in your voice, not a robot’s. Read each one as it lands." },
+  { num: "06", title: "Editor Review", desc: "Optional. An editor reads the whole draft and flags what is thin, while you pick how you’d say things." },
+  { num: "07", title: "Interview", desc: "Optional. T.H.E.O asks the editor’s questions out loud. Only you can answer them." },
+  { num: "08", title: "Final Draft", desc: "Your answers go into the book. Then review every sentence, refine, and make it yours." },
+  { num: "✓", title: "Export", desc: "Download your finished book as PDF or DOCX. Print-ready. Publisher-ready. Yours." },
 ];
 
 function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.15) {
@@ -75,15 +77,20 @@ const P = {
   accent:      "#C17A47",   // --ds-accent-400
 };
 
-const DASH_PIPELINE = [
-  { key: "upload",     label: "Audio Upload",       desc: "Upload your recording or paste a YouTube link" },
-  { key: "transcribe", label: "Transcription",      desc: "Your words, captured and ready to shape" },
-  { key: "structure",  label: "Structure Setup",    desc: "Set chapters and word targets" },
-  { key: "analyze",    label: "Content Analysis",   desc: "AI identifies themes, voice patterns, and narrative arcs" },
-  { key: "generate",   label: "Chapter Generation", desc: "AI writes your manuscript, chapter by chapter" },
-  { key: "editor",     label: "Manuscript Editor",  desc: "Review, refine, and polish your manuscript" },
-  { key: "export",     label: "Export & Publish",   desc: "Download your finished book in any format" },
+// Mirrors PIPELINE_V2 in src/lib/pipeline-step.ts (the pipeline signed-in users see).
+const DASH_PIPELINE: { key: string; label: string; desc: string; optional?: boolean; done?: boolean }[] = [
+  { key: "upload",     label: "Audio Upload",     desc: "Upload your recording or paste a YouTube link" },
+  { key: "transcribe", label: "Transcription",    desc: "Your words, captured and ready to shape" },
+  { key: "structure",  label: "Structure Setup",  desc: "Set chapters and word targets" },
+  { key: "analyze",    label: "Content Analysis", desc: "AI identifies themes, voice patterns, and narrative arcs" },
+  { key: "generate",   label: "First Draft",      desc: "Every chapter drafted in your voice, readable as each one lands" },
+  { key: "review",     label: "Editor Review",    desc: "An editor reads the draft while you pick how you’d say things", optional: true },
+  { key: "interview",  label: "Interview",        desc: "T.H.E.O. asks the editor’s questions. Only you can answer them", optional: true },
+  { key: "editor",     label: "Final Draft",      desc: "Your answers go into the book; then review, refine, and polish" },
+  { key: "export",     label: "Done · Export",    desc: "Download your finished book in any format", done: true },
 ];
+// "Done" is the finish line, not a step.
+const DASH_STEP_COUNT = DASH_PIPELINE.filter(s => !s.done).length;
 
 function DashStepAnim({ stepKey }: { stepKey: string }) {
   const wrap: React.CSSProperties = {
@@ -201,6 +208,53 @@ function DashStepAnim({ stepKey }: { stepKey: string }) {
         </div>
       </div>
     );
+    case "review": return (
+      <div key="review" style={wrap}>
+        <style>{`@keyframes dsa-scan{0%{top:8%;opacity:0}10%{opacity:.9}85%{top:86%;opacity:.9}100%{top:86%;opacity:0}}@keyframes dsa-note-in{0%{opacity:0;transform:translateX(8px)}100%{opacity:1;transform:translateX(0)}}@keyframes dsa-mark{0%{background:rgba(193,122,71,0.22)}100%{background:rgba(193,122,71,0.6)}}`}</style>
+        <div style={{ display: "flex", gap: 18, alignItems: "stretch" }}>
+          <div style={{ position: "relative", width: 190, height: 240, borderRadius: 6, background: P.cardBg, border: `1px solid ${P.cardBorder}`, boxShadow: "3px 6px 16px rgba(0,0,0,0.1)", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 17, overflow: "hidden" }}>
+            {[{ w: "100%", d: -1 }, { w: "82%", d: 0.45 }, { w: "92%", d: -1 }, { w: "70%", d: 0.95 }, { w: "88%", d: -1 }, { w: "76%", d: 1.45 }, { w: "60%", d: -1 }].map((l, i) => (
+              <div key={i} style={{ width: l.w, height: 7, borderRadius: 3, background: "rgba(193,122,71,0.22)", ...(l.d >= 0 ? { animation: `dsa-mark 0.35s ease-out ${l.d}s both` } : {}) }} />
+            ))}
+            <div style={{ position: "absolute", left: 8, right: 8, top: "8%", height: 2, borderRadius: 2, background: P.accent, boxShadow: `0 0 10px ${P.accent}`, animation: "dsa-scan 2.2s ease-in-out 0.1s both" }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", width: 104, padding: "22px 0" }}>
+            {[0.45, 0.95, 1.45].map((d, i) => (
+              <div key={i} style={{ animation: `dsa-note-in 0.35s ease-out ${d}s both`, borderLeft: `2px solid ${P.accent}`, paddingLeft: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{ width: "100%", height: 5, borderRadius: 3, background: P.textSec, opacity: 0.45 }} />
+                <div style={{ width: "65%", height: 5, borderRadius: 3, background: P.textSec, opacity: 0.3 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center" }}>
+          <span style={{ background: P.cardBg, backdropFilter: "blur(8px)", padding: "4px 12px", borderRadius: 9999, fontSize: 18, textTransform: "uppercase", letterSpacing: "0.2em", fontWeight: 500, color: P.accent, border: `1px solid ${P.cardBorder}`, fontFamily: "var(--font-manrope), sans-serif" }}>Editor&rsquo;s Notes</span>
+        </div>
+      </div>
+    );
+    case "interview": return (
+      <div key="interview" style={wrap}>
+        <style>{`@keyframes dsa-bubble{0%{opacity:0;transform:translateY(10px) scale(.96)}100%{opacity:1;transform:translateY(0) scale(1)}}@keyframes dsa-talk{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}`}</style>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 360, padding: "0 20px" }}>
+          <div style={{ animation: "dsa-bubble 0.35s ease-out 0.1s both", alignSelf: "flex-start", maxWidth: "82%", background: P.cardBg, border: `1px solid ${P.cardBorder}`, borderRadius: "14px 14px 14px 4px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600, color: P.accent, fontFamily: "var(--font-manrope), sans-serif" }}>T.H.E.O.</span>
+            <div style={{ width: 150, height: 6, borderRadius: 3, background: P.textSec, opacity: 0.4 }} />
+            <div style={{ width: 96, height: 6, borderRadius: 3, background: P.textSec, opacity: 0.28 }} />
+          </div>
+          <div style={{ animation: "dsa-bubble 0.35s ease-out 0.7s both", alignSelf: "flex-end", background: P.accent, borderRadius: "14px 14px 4px 14px", padding: "12px 16px", display: "flex", alignItems: "center", gap: 4, height: 46 }}>
+            {[45, 80, 100, 60, 90, 50, 75, 40].map((h, i) => (
+              <div key={i} style={{ width: 4, height: `${h}%`, borderRadius: 2, background: P.paper, transformOrigin: "center", animation: `dsa-talk 1s ease-in-out infinite ${i * 0.11}s` }} />
+            ))}
+          </div>
+          <div style={{ animation: "dsa-bubble 0.35s ease-out 1.5s both", alignSelf: "flex-start", maxWidth: "70%", background: P.cardBg, border: `1px solid ${P.cardBorder}`, borderRadius: "14px 14px 14px 4px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ width: 120, height: 6, borderRadius: 3, background: P.textSec, opacity: 0.4 }} />
+          </div>
+        </div>
+        <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, textAlign: "center" }}>
+          <span style={{ background: P.cardBg, backdropFilter: "blur(8px)", padding: "4px 12px", borderRadius: 9999, fontSize: 18, textTransform: "uppercase", letterSpacing: "0.2em", fontWeight: 500, color: P.accent, border: `1px solid ${P.cardBorder}`, fontFamily: "var(--font-manrope), sans-serif" }}>In Your Words</span>
+        </div>
+      </div>
+    );
     case "editor": return (
       <div style={wrap}>
         <style>{`
@@ -275,7 +329,7 @@ function PipelineDashboard() {
       ref={rootRef}
       className="lv2-pipeline-dash"
       role="img"
-      aria-label="Animated preview of the D.scribe project dashboard stepping through the seven stages of a book: audio upload, transcription, structure setup, content analysis, chapter generation, manuscript editor, and export."
+      aria-label="Animated preview of the D.scribe project dashboard stepping through the stages of a book: audio upload, transcription, structure setup, content analysis, first draft, an optional editor review, an optional interview, final draft, and export."
       style={{
       borderRadius: 20,
       overflow: "hidden",
@@ -312,7 +366,7 @@ function PipelineDashboard() {
             const isActive = i === active;
             const isLast   = i === DASH_PIPELINE.length - 1;
             return (
-              <div key={s.key} style={{ position: "relative", paddingLeft: 32, marginBottom: isLast ? 0 : 20 }}>
+              <div key={s.key} style={{ position: "relative", paddingLeft: 32, marginBottom: isLast ? 0 : 16 }}>
                 {/* Connector line */}
                 {!isLast && (
                   <div style={{ position: "absolute", left: 7, top: 18, bottom: -4, width: 1, background: isDone ? "rgba(193,122,71,0.3)" : P.cardBorder, transition: "background 0.4s" }} />
@@ -342,10 +396,12 @@ function PipelineDashboard() {
                   <div style={{ marginLeft: -2, padding: "8px 10px", borderRadius: 10, background: P.cardBg, border: `1px solid ${P.cardBorder}`, transition: "all 0.3s" }}>
                     <span style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600, color: P.accent, display: "block", marginBottom: 3, fontFamily: "var(--font-manrope), sans-serif" }}>Current Stage</span>
                     <span style={{ fontFamily: "var(--font-playfair), serif", fontSize: 26, color: P.textPrimary }}>{s.label}</span>
+                    {s.optional && <span style={{ marginLeft: 8, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em", color: P.textTert, fontFamily: "var(--font-manrope), sans-serif" }}>Optional</span>}
                   </div>
                 ) : (
                   <span style={{ fontSize: 22, color: isDone ? P.textSec : P.textTert, display: "block", marginTop: 1, fontFamily: "var(--font-manrope), sans-serif", transition: "color 0.3s" }}>
                     {s.label}
+                    {s.optional && <span style={{ marginLeft: 8, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em", color: P.textTert, fontFamily: "var(--font-manrope), sans-serif" }}>Optional</span>}
                   </span>
                 )}
               </div>
@@ -372,7 +428,7 @@ function PipelineDashboard() {
               ))}
             </div>
             <span style={{ fontSize: 16, textTransform: "uppercase", letterSpacing: "0.15em", color: P.accent, fontWeight: 600, fontFamily: "var(--font-manrope), sans-serif" }}>
-              Step {active + 1} of {DASH_PIPELINE.length}
+              {step.done ? "Finished" : `Step ${active + 1} of ${DASH_STEP_COUNT}`}{step.optional ? " · Optional" : ""}
             </span>
           </div>
 
@@ -1170,7 +1226,7 @@ export default function LandingV2() {
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>Audio to first chapter</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>7 steps</div>
+            <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 44, fontWeight: 900, color: "#E6C18B", marginBottom: 4 }}>{DASH_STEP_COUNT} steps</div>
             <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.15em" }}>From voice to published book</div>
           </div>
           <div style={{ textAlign: "center" }}>
@@ -1187,7 +1243,7 @@ export default function LandingV2() {
               fontFamily: "var(--font-playfair), serif", fontStyle: "italic",
               fontSize: "clamp(56px, 8vw, 84px)", fontWeight: 400, marginBottom: 12,
             }}>
-              Seven steps. One manuscript.
+              Eight steps. One manuscript.
             </h2>
             <p style={{ fontFamily: "var(--font-lora), serif", fontSize: 16, color: "#A89F94" }}>
               From the first word you speak to the last page you export.
@@ -1486,7 +1542,10 @@ export default function LandingV2() {
 
       {/* ─── Styles ─── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+        /* Cormorant Garamond used to arrive here via @import from Google Fonts, an
+           extra third-party stylesheet on every landing visit for one desktop-only
+           line. It is now self-hosted by next/font (root layout, --font-cormorant,
+           no preload) and applied to that line below. 2026-11-14 speed pass. */
 
         /* Circular text — replicate .cinematic-root scope from cinematic-landing.css */
         .circular-text {
@@ -1682,7 +1741,7 @@ export default function LandingV2() {
         .lv2-tagline-main { font-size: clamp(34px, 4vw, 57px); }
         .lv2-tagline-sub { font-size: clamp(17px, 1.9vw, 25px); }
         .lv2-tagline-kick { font-size: clamp(16px, 1.8vw, 24px); }
-        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); }
+        .lv2-subarrow-script { font-size: clamp(28px, 3.2vw, 46px); font-family: var(--font-cormorant), 'Cormorant Garamond', serif !important; }
 
         @media (min-width: 1280px) {
           .lv2-hero { height: 100vh; }

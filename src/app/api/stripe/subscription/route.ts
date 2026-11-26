@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
-import { stripe, STRIPE_PRICES } from "@/lib/stripe";
+import { plan99PriceId, planPriceFor, stripe, tierForPrice } from "@/lib/stripe";
+import { plan99 } from "@/lib/tiers";
 import { logger } from "@/lib/logger";
 
 // POST /api/stripe/subscription — change or cancel the plan the user already has.
@@ -70,6 +71,34 @@ export async function POST(req: NextRequest) {
     if (!isTier(tier)) {
       return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
     }
+    // Grandfathering. Asking for the plan you already have must never move you
+    // to another price: a $100 Premium subscriber stays at $100, a Starter or
+    // Pro subscriber keeps their plan, and someone who bought at $99 keeps $99
+    // after a rollback. The most it does is undo a pending cancellation.
+    // Applies while plan 99 is on, and to anyone already on the $99 price.
+    const currentPrice = subscription.items.data[0]?.price?.id;
+    const samePlan = balance?.tier === tier || tierForPrice(currentPrice) === tier;
+    const p99 = plan99PriceId();
+    if (samePlan && (plan99() || (p99 !== null && currentPrice === p99))) {
+      if (!subscription.cancel_at_period_end) {
+        return NextResponse.json({ error: "That is already your plan" }, { status: 400 });
+      }
+      await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: false });
+      return NextResponse.json({ switched: true, tier });
+    }
+
+    // Plan 99 on: a subscriber can only move to the $99 plan (or cancel).
+    // Their current plan and price stay as they are until they do.
+    const plan = planPriceFor(tier);
+    if (!plan.ok) {
+      if (plan.status === 503) {
+        logger.error("Plan 99 is on but STRIPE_PRICE_PLAN_99 is missing or reuses another price id; plan switch refused", {
+          route: "/api/stripe/subscription",
+          meta: { subscription: subscriptionId },
+        });
+      }
+      return NextResponse.json({ error: plan.error }, { status: plan.status });
+    }
     if (balance?.tier === tier && !subscription.cancel_at_period_end) {
       return NextResponse.json({ error: "That is already your plan" }, { status: 400 });
     }
@@ -84,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     await stripe.subscriptions.update(subscriptionId, {
-      items: [{ id: item.id, price: STRIPE_PRICES[tier] }],
+      items: [{ id: item.id, price: plan.price }],
       // Bill the difference now rather than silently at renewal.
       proration_behavior: "create_prorations",
       cancel_at_period_end: false,

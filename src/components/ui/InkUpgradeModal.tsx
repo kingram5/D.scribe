@@ -3,14 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { startTopupCheckout } from "@/lib/start-topup-checkout";
 import type { TopupSku } from "@/lib/topups";
-import { PLANS } from "@/lib/tiers";
+import { PLANS, PLAN_99, PLAN_99_TIER, plan99 } from "@/lib/tiers";
 
 interface InkUpgradeModalProps {
   onClose: () => void;
   reason?: "ink" | "tts" | "tts_locked";
 }
 
-const TIERS = [
+// NEXT_PUBLIC_PLAN_99: the only plan on offer is the $99 one.
+const ONE = plan99();
+
+const TIERS: { name: string; price: number; ink: number; ttsChars: string; badge?: string; highlight: boolean }[] = ONE ? [
+  { name: PLAN_99.name, price: PLAN_99.price, ink: PLAN_99.ink, ttsChars: "60K", highlight: true },
+] : [
   { name: "Starter", price: PLANS.starter.price, ink: PLANS.starter.ink, ttsChars: "8K", highlight: false },
   { name: "Pro", price: PLANS.pro.price, ink: PLANS.pro.ink, ttsChars: "20K", badge: "Most Popular", highlight: true },
   { name: "Premium", price: PLANS.premium.price, ink: PLANS.premium.ink, ttsChars: "60K", highlight: false },
@@ -23,6 +28,11 @@ function getHeader(reason: "ink" | "tts" | "tts_locked") {
 }
 
 function getSubtitle(reason: "ink" | "tts" | "tts_locked") {
+  if (ONE) {
+    if (reason === "tts") return `Add a one-time voice refill, or move to the ${PLAN_99.name} plan for ${PLAN_99.voiceMinutes} of voice every month.`;
+    if (reason === "tts_locked") return `T.H.E.O reading his replies aloud comes with the ${PLAN_99.name} plan. Speaking your own answers always works.`;
+    return "Add a one-time Ink refill, or upgrade your plan to keep building.";
+  }
   if (reason === "tts") return "Add a one-time voice refill, or move to Premium for more every month.";
   if (reason === "tts_locked") return "T.H.E.O reading his replies aloud is on Pro and Premium. Speaking your own answers works on every plan.";
   return "Add a one-time Ink refill, or upgrade your plan to keep building.";
@@ -48,7 +58,43 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
     };
   }, [onClose]);
 
+  // Plan 99: this modal opens for people who may already pay (a Starter or Pro
+  // subscriber who ran out). Sending them to checkout would open a SECOND
+  // subscription, so switch the one they have and only fall back to checkout
+  // when Stripe says there is nothing to switch. Errors are shown, not dropped.
+  async function handleChoosePlan99() {
+    setLoadingTier(PLAN_99.name);
+    setTopupError(null);
+    try {
+      const body = JSON.stringify({ tier: PLAN_99_TIER });
+      const headers = { "Content-Type": "application/json" };
+      const sub = await fetch("/api/stripe/subscription", { method: "POST", headers, body });
+      const subData = await sub.json().catch(() => ({}));
+      if (sub.ok && subData.switched) {
+        window.location.reload();
+        return;
+      }
+      if (!subData.needsCheckout) {
+        setTopupError(typeof subData.error === "string" ? subData.error : "Could not change plan.");
+        setLoadingTier(null);
+        return;
+      }
+      const res = await fetch("/api/stripe/checkout", { method: "POST", headers, body });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      setTopupError(typeof data.error === "string" ? data.error : "Couldn't start checkout.");
+      setLoadingTier(null);
+    } catch {
+      setTopupError("Couldn't start checkout.");
+      setLoadingTier(null);
+    }
+  }
+
   async function handleChoose(tierName: string) {
+    if (ONE) return handleChoosePlan99();
     setLoadingTier(tierName);
     setTopupError(null);
     try {
@@ -188,17 +234,19 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 700, color: "#191816", marginBottom: 6 }}>
-                {reason === "tts" ? "Upgrade to Premium" : "Upgrade your plan"}
+                {ONE ? `Move to ${PLAN_99.name}` : reason === "tts" ? "Upgrade to Premium" : "Upgrade your plan"}
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#191816", marginBottom: 6 }}>
-                {reason === "tts" ? `$${PLANS.premium.price}` : `$${PLANS.pro.price}`}
+                {ONE ? `$${PLAN_99.price}` : reason === "tts" ? `$${PLANS.premium.price}` : `$${PLANS.pro.price}`}
                 <span style={{ fontSize: 13, fontWeight: 500, color: "#78705F" }}>/mo</span>
               </div>
               <div style={{ fontSize: 12, color: "#7a7369" }}>
-                {reason === "tts" ? "80 min of voice every month." : `${PLANS.pro.ink.toLocaleString()} Ink every month on Pro.`}
+                {ONE
+                  ? (reason === "tts" ? "80 min of voice every month." : `${PLAN_99.ink.toLocaleString()} Ink every month.`)
+                  : reason === "tts" ? "80 min of voice every month." : `${PLANS.pro.ink.toLocaleString()} Ink every month on Pro.`}
               </div>
               <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "#191816" }}>
-                {loadingTier === (reason === "tts" ? "premium" : "pro") ? "Loading..." : "Choose plan →"}
+                {loadingTier === (ONE ? PLAN_99.name : reason === "tts" ? "premium" : "pro") ? "Loading..." : "Choose plan →"}
               </div>
             </button>
           </div>
@@ -308,7 +356,7 @@ export default function InkUpgradeModal({ onClose, reason = "ink" }: InkUpgradeM
             fontFamily: "var(--font-manrope), sans-serif",
           }}
         >
-          Compare all plans on the pricing page &rarr;
+          {ONE ? <>See the plan on the pricing page &rarr;</> : <>Compare all plans on the pricing page &rarr;</>}
         </a>
         <button
           onClick={onClose}

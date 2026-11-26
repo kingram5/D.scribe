@@ -1130,6 +1130,27 @@ input[type=range] {
   }
 
   .lv2-hero-video { opacity: 0.5 !important; }
+  /* Kyle 2026-11-25: zoom the video out a touch on phones while the hero still
+     fills the screen. The video box is 85% of the screen height (so the cover
+     crop shows ~18% more of the shot), centered, its top and bottom edges faded
+     into a blurred still of the same scene that fills the rest. The still is the
+     video poster, already downloaded, so no extra load. */
+  .landing-v2 .lv2-hero::before {
+    content: "";
+    position: absolute;
+    inset: -40px;
+    background: url(/bg-video-poster.jpg) center / cover no-repeat;
+    filter: blur(22px);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .landing-v2 .lv2-hero-video {
+    top: 7.5% !important;
+    bottom: auto !important;
+    height: 85% !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+  }
   .lv2-hero-overlay {
     background-image: linear-gradient(to bottom, rgba(26, 20, 14, 0.28), rgba(26, 20, 14, 0.62)) !important;
   }

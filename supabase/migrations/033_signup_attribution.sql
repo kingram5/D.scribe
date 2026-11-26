@@ -20,12 +20,9 @@
 create table if not exists public.user_attribution (
   user_id uuid primary key references auth.users(id) on delete cascade,
 
-  -- Self-reported answer (required in the app). Keep this list in step with
-  -- ATTRIBUTION_OPTIONS in src/lib/attribution.ts (a test checks it).
-  attribution_source text not null check (attribution_source in (
-    'chatgpt', 'claude', 'perplexity', 'gemini', 'google', 'bing', 'reddit',
-    'youtube', 'podcast', 'friend', 'social', 'directory', 'other'
-  )),
+  -- Self-reported answer (required in the app). The allowed values are a
+  -- named check constraint added below, so a re-run updates the list.
+  attribution_source text not null,
   -- Free text for "Other" (optional, capped).
   attribution_detail text check (attribution_detail is null or char_length(attribution_detail) <= 200),
 
@@ -46,6 +43,19 @@ create table if not exists public.user_attribution (
 
   created_at timestamptz not null default now()
 );
+
+-- Allowed answers. Keep this list in step with ATTRIBUTION_OPTIONS in
+-- src/lib/attribution.ts (a test checks it). 2026-11-25: "social" split into
+-- instagram, tiktok, facebook and social (= other social: X, LinkedIn).
+-- Dropped and re-added by name (the name Postgres gave the old inline check),
+-- so running this file again, even over the first draft, leaves exactly this
+-- list in force.
+alter table public.user_attribution drop constraint if exists user_attribution_attribution_source_check;
+alter table public.user_attribution add constraint user_attribution_attribution_source_check check (attribution_source in (
+  'chatgpt', 'claude', 'perplexity', 'gemini', 'google', 'bing', 'reddit',
+  'youtube', 'podcast', 'friend', 'instagram', 'tiktok', 'facebook', 'social',
+  'directory', 'other'
+));
 
 comment on table public.user_attribution is 'One row per account: the signup "How did you hear about us?" answer plus first-visit referrer/UTM capture. Written by server code only.';
 

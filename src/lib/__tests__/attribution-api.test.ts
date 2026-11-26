@@ -111,10 +111,10 @@ describe("POST /api/attribution", () => {
 describe("first-run dialog", () => {
   const html = renderToStaticMarkup(React.createElement(AttributionGate, { forceOpen: true }));
 
-  it("shows all 13 options with Other last", () => {
+  it("shows all 16 options with Other last", () => {
     const labels = [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1].replace(/&amp;/g, "&"));
-    expect(labels).toHaveLength(13);
-    expect(labels[12]).toBe("Other");
+    expect(labels).toHaveLength(16);
+    expect(labels[15]).toBe("Other");
   });
 
   it("is required: no skip or close control, and Continue starts disabled", () => {

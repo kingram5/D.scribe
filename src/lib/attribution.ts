@@ -3,7 +3,9 @@
 //
 // Pure logic only (client-safe, no I/O), so the rules can be tested without a
 // browser or a database:
-//   - the 13 answer options, verbatim from the plan, shuffled with Other last
+//   - the 16 answer options (the plan's 13, with "Social media" split into
+//     Instagram, TikTok, Facebook and Other social on 2026-11-25 so each
+//     platform can be judged on its own), shuffled with Other last
 //   - validation of the answer
 //   - the first-touch record built on a visitor's first page view
 //   - tagging AI-assistant referrers (exact host or dot-suffix, never substring)
@@ -23,7 +25,10 @@ export const ATTRIBUTION_OPTIONS = [
   { value: "youtube", label: "YouTube" },
   { value: "podcast", label: "Podcast" },
   { value: "friend", label: "Friend or colleague" },
-  { value: "social", label: "Social media (X, LinkedIn, TikTok, Instagram)" },
+  { value: "instagram", label: "Instagram" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "facebook", label: "Facebook" },
+  { value: "social", label: "Other social (X, LinkedIn)" },
   { value: "directory", label: "Product Hunt or a directory" },
   { value: "other", label: "Other" },
 ] as const;

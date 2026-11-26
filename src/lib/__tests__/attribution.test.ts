@@ -11,10 +11,10 @@ import { isAppPath } from "../app-routes";
 // Phase 3b: "How did you hear about us?" plus first-visit attribution.
 
 describe("answer options", () => {
-  it("are exactly the plan's 13 options, in the plan's wording", () => {
+  it("are the plan's 13 options with Social split into Instagram, TikTok, Facebook and Other social (16)", () => {
     expect(ATTRIBUTION_OPTIONS.map((o) => o.label)).toEqual([
       "ChatGPT", "Claude", "Perplexity", "Gemini", "Google search", "Bing", "Reddit", "YouTube", "Podcast",
-      "Friend or colleague", "Social media (X, LinkedIn, TikTok, Instagram)", "Product Hunt or a directory", "Other",
+      "Friend or colleague", "Instagram", "TikTok", "Facebook", "Other social (X, LinkedIn)", "Product Hunt or a directory", "Other",
     ]);
   });
 
@@ -24,9 +24,9 @@ describe("answer options", () => {
     const rng = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
     for (let i = 0; i < 200; i++) {
       const o = shuffledOptions(rng);
-      expect(o).toHaveLength(13);
+      expect(o).toHaveLength(16);
       expect(new Set(o.map((x) => x.value))).toEqual(new Set(ATTRIBUTION_VALUES));
-      expect(o[12].value).toBe("other");
+      expect(o[15].value).toBe("other");
       orders.add(o.map((x) => x.value).join(","));
     }
     expect(orders.size).toBeGreaterThan(150);
@@ -40,7 +40,7 @@ describe("answer options", () => {
 
 describe("the answer is required", () => {
   it("rejects a missing, empty or unknown source", () => {
-    for (const bad of [undefined, null, "", "tiktok", 3, { value: "chatgpt" }]) expect(validateAnswer(bad, undefined).ok).toBe(false);
+    for (const bad of [undefined, null, "", "myspace", "TikTok", 3, { value: "chatgpt" }]) expect(validateAnswer(bad, undefined).ok).toBe(false);
   });
 
   it("accepts each option; free text only for Other (optional, trimmed, capped)", () => {
@@ -173,7 +173,15 @@ describe("migration 033 matches the code", () => {
   };
 
   it("allows exactly the app's answer values", () => {
-    expect(listIn("attribution_source text not null check \\(attribution_source").sort()).toEqual([...ATTRIBUTION_VALUES].sort());
+    expect(listIn("add constraint user_attribution_attribution_source_check check \\(attribution_source").sort()).toEqual([...ATTRIBUTION_VALUES].sort());
+  });
+
+  it("re-runs cleanly: the named answer check is dropped before it is re-added", () => {
+    const drop = sql.indexOf("drop constraint if exists user_attribution_attribution_source_check");
+    expect(drop).toBeGreaterThan(-1);
+    expect(drop).toBeLessThan(sql.indexOf("add constraint user_attribution_attribution_source_check"));
+    // no inline check left on the column (it would survive a re-run with the old list)
+    expect(sql).toMatch(/attribution_source text not null,/);
   });
 
   it("allows exactly the AI engines the classifier returns", () => {

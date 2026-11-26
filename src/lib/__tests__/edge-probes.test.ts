@@ -516,7 +516,10 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
   ]);
   // Admin-only routes: every handler calls requirePartnerAdmin (Kyle's signed-in
   // email or, where allowed, the machine key). They read across users by design.
-  const ADMIN_ROUTES = new Set(["admin/partners", "admin/partners/payouts", "admin/attribution"]);
+  // admin/growth (2026-11-25) uses requireGrowthViewer: partner admins plus the
+  // read-only GROWTH_VIEWER_EMAILS, confirmed cookie session only, read-only.
+  const ADMIN_ROUTES = new Set(["admin/partners", "admin/partners/payouts", "admin/attribution", "admin/growth"]);
+  const ADMIN_GUARD = /requirePartnerAdmin\(|requireGrowthViewer\(/;
   // Ownership resolved through the caller's own partner record counts as scoped.
   const OWNER_SCOPED = /\.eq\(\s*["']user_id["']|findPartnerForUser\(\s*user\.id/;
 
@@ -547,7 +550,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     const offenders = apiRoutes()
       .filter((r) => /createServerClient\s*\(/.test(r.src))
       .filter((r) => !PUBLIC_ROUTES.has(r.route))
-      .filter((r) => !(ADMIN_ROUTES.has(r.route) && /requirePartnerAdmin\(/.test(r.src)))
+      .filter((r) => !(ADMIN_ROUTES.has(r.route) && ADMIN_GUARD.test(r.src)))
       .filter((r) => !OWNER_SCOPED.test(r.src))
       .map((r) => r.route);
     expect(offenders).toEqual([]);
@@ -557,7 +560,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     const offenders = apiRoutes()
       .filter((r) => !PUBLIC_ROUTES.has(r.route))
       .filter((r) => r.route !== "auth/magic-link" && r.route !== "log-client-error")
-      .filter((r) => !/requireAuth|requireUser|getUser\s*\(|requirePartnerAdmin\(/.test(r.src))
+      .filter((r) => !/requireAuth|requireUser|getUser\s*\(|requirePartnerAdmin\(|requireGrowthViewer\(/.test(r.src))
       .map((r) => r.route);
     expect(offenders).toEqual([]);
   });

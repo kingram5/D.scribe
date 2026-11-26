@@ -64,6 +64,17 @@ describe("GET /api/attribution (show the question?)", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ needed: false });
   });
+  it("never asks a growth-dashboard viewer (they sign in to read, not as customers)", async () => {
+    const before = process.env.GROWTH_VIEWER_EMAILS;
+    process.env.GROWTH_VIEWER_EMAILS = "someone@else.co, A@B.co";
+    try {
+      expect(await (await GET()).json()).toEqual({ needed: false });
+      process.env.GROWTH_VIEWER_EMAILS = "someone@else.co";
+      expect(await (await GET()).json()).toEqual({ needed: true });
+    } finally {
+      if (before === undefined) delete process.env.GROWTH_VIEWER_EMAILS; else process.env.GROWTH_VIEWER_EMAILS = before;
+    }
+  });
 });
 
 describe("POST /api/attribution", () => {

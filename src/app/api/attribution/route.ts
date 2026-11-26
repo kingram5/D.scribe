@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
 import { classifyAiReferrer, parseFirstTouch, validateAnswer } from "@/lib/attribution";
 import { logger } from "@/lib/logger";
+import { isGrowthViewer } from "@/lib/growth-viewers";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const { user, error } = await requireAuth();
   if (error) return error;
+  // Growth-dashboard viewers (GROWTH_VIEWER_EMAILS, e.g. Chiara) sign in to read
+  // the numbers, not as customers: never block them with the question, and keep
+  // their account out of the sign-up counts.
+  if (isGrowthViewer(user.email)) return NextResponse.json({ needed: false });
   try {
     const supabase = createServerClient();
     const { data: row, error: aErr } = await supabase.from("user_attribution").select("user_id").eq("user_id", user.id).maybeSingle();

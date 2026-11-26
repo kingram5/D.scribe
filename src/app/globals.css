@@ -1111,15 +1111,20 @@ input[type=range] {
   .landing-v2 nav > div:first-child > span:first-child { font-size: 28px !important; }
   .landing-v2 nav > div:first-child > span:last-child { font-size: 18px !important; }
 
+  /* Kyle 2026-11-25: the hero (video + text) fills exactly one phone screen,
+     text centered, stats band below the fold. svh = the screen with the browser
+     bars showing, so nothing is cut off; vh is the fallback for old browsers. */
   .landing-v2 .lv2-hero {
     height: auto !important;
-    min-height: 0 !important;
+    min-height: 100vh !important;
+    min-height: 100svh !important;
+    box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: flex-start !important;
+    justify-content: center !important;
     align-items: center !important;
     text-align: center !important;
-    padding: 80px 16px 28px !important;
+    padding: 84px 16px 32px !important;
     gap: 16px !important;
     position: relative !important;
   }

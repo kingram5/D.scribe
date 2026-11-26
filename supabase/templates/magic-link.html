@@ -1,7 +1,9 @@
 <!-- D.scribe magic-link email template.
      PASTE INTO: Supabase dashboard -> Authentication -> Emails -> Magic Link.
      Suggested subject line:  Your door into D.scribe is open
-     Template variables ({{ .ConfirmationURL }}) are Supabase's own — leave them.
+     Template variables ({{ .SiteURL }}, {{ .TokenHash }}, {{ .RedirectTo }}) are Supabase's own. The link goes to the
+     app's /auth/confirm button page, never straight to {{ .ConfirmationURL }}: work-email scanners pre-open links
+     and a ConfirmationURL is spent on that first GET (2026-11-25). Confirm-signup uses type=signup.
      Email-client constraints honored: table layout, inline styles only, system
      serif fallback (Georgia) since webfonts are unreliable in email. -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#1A140E; padding:48px 16px; margin:0;">
@@ -25,7 +27,7 @@
         </tr>
         <tr>
           <td align="center" style="padding-bottom:32px;">
-            <a href="{{ .ConfirmationURL }}"
+            <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&redirect_to={{ .RedirectTo }}"
                style="display:inline-block; background-color:#C17A47; color:#1A140E; font-family:'Playfair Display', Georgia, serif; font-size:18px; font-weight:600; text-decoration:none; padding:15px 44px; border-radius:999px;">
               Open D.scribe
             </a>

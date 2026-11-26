@@ -23,9 +23,15 @@ export function readConsent(): ConsentState | null {
     .split("; ")
     .find((c) => c.startsWith(CONSENT_COOKIE + "="));
   if (!match) return null;
+  return parseConsentValue(match.split("=").slice(1).join("="));
+}
+
+/** Parse the consent cookie's (URL-encoded JSON) value. Server-safe: the visit
+ *  route uses it to honour a decline even if a client ignores it. */
+export function parseConsentValue(value: string | null | undefined): ConsentState | null {
+  if (!value) return null;
   try {
-    const raw = decodeURIComponent(match.split("=").slice(1).join("="));
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(decodeURIComponent(value));
     if (parsed && parsed.v === CONSENT_VERSION) return parsed as ConsentState;
     return null;
   } catch {

@@ -143,6 +143,36 @@ export function recordFirstTouch(
   return touch;
 }
 
+// ── Anonymous visit ping (growth dashboard, Kyle 2026-11-25) ─────────────────
+
+/** Marks a browser whose one anonymous visit has been counted. Holds "1", nothing else. */
+export const VISIT_PINGED_KEY = "ds_visit_counted";
+
+/** What the visit ping sends: only the fields the server needs to work out the channel. */
+export interface VisitPingBody {
+  referrer: string;
+  utm_source?: string;
+  utm_medium?: string;
+}
+
+/**
+ * One anonymous visit per browser, ever: returns the ping to send the first
+ * time a first touch exists in this browser (and marks the browser), else
+ * null. Separate from FIRST_TOUCH_KEY on purpose: the signup question deletes
+ * the first touch after storing it, and a returning visitor must not be
+ * counted again. Declining analytics sends nothing and clears the marker.
+ */
+export function claimVisitPing(storage: KV, touch: FirstTouch | null, analyticsDeclined: boolean): VisitPingBody | null {
+  if (analyticsDeclined) { storage.removeItem(VISIT_PINGED_KEY); return null; }
+  if (!touch) return null;
+  if (storage.getItem(VISIT_PINGED_KEY)) return null;
+  storage.setItem(VISIT_PINGED_KEY, "1"); // before sending: at most once, even if the request is lost
+  const body: VisitPingBody = { referrer: touch.referrer };
+  if (touch.utm.utm_source) body.utm_source = touch.utm.utm_source;
+  if (touch.utm.utm_medium) body.utm_medium = touch.utm.utm_medium;
+  return body;
+}
+
 /** Parse a stored first-touch value defensively (it comes from the browser). */
 export function parseFirstTouch(raw: unknown): FirstTouch | null {
   let v: unknown = raw;

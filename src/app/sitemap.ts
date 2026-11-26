@@ -86,8 +86,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...["terms", "privacy", "refunds", "acceptable-use", "dmca"].map((slug) => ({
       url: `${SITE_URL}/legal/${slug}`,
-      // Privacy gained the signup-attribution line on 2026-11-14.
-      lastModified: new Date(slug === "privacy" ? "2026-11-14" : "2026-09-09"),
+      // Privacy gained the signup-attribution line on 2026-11-14 and the
+      // anonymous visit counts line on 2026-11-25.
+      lastModified: new Date(slug === "privacy" ? "2026-11-25" : "2026-09-09"),
       changeFrequency: "yearly" as const,
       priority: 0.3,
     })),

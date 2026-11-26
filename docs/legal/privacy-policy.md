@@ -25,7 +25,8 @@ We may collect the following categories of information:
 - log and error data;
 - usage metrics, session data, and feature activity;
 - IP address and approximate location derived from network data;
-- cookie and tracking information, where enabled and permitted by your consent choices.
+- cookie and tracking information, where enabled and permitted by your consent choices;
+- anonymous visit counts: the first time a browser visits, it tells us what kind of site sent it (for example Instagram, Google, or an AI assistant). We keep only a daily count per kind of site, with no IP address, account, or anything else that identifies you. Nothing is sent if you decline analytics in the cookie banner. (Added 2026-11-25.)
 
 ### Information from third parties
 - authentication providers;

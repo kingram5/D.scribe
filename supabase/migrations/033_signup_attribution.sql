@@ -1,11 +1,14 @@
 -- 033: "How did you hear about us?" + first-visit attribution (SEO/GEO plan
--- Phase 3b, approved by Kyle 2026-11-14).
+-- Phase 3b, approved by Kyle 2026-11-14), plus anonymous visit counts by
+-- channel for the growth dashboard (Kyle 2026-11-25).
 --
 -- Numbered 033 on purpose: 032 belongs to feat/chatgpt-app (already applied to
--- prod). Additive only: one new table, no change to existing tables. Safe to
--- apply before the code ships, and the code fails soft if this table is
--- missing (the question is simply not shown), so either order works; run this
--- first so answers are captured from day one.
+-- prod). Additive only: two new tables and one new function, no change to
+-- existing tables. Safe to apply before the code ships, and the code fails
+-- soft if these are missing (the question is simply not shown, visits are not
+-- counted, the dashboard says the migration has not run), so either order
+-- works; run this first so answers and visits are captured from day one.
+-- Paste the whole file into the Supabase SQL editor and run it once.
 --
 -- There is no profiles table in this schema, so attribution gets its own
 -- one-row-per-account table keyed by the auth user id, deleted with the
@@ -67,3 +70,60 @@ alter table public.user_attribution enable row level security;
 drop policy if exists "read own attribution" on public.user_attribution;
 create policy "read own attribution" on public.user_attribution
   for select using ((select auth.uid()) = user_id);
+
+-- ── Anonymous visit counts by channel (growth dashboard, Kyle 2026-11-25) ────
+--
+-- Top of the funnel for /admin/growth: visits -> sign-ups -> paying, per
+-- marketing channel. One row per UTC day per channel holding a plain count.
+-- No user id, no IP, no URL, nothing per person: the browser sends one ping
+-- the first time it ever visits (only when analytics is not declined), the
+-- server works out the channel from the referrer / utm_source, and this
+-- table just adds one.
+--
+-- RLS on with no policies at all: the browser can neither read nor write it.
+-- The only writer is bump_visit_channel(), callable by the service role only
+-- (the /api/attribution/visit route); the dashboard reads it with the service
+-- role behind its own gate.
+
+create table if not exists public.visit_channel_daily (
+  day date not null,
+  channel text not null,
+  visits integer not null default 0 check (visits >= 0),
+  primary key (day, channel)
+);
+
+-- Allowed channels. Keep in step with VISIT_CHANNELS in src/lib/channels.ts
+-- (a test checks it, and checks the function's list below too).
+alter table public.visit_channel_daily drop constraint if exists visit_channel_daily_channel_check;
+alter table public.visit_channel_daily add constraint visit_channel_daily_channel_check check (channel in (
+  'instagram', 'tiktok', 'facebook', 'google', 'bing', 'search_other',
+  'chatgpt', 'perplexity', 'gemini', 'claude', 'copilot', 'youtube', 'reddit',
+  'linkedin', 'x', 'social_other', 'email', 'direct', 'other'
+));
+
+comment on table public.visit_channel_daily is 'Anonymous first-visit counts per UTC day per marketing channel. No personal data. Written only by bump_visit_channel() (service role).';
+
+alter table public.visit_channel_daily enable row level security;
+revoke all on table public.visit_channel_daily from anon, authenticated;
+
+create or replace function public.bump_visit_channel(p_channel text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_channel is null or p_channel not in (
+    'instagram', 'tiktok', 'facebook', 'google', 'bing', 'search_other',
+    'chatgpt', 'perplexity', 'gemini', 'claude', 'copilot', 'youtube', 'reddit',
+    'linkedin', 'x', 'social_other', 'email', 'direct', 'other'
+  ) then
+    raise exception 'bump_visit_channel: unknown channel %', p_channel using errcode = '22023';
+  end if;
+
+  insert into public.visit_channel_daily (day, channel, visits)
+  values ((now() at time zone 'utc')::date, p_channel, 1)
+  on conflict (day, channel) do update set visits = public.visit_channel_daily.visits + 1;
+end;
+$$;
+
+comment on function public.bump_visit_channel(text) is 'Adds one anonymous visit for today (UTC) under a known channel. Service role only.';
+
+revoke execute on function public.bump_visit_channel(text) from public, anon, authenticated;
+grant  execute on function public.bump_visit_channel(text) to service_role;

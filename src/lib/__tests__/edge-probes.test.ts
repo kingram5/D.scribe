@@ -512,6 +512,7 @@ describe("architecture: service-role routes must self-enforce ownership", () => 
     "auth/hash-session", // anon-key cookie client, no table reads; Supabase validates the tokens
     "partners/apply",   // public partner application form: rate-limited + honeypot, writes one pending row, returns nothing
     "partners/code",    // resolves a creator code to that creator's public name; rate-limited, no user data
+    "attribution/visit", // anonymous visit count: rate-limited, bots/declines dropped, one RPC adds 1 to a daily per-channel count, reads and returns no user data
   ]);
   // Admin-only routes: every handler calls requirePartnerAdmin (Kyle's signed-in
   // email or, where allowed, the machine key). They read across users by design.

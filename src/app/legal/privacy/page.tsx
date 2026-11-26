@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/legal/privacy` },
 };
 
-const LAST_UPDATED = "November 14, 2026";
+const LAST_UPDATED = "November 25, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -49,6 +49,7 @@ export default function PrivacyPolicyPage() {
           "Usage and metering: which features you run, how much Ink and voice time each one uses, and your balance.",
           "Editing signals: how you change generated text, so the editor can learn your style within your own account (Editorial Memory and Voice-Match).",
           "Technical data: IP address, browser and device type, pages visited, timestamps, and error reports.",
+          "Anonymous visit counts: the first time a browser visits, it tells us what kind of site sent it (for example Instagram, Google, or an AI assistant). We keep only a daily count per kind of site, with no IP address, account, or anything else that identifies you. Nothing is sent if you decline analytics in the cookie banner.",
         ]}
       />
       <H3>Information from other services</H3>

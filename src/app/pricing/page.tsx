@@ -4,6 +4,7 @@ import PlanButton, { PlanFooter, type Tier } from "@/components/pricing/PlanButt
 import { CreatorCodeBox } from "@/components/partners/CreatorCodeBox";
 import { PLANS, PLAN_99, PLAN_99_TIER, plan99, plansV2, INK_PER_PUBLISHER_READY_BOOK } from "@/lib/tiers";
 import Plan99Note from "@/components/pricing/Plan99Note";
+import FoundingBanner from "@/components/pricing/FoundingBanner";
 import PublicMobileMenu from "@/components/landing/PublicMobileMenu";
 import { SITE_URL } from "@/lib/site";
 import { GHOSTWRITER_COST, GHOSTWRITER_COST_SENTENCE } from "@/lib/ghostwriter-cost";
@@ -346,6 +347,9 @@ export default function PricingPage() {
               : <span style={{ color: "#F0A878" }}>D.scribe starts at ${FROM}/month and delivers your first draft in under an hour.</span>}
           </p>
         </div>
+
+        {/* Founding 100 (src/lib/founding.ts): renders only while the offer is on with seats left. */}
+        {ONE ? <FoundingBanner /> : null}
 
         <div
           className="pricing-tiers"

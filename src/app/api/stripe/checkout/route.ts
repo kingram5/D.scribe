@@ -11,6 +11,8 @@ import { REF_COOKIE } from "@/lib/partner-rules";
 import { requireAuth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase";
 import { planPriceFor, stripe, TOPUP_PRICES } from "@/lib/stripe";
+import { foundingStatus } from "@/lib/founding";
+import { PLAN_99_TIER, plan99 } from "@/lib/tiers";
 import {
   canBuyInkPack,
   canBuyVoicePack,
@@ -132,6 +134,26 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Founding 100 (src/lib/founding.ts): while seats remain, a first-time
+  // subscriber to the $99 plan gets $49/month for life, applied automatically.
+  // It beats a creator's first-month 50%; the referral above is still claimed,
+  // so the creator keeps their commission on what the buyer pays. Off unless
+  // FOUNDING_OFFER=true and the capped code is live in Stripe.
+  try {
+    if (tier === PLAN_99_TIER && plan99()) {
+      const founding = await foundingStatus();
+      if (founding && founding.remaining > 0 && !(await hadSubscriptionBefore(customerId))) {
+        promotionCode = founding.promoId;
+      }
+    }
+  } catch (err) {
+    logger.warn("Founding offer check failed; checkout continues without it", {
+      route: "/api/stripe/checkout",
+      meta: { user_id: user.id },
+      error: err,
+    });
+  }
+
   const base: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     customer: customerId,
@@ -148,8 +170,8 @@ export async function POST(req: NextRequest) {
     try {
       session = await stripe.checkout.sessions.create({ ...base, discounts: [{ promotion_code: promotionCode }] });
     } catch (err) {
-      // an expired, used-up or switched-off creator code must never cost the sale
-      logger.warn("Creator code could not be applied; falling back to the code box", {
+      // an expired, used-up or switched-off creator or founding code must never cost the sale
+      logger.warn("Discount code could not be applied; falling back to the code box", {
         route: "/api/stripe/checkout",
         meta: { user_id: user.id, promotion_code: promotionCode },
         error: err,

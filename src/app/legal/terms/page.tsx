@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/legal/terms` },
 };
 
-const LAST_UPDATED = "September 9, 2026";
+const LAST_UPDATED = "November 27, 2026";
 
 const link: CSSProperties = { color: "inherit", textDecoration: "underline" };
 
@@ -117,6 +117,7 @@ export default function TermsOfServicePage() {
           "You authorize us and Stripe to charge your chosen payment method for the plan and top-ups you select, plus any applicable taxes.",
           "We show an Ink estimate before every major action; final metering is settled when the action completes and may differ slightly from the estimate.",
           "Prices, Ink allotments, and plan limits may change. We will give you at least 14 days notice by email before a price change applies to your renewal.",
+          "A Founding 100 price, when offered, stays fixed for as long as the subscription it was applied to stays active. It ends if that subscription is canceled, and it cannot be transferred to another account.",
           "If a payment fails or is disputed, reversed, or refunded, we may suspend or reduce paid features until it is resolved.",
           "Free starter Ink has no cash value and is granted once per person.",
         ]}

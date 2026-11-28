@@ -61,7 +61,7 @@ vi.mock("@/lib/partners", () => ({
   referralFor: (...a: unknown[]) => (h.partners.referralFor as (...x: unknown[]) => unknown)(...a),
   findActivePartnerBySlug: async () => null,
   claimReferral: async () => ({ claimed: false, bonus: 0 }),
-  hadSubscriptionBefore: async () => false,
+  hadSubscriptionBefore: async () => Boolean(h.partners.hadSubscription),
   attributeCheckout: (...a: unknown[]) => (h.partners.attributeCheckout as (...x: unknown[]) => unknown)(...a),
   recordInvoiceCommission: (...a: unknown[]) => (h.partners.recordInvoiceCommission as (...x: unknown[]) => unknown)(...a),
   voidCommissionsForPayment: async () => {},
@@ -79,6 +79,7 @@ function setup(opts: { plan99: boolean; plansV2?: boolean; plan99Price?: string 
   h.calls.length = 0;
   for (const k of Object.keys(h.stripe)) delete h.stripe[k];
   h.partners.referralFor = vi.fn(async () => null);
+  h.partners.hadSubscription = false;
   h.partners.attributeCheckout = vi.fn(async () => {});
   h.partners.recordInvoiceCommission = vi.fn(async () => {});
 }
@@ -181,6 +182,68 @@ describe("checkout", () => {
     const res = await POST(post("/api/stripe/checkout", { tier: "premium" }));
     expect(res.status).toBe(200);
     expect(create.mock.calls[1][0]).toMatchObject({ line_items: [{ price: P99, quantity: 1 }], allow_promotion_codes: true });
+  });
+
+  // ── Founding 100 (src/lib/founding.ts) ──
+  const founding = (times_redeemed: number) => {
+    vi.stubEnv("FOUNDING_OFFER", "true");
+    vi.stubEnv("STRIPE_FOUNDING_PROMO_CODE", "FOUNDING100");
+    h.stripe.promotionCodes = {
+      list: vi.fn(async () => ({ data: [{ id: "promo_founding", active: true, max_redemptions: 100, times_redeemed }] })),
+    };
+  };
+
+  it("founding on: a new $99 subscriber gets the founding code, and it beats a creator's code", async () => {
+    setup({ plan99: true });
+    founding(37);
+    h.partners.referralFor = vi.fn(async () => ({
+      partner: { status: "active", stripe_promotion_code_id: "promo_creator" },
+      first_paid_at: null,
+    }));
+    const { res, create } = await checkout({ tier: "premium" });
+    expect(res.status).toBe(200);
+    const args = create.mock.calls[0][0];
+    expect(args).toMatchObject({ line_items: [{ price: P99, quantity: 1 }], discounts: [{ promotion_code: "promo_founding" }] });
+    expect(args.allow_promotion_codes).toBeUndefined();
+    expect(h.partners.referralFor).toHaveBeenCalled();
+  });
+
+  it("founding sold out: checkout is exactly as before (creator code still applies)", async () => {
+    setup({ plan99: true });
+    founding(100);
+    h.partners.referralFor = vi.fn(async () => ({
+      partner: { status: "active", stripe_promotion_code_id: "promo_creator" },
+      first_paid_at: null,
+    }));
+    const { create } = await checkout({ tier: "premium" });
+    expect(create.mock.calls[0][0]).toMatchObject({ discounts: [{ promotion_code: "promo_creator" }] });
+  });
+
+  it("founding on: someone who subscribed before gets the code box, not the founding price", async () => {
+    setup({ plan99: true });
+    founding(10);
+    h.partners.hadSubscription = true;
+    const { create } = await checkout({ tier: "premium" });
+    const args = create.mock.calls[0][0];
+    expect(args.discounts).toBeUndefined();
+    expect(args.allow_promotion_codes).toBe(true);
+  });
+
+  it("founding switch on but plan 99 off: never applied to the old plans", async () => {
+    setup({ plan99: false });
+    founding(10);
+    const { create } = await checkout({ tier: "premium" });
+    expect(create.mock.calls[0][0].discounts).toBeUndefined();
+  });
+
+  it("founding lookup failing never blocks the sale", async () => {
+    setup({ plan99: true });
+    vi.stubEnv("FOUNDING_OFFER", "true");
+    vi.stubEnv("STRIPE_FOUNDING_PROMO_CODE", "FOUNDING100");
+    h.stripe.promotionCodes = { list: vi.fn(async () => { throw new Error("stripe down"); }) };
+    const { res, create } = await checkout({ tier: "premium" });
+    expect(res.status).toBe(200);
+    expect(create.mock.calls[0][0]).toMatchObject({ line_items: [{ price: P99, quantity: 1 }], allow_promotion_codes: true });
   });
 
   it.each([true, false])("Ink refill packs are untouched with the flag %s", async (on) => {
